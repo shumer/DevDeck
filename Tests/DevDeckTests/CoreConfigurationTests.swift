@@ -110,6 +110,19 @@ func runConfigurationTests(_ run: TestRun) async {
         try expectNil(preferences.topLeft(for: .githubInbox))
     }
 
+    await run.test("a panel's height is remembered so it opens at the right size") {
+        // Without this a card opens at its empty height and grows a moment later, shoving
+        // whatever is beneath it down the screen on every launch.
+        let preferences = Preferences(backend: InMemoryPreferences())
+        try expectNil(preferences.height(for: .githubPullRequests))
+
+        preferences.setHeight(230, for: .githubPullRequests)
+        try expectEqual(preferences.height(for: .githubPullRequests), 230)
+
+        preferences.setHeight(0, for: .githubPullRequests)
+        try expectNil(preferences.height(for: .githubPullRequests), "a nonsense height is no height")
+    }
+
     await run.test("a nonsense refresh interval falls back to the default") {
         let backend = InMemoryPreferences()
         backend.set("-5", forKey: "refresh.interval")
