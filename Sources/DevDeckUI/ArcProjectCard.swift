@@ -60,12 +60,10 @@ public struct ArcProjectCard: View {
 
     private var links: some View {
         // A wrapping row: five links at a readable size do not fit on one line at 320 points.
+        // Environments first and nearest to hand — local, then sandbox, then production —
+        // with Arc's tooling after them. Colour carries the same grouping: you should be able
+        // to tell a site from an admin page, and production from a sandbox, before clicking.
         FlowRow(spacing: 6) {
-            ForEach(project.resolvedLinks, id: \.label) { link in
-                chip(link.label, color: DeckTheme.blue, help: link.url.absoluteString) {
-                    onOpen(link.url)
-                }
-            }
             if let local = status.siteURL ?? project.localSiteURL {
                 // "Local site" rather than the port: the port is an implementation detail of
                 // this checkout, and it is one hover away for anyone who wants it.
@@ -83,8 +81,20 @@ public struct ArcProjectCard: View {
                     onOpen(local)
                 }
             }
+            ForEach(project.resolvedLinks) { link in
+                chip(link.label, color: colour(for: link), help: link.url.absoluteString) {
+                    onOpen(link.url)
+                }
+            }
         }
         .padding(.top, 11)
+    }
+
+    private func colour(for link: ResolvedLink) -> Color {
+        guard link.kind == .site else { return DeckTheme.blue }
+        // Production is the one worth a beat of hesitation, so it is the one that is not
+        // calm — the same amber the other cards use for "someone should look at this".
+        return link.label.lowercased().contains("prod") ? DeckTheme.amber : DeckTheme.violet
     }
 
     private func chip(

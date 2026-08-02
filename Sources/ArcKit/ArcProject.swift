@@ -6,16 +6,37 @@ import Foundation
 /// Built-in and custom links are the same type on purpose: every Arc URL differs between
 /// organisations and Fusion versions, so the defaults below are a starting point the user can
 /// correct rather than something baked into the code.
+/// What a link points at. The card groups and colours by this rather than by label, so a
+/// renamed link keeps its place.
+public enum ArcLinkKind: String, Sendable, Equatable, Codable {
+    /// Arc's own tooling: PageBuilder, Composer, the Deployer.
+    case admin
+    /// The published site itself, in some environment.
+    case site
+}
+
 public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
     public var label: String
     /// `{org}` and `{site}` are substituted from the project.
     public var urlTemplate: String
     public var isEnabled: Bool
+    public var kind: ArcLinkKind
 
-    public init(label: String, urlTemplate: String, isEnabled: Bool) {
+    public init(label: String, urlTemplate: String, isEnabled: Bool, kind: ArcLinkKind = .admin) {
         self.label = label
         self.urlTemplate = urlTemplate
         self.isEnabled = isEnabled
+        self.kind = kind
+    }
+
+    /// Links stored before kinds existed are all admin tooling — the site links arrived with
+    /// the field.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        label = try container.decode(String.self, forKey: .label)
+        urlTemplate = try container.decode(String.self, forKey: .urlTemplate)
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        kind = try container.decodeIfPresent(ArcLinkKind.self, forKey: .kind) ?? .admin
     }
 
     public var id: String { label }
@@ -46,8 +67,8 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
             ArcLink(label: "Delivery API", urlTemplate: "https://api.{org}.arcpublishing.com/content/v4", isEnabled: false),
             // The published sites. There is nothing to derive them from — a site lives on its
             // own domain — so they ship empty for the user to paste in, next to the local one.
-            ArcLink(label: "Sandbox", urlTemplate: "", isEnabled: false),
-            ArcLink(label: "Prod", urlTemplate: "", isEnabled: false),
+            ArcLink(label: "Sandbox", urlTemplate: "", isEnabled: false, kind: .site),
+            ArcLink(label: "Prod", urlTemplate: "", isEnabled: false, kind: .site),
         ]
     }
 
@@ -68,6 +89,21 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
 
     /// Labels that were renamed along the way.
     static let renamedLabels: [String: String] = ["Dev Center": "Deployer"]
+}
+
+/// A link with its placeholders filled in, ready for the card.
+public struct ResolvedLink: Sendable, Equatable, Identifiable {
+    public let label: String
+    public let url: URL
+    public let kind: ArcLinkKind
+
+    public init(label: String, url: URL, kind: ArcLinkKind) {
+        self.label = label
+        self.url = url
+        self.kind = kind
+    }
+
+    public var id: String { label }
 }
 
 /// An Arc XP project: where it lives on the web, where it lives on disk, and how to run it.
@@ -129,12 +165,16 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         self.isEnabled = isEnabled
     }
 
-    /// Links that are switched on and produce a valid URL.
-    public var resolvedLinks: [(label: String, url: URL)] {
-        links.compactMap { link in
+    /// Links that are switched on and produce a valid URL, site links first.
+    ///
+    /// The site is what you look at; Arc's tooling is what you go and do something in. The
+    /// card puts them in that order, with the local site ahead of both.
+    public var resolvedLinks: [ResolvedLink] {
+        let resolved = links.compactMap { link -> ResolvedLink? in
             guard link.isEnabled, let url = link.url(organization: organization, site: site) else { return nil }
-            return (label: link.label, url: url)
+            return ResolvedLink(label: link.label, url: url, kind: link.kind)
         }
+        return resolved.filter { $0.kind == .site } + resolved.filter { $0.kind != .site }
     }
 
     public var folderURL: URL? {
