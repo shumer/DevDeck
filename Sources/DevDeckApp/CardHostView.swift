@@ -83,10 +83,10 @@ struct CardHostView: View {
         case .githubActions:
             return ActionsCard.size
         default:
-            guard controller.project(forCard: card) != nil else {
+            guard let project = controller.project(forCard: card) else {
                 return NSSize(width: CardMetrics.width, height: 150)
             }
-            return ArcProjectCard.size
+            return ArcProjectCard.size(hasBranch: controller.stackStatus(for: project).branch != nil)
         }
     }
 
