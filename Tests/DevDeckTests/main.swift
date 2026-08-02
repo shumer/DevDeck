@@ -7,5 +7,7 @@ let run = TestRun()
 await runNetworkingTests(run)
 await runConfigurationTests(run)
 await runGitHubTests(run)
+await runInboxTests(run)
+await runActionsTests(run)
 
 run.finish()

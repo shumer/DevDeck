@@ -77,6 +77,50 @@ public struct GitHubClient: Sendable {
         return payload
     }
 
+    /// A REST GET, decoded, with conditional-request support.
+    ///
+    /// `cacheKey` is what makes polling affordable: with an `ETag` in hand the server answers
+    /// 304, which costs nothing against the hourly budget.
+    public func get<Payload: Decodable & Sendable>(
+        path: String,
+        query: [URLQueryItem] = [],
+        cacheKey: String? = nil,
+        as payloadType: Payload.Type = Payload.self
+    ) async throws -> RESTResult<Payload> {
+        var components = URLComponents(
+            url: settings.apiBaseURL.appendingPathComponent(path),
+            resolvingAgainstBaseURL: false
+        )
+        if !query.isEmpty { components?.queryItems = query }
+        guard let url = components?.url else {
+            throw APIError.decoding("Could not build a URL for \(path)")
+        }
+
+        let request = HTTPRequest(
+            method: .get,
+            url: url,
+            headers: [
+                "Authorization": "bearer \(try resolveToken())",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": userAgent,
+            ],
+            cacheKey: cacheKey
+        )
+
+        let response = try await transport.perform(request)
+        do {
+            let value = try Self.decoder.decode(Payload.self, from: response.body)
+            return RESTResult(
+                value: value,
+                wasNotModified: response.wasNotModified,
+                pollIntervalSeconds: response.pollIntervalSeconds
+            )
+        } catch {
+            throw APIError.decoding(String(describing: error))
+        }
+    }
+
     private func resolveToken() throws -> String {
         do {
             guard let token = try tokenStore.token(for: .github), !token.isEmpty else {

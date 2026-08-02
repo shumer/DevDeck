@@ -53,14 +53,14 @@ public enum CardCatalog {
             id: .githubInbox,
             title: "GitHub inbox",
             subtitle: "Review requests, mentions and CI notifications",
-            isImplemented: false,
+            isImplemented: true,
             isEnabledByDefault: true
         ),
         CardDescriptor(
             id: .githubActions,
             title: "GitHub Actions",
             subtitle: "Workflow success rate and running jobs",
-            isImplemented: false,
+            isImplemented: true,
             isEnabledByDefault: false
         ),
         CardDescriptor(

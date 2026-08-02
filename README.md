@@ -21,13 +21,16 @@ Native macOS, built from a SwiftPM package with no Xcode required.
 
 ## Status
 
-| Card | State |
-|---|---|
-| GitHub · my pull requests | working |
-| GitHub · inbox (notifications) | planned |
-| GitHub · Actions | planned |
-| Arc XP · organizations and bundles | in design — see [docs/roadmap.md](docs/roadmap.md) |
-| Local Fusion stack | planned |
+| Card | State | On by default |
+|---|---|---|
+| GitHub · my pull requests | working | yes |
+| GitHub · inbox (notifications) | working | yes |
+| GitHub · Actions | working | no |
+| Arc XP · organizations and bundles | in design — see [docs/roadmap.md](docs/roadmap.md) | no |
+| Local Fusion stack | planned | no |
+
+The Actions card watches the repositories your open pull requests are in, up to five, unless
+`actionsRepositories` says otherwise.
 
 ## Quick start
 
@@ -46,7 +49,13 @@ stored, and it only ever lives in the login Keychain.
 ### The token
 
 A fine-grained personal access token with read access to **pull requests**, **contents** and
-**metadata** is enough. Two things catch people out:
+**metadata** covers the pull requests card. The inbox card also needs the account-level
+**notifications** permission, and the Actions card needs **actions** (read). Three things
+catch people out:
+
+- the **notifications** permission sits under the account section rather than the repository
+  section, and without it the inbox card shows
+  `Forbidden — Resource not accessible by personal access token`;
 
 - a fine-grained token must be **approved by each organisation** before it can see anything
   there, and until then the API answers with an empty result rather than an error;
