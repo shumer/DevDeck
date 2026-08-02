@@ -33,31 +33,8 @@
 2. **Mark as read** from the inbox card, so the panel is not read-only.
 3. **Resizable panels** — dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
-4. **Arc XP · organizations** — see the open questions below. Nothing is built until the
-   functionality is agreed.
-4. **Local Fusion stack** — container state, ports, start/stop. Needs a process-running layer
-   that does not exist yet, which is why it is last.
-
-## Open questions — Arc XP
-
-The card was sketched as "organisations and sites, each row showing the live bundle version,
-click to open PageBuilder". Before any of it is built, these need answers:
-
-- **Scope.** Is the card a launcher that happens to show a version, or a deploy monitor that
-  happens to link out? That decides whether rows are sites (a launcher) or environments
-  (a monitor).
-- **Environments.** How many environments per site are worth a row — sandbox and production
-  only, or every one that exists?
-- **Deploys.** Should the card only observe, or also act (promote a bundle, restart a
-  deploy)? Acting from a desktop panel is a different risk profile and needs a confirmation
-  step.
-- **Alerting.** Is a finished or failed deploy worth a notification, the way a critical
-  threshold is in IRTrafficWidget?
-- **API shape.** The admin endpoints for listing bundles and the current live deploy differ
-  between organisations and Fusion versions. One organisation's token and one recorded
-  response are enough to pin the model down.
-- **Tokens.** One token per organisation. Six organisations means six Keychain entries and a
-  settings UI that manages a list rather than a single field.
+4. **Custom links on DDEV cards from the settings screen** — the model carries them, the
+   settings row does not offer them yet.
 
 ## Not planned
 
