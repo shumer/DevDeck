@@ -86,7 +86,7 @@ struct CardHostView: View {
             guard let project = controller.project(forCard: card) else {
                 return NSSize(width: CardMetrics.width, height: 150)
             }
-            return ArcProjectCard.size(hasBranch: controller.stackStatus(for: project).branch != nil)
+            return ArcProjectCard.size(for: project, status: controller.stackStatus(for: project))
         }
     }
 
