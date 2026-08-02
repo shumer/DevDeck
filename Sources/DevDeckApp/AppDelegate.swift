@@ -132,17 +132,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             )
             window.setFrame(frame, display: true, animate: false)
             window.invalidateShadow()
-            // The top edge did not move, but persist anyway so a card that grows before the
-            // first drag still has a stored anchor.
             persistPosition(of: card)
+            preferences.setHeight(size.height, for: card)
             // Selection uses the old frame: those are the panels that were below before the
             // resize, and they are the ones that have to make room.
-            shiftColumn(below: old, by: old.height - size.height)
+            //
+            // Nothing here is saved: this is the deck tidying itself, not the user arranging
+            // it. Saving it made every launch remember a layout one growth-spurt further
+            // apart than the one before.
+            shiftColumn(below: old, by: old.height - size.height, persist: false)
         }
     }
 
     private func showPanel(_ card: CardID) {
-        let size = CardHostView.size(for: card, controller: controller)
+        var size = CardHostView.size(for: card, controller: controller)
+        // Open at the height this card last settled at. Computing it now would use empty data
+        // and produce a short panel that grows a moment later, pushing the rest of the column
+        // down — which is how the deck crept apart across launches.
+        if let remembered = preferences.height(for: card) {
+            size.height = remembered
+        }
         let hosting = NSHostingView(rootView: CardHostView(controller: controller, card: card))
         let window = PanelWindow(card: card, size: size, origin: origin(for: card, size: size), content: hosting)
         window.level = displayMode.windowLevel
@@ -200,14 +209,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// This is what stops a hidden card leaving a card-shaped hole, and what makes room when a
     /// card is expanded. Only panels that overlap horizontally are touched, so a deliberately
     /// scattered layout is left alone.
-    private func shiftColumn(below frame: NSRect, by dy: CGFloat) {
+    /// `persist` says whether the move is part of the layout the user is keeping: hiding a
+    /// card or tidying the column is, a card growing into its data is not.
+    private func shiftColumn(below frame: NSRect, by dy: CGFloat, persist: Bool = true) {
         guard dy != 0 else { return }
         for (card, window) in panels {
             let current = window.frame
             guard current.maxY <= frame.minY + 1 else { continue }
             guard current.maxX > frame.minX, current.minX < frame.maxX else { continue }
             window.setFrameOrigin(NSPoint(x: current.origin.x, y: current.origin.y + dy))
-            persistPosition(of: card)
+            if persist { persistPosition(of: card) }
         }
     }
 
