@@ -40,24 +40,21 @@ func runPresentationTests(_ run: TestRun) async {
 
     run.section("Cards — Arc chip rows")
 
-    await run.test("the usual link sets fit on one row each") {
-        try expectEqual(ArcProjectCard.rowCount(labels: ["PageBuilder", "Composer", "Deployer"]), 1)
-        try expectEqual(ArcProjectCard.rowCount(labels: ["Local site", "Sandbox", "Prod"]), 1)
-        try expectEqual(ArcProjectCard.rowCount(labels: []), 0, "no chips, no row")
-    }
-
-    await run.test("a longer list wraps, and the height follows it") {
-        let many = ["PageBuilder", "Composer", "Deployer", "Site Service", "Delivery API"]
-        try expect(ArcProjectCard.rowCount(labels: many) >= 2, "five links do not fit on 284 points")
-
+    await run.test("each row that has chips is paid for, and no more") {
         var project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
-        project.links = many.map { ArcLink(label: $0, urlTemplate: "https://example.com/\($0)", isEnabled: true) }
-        let tall = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped))
+        let stopped = LocalStackStatus(state: .stopped)
 
-        project.links = Array(project.links.prefix(3))
-        let short = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped))
+        project.links = [ArcLink(label: "PageBuilder", urlTemplate: "https://example.com", isEnabled: true)]
+        let both = ArcProjectCard.size(for: project, status: stopped)
 
-        try expect(tall.height > short.height, "a wrapped row has to be paid for in height")
+        project.links = []
+        let localOnly = ArcProjectCard.size(for: project, status: stopped)
+        try expect(both.height > localOnly.height, "the tooling row costs a row")
+
+        // More links do not cost more: the rows are plain stacks and never wrap.
+        project.links = ["PageBuilder", "Composer", "Deployer", "Site Service", "Delivery API"]
+            .map { ArcLink(label: $0, urlTemplate: "https://example.com/\($0)", isEnabled: true) }
+        try expectEqual(ArcProjectCard.size(for: project, status: stopped).height, both.height)
     }
 
     await run.test("the branch line adds its own height") {

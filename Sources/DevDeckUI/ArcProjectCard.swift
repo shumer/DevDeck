@@ -9,40 +9,14 @@ public struct ArcProjectCard: View {
     private static let chipRowHeight: Double = 25
     private static let branchRowHeight: Double = 18
 
-    /// How many rows a set of chips wraps onto.
+    /// Height from what the card will actually contain.
     ///
-    /// An estimate from label lengths rather than a real layout pass: the card is a fixed-size
-    /// panel, so the height has to be known before anything is drawn. Being a few points
-    /// generous costs nothing; being short clips the footer, which is what happened when the
-    /// link list grew.
-    nonisolated public static func rowCount(labels: [String], width: Double = CardMetrics.width - 36) -> Int {
-        guard !labels.isEmpty else { return 0 }
-
-        var rows = 1
-        var used: Double = 0
-        for label in labels {
-            let chip = Double(label.count) * 6.6 + 20
-            let needed = used == 0 ? chip : used + 6 + chip
-            if needed > width, used > 0 {
-                rows += 1
-                used = chip
-            } else {
-                used = needed
-            }
-        }
-        return rows
-    }
-
-    /// The branch and each wrapped chip row add their own height, so the footer keeps its
-    /// place however many links a project ends up with.
+    /// The chip rows never wrap — each is a plain stack whose membership is fixed — so the
+    /// count is simply how many of the two rows have anything in them, plus the branch line.
     nonisolated public static func size(for project: ArcProject, status: LocalStackStatus) -> CGSize {
-        var environmentLabels = project.siteLinks.map(\.label)
-        if (status.siteURL ?? project.localSiteURL) != nil {
-            environmentLabels.insert("Local site", at: 0)
-        }
-
-        let rows = rowCount(labels: project.adminLinks.map(\.label))
-            + rowCount(labels: environmentLabels)
+        var rows = 0
+        if !project.adminLinks.isEmpty { rows += 1 }
+        if !project.siteLinks.isEmpty || (status.siteURL ?? project.localSiteURL) != nil { rows += 1 }
 
         return CGSize(
             width: CardMetrics.width,
@@ -101,15 +75,16 @@ public struct ArcProjectCard: View {
     }
 
     private var links: some View {
-        // Two rows, not one wrapping list: Arc's tooling on top, the environments you can open
-        // below it. Colour separates them too, and separates production from the rest.
+        // Two rows, and plain stacks rather than a wrapping layout: the membership of each row
+        // is decided here, not by where a line happens to break.
         VStack(alignment: .leading, spacing: 6) {
-            FlowRow(spacing: 6) {
+            HStack(spacing: 6) {
                 ForEach(project.adminLinks) { link in
                     chip(link.label, color: DeckTheme.blue, help: link.url.absoluteString) {
                         onOpen(link.url)
                     }
                 }
+                Spacer(minLength: 0)
             }
             environmentRow
         }
@@ -126,9 +101,8 @@ public struct ArcProjectCard: View {
         let url: URL?
     }
 
-    /// Built as a list rather than as `if let` followed by `ForEach`: a conditional first
-    /// child inside the custom layout put the local chip after the others, which is how it
-    /// ended up on a row of its own.
+    /// Built as one list rather than a conditional followed by a `ForEach`, so the order on
+    /// screen is the order written here — local first, then the published environments.
     private var environmentChips: [EnvironmentChip] {
         var chips: [EnvironmentChip] = []
 
@@ -168,13 +142,14 @@ public struct ArcProjectCard: View {
     }
 
     private var environmentRow: some View {
-        FlowRow(spacing: 6) {
+        HStack(spacing: 6) {
             ForEach(environmentChips) { item in
                 chip(item.label, color: item.color, isDimmed: item.isDimmed, help: item.help) {
                     guard let url = item.url else { return }
                     onOpen(url)
                 }
             }
+            Spacer(minLength: 0)
         }
     }
 
@@ -323,50 +298,5 @@ public struct ArcProjectCard: View {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "HH:mm:ss"
         return formatter.string(from: checkedAt)
-    }
-}
-
-/// A row that wraps onto the next line when it runs out of width.
-///
-/// `HStack` would clip the last chips, and the number of links is a per-project setting rather
-/// than something the layout can assume.
-struct FlowRow: Layout {
-    var spacing: CGFloat = 6
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? CardMetrics.width
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var lineHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > 0, x + size.width > maxWidth {
-                x = 0
-                y += lineHeight + spacing
-                lineHeight = 0
-            }
-            x += size.width + spacing
-            lineHeight = max(lineHeight, size.height)
-        }
-        return CGSize(width: maxWidth, height: y + lineHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var lineHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > bounds.minX, x + size.width > bounds.maxX {
-                x = bounds.minX
-                y += lineHeight + spacing
-                lineHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
-            lineHeight = max(lineHeight, size.height)
-        }
     }
 }

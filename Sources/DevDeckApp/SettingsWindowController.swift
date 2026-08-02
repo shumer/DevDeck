@@ -220,6 +220,8 @@ final class SettingsWindowController: NSObject {
             }
 
         case .general:
+            y = layoutHint(AppVersion.summary, at: y, in: documentView, bold: true)
+            y = layoutHint("Running from \(AppVersion.location)", at: y, in: documentView)
             y = layoutHint(
                 "Panels refresh every \(Int(preferences.refreshIntervalSeconds)) seconds. "
                     + "Placement, locking and start-at-login live in the menu-bar menu.",
@@ -231,15 +233,22 @@ final class SettingsWindowController: NSObject {
         documentView.frame = NSRect(x: 0, y: 0, width: Self.rowWidth + 24, height: max(y, 1))
     }
 
-    private func layoutHint(_ text: String, at y: CGFloat, in parent: NSView) -> CGFloat {
+    @discardableResult
+    private func layoutHint(
+        _ text: String,
+        at y: CGFloat,
+        in parent: NSView,
+        bold: Bool = false
+    ) -> CGFloat {
         let hint = NSTextField(wrappingLabelWithString: text)
-        hint.frame = NSRect(x: 12, y: y, width: Self.rowWidth, height: 46)
-        hint.font = NSFont.systemFont(ofSize: 11)
-        hint.textColor = NSColor.secondaryLabelColor
+        hint.frame = NSRect(x: 12, y: y, width: Self.rowWidth, height: bold ? 20 : 46)
+        hint.font = NSFont.systemFont(ofSize: bold ? 13 : 11, weight: bold ? .semibold : .regular)
+        hint.textColor = bold ? NSColor.labelColor : NSColor.secondaryLabelColor
         hint.isEditable = false
+        hint.isSelectable = true
         hint.drawsBackground = false
         parent.addSubview(hint)
-        return y + 54
+        return y + (bold ? 26 : 54)
     }
 
     // MARK: GitHub accounts
