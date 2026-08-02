@@ -143,6 +143,7 @@ public struct PullRequestsCard: View {
         .frame(height: CardMetrics.rowHeight - 1)
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
         .contentShape(Rectangle())
+        .clickable()
         .onTapGesture { onOpen(pullRequest.url, pullRequest.accountID) }
         .help("\(pullRequest.shortLabel) — \(pullRequest.statusLine)")
     }

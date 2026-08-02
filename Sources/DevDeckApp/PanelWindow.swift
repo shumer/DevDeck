@@ -33,6 +33,9 @@ final class PanelWindow: NSWindow {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
+        // Hover highlighting and the pointing-hand cursor need mouse-moved events; a
+        // borderless window does not ask for them by default.
+        acceptsMouseMovedEvents = true
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
 
         let blur = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))

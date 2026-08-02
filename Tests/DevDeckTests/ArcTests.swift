@@ -185,5 +185,18 @@ func runArcTests(_ run: TestRun) async {
 
         let quiet = CommandResult(exitCode: 1, standardOutput: "npm ERR! missing script\n", standardError: "")
         try expectEqual(quiet.failureLine, "npm ERR! missing script", "some tools report on stdout")
+
+        // What `npx fusion daemon` really prints outside a Fusion checkout: the reason first,
+        // then a line about where the log lives.
+        let npm = CommandResult(
+            exitCode: 1,
+            standardOutput: "",
+            standardError: """
+            npm error could not determine executable to run
+            npm error A complete log of this run can be found in: /Users/x/.npm/_logs/debug.log
+            """
+        )
+        try expectEqual(npm.failureLine, "npm error could not determine executable to run",
+                        "the cause, not the path to the log")
     }
 }

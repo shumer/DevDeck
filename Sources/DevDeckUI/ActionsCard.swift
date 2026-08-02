@@ -115,6 +115,7 @@ public struct ActionsCard: View {
         .padding(.vertical, 6)
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
         .contentShape(Rectangle())
+        .clickable(isEnabled: run.url != nil)
         .onTapGesture { if let url = run.url { onOpen(url, run.accountID) } }
         .help("\(run.repository) · \(run.name) on \(run.branch)")
     }
