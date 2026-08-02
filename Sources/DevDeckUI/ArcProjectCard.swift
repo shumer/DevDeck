@@ -55,13 +55,20 @@ public struct ArcProjectCard: View {
         // A wrapping row: five links at a readable size do not fit on one line at 320 points.
         FlowRow(spacing: 6) {
             ForEach(project.resolvedLinks, id: \.label) { link in
-                chip(link.label, color: DeckTheme.blue) { onOpen(link.url) }
+                chip(link.label, color: DeckTheme.blue, help: link.url.absoluteString) {
+                    onOpen(link.url)
+                }
             }
             if let local = status.siteURL ?? project.localSiteURL {
+                // "Local site" rather than the port: the port is an implementation detail of
+                // this checkout, and it is one hover away for anyone who wants it.
                 chip(
-                    localLabel(local),
+                    "Local site",
                     color: status.isRunning ? DeckTheme.green : DeckTheme.label,
-                    isDimmed: !status.isRunning
+                    isDimmed: !status.isRunning,
+                    help: status.isRunning
+                        ? local.absoluteString
+                        : "\(local.absoluteString) — the local stack is not running"
                 ) {
                     // Opening a stopped stack lands on a connection error, which reads as a
                     // broken app rather than a stopped one.
@@ -73,17 +80,11 @@ public struct ArcProjectCard: View {
         .padding(.top, 11)
     }
 
-    /// Shows the port the stack really serves on, which comes from the project's `.env`
-    /// rather than from a setting.
-    private func localLabel(_ url: URL) -> String {
-        guard let port = url.port else { return "local" }
-        return ":\(port)"
-    }
-
     private func chip(
         _ label: String,
         color: Color,
         isDimmed: Bool = false,
+        help: String,
         action: @escaping () -> Void
     ) -> some View {
         Text(label)
@@ -95,6 +96,7 @@ public struct ArcProjectCard: View {
             .contentShape(Rectangle())
             .clickable(cornerRadius: 7, isEnabled: !isDimmed)
             .onTapGesture(perform: action)
+            .help(help)
     }
 
     private var stackRow: some View {
