@@ -1,15 +1,32 @@
 # Working in this repository
 
-## Definition of done
+## Before every commit — not optional
 
-No change is finished until all four are true. Check them before reporting back:
+Run this every time, including for a one-line change. Skipping it because the change "obviously
+cannot break anything" is how the README ended up describing a version, a module list and a
+settings window that had not existed for weeks.
 
-1. `swift build` is clean and `./run-tests.sh` is green.
-2. New behaviour has tests. Fixed bugs have a test that fails without the fix.
-3. Documentation matches the code: `README.md` when user-visible behaviour changed, the
-   relevant file under `docs/`, and a new ADR when a decision was made rather than a detail
-   implemented.
-4. `docs/roadmap.md` reflects what moved.
+```bash
+./run-tests.sh   # must end in "0 failed"
+swift build      # must add no warnings
+```
+
+Then, before writing the commit:
+
+1. **Tests.** New behaviour has a test. A fixed bug has a test that fails without the fix.
+   A red suite is never committed — not "temporarily", not "to fix in the next one".
+2. **README.** Update it whenever user-visible behaviour changed: a new card, a new setting, a
+   changed default, a new prerequisite. Check the counts and examples it quotes are still true.
+3. **`docs/`.** Update the file the change belongs to — `architecture.md` for structure,
+   `development.md` for how to work on it, `github-api.md` for API behaviour. Add an ADR when a
+   *decision* was made rather than a detail implemented, and record the alternatives that were
+   rejected and why.
+4. **`docs/roadmap.md`.** Move what shipped into the done list; add what the change revealed.
+5. **Commit message.** Say what was wrong and why the fix is the right shape, not which files
+   moved. The diff already lists the files.
+
+A change that alters behaviour and touches no documentation is not finished, and neither is one
+committed on an unrun suite.
 
 ## Toolchain constraints
 

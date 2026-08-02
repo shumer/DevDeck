@@ -77,13 +77,16 @@ tolerable and the certificate is a manual Keychain Access step.
 
 ## Definition of done
 
-Every change lands with all four, or it is not done:
+`./run-tests.sh` and `swift build` are run **before every commit**, whatever the change looks
+like. Then all four of these are true, or the change is not done:
 
 1. **Code** builds clean: `swift build` with no warnings introduced.
-2. **Tests** cover the new behaviour and `./run-tests.sh` is green.
-3. **Docs** updated — `README.md` if the user-visible behaviour changed, the relevant file in
+2. **Tests** cover the new behaviour, and a fixed bug has a test that fails without the fix.
+3. **Docs** updated — `README.md` if user-visible behaviour changed, the relevant file in
    `docs/`, and a new ADR when a decision was made rather than a detail implemented.
 4. **Roadmap** updated if the change moves or adds work.
+
+The full checklist, and why it is worded as strictly as it is, is at the top of `CLAUDE.md`.
 
 Comments explain *why*, not *what*. If a line needs a comment to say what it does, rename
 something instead.
