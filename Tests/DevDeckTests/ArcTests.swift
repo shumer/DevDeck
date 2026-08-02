@@ -86,15 +86,17 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(theirs.urlTemplate, "https://internal.example.com/dev")
     }
 
-    await run.test("site links come before the admin ones") {
+    await run.test("the card gets tooling and environments as separate rows") {
         var project = makeProject()
         project.links = [
             ArcLink(label: "PageBuilder", urlTemplate: "https://{org}.example.com/home", isEnabled: true),
             ArcLink(label: "Sandbox", urlTemplate: "https://sandbox.example.com", isEnabled: true, kind: .site),
+            ArcLink(label: "Composer", urlTemplate: "https://{org}.example.com/composer", isEnabled: true),
             ArcLink(label: "Prod", urlTemplate: "https://example.com", isEnabled: true, kind: .site),
         ]
-        try expectEqual(project.resolvedLinks.map(\.label), ["Sandbox", "Prod", "PageBuilder"],
-                        "the site is what you look at; the tooling is where you go to work")
+        try expectEqual(project.adminLinks.map(\.label), ["PageBuilder", "Composer"])
+        try expectEqual(project.siteLinks.map(\.label), ["Sandbox", "Prod"])
+        try expectEqual(project.resolvedLinks.count, 4, "configured order is left as it is")
     }
 
     await run.test("links stored before kinds existed are admin tooling") {

@@ -165,16 +165,22 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         self.isEnabled = isEnabled
     }
 
-    /// Links that are switched on and produce a valid URL, site links first.
-    ///
-    /// The site is what you look at; Arc's tooling is what you go and do something in. The
-    /// card puts them in that order, with the local site ahead of both.
+    /// Links that are switched on and produce a valid URL, in the order they are configured.
     public var resolvedLinks: [ResolvedLink] {
-        let resolved = links.compactMap { link -> ResolvedLink? in
+        links.compactMap { link in
             guard link.isEnabled, let url = link.url(organization: organization, site: site) else { return nil }
             return ResolvedLink(label: link.label, url: url, kind: link.kind)
         }
-        return resolved.filter { $0.kind == .site } + resolved.filter { $0.kind != .site }
+    }
+
+    /// Arc's own tooling — the card's first row.
+    public var adminLinks: [ResolvedLink] {
+        resolvedLinks.filter { $0.kind == .admin }
+    }
+
+    /// The published environments — the card's second row, after the local one.
+    public var siteLinks: [ResolvedLink] {
+        resolvedLinks.filter { $0.kind == .site }
     }
 
     public var folderURL: URL? {
