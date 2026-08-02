@@ -235,6 +235,12 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
                link.urlTemplate == target.urlTemplate {
                 link.label = newLabel
             }
+            // Kinds arrived after the site links did, so a Sandbox or Prod stored in between
+            // decodes as admin tooling and lands in the wrong row. The label is enough to put
+            // it back where it belongs.
+            if let known = defaults.first(where: { $0.label == link.label }), known.kind != link.kind {
+                link.kind = known.kind
+            }
             return link
         }
 
