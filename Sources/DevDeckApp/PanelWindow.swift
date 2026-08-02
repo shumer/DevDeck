@@ -48,6 +48,17 @@ final class PanelWindow: NSWindow {
         blur.layer?.masksToBounds = true
         blur.autoresizingMask = [.width, .height]
 
+        // A scrim between the blur and the content. The blur alone takes its brightness from
+        // whatever is behind the window, so on a light wallpaper the near-white text washes
+        // out. This keeps the palette's assumption — dark glass — true on any desktop.
+        let scrim = NSView(frame: blur.bounds)
+        scrim.wantsLayer = true
+        scrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.42).cgColor
+        scrim.layer?.cornerRadius = DeckTheme.cornerRadius
+        scrim.layer?.cornerCurve = .continuous
+        scrim.autoresizingMask = [.width, .height]
+        blur.addSubview(scrim)
+
         content.frame = blur.bounds
         content.autoresizingMask = [.width, .height]
         blur.addSubview(content)

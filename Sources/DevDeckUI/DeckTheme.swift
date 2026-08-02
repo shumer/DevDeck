@@ -8,8 +8,12 @@ import SwiftUI
 /// system appearance and become unreadable.
 public enum DeckTheme {
     public static let value = Color(red: 0.949, green: 0.961, blue: 0.969)
-    public static let label = Color(red: 0.922, green: 0.941, blue: 0.961).opacity(0.55)
-    public static let faint = Color.white.opacity(0.08)
+    /// Secondary text. Kept well above the "tasteful grey" that disappears the moment the
+    /// panel sits over a bright wallpaper.
+    public static let label = Color(red: 0.922, green: 0.941, blue: 0.961).opacity(0.68)
+    /// Card titles. They name the card, so they read first, not last.
+    public static let title = Color(red: 0.949, green: 0.961, blue: 0.969).opacity(0.9)
+    public static let faint = Color.white.opacity(0.1)
 
     public static let green = Color(red: 0.494, green: 0.886, blue: 0.690)
     public static let red = Color(red: 1.0, green: 0.541, blue: 0.541)
@@ -23,9 +27,9 @@ public enum DeckTheme {
 
     public static func sectionLabel(_ text: String) -> some View {
         Text(text.uppercased())
-            .font(.system(size: 11, weight: .semibold))
+            .font(.system(size: 11, weight: .bold))
             .kerning(1.2)
-            .foregroundStyle(label)
+            .foregroundStyle(title)
     }
 }
 

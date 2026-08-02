@@ -107,6 +107,14 @@ default rather than doing nothing.
 `ChromiumProfiles.parse(localState:)` lives in `DevDeckCore` so the suite can cover it; the app
 supplies the bytes from `~/Library/Application Support/<browser>/Local State`.
 
+## Legibility on glass
+
+Panels are a blur over the wallpaper, and `NSVisualEffectView` takes its brightness from
+whatever is behind it — so over a bright desktop the palette's near-white text turns to mush.
+A scrim (`black` at 42%) sits between the blur and the content, which keeps the one assumption
+the palette makes — dark glass — true on any wallpaper. Contrast is a property of the surface,
+not something to chase by nudging text colours per card.
+
 ## Card sizing
 
 `CardMetrics` in `DevDeckCore` owns the row-count and height arithmetic, because two places
