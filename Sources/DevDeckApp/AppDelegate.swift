@@ -1,5 +1,6 @@
 import AppKit
 import ArcKit
+import DDEVKit
 import Combine
 import DevDeckCore
 import DevDeckUI
@@ -13,17 +14,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let tokenStore: any TokenStore = CompositeTokenStore.standard()
     private let accountsStore = GitHubAccountsStore(backend: UserDefaults.standard)
     private let projectsStore = ArcProjectsStore(backend: UserDefaults.standard)
+    private let ddevProjectsStore = DDEVProjectsStore(backend: UserDefaults.standard)
 
     private lazy var controller = DeckController(
         preferences: preferences,
         tokenStore: tokenStore,
         accountsStore: accountsStore,
-        projectsStore: projectsStore
+        projectsStore: projectsStore,
+        ddevProjectsStore: ddevProjectsStore
     )
     private lazy var settingsController = SettingsWindowController(
         tokenStore: tokenStore,
         accountsStore: accountsStore,
         projectsStore: projectsStore,
+        ddevProjectsStore: ddevProjectsStore,
         preferences: preferences
     ) { [weak self] in
         // A project added or removed in settings changes the card list, not just the data.
@@ -82,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     /// The built-in cards plus one per configured Arc project.
     private var catalog: [CardDescriptor] {
-        CardCatalog.all(including: projectsStore.projects().map { project in
+        let arc = projectsStore.projects().map { project in
             CardDescriptor(
                 id: project.cardID,
                 title: project.title,
@@ -90,7 +94,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 isImplemented: true,
                 isEnabledByDefault: true
             )
-        })
+        }
+        let ddev = ddevProjectsStore.projects().map { project in
+            CardDescriptor(
+                id: project.cardID,
+                title: project.displayTitle,
+                subtitle: "DDEV · \(project.name)",
+                isImplemented: true,
+                isEnabledByDefault: true
+            )
+        }
+        return CardCatalog.all(including: arc + ddev)
     }
 
     private var visibleCards: [CardID] {
@@ -262,23 +276,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.addItem(header)
 
         let resolved = preferences.cardLayout.resolved(catalog: catalog)
-        let projectIDs = Set(projectsStore.projects().map(\.cardID))
+        let arcIDs = Set(projectsStore.projects().map(\.cardID))
+        let ddevIDs = Set(ddevProjectsStore.projects().map(\.cardID))
 
-        for card in resolved where !projectIDs.contains(card.id) {
+        for card in resolved where !arcIDs.contains(card.id) && !ddevIDs.contains(card.id) {
             menu.addItem(cardItem(card))
         }
 
-        // Projects get their own group: with several of them the built-in cards would
+        // Projects get their own groups: with several of them the built-in cards would
         // otherwise be lost in the middle of a list of site names.
-        let projectCards = resolved.filter { projectIDs.contains($0.id) }
-        if !projectCards.isEmpty {
-            menu.addItem(.separator())
-            let header = NSMenuItem(title: "Arc projects", action: nil, keyEquivalent: "")
-            header.isEnabled = false
-            menu.addItem(header)
-            for card in projectCards {
-                menu.addItem(cardItem(card))
-            }
+        addGroup("Arc projects", cards: resolved.filter { arcIDs.contains($0.id) }, to: menu)
+        addGroup("DDEV projects", cards: resolved.filter { ddevIDs.contains($0.id) }, to: menu)
+
+        if !ddevIDs.isEmpty {
+            let powerOff = NSMenuItem(
+                title: "Power off all DDEV",
+                action: #selector(powerOffDDEV),
+                keyEquivalent: ""
+            )
+            powerOff.target = self
+            powerOff.toolTip = "ddev poweroff — stops every project and the router"
+            menu.addItem(powerOff)
         }
 
         menu.addItem(.separator())
@@ -323,6 +341,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     // MARK: Actions
+
+    private func addGroup(_ title: String, cards: [ResolvedCard], to menu: NSMenu) {
+        guard !cards.isEmpty else { return }
+        menu.addItem(.separator())
+        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+        for card in cards {
+            menu.addItem(cardItem(card))
+        }
+    }
+
+    @objc private func powerOffDDEV() {
+        controller.powerOffDDEV()
+    }
 
     private func cardItem(_ card: ResolvedCard) -> NSMenuItem {
         let item = NSMenuItem(
