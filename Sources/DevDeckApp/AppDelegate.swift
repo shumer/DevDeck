@@ -218,22 +218,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Menu bar
 
-    /// A stack of panels — the app is a deck of cards on the desktop, and the icon should say
-    /// so at a glance. Numbers go in the tooltip: a bare "8" in the menu bar belongs to
-    /// nothing in particular.
+    /// A stack of cards with the app's initials cut out of the front one — the shape says
+    /// "deck", the letters say whose. Numbers go in the tooltip: a bare "8" in the menu bar
+    /// belongs to nothing in particular.
     private func updateStatusItem() {
         guard let button = statusItem?.button else { return }
         let summary = controller.statusSummary
 
-        let configuration = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        let image = NSImage(systemSymbolName: "rectangle.stack", accessibilityDescription: "DevDeck")?
-            .withSymbolConfiguration(configuration)
-
-        // Template images follow the menu bar's own light and dark appearance; the alert state
-        // opts out of that deliberately, because red is the message.
-        image?.isTemplate = !summary.isAlert
-        button.image = image
-        button.contentTintColor = summary.isAlert ? .systemRed : nil
+        // The normal icon is a template so it follows the menu bar's own light and dark
+        // appearance; the alert one opts out of that deliberately, because red is the message.
+        button.image = summary.isAlert ? DeckIcon.alertImage() : DeckIcon.statusItemImage()
+        button.contentTintColor = nil
         button.imagePosition = .imageOnly
         button.attributedTitle = NSAttributedString(string: "")
         button.toolTip = summary.tooltip

@@ -185,9 +185,11 @@ is done.
 
 ## Using it
 
-The menu-bar item is a stack of panels, and it turns red when something needs you — the
-numbers are in its tooltip rather than in the menu bar, where a bare count belongs to no app
-in particular.
+The menu-bar item is a stack of cards with the app's initials cut out of the front one, and it
+turns red when something needs you — the numbers are in its tooltip rather than in the menu
+bar, where a bare count belongs to no app in particular. It is drawn in code
+(`DeckIcon`), and `swift run IconPreview out.png` renders it at menu-bar size, on a light and
+a dark bar, for when it needs adjusting.
 
 Everything else lives in its menu:
 
