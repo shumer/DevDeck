@@ -31,9 +31,9 @@
 1. **Bundle versions on the project card** — live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 2. **Mark as read** from the inbox card, so the panel is not read-only.
-2. **Resizable panels** — dragging the bottom edge instead of the expander, if the three-row
+3. **Resizable panels** — dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
-3. **Arc XP · organizations** — see the open questions below. Nothing is built until the
+4. **Arc XP · organizations** — see the open questions below. Nothing is built until the
    functionality is agreed.
 4. **Local Fusion stack** — container state, ports, start/stop. Needs a process-running layer
    that does not exist yet, which is why it is last.
