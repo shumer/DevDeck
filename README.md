@@ -200,9 +200,13 @@ folder to go hunting for — DDEV already knows every project on the machine.
   that "stopped" would misrepresent what pressing Start is about to do.
 - **A broken file sync is called out.** When mutagen is enabled and not `ok`, the card says
   so: edits stop reaching the container and nothing else on screen would hint at why.
-- **Site, Mailpit and xhgui** come straight from DDEV; Mailpit is on by default, xhgui is not.
-  Links are dimmed rather than hidden while the project is down, because a link into a stopped
-  project lands on a connection error that reads as a broken app.
+- **Two rows of links.** Mailpit and xhgui on top, straight from DDEV — Mailpit on by
+  default, xhgui not. Below them the environments: the local site, which DDEV reports, then
+  **Test, UAT and Prod**, which ship empty for you to paste addresses into. Local is green,
+  test and UAT violet, production amber.
+- **Only the local link waits on the container.** It is dimmed while the project is down,
+  because a link into a stopped project lands on a connection error that reads as a broken
+  app; a deployed site is reachable either way.
 - **Power off all DDEV** in the menu runs `ddev poweroff` — every project and the router, for
   when the laptop needs its memory back.
 
