@@ -20,10 +20,16 @@ process per card per poll to learn things one command already answered for all o
    `describe` is a process per project; `.ddev/config.yaml` is a read. Just enough YAML is
    parsed for four keys rather than taking on a parser dependency — indentation is what tells
    the project's `type` from the database's.
-3. **`paused` is a state of its own**, alongside running and stopped. DDEV pauses containers
+3. **The framework version is read from `composer.lock`, not from DDEV's `type:`.** That
+   setting configures DDEV and nobody revisits it after a major upgrade: both projects on this
+   machine said `drupal9` while running Drupal 11.4.4 and 10.6.11. The lock file is what the
+   code is installed from, so it cannot be stale in the same way. It is megabytes of JSON and
+   the card polls every ten seconds, so the answer is cached until the file's modification
+   date changes.
+4. **`paused` is a state of its own**, alongside running and stopped. DDEV pauses containers
    without removing them, and flattening that into "stopped" would misdescribe what Start does.
-4. **Adding a project offers the list DDEV already has**, rather than asking for a folder.
-5. **Cards are composed from shared pieces** — `CardChip`, `CardActionButton`, `CardSeparator`,
+5. **Adding a project offers the list DDEV already has**, rather than asking for a folder.
+6. **Cards are composed from shared pieces** — `CardChip`, `CardActionButton`, `CardSeparator`,
    `CardStateRow`, `CardBranchRow` in `DevDeckUI` — which the Arc card was moved onto in the
    same change. Two cards of the same shape maintained separately drift, and this project has
    already watched that happen to its link templates.

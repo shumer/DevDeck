@@ -141,9 +141,8 @@ public struct DDEVProjectCard: View {
     }
 
     private var footerLeading: String {
-        let type = status.entry?.type ?? status.config.type
         let folder = project.folderURL?.lastPathComponent
-        return [type, folder].compactMap { $0 }.joined(separator: " · ")
+        return [status.frameworkLabel, folder].compactMap { $0 }.joined(separator: " · ")
     }
 
     private var freshness: String {

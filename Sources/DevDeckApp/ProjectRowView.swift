@@ -33,9 +33,10 @@ final class ProjectRowView: NSView {
     var onTestLink: ((ProjectRowView) -> Void)?
     var onChooseFolder: ((ProjectRowView) -> Void)?
 
+    /// The fixed blocks plus one line per link template. `RowLayout` places from the top
+    /// down, so this only has to be generous enough not to clip the last line.
     static func height(for project: ArcProject) -> CGFloat {
-        // Fixed block plus one line per link template.
-        302 + CGFloat(project.links.count) * 26
+        296 + CGFloat(project.links.count) * 26
     }
 
     init(project: ArcProject, width: CGFloat) {
@@ -46,142 +47,94 @@ final class ProjectRowView: NSView {
         layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
         layer?.cornerRadius = 8
 
-        let inset: CGFloat = 12
-        let full = width - inset * 2
-        var y = bounds.height - 34
+        let layout = RowLayout(in: self)
 
-        func label(_ text: String, _ top: CGFloat, x: CGFloat = inset, width: CGFloat = 200) {
-            let field = NSTextField(labelWithString: text)
-            field.frame = NSRect(x: x, y: top, width: width, height: 15)
-            field.font = NSFont.systemFont(ofSize: 10)
-            field.textColor = NSColor.secondaryLabelColor
-            addSubview(field)
-        }
-
-        func configure(_ field: NSTextField, mono: Bool = false, placeholder: String = "") {
-            field.font = mono
+        func field(_ target: NSTextField, mono: Bool = false, placeholder: String = "") {
+            target.font = mono
                 ? NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
                 : NSFont.systemFont(ofSize: 12)
-            field.placeholderString = placeholder
-            field.delegate = self
-            addSubview(field)
+            target.placeholderString = placeholder
+            target.delegate = self
         }
 
-        // Identity.
-        titleField.frame = NSRect(x: inset, y: y, width: 190, height: 22)
         titleField.stringValue = project.title
         titleField.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         titleField.delegate = self
-        addSubview(titleField)
 
-        enabledButton.frame = NSRect(x: inset + 200, y: y + 1, width: 90, height: 20)
         enabledButton.setButtonType(.switch)
         enabledButton.title = "Enabled"
         enabledButton.state = project.isEnabled ? .on : .off
         enabledButton.target = self
         enabledButton.action = #selector(controlChanged)
-        addSubview(enabledButton)
 
         let removeButton = NSButton(title: "Remove", target: self, action: #selector(remove))
-        removeButton.frame = NSRect(x: width - inset - 80, y: y - 2, width: 80, height: 24)
         removeButton.bezelStyle = .rounded
         removeButton.controlSize = .small
-        addSubview(removeButton)
+        layout.row([(titleField, nil), (enabledButton, 90), (removeButton, 80)], height: 24, gap: 10)
 
-        y -= 30
-        label("Organisation", y + 22, width: 140)
-        organizationField.frame = NSRect(x: inset, y: y, width: (full - 10) / 2, height: 22)
+        layout.caption("Organisation — includes the environment, such as sandbox.ilgiornale")
         organizationField.stringValue = project.organization
-        configure(organizationField, placeholder: "editoriaitaliana")
-
-        label("Site id (optional)", y + 22, x: inset + (full - 10) / 2 + 10, width: 140)
-        siteField.frame = NSRect(x: inset + (full - 10) / 2 + 10, y: y, width: (full - 10) / 2, height: 22)
+        field(organizationField, placeholder: "sandbox.ilgiornale")
         siteField.stringValue = project.site ?? ""
-        configure(siteField, placeholder: "ilgiornale")
+        field(siteField, placeholder: "site id (optional)")
+        layout.row([(organizationField, nil), (siteField, nil)], height: 24, gap: 12)
 
-        // Links.
-        y -= 34
-        label("Links on the card — {org} and {site} are substituted", y + 20, width: full)
+        layout.caption("Links on the card — {org} and {site} are substituted")
         for link in project.links {
-            y -= 26
             let check = NSButton(checkboxWithTitle: "", target: self, action: #selector(controlChanged))
-            check.frame = NSRect(x: inset, y: y + 2, width: 18, height: 18)
             check.state = link.isEnabled ? .on : .off
-            addSubview(check)
             linkChecks.append(check)
 
             let name = NSTextField(labelWithString: link.label)
-            name.frame = NSRect(x: inset + 20, y: y + 3, width: 86, height: 16)
             name.font = NSFont.systemFont(ofSize: 11)
-            addSubview(name)
+            name.lineBreakMode = .byTruncatingTail
 
             let template = NSTextField()
-            template.frame = NSRect(x: inset + 110, y: y, width: full - 110, height: 21)
             template.stringValue = link.urlTemplate
             // The site links ship empty because nothing can derive a published domain.
-            configure(template, mono: true, placeholder: "https://…")
+            field(template, mono: true, placeholder: "https://…")
             linkFields.append(template)
-        }
 
-        // Browser.
-        y -= 34
-        label("Open links in", y + 22, width: full)
-        let popUpWidth = (full - 70) / 2
-        browserPopUp.frame = NSRect(x: inset, y: y, width: popUpWidth, height: 24)
+            layout.row([(check, 18), (name, 86), (template, nil)], height: 22, gap: 4, spacing: 4)
+        }
+        layout.space(8)
+
+        layout.caption("Open links in")
         browserPopUp.target = self
         browserPopUp.action = #selector(browserChanged)
-        addSubview(browserPopUp)
-
-        profilePopUp.frame = NSRect(x: inset + popUpWidth + 8, y: y, width: popUpWidth, height: 24)
         profilePopUp.target = self
         profilePopUp.action = #selector(controlChanged)
-        addSubview(profilePopUp)
-
         let testButton = NSButton(title: "Test", target: self, action: #selector(testLink))
-        testButton.frame = NSRect(x: inset + popUpWidth * 2 + 16, y: y - 1, width: 50, height: 25)
         testButton.bezelStyle = .rounded
         testButton.controlSize = .small
-        addSubview(testButton)
+        layout.row([(browserPopUp, nil), (profilePopUp, nil), (testButton, 52)], height: 24, gap: 12)
 
-        // Local stack.
-        y -= 34
-        label("Project folder", y + 22, width: full)
-        folderField.frame = NSRect(x: inset, y: y, width: full - 86, height: 22)
+        layout.caption("Project folder")
         folderField.stringValue = project.folder ?? ""
-        configure(folderField, mono: true, placeholder: "~/Projects/…")
-
+        field(folderField, mono: true, placeholder: "~/Projects/…")
         let chooseButton = NSButton(title: "Choose…", target: self, action: #selector(chooseFolder))
-        chooseButton.frame = NSRect(x: width - inset - 78, y: y - 1, width: 78, height: 25)
         chooseButton.bezelStyle = .rounded
         chooseButton.controlSize = .small
-        addSubview(chooseButton)
+        layout.row([(folderField, nil), (chooseButton, 80)], height: 24, gap: 12)
 
-        y -= 32
-        label("Start", y + 22, width: 100)
-        startField.frame = NSRect(x: inset, y: y, width: (full - 10) / 2, height: 22)
+        layout.caption("Start and stop commands")
         startField.stringValue = project.startCommand
-        configure(startField, mono: true)
-
-        label("Stop", y + 22, x: inset + (full - 10) / 2 + 10, width: 100)
-        stopField.frame = NSRect(x: inset + (full - 10) / 2 + 10, y: y, width: (full - 10) / 2, height: 22)
+        field(startField, mono: true)
         stopField.stringValue = project.stopCommand
-        configure(stopField, mono: true)
+        field(stopField, mono: true)
+        layout.row([(startField, nil), (stopField, nil)], height: 24, gap: 12)
 
-        y -= 32
-        label("Local URL — empty reads PORT from the project's .env", y + 22, width: 260)
-        localURLField.frame = NSRect(x: inset, y: y, width: (full - 10) / 2, height: 22)
+        layout.caption("Local URL — empty reads PORT from the project's .env — and health path")
         localURLField.stringValue = project.localURL
-        configure(localURLField, mono: true, placeholder: EnvFile.localURL(in: project.folderURL))
-
-        label("Health path", y + 22, x: inset + (full - 10) / 2 + 10, width: 100)
-        healthField.frame = NSRect(x: inset + (full - 10) / 2 + 10, y: y, width: (full - 10) / 2, height: 22)
+        field(localURLField, mono: true, placeholder: EnvFile.localURL(in: project.folderURL))
         healthField.stringValue = project.healthPath
-        configure(healthField, mono: true, placeholder: "/release")
+        field(healthField, mono: true, placeholder: "/release")
+        layout.row([(localURLField, nil), (healthField, nil)], height: 24, gap: 10)
 
-        statusLabel.frame = NSRect(x: inset, y: 8, width: full, height: 16)
         statusLabel.font = NSFont.systemFont(ofSize: 11)
         statusLabel.textColor = NSColor.secondaryLabelColor
-        addSubview(statusLabel)
+        statusLabel.lineBreakMode = .byTruncatingTail
+        layout.place(statusLabel, height: 16, gap: 0)
 
         loadBrowsers()
     }

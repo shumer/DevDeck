@@ -70,6 +70,8 @@ public struct DDEVStatus: Sendable, Equatable {
     public var entry: DDEVListEntry?
     public var config: DDEVConfig
     public var branch: String?
+    /// What the project is built on, from composer.lock — `drupal 11.4.4`.
+    public var framework: String?
     /// What is happening, or why the last command failed.
     public var detail: String?
     public var checkedAt: Date?
@@ -79,6 +81,7 @@ public struct DDEVStatus: Sendable, Equatable {
         entry: DDEVListEntry? = nil,
         config: DDEVConfig = DDEVConfig(),
         branch: String? = nil,
+        framework: String? = nil,
         detail: String? = nil,
         checkedAt: Date? = nil
     ) {
@@ -86,8 +89,17 @@ public struct DDEVStatus: Sendable, Equatable {
         self.entry = entry
         self.config = config
         self.branch = branch
+        self.framework = framework
         self.detail = detail
         self.checkedAt = checkedAt
+    }
+
+    /// What to call the project in the footer.
+    ///
+    /// The lock file first: DDEV's `type` is a setting nobody updates after an upgrade, so it
+    /// happily says `drupal9` about a Drupal 11 site.
+    public var frameworkLabel: String? {
+        framework ?? entry?.type ?? config.type
     }
 
     public var isRunning: Bool { state == .running }
