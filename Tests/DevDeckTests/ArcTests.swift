@@ -43,6 +43,33 @@ func runArcTests(_ run: TestRun) async {
         )
     }
 
+    await run.test("the guessed Dev Center link becomes the Deployer") {
+        let json = """
+        { "id": "p", "title": "P", "organization": "ilgiornale", "healthPath": "/release",
+          "isEnabled": true, "localURL": "",
+          "links": [
+            { "label": "Dev Center", "urlTemplate": "https://sandbox.{org}.arcpublishing.com/developer/", "isEnabled": false },
+            { "label": "Composer", "urlTemplate": "https://sandbox.{org}.arcpublishing.com/composer/", "isEnabled": true }
+          ] }
+        """
+        let project = try JSONDecoder().decode(ArcProject.self, from: Data(json.utf8))
+        let replaced = try expectNotNil(project.links.first, "first link")
+        try expectEqual(replaced.label, "Deployer")
+        try expectEqual(replaced.urlTemplate, "https://sandbox.{org}.arcpublishing.com/deployments/fusion/")
+        try expect(!replaced.isEnabled, "whether it was shown is the user's choice, not ours")
+        try expectEqual(project.links.last?.label, "Composer", "other links are untouched")
+    }
+
+    await run.test("a Dev Center link someone edited is left alone") {
+        let json = """
+        { "id": "p", "title": "P", "organization": "ilgiornale", "healthPath": "/release",
+          "isEnabled": true, "localURL": "",
+          "links": [{ "label": "Dev Center", "urlTemplate": "https://internal.example.com/dev", "isEnabled": true }] }
+        """
+        let project = try JSONDecoder().decode(ArcProject.self, from: Data(json.utf8))
+        try expectEqual(project.links.first?.urlTemplate, "https://internal.example.com/dev")
+    }
+
     await run.test("a disabled link does not reach the card") {
         var project = makeProject()
         project.links = [
@@ -68,6 +95,48 @@ func runArcTests(_ run: TestRun) async {
             makeProject(localURL: "http://localhost:8080/").healthURL?.absoluteString,
             "http://localhost:8080/release"
         )
+    }
+
+    run.section("Arc — checked out branch")
+
+    await run.test("the branch is read straight from .git/HEAD") {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("devdeck-git-\(UUID().uuidString)", isDirectory: true)
+        let dotGit = folder.appendingPathComponent(".git", isDirectory: true)
+        try FileManager.default.createDirectory(at: dotGit, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let head = dotGit.appendingPathComponent("HEAD")
+
+        try "ref: refs/heads/fix/EI-303-video-play-badge\n".write(to: head, atomically: true, encoding: .utf8)
+        try expectEqual(GitCheckout.branch(in: folder), "fix/EI-303-video-play-badge",
+                        "slashes in a branch name are normal")
+
+        try "ref: refs/heads/main\n".write(to: head, atomically: true, encoding: .utf8)
+        try expectEqual(GitCheckout.branch(in: folder), "main")
+
+        // Detached HEAD holds a bare commit; the short form is what a prompt shows.
+        try "9f2b1c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n".write(to: head, atomically: true, encoding: .utf8)
+        try expectEqual(GitCheckout.branch(in: folder), "9f2b1c4")
+    }
+
+    await run.test("a worktree's gitdir pointer is followed") {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("devdeck-wt-\(UUID().uuidString)", isDirectory: true)
+        let real = root.appendingPathComponent("real-git", isDirectory: true)
+        let checkout = root.appendingPathComponent("checkout", isDirectory: true)
+        try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: checkout, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try "ref: refs/heads/spike\n".write(to: real.appendingPathComponent("HEAD"), atomically: true, encoding: .utf8)
+        try "gitdir: \(real.path)\n".write(to: checkout.appendingPathComponent(".git"), atomically: true, encoding: .utf8)
+
+        try expectEqual(GitCheckout.branch(in: checkout), "spike")
+    }
+
+    await run.test("a folder that is not a checkout has no branch") {
+        try expectNil(GitCheckout.branch(in: URL(fileURLWithPath: NSTemporaryDirectory())))
+        try expectNil(GitCheckout.branch(in: nil))
     }
 
     run.section("Arc — the port comes from .env")
