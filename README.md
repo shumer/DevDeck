@@ -32,19 +32,57 @@ Native macOS, built from a SwiftPM package with no Xcode required.
 The Actions card watches the repositories your open pull requests are in, up to five, unless
 `actionsRepositories` says otherwise.
 
-## Quick start
+## Build and run
+
+Needs the Swift 6 toolchain from the Command Line Tools — `xcode-select --install`. **Xcode is
+not required**: there is no project file and nothing here opens in it. Docker is only needed
+for the Arc cards' local stack.
 
 ```bash
-git clone <this repo> && cd widgets
-scripts/seed-token.sh                 # copies a token from env.local into the Keychain
-./run-tests.sh                        # offline suite, must be green
-scripts/smoke-test.sh                 # one real API call, prints counts
-./build.sh                            # builds DevDeck.app and installs it to /Applications
+git clone git@github.com:shumer/DesktopWidgets.git widgets && cd widgets
+./run-tests.sh          # offline suite, ~15s, must be green
+./build.sh              # tests, build, bundle, install to /Applications, launch
 ```
 
-Without a token the app opens its settings window on first launch; paste a token there
-instead of running `seed-token.sh`. The token is verified against the API before it is
-stored, and it only ever lives in the login Keychain.
+**`./build.sh` installs by default.** In order it: runs the suite and stops if anything fails,
+builds the release binary, assembles `DevDeck.app` in the repository, ad-hoc signs it, then
+quits any running copy, replaces `/Applications/DevDeck.app` and launches the new one. Nothing
+is left for you to drag anywhere.
+
+The copy in `/Applications` is the one that matters. macOS registers a login item **by path**,
+and the bundle in the repository is deleted and recreated on every build — so "Start at login"
+only works for the installed copy.
+
+| Command | What it does |
+|---|---|
+| `./build.sh` | the whole thing: test, build, install to `/Applications`, launch |
+| `./build.sh --no-install` | builds `./DevDeck.app` only; open it yourself with `open ./DevDeck.app` |
+| `./build.sh --skip-tests` | skips the suite; fine for a quick loop, never in CI |
+| `./build.sh --skip-tests --no-install` | both, in that order |
+| `swift run DevDeck` | runs from the terminal without bundling — handy for `print` debugging |
+| `pkill -f DevDeck` | quits every running copy |
+
+The version on the About-style tooltip comes from `VERSION` (bumped by hand when a release
+earns a name) plus the commit count as the build number, so it always moves.
+
+**After every rebuild macOS asks for the login keychain once.** Ad-hoc signing gives the app a
+new identity each build, so "Always Allow" holds only until the next `./build.sh`. See
+[docs/development.md](docs/development.md) for the details and the permanent fix if it ever
+becomes worth it.
+
+### First run
+
+```bash
+scripts/seed-token.sh        # optional: copies a token from env.local into the Keychain
+scripts/smoke-test.sh        # optional: one real API call, prints counts, never the token
+```
+
+Without a token the app opens its settings window on first launch; paste one there instead.
+It is verified against the API before it is stored, and it only ever lives in the login
+Keychain.
+
+Settings live in the `com.shumer.devdeck` preferences domain. To start over:
+`defaults delete com.shumer.devdeck` (tokens survive that — they are in the Keychain).
 
 ### Several accounts
 
