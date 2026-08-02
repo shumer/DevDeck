@@ -6,15 +6,18 @@
   requests, rate-limit parsing, retry and refresh policies, Keychain token storage.
 - **GitHub · my pull requests** — one GraphQL query, health derivation, the card, the panel,
   the menu bar count.
+- **GitHub · inbox** — unread notifications with reason chips, priority ordering, the unread
+  badge in the menu bar, and the server's own poll interval feeding the refresh loop.
+- **GitHub · Actions** — success rate over a window, running and failed runs, one request per
+  repository with per-repository caching and per-repository failure tolerance.
 
 ## Next
 
-1. **GitHub · inbox** — `GET /notifications`: review requests, mentions, CI failures, with an
-   unread badge in the menu bar and "mark read" from the panel. The transport already handles
-   `If-Modified-Since` and `X-Poll-Interval`.
-2. **Arc XP · organizations** — see the open questions below. Nothing is built until the
+1. **Several GitHub accounts** — one token per organisation, merged into the same cards, with
+   a partial-failure marker when one account is unreachable.
+2. **Mark as read** from the inbox card, so the panel is not read-only.
+3. **Arc XP · organizations** — see the open questions below. Nothing is built until the
    functionality is agreed.
-3. **GitHub · Actions** — workflow success rate and running jobs.
 4. **Local Fusion stack** — container state, ports, start/stop. Needs a process-running layer
    that does not exist yet, which is why it is last.
 

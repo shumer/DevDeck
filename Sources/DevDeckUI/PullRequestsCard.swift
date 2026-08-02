@@ -38,7 +38,7 @@ public struct PullRequestsCard: View {
             if let snapshot = state.value {
                 content(snapshot)
             } else {
-                placeholder
+                CardPlaceholder(state: state)
             }
         }
     }
@@ -81,7 +81,7 @@ public struct PullRequestsCard: View {
 
         CardFooter(
             leading: footerLeading(snapshot),
-            trailing: freshness,
+            trailing: CardFreshness.text(for: state),
             isStale: state.failure != nil || state.isStale(now: now, maxAge: 600)
         )
     }
@@ -110,21 +110,6 @@ public struct PullRequestsCard: View {
         .help("\(pullRequest.shortLabel) — \(pullRequest.statusLine)")
     }
 
-    @ViewBuilder
-    private var placeholder: some View {
-        Spacer(minLength: 8)
-        Text(state.failure?.displayMessage ?? "Loading…")
-            .font(.system(size: 13))
-            .foregroundStyle(state.failure == nil ? DeckTheme.label : DeckTheme.red)
-        if case .missingToken = state.failure {
-            Text("Add a GitHub token in Settings")
-                .font(.system(size: 11))
-                .foregroundStyle(DeckTheme.label)
-                .padding(.top, 2)
-        }
-        Spacer(minLength: 8)
-    }
-
     private func footerLeading(_ snapshot: PullRequestsSnapshot) -> String {
         let repositories = snapshot.repositoryCount
         let organizations = snapshot.organizationCount
@@ -132,16 +117,5 @@ public struct PullRequestsCard: View {
         var text = "\(repositories) repo\(repositories == 1 ? "" : "s") · \(organizations) org\(organizations == 1 ? "" : "s")"
         if hidden > 0 { text += " · +\(hidden) more" }
         return text
-    }
-
-    /// Shows the failure rather than the timestamp when the last refresh broke: a clock that
-    /// keeps ticking while the data is frozen is the worst of both.
-    private var freshness: String {
-        if let failure = state.failure { return failure.displayMessage }
-        guard let updatedAt = state.updatedAt else { return "never updated" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter.string(from: updatedAt)
     }
 }

@@ -68,6 +68,116 @@ enum Fixtures {
     }
     """
 
+    /// `GET /notifications`, covering the reasons the card sorts by and a subject with no URL.
+    static let notifications = """
+    [
+      {
+        "id": "1",
+        "unread": true,
+        "reason": "review_requested",
+        "updated_at": "2026-08-01T10:00:00Z",
+        "subject": { "title": "Add the ledwall feed loop", "url": "https://api.github.com/repos/editoria/ledwall/pulls/412", "type": "PullRequest" },
+        "repository": { "full_name": "editoria/ledwall" }
+      },
+      {
+        "id": "2",
+        "unread": true,
+        "reason": "ci_activity",
+        "updated_at": "2026-08-01T11:00:00Z",
+        "subject": { "title": "main failed", "url": null, "type": "CheckSuite" },
+        "repository": { "full_name": "editoria/ilgiornale" }
+      },
+      {
+        "id": "3",
+        "unread": true,
+        "reason": "mention",
+        "updated_at": "2026-08-01T09:00:00Z",
+        "subject": { "title": "Schema question", "url": "https://api.github.com/repos/editoria/ledwall/issues/77", "type": "Issue" },
+        "repository": { "full_name": "editoria/ledwall" }
+      },
+      {
+        "id": "4",
+        "unread": false,
+        "reason": "brand_new_reason",
+        "updated_at": "2026-08-01T12:00:00Z",
+        "subject": { "title": "Something new", "url": "https://api.github.com/repos/shumer/tools/issues/3", "type": "Issue" },
+        "repository": { "full_name": "shumer/tools" }
+      }
+    ]
+    """
+
+    /// `GET /repos/{owner}/{repo}/actions/runs` for the first repository.
+    static let workflowRunsPrimary = """
+    {
+      "total_count": 4,
+      "workflow_runs": [
+        {
+          "id": 1,
+          "name": "ci",
+          "head_branch": "main",
+          "status": "completed",
+          "conclusion": "success",
+          "created_at": "2026-08-01T10:00:00Z",
+          "run_started_at": "2026-08-01T10:00:00Z",
+          "updated_at": "2026-08-01T10:06:00Z",
+          "html_url": "https://github.com/editoria/ledwall/actions/runs/1"
+        },
+        {
+          "id": 2,
+          "name": "ci",
+          "head_branch": "main",
+          "status": "completed",
+          "conclusion": "timed_out",
+          "created_at": "2026-08-01T09:00:00Z",
+          "run_started_at": "2026-08-01T09:00:00Z",
+          "updated_at": "2026-08-01T09:10:00Z",
+          "html_url": "https://github.com/editoria/ledwall/actions/runs/2"
+        },
+        {
+          "id": 3,
+          "name": "nightly",
+          "head_branch": "main",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "created_at": "2026-08-01T08:00:00Z",
+          "run_started_at": "2026-08-01T08:00:00Z",
+          "updated_at": "2026-08-01T08:01:00Z",
+          "html_url": "https://github.com/editoria/ledwall/actions/runs/3"
+        },
+        {
+          "id": 4,
+          "name": "deploy",
+          "head_branch": "main",
+          "status": "in_progress",
+          "conclusion": null,
+          "created_at": "2026-08-01T12:00:00Z",
+          "updated_at": "2026-08-01T12:02:00Z",
+          "html_url": "https://github.com/editoria/ledwall/actions/runs/4"
+        }
+      ]
+    }
+    """
+
+    /// A second repository, so the multi-repository behaviour is covered.
+    static let workflowRunsSecondary = """
+    {
+      "total_count": 1,
+      "workflow_runs": [
+        {
+          "id": 9,
+          "name": "ci",
+          "head_branch": "main",
+          "status": "completed",
+          "conclusion": "success",
+          "created_at": "2026-08-01T07:00:00Z",
+          "run_started_at": "2026-08-01T07:00:00Z",
+          "updated_at": "2026-08-01T07:04:00Z",
+          "html_url": "https://github.com/shumer/tools/actions/runs/9"
+        }
+      ]
+    }
+    """
+
     static let graphQLErrors = """
     {
       "data": null,

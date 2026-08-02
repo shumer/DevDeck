@@ -15,9 +15,11 @@ struct CardHostView: View {
     var body: some View {
         Group {
             if card == .githubPullRequests {
-                PullRequestsCard(state: controller.pullRequests) { url in
-                    NSWorkspace.shared.open(url)
-                }
+                PullRequestsCard(state: controller.pullRequests, onOpen: open)
+            } else if card == .githubInbox {
+                InboxCard(state: controller.inbox, onOpen: open)
+            } else if card == .githubActions {
+                ActionsCard(state: controller.actions, onOpen: open)
             } else {
                 unimplemented
             }
@@ -40,9 +42,15 @@ struct CardHostView: View {
         }
     }
 
+    private func open(_ url: URL) {
+        NSWorkspace.shared.open(url)
+    }
+
     static func size(for card: CardID) -> NSSize {
         switch card {
         case .githubPullRequests: return PullRequestsCard.size
+        case .githubInbox: return InboxCard.size
+        case .githubActions: return ActionsCard.size
         default: return NSSize(width: 320, height: 150)
         }
     }
@@ -52,6 +60,11 @@ struct CardHostView: View {
         switch card {
         case .githubPullRequests:
             return URL(string: "https://github.com/pulls")
+        case .githubInbox:
+            return URL(string: "https://github.com/notifications")
+        case .githubActions:
+            // Actions has no cross-repository page; the closest thing is the dashboard.
+            return URL(string: "https://github.com")
         default:
             return nil
         }

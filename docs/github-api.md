@@ -71,8 +71,21 @@ find the pull request that is stuck, and that one is rarely the newest.
 
 ## Tokens
 
-Fine-grained personal access token, read access to **pull requests**, **contents**,
-**metadata**. Two failure modes that look like "everything is fine but empty":
+Fine-grained personal access token. Permissions per card:
+
+| Card | Permission |
+|---|---|
+| pull requests | repository: **pull requests** (read), **contents** (read), **metadata** (read) |
+| inbox | account: **notifications** (read) — this one is a *user* permission, not a repository one |
+| actions | repository: **actions** (read) |
+
+The inbox permission is the one that catches people out: it lives under the account section
+rather than the repository section, and without it `/notifications` answers
+`403 Resource not accessible by personal access token` — surfaced on the card as
+"Forbidden — Resource not accessible by personal access token". A classic token needs the
+`notifications` scope instead.
+
+Two further failure modes look like "everything is fine but empty":
 
 1. A fine-grained token must be **approved by each organisation** before it can see anything
    owned by it. Until then search returns zero results with no error.
@@ -89,9 +102,42 @@ GraphQL answers `200` with an `errors` array. `GitHubClient` turns that into
 `APIError.graphQL([messages])` rather than letting a half-empty payload reach the UI.
 `APIError.displayMessage` is what the card shows.
 
-## Next endpoints
+## Inbox — `GET /notifications`
 
-The inbox card will use REST `GET /notifications` — the closest thing GitHub has to a todo
-list (`review_requested`, `mention`, `ci_activity`, `state_change`). It supports
-`Last-Modified` / `If-Modified-Since` and sends `X-Poll-Interval`, both already handled by
-`APITransport`.
+The closest thing GitHub has to a todo list. `NotificationsService` asks for `all=false`
+(unread only) with the cache key `github.notifications`.
+
+- The response carries an `ETag`, so a quiet inbox costs a 304 and nothing against the budget.
+- `X-Poll-Interval` tells us how often the endpoint may be polled. It is read from the
+  response, put on the snapshot and fed into `RefreshPolicy.nextDelay(serverHint:)`, which
+  never polls faster than asked.
+- `reason` is a growing set. Anything unrecognised becomes `.other` and still shows up — a
+  notification nobody can explain is still a notification.
+- Rows are sorted unread first, then by `NotificationReason.priority` (security > review
+  requested > mention > assigned > CI > the rest), then newest first. `actionableCount` is
+  the subset that is genuinely waiting on the user, and that is what the pill counts.
+- **Subject URLs are API URLs.** There is no HTML URL in the payload, so
+  `InboxItem.webURL(fromSubject:)` rewrites `api.github.com/repos/o/r/pulls/1` into
+  `github.com/o/r/pull/1`. The `pulls` → `pull` step is the one that is easy to miss; without
+  it every link 404s in a way that looks like a permissions problem. An unfamiliar host is
+  passed through untouched rather than mangled.
+
+## Actions — `GET /repos/{owner}/{repo}/actions/runs`
+
+One request per repository, each with its own cache key (`github.actions.owner/name`), fired
+concurrently.
+
+- The repository list comes from `actionsRepositories`, or falls back to the repositories of
+  the open pull requests (up to five) so the card works with no configuration.
+- `created=>=YYYY-MM-DD` bounds the window; the date is UTC, computed by
+  `ActionsService.windowStart(from:days:)`.
+- A repository answering 404 or 403 is **skipped**, not fatal: one archived or newly private
+  repository must not blank a card covering four others. The error only surfaces when every
+  repository fails.
+- `timed_out`, `action_required` and `startup_failure` all collapse into `.failure` — for the
+  person reading the card they mean the same thing.
+- `cancelled` and `skipped` are excluded from the success rate; counting them would drag the
+  number down for no reason. With nothing decisive in the window the rate is `nil`, drawn as
+  `–` rather than a red zero.
+- `run_started_at` is absent on older runs, so `created_at` is the fallback anchor for the
+  duration.
