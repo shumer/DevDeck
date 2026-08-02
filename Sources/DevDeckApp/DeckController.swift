@@ -1,5 +1,6 @@
 import ArcKit
 import Combine
+import DDEVKit
 import DevDeckCore
 import Foundation
 import GitHubKit
@@ -22,10 +23,15 @@ final class DeckController: ObservableObject {
     /// Local stack state per Arc project id.
     @Published private(set) var stackStatuses: [String: LocalStackStatus] = [:]
 
+    /// DDEV state per project id.
+    @Published private(set) var ddevStatuses: [String: DDEVStatus] = [:]
+
     private let preferences: Preferences
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
     private let projectsStore: ArcProjectsStore
+    private let ddevProjectsStore: DDEVProjectsStore
+    private let ddevEnvironment: DDEVEnvironment
     private let commandRunner: any CommandRunning
     private var settings: GitHubSettings
     private var loop: Task<Void, Never>?
@@ -42,6 +48,7 @@ final class DeckController: ObservableObject {
         tokenStore: any TokenStore,
         accountsStore: GitHubAccountsStore,
         projectsStore: ArcProjectsStore,
+        ddevProjectsStore: DDEVProjectsStore,
         commandRunner: any CommandRunning = ShellCommandRunner(),
         settings: GitHubSettings = .default
     ) {
@@ -49,6 +56,8 @@ final class DeckController: ObservableObject {
         self.tokenStore = tokenStore
         self.accountsStore = accountsStore
         self.projectsStore = projectsStore
+        self.ddevProjectsStore = ddevProjectsStore
+        self.ddevEnvironment = DDEVEnvironment(runner: commandRunner)
         self.commandRunner = commandRunner
         self.settings = settings
     }
@@ -93,7 +102,7 @@ final class DeckController: ObservableObject {
 
     private func restartStackLoop() {
         stackLoop?.cancel()
-        guard !activeProjects.isEmpty else {
+        guard !activeProjects.isEmpty || !activeDDEVProjects.isEmpty else {
             stackLoop = nil
             return
         }
@@ -101,6 +110,7 @@ final class DeckController: ObservableObject {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refreshStacks()
+                await self.refreshDDEV()
                 do {
                     try await Task.sleep(nanoseconds: 10_000_000_000)
                 } catch {
@@ -159,6 +169,86 @@ final class DeckController: ObservableObject {
             case .stop, .rebuild, .teardown:
                 self.stackStatuses[project.id] = await service.status()
             }
+        }
+    }
+
+    // MARK: DDEV projects
+
+    private var activeDDEVProjects: [DDEVProject] {
+        ddevProjectsStore.enabledProjects().filter { activeCards.contains($0.cardID) }
+    }
+
+    func ddevProject(forCard card: CardID) -> DDEVProject? {
+        ddevProjectsStore.project(forCard: card)
+    }
+
+    func ddevStatus(for project: DDEVProject) -> DDEVStatus {
+        ddevStatuses[project.id] ?? DDEVStatus(state: .unknown)
+    }
+
+    /// One `ddev list` answers for every card, so the cost does not grow with the deck.
+    private func refreshDDEV() async {
+        let projects = activeDDEVProjects
+        guard !projects.isEmpty else { return }
+
+        let entries = await ddevEnvironment.list()
+        for project in projects {
+            // A command from the card owns the status until it finishes, or the poll would
+            // flip the card back mid-restart.
+            if ddevStatuses[project.id]?.isBusy == true { continue }
+            ddevStatuses[project.id] = ddevEnvironment.status(for: project, entries: entries)
+        }
+    }
+
+    func perform(_ action: DDEVAction, for project: DDEVProject) {
+        guard project.folderURL != nil else { return }
+        ddevStatuses[project.id] = DDEVStatus(
+            state: .working,
+            entry: ddevStatuses[project.id]?.entry,
+            config: ddevStatuses[project.id]?.config ?? DDEVConfig(),
+            branch: ddevStatuses[project.id]?.branch,
+            detail: action.progressText,
+            checkedAt: Date()
+        )
+
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await self.ddevEnvironment.perform(action, for: project)
+
+            if let result, !result.succeeded {
+                // A failed start is the moment the card is most worth reading, so the reason
+                // stays on it rather than being replaced by a bare "stopped".
+                self.ddevStatuses[project.id] = DDEVStatus(
+                    state: .stopped,
+                    config: DDEVConfig.load(in: project.folderURL),
+                    branch: GitCheckout.branch(in: project.folderURL),
+                    detail: result.failureLine ?? "\(action.title.lowercased()) failed",
+                    checkedAt: Date()
+                )
+                return
+            }
+
+            await self.refreshDDEV()
+        }
+    }
+
+    /// Stops every DDEV project and the router at once.
+    func powerOffDDEV() {
+        for project in activeDDEVProjects {
+            ddevStatuses[project.id] = DDEVStatus(
+                state: .working,
+                entry: ddevStatuses[project.id]?.entry,
+                config: ddevStatuses[project.id]?.config ?? DDEVConfig(),
+                branch: ddevStatuses[project.id]?.branch,
+                detail: "powering off…",
+                checkedAt: Date()
+            )
+        }
+
+        Task { [weak self] in
+            guard let self else { return }
+            _ = await self.ddevEnvironment.powerOff()
+            await self.refreshDDEV()
         }
     }
 

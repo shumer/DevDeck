@@ -22,6 +22,10 @@
 - **Settings with sections** — GitHub accounts, Arc projects and General kept apart in one
   window, and a menu-bar icon that says which app it belongs to.
 
+- **DDEV projects** — one card each, fed by a single `ddev list` for the whole deck, with PHP
+  and database versions read from the checkout, paused treated as its own state, and a global
+  power off in the menu. Shipped as 0.2.
+
 ## Next
 
 1. **Bundle versions on the project card** — live version per environment, which needs an org

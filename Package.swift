@@ -12,6 +12,7 @@ let package = Package(
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
         .library(name: "GitHubKit", targets: ["GitHubKit"]),
         .library(name: "ArcKit", targets: ["ArcKit"]),
+        .library(name: "DDEVKit", targets: ["DDEVKit"]),
         .library(name: "DevDeckUI", targets: ["DevDeckUI"]),
         .executable(name: "DevDeck", targets: ["DevDeckApp"]),
     ],
@@ -26,17 +27,20 @@ let package = Package(
         // Arc XP integration: projects, their links and their local Fusion stack.
         .target(name: "ArcKit", dependencies: ["DevDeckCore"]),
 
+        // DDEV integration: projects, their state and their containers.
+        .target(name: "DDEVKit", dependencies: ["DevDeckCore"]),
+
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(
             name: "DevDeckUI",
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
         // The AppKit shell: borderless panels, menu bar, placement and locking.
         .executableTarget(
             name: "DevDeckApp",
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DevDeckUI"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "DevDeckUI"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
@@ -64,7 +68,7 @@ let package = Package(
             name: "DevDeckTests",
             // DevDeckUI is here for the card-sizing arithmetic, which the panels depend on
             // being right and which is plain maths rather than anything drawn.
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DevDeckUI", "TestHarness"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "DevDeckUI", "TestHarness"],
             path: "Tests/DevDeckTests"
         ),
     ]

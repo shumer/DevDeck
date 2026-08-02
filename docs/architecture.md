@@ -9,6 +9,7 @@ DevDeckUI      SwiftUI cards — pure rendering of a CardState
     │
 GitHubKit      one integration: GraphQL documents, models, services
 ArcKit         one integration: projects, link templates, local Fusion stack
+DDEVKit        one integration: projects, ddev list, .ddev/config.yaml
     │
 DevDeckCore    no AppKit, no integration specifics: config, HTTP, tokens, policies,
                command runner
@@ -55,6 +56,17 @@ Local status polls on its own 10-second loop in `DeckController`, separate from 
 refresh: a stack that just came up should appear within seconds, and the probe is local and
 cheap. A project mid-command is skipped by the poll so the card cannot flicker back to
 "stopped" during a restart.
+
+## Local project cards
+
+Arc and DDEV cards are the same shape and are built from the same pieces — `CardChip`,
+`CardActionButton`, `CardSeparator`, `CardStateRow`, `CardBranchRow` in `DevDeckUI`. Anything
+that looks like a card of a local project belongs there rather than in one card's file: two
+copies of the same layout drift, and this project has already watched that happen once.
+
+`DDEVEnvironment` differs from `LocalStackService` in one structural way — it is shared rather
+than per project, because `ddev list -j` answers for every project at once. See
+[adr/0006-ddev-projects.md](adr/0006-ddev-projects.md).
 
 ## Cards
 

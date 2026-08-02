@@ -12,6 +12,7 @@ await runActionsTests(run)
 await runAccountsTests(run)
 await runPresentationTests(run)
 await runArcTests(run)
+await runDDEVTests(run)
 await runCommandRunnerTests(run)
 
 run.finish()

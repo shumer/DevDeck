@@ -1,5 +1,6 @@
 import AppKit
 import ArcKit
+import DDEVKit
 import DevDeckCore
 import DevDeckUI
 import GitHubKit
@@ -33,6 +34,15 @@ struct CardHostView: View {
                 )
             } else if card == .githubActions {
                 ActionsCard(state: controller.actions, onOpen: open)
+            } else if let project = controller.ddevProject(forCard: card) {
+                DDEVProjectCard(
+                    project: project,
+                    status: controller.ddevStatus(for: project),
+                    onOpen: { LinkOpener.open($0, using: project.browser) },
+                    onAction: { controller.perform($0, for: project) },
+                    onRevealFolder: { LocalFolder.reveal(project.folderURL) },
+                    onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) }
+                )
             } else if let project = controller.project(forCard: card) {
                 ArcProjectCard(
                     project: project,
@@ -83,6 +93,9 @@ struct CardHostView: View {
         case .githubActions:
             return ActionsCard.size
         default:
+            if let project = controller.ddevProject(forCard: card) {
+                return DDEVProjectCard.size(for: project, status: controller.ddevStatus(for: project))
+            }
             guard let project = controller.project(forCard: card) else {
                 return NSSize(width: CardMetrics.width, height: 150)
             }

@@ -1,5 +1,6 @@
 import AppKit
 import ArcKit
+import DDEVKit
 import DevDeckCore
 import GitHubKit
 
@@ -13,12 +14,14 @@ final class SettingsWindowController: NSObject {
     enum Section: String, CaseIterable {
         case github
         case arc
+        case ddev
         case general
 
         var title: String {
             switch self {
             case .github: return "GitHub accounts"
             case .arc: return "Arc projects"
+            case .ddev: return "DDEV projects"
             case .general: return "General"
             }
         }
@@ -27,6 +30,8 @@ final class SettingsWindowController: NSObject {
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
     private let projectsStore: ArcProjectsStore
+    private let ddevProjectsStore: DDEVProjectsStore
+    private let ddevEnvironment = DDEVEnvironment()
     private let preferences: Preferences
     private let onChanged: () -> Void
 
@@ -38,6 +43,7 @@ final class SettingsWindowController: NSObject {
 
     private var accountRows: [AccountRowView] = []
     private var projectRows: [ProjectRowView] = []
+    private var ddevRows: [DDEVProjectRowView] = []
 
     private static let width: CGFloat = 640
     private static let sidebarWidth: CGFloat = 176
@@ -47,12 +53,14 @@ final class SettingsWindowController: NSObject {
         tokenStore: any TokenStore,
         accountsStore: GitHubAccountsStore,
         projectsStore: ArcProjectsStore,
+        ddevProjectsStore: DDEVProjectsStore,
         preferences: Preferences,
         onChanged: @escaping () -> Void
     ) {
         self.tokenStore = tokenStore
         self.accountsStore = accountsStore
         self.projectsStore = projectsStore
+        self.ddevProjectsStore = ddevProjectsStore
         self.preferences = preferences
         self.onChanged = onChanged
     }
@@ -144,7 +152,7 @@ final class SettingsWindowController: NSObject {
             button.contentTintColor = isSelected ? .controlAccentColor : .labelColor
             button.font = NSFont.systemFont(ofSize: 12.5, weight: isSelected ? .semibold : .regular)
         }
-        addButton?.title = item == .arc ? "Add project" : "Add account"
+        addButton?.title = (item == .arc || item == .ddev) ? "Add project" : "Add account"
         addButton?.isHidden = item == .general
         reload()
     }
@@ -162,6 +170,11 @@ final class SettingsWindowController: NSObject {
             projects.append(ArcProject(id: id, title: "New project", organization: ""))
             projectsStore.save(projects)
             onChanged()
+        case .ddev:
+            // DDEV knows its own projects, so the sensible "add" is a list to pick from
+            // rather than a folder to go hunting for.
+            addDDEVProject()
+            return
         case .general:
             return
         }
@@ -216,6 +229,28 @@ final class SettingsWindowController: NSObject {
                 y += ProjectRowView.height(for: project) + 10
             }
             if projectsStore.projects().isEmpty {
+                y = layoutHint("No projects yet — press Add project.", at: y, in: documentView)
+            }
+
+        case .ddev:
+            y = layoutHint(
+                "One card per DDEV project. The name, type, URLs and state come from DDEV "
+                    + "itself; PHP and database versions are read from .ddev/config.yaml.",
+                at: y,
+                in: documentView
+            )
+            for project in ddevProjectsStore.projects() {
+                let row = DDEVProjectRowView(project: project, width: Self.rowWidth)
+                row.frame.origin = NSPoint(x: 12, y: y)
+                row.onChange = { [weak self] in self?.applyDDEVEdits($0) }
+                row.onRemove = { [weak self] in self?.removeDDEVProject($0) }
+                row.onTestLink = { [weak self] in self?.testDDEVLink($0) }
+                row.onChooseFolder = { [weak self] in self?.chooseDDEVFolder($0) }
+                documentView.addSubview(row)
+                ddevRows.append(row)
+                y += DDEVProjectRowView.height + 10
+            }
+            if ddevProjectsStore.projects().isEmpty {
                 y = layoutHint("No projects yet — press Add project.", at: y, in: documentView)
             }
 
@@ -412,6 +447,130 @@ final class SettingsWindowController: NSObject {
         panel.prompt = "Choose"
         panel.message = "Pick the project checkout — the folder the fusion commands run in."
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        row.setFolder(url.path)
+    }
+
+    // MARK: DDEV projects
+
+    /// Offers what `ddev list` found rather than making the user go looking for a folder.
+    /// DDEV already knows every project on the machine; asking for a path would be asking a
+    /// question the tool can answer itself.
+    private func addDDEVProject() {
+        Task { [weak self] in
+            guard let self else { return }
+            guard let entries = await self.ddevEnvironment.list() else {
+                self.presentDDEVUnavailable()
+                return
+            }
+
+            let known = Set(self.ddevProjectsStore.projects().map(\.name))
+            let candidates = entries.filter { !known.contains($0.name) }
+
+            guard !candidates.isEmpty else {
+                let alert = NSAlert()
+                alert.messageText = entries.isEmpty
+                    ? "ddev has no projects"
+                    : "Every DDEV project is already on the deck"
+                alert.informativeText = entries.isEmpty
+                    ? "Run ddev config in a project folder first."
+                    : "Nothing left to add."
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+                return
+            }
+
+            let alert = NSAlert()
+            alert.messageText = "Add a DDEV project"
+            alert.informativeText = "Found by ddev list."
+            let popUp = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 320, height: 25))
+            for candidate in candidates {
+                popUp.addItem(withTitle: "\(candidate.name) — \(candidate.state.rawValue)")
+            }
+            alert.accessoryView = popUp
+            alert.addButton(withTitle: "Add")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+            let index = max(0, min(popUp.indexOfSelectedItem, candidates.count - 1))
+            let chosen = candidates[index]
+            var projects = self.ddevProjectsStore.projects()
+            projects.append(
+                DDEVProject(
+                    id: DDEVProject.makeID(from: chosen.name, existing: projects.map(\.id)),
+                    name: chosen.name,
+                    folder: chosen.approot
+                )
+            )
+            self.ddevProjectsStore.save(projects)
+            self.reload()
+            self.onChanged()
+        }
+    }
+
+    private func presentDDEVUnavailable() {
+        let alert = NSAlert()
+        alert.messageText = "ddev did not answer"
+        alert.informativeText = "Either DDEV is not installed, or it is not on the PATH a login "
+            + "shell sees. Running ddev list in a terminal will say which."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    private func applyDDEVEdits(_ row: DDEVProjectRowView) {
+        let edited = row.editedProject
+        var projects = ddevProjectsStore.projects()
+        if let index = projects.firstIndex(where: { $0.id == edited.id }) {
+            projects[index] = edited
+        } else {
+            projects.append(edited)
+        }
+        ddevProjectsStore.save(projects)
+        row.apply(edited)
+        row.setStatus(Self.browserSummary(browser: edited.browser))
+        onChanged()
+    }
+
+    private func testDDEVLink(_ row: DDEVProjectRowView) {
+        applyDDEVEdits(row)
+        let project = row.editedProject
+
+        Task { [weak self] in
+            guard let self else { return }
+            let entries = await self.ddevEnvironment.list()
+            let status = self.ddevEnvironment.status(for: project, entries: entries)
+            guard let link = project.links(status: status).first else {
+                row.setStatus("ddev has no URL for this project yet.", isError: true)
+                return
+            }
+            row.setStatus("Opening \(link.url.absoluteString)")
+            LinkOpener.open(link.url, using: project.browser)
+        }
+    }
+
+    private func removeDDEVProject(_ row: DDEVProjectRowView) {
+        let removed = confirm(
+            "Remove \(row.project.displayTitle)?",
+            detail: "The card disappears from the deck. The project itself is untouched."
+        )
+        guard removed else { return }
+        ddevProjectsStore.save(ddevProjectsStore.projects().filter { $0.id != row.project.id })
+        reload()
+        onChanged()
+    }
+
+    private func chooseDDEVFolder(_ row: DDEVProjectRowView) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        panel.message = "Pick the project checkout — the folder holding .ddev."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        // Said plainly rather than refused: the folder may be right and the project not set
+        // up yet, and that is the user's business.
+        if !DDEVConfig.isProject(url) {
+            row.setStatus("No .ddev/config.yaml in that folder.", isError: true)
+        }
         row.setFolder(url.path)
     }
 

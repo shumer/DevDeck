@@ -27,6 +27,7 @@ Native macOS, built from a SwiftPM package with no Xcode required.
 | GitHub · inbox (notifications) | working | yes |
 | GitHub · Actions | working | no |
 | Arc XP · one card per project | working | added per project |
+| DDEV · one card per project | working | added per project |
 | Arc XP · deployed bundle versions | planned — needs an org token | — |
 
 The Actions card watches the repositories your open pull requests are in, up to five, unless
@@ -180,6 +181,26 @@ you use, the browser they open in, and control of its local Fusion stack.
 Commands run through a login shell (`zsh -lc`) on purpose. An app launched from Finder
 inherits a bare `PATH` with no Homebrew and no nvm, so a plain `npx` would not be found and
 the buttons would appear to do nothing.
+
+## DDEV projects
+
+**Settings → DDEV projects → Add project** offers what `ddev list` found, so there is no
+folder to go hunting for — DDEV already knows every project on the machine.
+
+- **One `ddev list -j` answers for the whole deck.** Six cards cost the same as one, which is
+  why this is a shared environment rather than a probe per project.
+- **PHP and database versions come from `.ddev/config.yaml`.** `ddev list` does not carry
+  them and `ddev describe` is a process per project, while the file is right there in the
+  checkout — the same trick as Arc's `PORT` and the git branch.
+- **Paused is its own state.** DDEV pauses containers without tearing them down, and calling
+  that "stopped" would misrepresent what pressing Start is about to do.
+- **A broken file sync is called out.** When mutagen is enabled and not `ok`, the card says
+  so: edits stop reaching the container and nothing else on screen would hint at why.
+- **Site, Mailpit and xhgui** come straight from DDEV; Mailpit is on by default, xhgui is not.
+  Links are dimmed rather than hidden while the project is down, because a link into a stopped
+  project lands on a connection error that reads as a broken app.
+- **Power off all DDEV** in the menu runs `ddev poweroff` — every project and the router, for
+  when the laptop needs its memory back.
 
 ### Status codes
 

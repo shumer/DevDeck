@@ -55,7 +55,7 @@ public struct ArcProjectCard: View {
     public var body: some View {
         CardChrome(title: "Arc · \(project.title)", pill: pill) {
             links
-            separator
+            CardSeparator()
             stackRow
             branchRow
             controls
@@ -81,7 +81,7 @@ public struct ArcProjectCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 ForEach(project.adminLinks) { link in
-                    chip(link.label, color: DeckTheme.blue, help: link.url.absoluteString) {
+                    CardChip(link.label, color: DeckTheme.blue, help: link.url.absoluteString) {
                         onOpen(link.url)
                     }
                 }
@@ -145,7 +145,7 @@ public struct ArcProjectCard: View {
     private var environmentRow: some View {
         HStack(spacing: 6) {
             ForEach(environmentChips) { item in
-                chip(item.label, color: item.color, isDimmed: item.isDimmed, help: item.help) {
+                CardChip(item.label, color: item.color, isDimmed: item.isDimmed, help: item.help) {
                     guard let url = item.url else { return }
                     onOpen(url)
                 }
@@ -160,73 +160,20 @@ public struct ArcProjectCard: View {
         link.label.lowercased().contains("prod") ? DeckTheme.amber : DeckTheme.violet
     }
 
-    private func chip(
-        _ label: String,
-        color: Color,
-        isDimmed: Bool = false,
-        help: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Text(label)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(isDimmed ? color.opacity(0.45) : color)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .background(color.opacity(isDimmed ? 0.07 : 0.15), in: RoundedRectangle(cornerRadius: 7))
-            .contentShape(Rectangle())
-            .clickable(cornerRadius: 7, isEnabled: !isDimmed)
-            .onTapGesture(perform: action)
-            .help(help)
-    }
-
-    /// A real element between the two halves of the card rather than an overlay nudged into
-    /// place. The overlay was anchored to the top of the row below it, so every attempt to
-    /// give it room moved the text down and the line further up into the chips.
-    private var separator: some View {
-        Rectangle()
-            .fill(DeckTheme.faint)
-            .frame(height: 1)
-            .padding(.top, 12)
-    }
-
     private var stackRow: some View {
-        HStack(spacing: 8) {
-            Circle().fill(stackColor).frame(width: 7, height: 7)
-            Text(stackText)
-                .font(.system(size: 12.5))
-                .foregroundStyle(status.state == .running ? DeckTheme.value : DeckTheme.label)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer(minLength: 6)
-            if let version = status.engineVersion {
-                Text(version)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(DeckTheme.label)
-                    .fixedSize()
-            }
-        }
-        .padding(.top, 10)
-        .help(status.detail ?? stackText)
+        CardStateRow(
+            color: stackColor,
+            text: stackText,
+            isProminent: status.state == .running,
+            trailing: status.engineVersion,
+            help: status.detail ?? stackText
+        )
     }
 
-    /// What the stack is serving. It changes under you when you switch branches in a
-    /// terminal, which is exactly when it is worth seeing.
     @ViewBuilder
     private var branchRow: some View {
         if let branch = status.branch {
-            HStack(spacing: 8) {
-                Text("⎇")
-                    .font(.system(size: 11))
-                    .foregroundStyle(DeckTheme.label)
-                Text(branch)
-                    .font(.system(size: 11.5, design: .monospaced))
-                    .foregroundStyle(DeckTheme.blue)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-            }
-            .padding(.top, 6)
-            .help("checked out branch")
+            CardBranchRow(branch)
         }
     }
 
