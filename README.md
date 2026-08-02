@@ -162,6 +162,9 @@ you use, the browser they open in, and control of its local Fusion stack.
 - **After a start the card waits.** `fusion daemon` returns as soon as the containers exist,
   while the engine needs longer to serve, so the card polls for up to a minute before
   concluding anything — and if nothing ever answers it names the URL it tried.
+- **The branch is on the card.** Whatever `.git/HEAD` says, read directly rather than by
+  running `git` every ten seconds — so you can see what the running stack is actually serving,
+  including after switching branches in a terminal.
 - **Folder** opens the checkout in Finder, **Terminal** opens it in iTerm, Warp or Terminal,
   whichever is installed.
 

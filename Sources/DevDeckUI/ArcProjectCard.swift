@@ -110,6 +110,17 @@ public struct ArcProjectCard: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 6)
+            if let branch = status.branch {
+                // What the stack is actually serving. It changes under you when you switch
+                // branches in a terminal, which is exactly when it is worth seeing.
+                Text("⌥ \(branch)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(DeckTheme.blue)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .layoutPriority(1)
+                    .help("checked out branch")
+            }
             if let version = status.engineVersion {
                 Text(version)
                     .font(.system(size: 11, design: .monospaced))

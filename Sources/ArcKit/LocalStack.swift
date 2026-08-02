@@ -23,6 +23,8 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
     /// The URL actually used, resolved from `.env`. The card shows the real port from here
     /// rather than from the setting, which is usually empty.
     public var siteURL: URL?
+    /// Branch the checkout is on — what the local stack is actually serving.
+    public var branch: String?
 
     public init(
         state: LocalStackState,
@@ -30,7 +32,8 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
         containers: Int? = nil,
         detail: String? = nil,
         checkedAt: Date? = nil,
-        siteURL: URL? = nil
+        siteURL: URL? = nil,
+        branch: String? = nil
     ) {
         self.state = state
         self.engineVersion = engineVersion
@@ -38,6 +41,7 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
         self.detail = detail
         self.checkedAt = checkedAt
         self.siteURL = siteURL
+        self.branch = branch
     }
 
     public static let unavailable = LocalStackStatus(state: .unavailable, detail: "No project folder set")
@@ -136,6 +140,9 @@ public struct LocalStackService: Sendable {
         }
 
         let siteURL = project.localSiteURL
+        // Read whether the stack is up or not: knowing which branch is checked out matters
+        // most when it is running, and is still worth showing before you start it.
+        let branch = GitCheckout.branch(in: project.folderURL)
 
         do {
             let response = try await httpClient.send(HTTPRequest(url: healthURL))
@@ -144,7 +151,8 @@ public struct LocalStackService: Sendable {
                     state: .stopped,
                     detail: "health check answered \(response.statusCode)",
                     checkedAt: clock.now,
-                    siteURL: siteURL
+                    siteURL: siteURL,
+                    branch: branch
                 )
             }
             return LocalStackStatus(
@@ -152,10 +160,16 @@ public struct LocalStackService: Sendable {
                 engineVersion: Self.engineVersion(from: response.body),
                 containers: await containerCount(),
                 checkedAt: clock.now,
-                siteURL: siteURL
+                siteURL: siteURL,
+                branch: branch
             )
         } catch {
-            return LocalStackStatus(state: .stopped, checkedAt: clock.now, siteURL: siteURL)
+            return LocalStackStatus(
+                state: .stopped,
+                checkedAt: clock.now,
+                siteURL: siteURL,
+                branch: branch
+            )
         }
     }
 

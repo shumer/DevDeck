@@ -38,7 +38,7 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
         [
             ArcLink(label: "PageBuilder", urlTemplate: "https://sandbox.{org}.arcpublishing.com/home/", isEnabled: true),
             ArcLink(label: "Composer", urlTemplate: "https://sandbox.{org}.arcpublishing.com/composer/", isEnabled: true),
-            ArcLink(label: "Dev Center", urlTemplate: "https://sandbox.{org}.arcpublishing.com/developer/", isEnabled: true),
+            ArcLink(label: "Deployer", urlTemplate: "https://sandbox.{org}.arcpublishing.com/deployments/fusion/", isEnabled: true),
             ArcLink(label: "Site Service", urlTemplate: "https://sandbox.{org}.arcpublishing.com/developer/sites/", isEnabled: false),
             ArcLink(label: "Delivery API", urlTemplate: "https://api.sandbox.{org}.arcpublishing.com/content/v4", isEnabled: false),
         ]
@@ -128,7 +128,19 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         title = try container.decode(String.self, forKey: .title)
         organization = try container.decodeIfPresent(String.self, forKey: .organization) ?? ""
         site = try container.decodeIfPresent(String.self, forKey: .site)
-        links = try container.decodeIfPresent([ArcLink].self, forKey: .links) ?? ArcLink.defaults()
+        let storedLinks = try container.decodeIfPresent([ArcLink].self, forKey: .links) ?? ArcLink.defaults()
+        // "Dev Center" pointing at /developer was a guess of ours, and the real page is the
+        // Deployer. A link the user has edited keeps whatever they made it.
+        links = storedLinks.map { link in
+            guard link.label == "Dev Center",
+                  link.urlTemplate == "https://sandbox.{org}.arcpublishing.com/developer/"
+                      || link.urlTemplate == "https://{org}.arcpublishing.com/developer"
+            else { return link }
+            var replacement = ArcLink.defaults().first { $0.label == "Deployer" }
+                ?? ArcLink(label: "Deployer", urlTemplate: "https://sandbox.{org}.arcpublishing.com/deployments/fusion/", isEnabled: true)
+            replacement.isEnabled = link.isEnabled
+            return replacement
+        }
         browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
         folder = try container.decodeIfPresent(String.self, forKey: .folder)
         startCommand = try container.decodeIfPresent(String.self, forKey: .startCommand) ?? "npx fusion daemon"
