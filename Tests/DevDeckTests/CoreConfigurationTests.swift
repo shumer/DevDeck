@@ -101,12 +101,13 @@ func runConfigurationTests(_ run: TestRun) async {
 
         preferences.displayMode = .floating
         preferences.isLocked = true
-        preferences.setOrigin("{100, 200}", for: .githubPullRequests)
+        preferences.setTopLeft("{100, 200}", for: .githubPullRequests)
 
         try expectEqual(preferences.displayMode, .floating)
         try expect(preferences.isLocked)
-        try expectEqual(preferences.origin(for: .githubPullRequests), "{100, 200}")
-        try expectNil(preferences.origin(for: .githubInbox))
+        try expectEqual(preferences.topLeft(for: .githubPullRequests), "{100, 200}",
+                        "positions anchor on the top edge, because cards change height")
+        try expectNil(preferences.topLeft(for: .githubInbox))
     }
 
     await run.test("a nonsense refresh interval falls back to the default") {

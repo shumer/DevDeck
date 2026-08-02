@@ -70,6 +70,80 @@ func runArcTests(_ run: TestRun) async {
         )
     }
 
+    run.section("Arc — the port comes from .env")
+
+    await run.test("PORT is read the way a shell would read it") {
+        let contents = """
+        # local overrides
+        FUSION_RELEASE=7.0.2
+
+        export CONTENT_BASE="https://api.example.com"
+        PORT = 8080
+        EMPTY=
+        """
+        let values = EnvFile.parse(contents)
+        try expectEqual(values["PORT"], "8080", "spaces around the equals sign are normal")
+        try expectEqual(values["CONTENT_BASE"], "https://api.example.com", "quotes are stripped")
+        try expectEqual(values["FUSION_RELEASE"], "7.0.2")
+        try expectEqual(values["EMPTY"], "")
+        try expectNil(values["# local overrides"], "comments are not variables")
+    }
+
+    await run.test("the local URL follows PORT, and leaves 80 implicit") {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("devdeck-env-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        let envFile = folder.appendingPathComponent(".env")
+        try "PORT=8080\n".write(to: envFile, atomically: true, encoding: .utf8)
+        try expectEqual(EnvFile.localURL(in: folder), "http://localhost:8080")
+
+        try "PORT=80\n".write(to: envFile, atomically: true, encoding: .utf8)
+        try expectEqual(EnvFile.localURL(in: folder), "http://localhost", "80 is the browser default")
+
+        try FileManager.default.removeItem(at: envFile)
+        try expectEqual(EnvFile.localURL(in: folder), "http://localhost", "no .env falls back to 80")
+        try expectEqual(EnvFile.port(in: nil), 80)
+    }
+
+    await run.test("the old hardcoded localhost default is dropped on read") {
+        let json = """
+        { "id": "p", "title": "P", "organization": "o", "localURL": "http://localhost",
+          "startCommand": "npx fusion daemon", "stopCommand": "npx fusion stop",
+          "rebuildCommand": "npx fusion rebuild", "teardownCommand": "npx fusion down",
+          "healthPath": "/release", "isEnabled": true, "links": [] }
+        """
+        let project = try JSONDecoder().decode(ArcProject.self, from: Data(json.utf8))
+        try expectEqual(project.localURL, "", "an earlier default is not a decision to preserve")
+
+        let kept = """
+        { "id": "p", "title": "P", "organization": "o", "localURL": "http://localhost:9000",
+          "healthPath": "/release", "isEnabled": true, "links": [] }
+        """
+        try expectEqual(
+            try JSONDecoder().decode(ArcProject.self, from: Data(kept.utf8)).localURL,
+            "http://localhost:9000",
+            "a port someone typed is kept"
+        )
+    }
+
+    await run.test("a project without an override picks the port up from its checkout") {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("devdeck-env-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try "PORT=8080\n".write(to: folder.appendingPathComponent(".env"), atomically: true, encoding: .utf8)
+
+        var project = makeProject(folder: folder.path, localURL: "")
+        try expectEqual(project.effectiveLocalURL, "http://localhost:8080")
+        try expectEqual(project.healthURL?.absoluteString, "http://localhost:8080/release")
+
+        project.localURL = "http://localhost:9999"
+        try expectEqual(project.effectiveLocalURL, "http://localhost:9999",
+                        "an explicit setting still wins")
+    }
+
     run.section("Arc — project storage")
 
     await run.test("a deck with no projects has no project cards") {
@@ -172,6 +246,44 @@ func runArcTests(_ run: TestRun) async {
         _ = await service.perform(.restart)
         try expectEqual(await runner.commands, ["npx fusion stop", "npx fusion daemon"],
                         "starting before the ports are released fails in a confusing way")
+    }
+
+    await run.test("a start waits for the engine instead of giving up at once") {
+        // `fusion daemon` returns as soon as the containers exist; the engine answers later.
+        let clock = MutableDateProvider()
+        let service = LocalStackService(
+            project: makeProject(),
+            runner: StubCommandRunner([]),
+            httpClient: FakeHTTPClient([
+                .failure(APIError.transport("connection refused")),
+                .failure(APIError.transport("connection refused")),
+                .success(.json("{\"version\":\"7.0.2\"}")),
+            ]),
+            clock: clock,
+            sleeper: AdvancingSleeper(clock: clock)
+        )
+        let status = await service.waitUntilRunning(timeout: 60, pollInterval: 2)
+        try expectEqual(status.state, .running)
+        try expectEqual(status.engineVersion, "7.0.2")
+    }
+
+    await run.test("a stack that never answers says which URL was tried") {
+        let clock = MutableDateProvider()
+        let responses = Array(repeating: Result<HTTPResponse, Error>.failure(APIError.transport("refused")), count: 100)
+        let service = LocalStackService(
+            project: makeProject(localURL: "http://localhost:1234"),
+            runner: StubCommandRunner([]),
+            httpClient: FakeHTTPClient(responses),
+            clock: clock,
+            sleeper: AdvancingSleeper(clock: clock)
+        )
+        let status = await service.waitUntilRunning(timeout: 10, pollInterval: 2)
+        try expectEqual(status.state, .stopped)
+        try expectEqual(
+            status.detail,
+            "started, but http://localhost:1234/release never answered",
+            "the port is the usual culprit, so name it"
+        )
     }
 
     await run.test("a failure surfaces its last meaningful line") {

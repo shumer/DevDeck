@@ -82,7 +82,9 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         stopCommand: String = "npx fusion stop",
         rebuildCommand: String = "npx fusion rebuild",
         teardownCommand: String = "npx fusion down",
-        localURL: String = "http://localhost",
+        // Empty means "read PORT from the project's .env", which is where the port actually
+        // lives. Filling this in only makes sense for a stack that does not follow it.
+        localURL: String = "",
         healthPath: String = "/release",
         isEnabled: Bool = true
     ) {
@@ -118,12 +120,46 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
     /// Nothing local can be done without a folder to do it in.
     public var supportsLocalStack: Bool { folderURL != nil }
 
+    /// Tolerates projects stored by older builds, and drops the one default that turned out
+    /// to be wrong.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        organization = try container.decodeIfPresent(String.self, forKey: .organization) ?? ""
+        site = try container.decodeIfPresent(String.self, forKey: .site)
+        links = try container.decodeIfPresent([ArcLink].self, forKey: .links) ?? ArcLink.defaults()
+        browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
+        folder = try container.decodeIfPresent(String.self, forKey: .folder)
+        startCommand = try container.decodeIfPresent(String.self, forKey: .startCommand) ?? "npx fusion daemon"
+        stopCommand = try container.decodeIfPresent(String.self, forKey: .stopCommand) ?? "npx fusion stop"
+        rebuildCommand = try container.decodeIfPresent(String.self, forKey: .rebuildCommand) ?? "npx fusion rebuild"
+        teardownCommand = try container.decodeIfPresent(String.self, forKey: .teardownCommand) ?? "npx fusion down"
+        healthPath = try container.decodeIfPresent(String.self, forKey: .healthPath) ?? "/release"
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+
+        // `http://localhost` was an earlier default, not a decision anyone made, and it is
+        // wrong for any project whose .env overrides PORT. Clearing it hands the question back
+        // to the checkout; a project genuinely on port 80 resolves to the same URL anyway.
+        let storedLocalURL = try container.decodeIfPresent(String.self, forKey: .localURL) ?? ""
+        localURL = storedLocalURL == "http://localhost" ? "" : storedLocalURL
+    }
+
+    /// Where the local stack serves: the override when one is set, otherwise `PORT` from the
+    /// project's own `.env`.
+    public var effectiveLocalURL: String {
+        let explicit = localURL.trimmingCharacters(in: .whitespaces)
+        guard explicit.isEmpty else { return explicit }
+        return EnvFile.localURL(in: folderURL)
+    }
+
     public var healthURL: URL? {
-        URL(string: localURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + healthPath)
+        let base = effectiveLocalURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return URL(string: base + healthPath)
     }
 
     public var localSiteURL: URL? {
-        URL(string: localURL)
+        URL(string: effectiveLocalURL)
     }
 
     /// Card identifier for this project.

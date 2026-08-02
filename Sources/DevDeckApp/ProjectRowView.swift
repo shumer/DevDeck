@@ -167,10 +167,10 @@ final class ProjectRowView: NSView {
         configure(stopField, mono: true)
 
         y -= 32
-        label("Local URL", y + 22, width: 100)
+        label("Local URL — empty reads PORT from the project's .env", y + 22, width: 260)
         localURLField.frame = NSRect(x: inset, y: y, width: (full - 10) / 2, height: 22)
         localURLField.stringValue = project.localURL
-        configure(localURLField, mono: true, placeholder: "http://localhost")
+        configure(localURLField, mono: true, placeholder: EnvFile.localURL(in: project.folderURL))
 
         label("Health path", y + 22, x: inset + (full - 10) / 2 + 10, width: 100)
         healthField.frame = NSRect(x: inset + (full - 10) / 2 + 10, y: y, width: (full - 10) / 2, height: 22)

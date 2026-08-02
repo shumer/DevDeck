@@ -20,19 +20,24 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
     /// What is going on, or why the last command failed.
     public var detail: String?
     public var checkedAt: Date?
+    /// The URL actually used, resolved from `.env`. The card shows the real port from here
+    /// rather than from the setting, which is usually empty.
+    public var siteURL: URL?
 
     public init(
         state: LocalStackState,
         engineVersion: String? = nil,
         containers: Int? = nil,
         detail: String? = nil,
-        checkedAt: Date? = nil
+        checkedAt: Date? = nil,
+        siteURL: URL? = nil
     ) {
         self.state = state
         self.engineVersion = engineVersion
         self.containers = containers
         self.detail = detail
         self.checkedAt = checkedAt
+        self.siteURL = siteURL
     }
 
     public static let unavailable = LocalStackStatus(state: .unavailable, detail: "No project folder set")
@@ -77,17 +82,47 @@ public struct LocalStackService: Sendable {
     private let runner: any CommandRunning
     private let httpClient: any HTTPClient
     private let clock: any DateProvider
+    private let sleeper: any Sleeper
 
     public init(
         project: ArcProject,
         runner: any CommandRunning = ShellCommandRunner(),
         httpClient: any HTTPClient = URLSessionHTTPClient.makeDefault(timeout: 3),
-        clock: any DateProvider = SystemDateProvider()
+        clock: any DateProvider = SystemDateProvider(),
+        sleeper: any Sleeper = TaskSleeper()
     ) {
         self.project = project
         self.runner = runner
         self.httpClient = httpClient
         self.clock = clock
+        self.sleeper = sleeper
+    }
+
+    /// Waits for the engine to answer after a start.
+    ///
+    /// `fusion daemon` returns as soon as the containers are up, but the engine needs a while
+    /// longer before it serves anything. Checking once and giving up is how a stack that is
+    /// still warming reads as "did not start".
+    public func waitUntilRunning(
+        timeout: TimeInterval = 90,
+        pollInterval: TimeInterval = 2
+    ) async -> LocalStackStatus {
+        let deadline = clock.now.addingTimeInterval(timeout)
+        var latest = await status()
+
+        while !latest.isRunning, clock.now < deadline {
+            try? await sleeper.sleep(seconds: pollInterval)
+            latest = await status()
+        }
+
+        guard !latest.isRunning else { return latest }
+        // The command succeeded but nothing answers: almost always the health URL points at
+        // the wrong port, so say which URL was tried rather than just "stopped".
+        return LocalStackStatus(
+            state: .stopped,
+            detail: "started, but \(project.healthURL?.absoluteString ?? "the health URL") never answered",
+            checkedAt: clock.now
+        )
     }
 
     /// Asks the engine directly rather than inspecting processes.
@@ -100,23 +135,27 @@ public struct LocalStackService: Sendable {
             return .unavailable
         }
 
+        let siteURL = project.localSiteURL
+
         do {
             let response = try await httpClient.send(HTTPRequest(url: healthURL))
             guard response.isSuccess else {
                 return LocalStackStatus(
                     state: .stopped,
                     detail: "health check answered \(response.statusCode)",
-                    checkedAt: clock.now
+                    checkedAt: clock.now,
+                    siteURL: siteURL
                 )
             }
             return LocalStackStatus(
                 state: .running,
                 engineVersion: Self.engineVersion(from: response.body),
                 containers: await containerCount(),
-                checkedAt: clock.now
+                checkedAt: clock.now,
+                siteURL: siteURL
             )
         } catch {
-            return LocalStackStatus(state: .stopped, checkedAt: clock.now)
+            return LocalStackStatus(state: .stopped, checkedAt: clock.now, siteURL: siteURL)
         }
     }
 

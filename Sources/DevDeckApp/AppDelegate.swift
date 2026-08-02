@@ -132,7 +132,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             )
             window.setFrame(frame, display: true, animate: false)
             window.invalidateShadow()
-            preferences.setOrigin(NSStringFromPoint(frame.origin), for: card)
+            // The top edge did not move, but persist anyway so a card that grows before the
+            // first drag still has a stored anchor.
+            persistPosition(of: card)
             // Selection uses the old frame: those are the panels that were below before the
             // resize, and they are the ones that have to make room.
             shiftColumn(below: old, by: old.height - size.height)
@@ -151,11 +153,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         panels[card] = window
     }
 
+    /// Records where a panel's top-left corner is, which is the anchor positions are restored
+    /// from.
+    private func persistPosition(of card: CardID) {
+        guard let window = panels[card] else { return }
+        let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
+        preferences.setTopLeft(NSStringFromPoint(topLeft), for: card)
+    }
+
     /// Saved position when there is a usable one, otherwise the next slot in a column down
     /// the right edge.
     private func origin(for card: CardID, size: NSSize) -> NSPoint {
-        if let saved = preferences.origin(for: card), saved.contains("{") {
-            let point = NSPointFromString(saved)
+        if let saved = preferences.topLeft(for: card), saved.contains("{") {
+            let top = NSPointFromString(saved)
+            let point = NSPoint(x: top.x, y: top.y - size.height)
             let frame = NSRect(origin: point, size: size)
             // NSPointFromString yields {0,0} for anything unparseable, and a panel restored
             // 99% off-screen cannot be grabbed back, so require a real overlap.
@@ -191,13 +202,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             guard current.maxY <= frame.minY + 1 else { continue }
             guard current.maxX > frame.minX, current.minX < frame.maxX else { continue }
             window.setFrameOrigin(NSPoint(x: current.origin.x, y: current.origin.y + dy))
-            preferences.setOrigin(NSStringFromPoint(window.frame.origin), for: card)
+            persistPosition(of: card)
         }
     }
 
     func windowDidMove(_ notification: Notification) {
         guard let window = notification.object as? PanelWindow else { return }
-        preferences.setOrigin(NSStringFromPoint(window.frame.origin), for: window.card)
+        persistPosition(of: window.card)
     }
 
     // MARK: Menu bar
@@ -355,7 +366,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         for (card, window) in ordered {
             y -= window.frame.height
             window.setFrameOrigin(NSPoint(x: x, y: y))
-            preferences.setOrigin(NSStringFromPoint(window.frame.origin), for: card)
+            persistPosition(of: card)
             y -= DeckTheme.panelGap
         }
     }
