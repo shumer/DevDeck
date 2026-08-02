@@ -66,6 +66,7 @@ func runGitHubTests(_ run: TestRun) async {
         try expectEqual(failing.unresolvedThreads, 2, "resolved threads do not count")
         try expectEqual(failing.health, .blocked)
         try expectEqual(failing.statusLine, "checks failed")
+        try expectEqual(failing.statusCode, "CF")
 
         let changes = try expectNotNil(byID["PR_changes"], "changes-requested PR")
         try expectEqual(changes.reviewDecision, .changesRequested)
@@ -93,6 +94,36 @@ func runGitHubTests(_ run: TestRun) async {
     }
 
     run.section("GitHub — API mapping")
+
+    await run.test("status codes mirror the wording they abbreviate") {
+        func make(
+            draft: Bool = false,
+            review: ReviewDecision = .none,
+            checks: CheckState = .success,
+            threads: Int = 0
+        ) -> PullRequestSummary {
+            PullRequestSummary(
+                id: "x", number: 1, title: "x", repository: "o/r", organization: "o",
+                url: URL(string: "https://github.com/o/r/pull/1")!,
+                isDraft: draft, updatedAt: Date(timeIntervalSince1970: 0),
+                reviewDecision: review, checks: checks, unresolvedThreads: threads
+            )
+        }
+
+        try expectEqual(make(checks: .failure).statusCode, "CF")
+        try expectEqual(make(review: .changesRequested).statusCode, "CR")
+        try expectEqual(make(draft: true).statusCode, "DR")
+        try expectEqual(make(checks: .pending).statusCode, "CP")
+        try expectEqual(make(threads: 3).statusCode, "T3")
+        try expectEqual(make(threads: 40).statusCode, "T9", "the code stays two characters wide")
+        try expectEqual(make(review: .approved).statusCode, "AP")
+        try expectEqual(make().statusCode, "WR")
+
+        // A code that disagrees with the tooltip beside it is worse than either alone.
+        try expectEqual(make(checks: .failure).statusLine, "checks failed")
+        try expectEqual(make(threads: 3).statusLine, "3 unresolved threads")
+        try expectEqual(make().statusLine, "waiting for review")
+    }
 
     await run.test("check states collapse ERROR into failure") {
         try expectEqual(CheckState(apiValue: "ERROR"), .failure)

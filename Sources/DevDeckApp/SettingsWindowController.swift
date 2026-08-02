@@ -102,6 +102,8 @@ final class SettingsWindowController: NSObject {
             row.frame.origin = NSPoint(x: 0, y: y)
             row.onSave = { [weak self] in self?.save($0) }
             row.onRemove = { [weak self] in self?.remove($0) }
+            row.onChange = { [weak self] in self?.applyEdits($0) }
+            row.onTestLink = { [weak self] in self?.testLink($0) }
             documentView.addSubview(row)
             rows.append(row)
             y += AccountRowView.height + 10
@@ -132,15 +134,46 @@ final class SettingsWindowController: NSObject {
         onChanged()
     }
 
+    /// Everything except the token applies the moment it is changed.
+    ///
+    /// It used to wait for a button labelled as being about the token, which meant a browser
+    /// picked from the list quietly never took effect.
+    private func applyEdits(_ row: AccountRowView) {
+        let edited = row.editedAccount
+        persist(edited)
+        row.apply(edited)
+        row.setStatus(Self.browserSummary(for: edited))
+        onChanged()
+    }
+
+    private static func browserSummary(for account: GitHubAccount) -> String {
+        guard let identifier = account.browser.bundleIdentifier else {
+            return "Saved. Links open in the default browser."
+        }
+        let name = BrowserCatalog.browser(withIdentifier: identifier)?.name ?? identifier
+        guard let profile = account.browser.profileDirectory else {
+            return "Saved. Links open in \(name)."
+        }
+        return "Saved. Links open in \(name) · \(profile)."
+    }
+
+    /// Opens one page so the mapping can be seen working, rather than discovered later by
+    /// clicking a pull request and landing in the wrong session.
+    private func testLink(_ row: AccountRowView) {
+        applyEdits(row)
+        guard let url = URL(string: "https://github.com/pulls") else { return }
+        LinkOpener.open(url, using: row.editedAccount.browser)
+    }
+
     private func save(_ row: AccountRowView) {
         let edited = row.editedAccount
         let token = row.enteredToken
 
-        // No new token typed: this is a metadata edit, and there is nothing to verify.
+        // No new token typed: verify the stored one instead of claiming success blindly.
         guard !token.isEmpty else {
             persist(edited)
             row.apply(edited)
-            row.setStatus("Saved.")
+            verifyStoredToken(for: edited, row: row)
             onChanged()
             return
         }
@@ -171,6 +204,33 @@ final class SettingsWindowController: NSObject {
                 row.setStatus("Rejected — \(error.displayMessage)", isError: true)
             } catch {
                 row.setStatus("Rejected — \(error.localizedDescription)", isError: true)
+            }
+        }
+    }
+
+    private func verifyStoredToken(for account: GitHubAccount, row: AccountRowView) {
+        guard ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil else {
+            row.setStatus("No token yet — paste one above.", isError: true)
+            return
+        }
+        row.setStatus("Checking the stored token…")
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let snapshot = try await PullRequestsService(
+                    client: GitHubClient.makeDefault(
+                        tokenStore: self.tokenStore,
+                        settings: account.settings(basedOn: .default),
+                        tokenKey: account.tokenKey
+                    ),
+                    settings: account.settings(basedOn: .default),
+                    accountID: account.id
+                ).fetch()
+                row.setStatus("Token works — \(snapshot.totalCount) open pull requests.")
+            } catch let error as APIError {
+                row.setStatus("Stored token — \(error.displayMessage)", isError: true)
+            } catch {
+                row.setStatus("Stored token — \(error.localizedDescription)", isError: true)
             }
         }
     }

@@ -65,6 +65,10 @@ an **Open links in** setting: a browser, and for Chrome, Edge, Brave, Vivaldi an
 profile as well, listed by the names you gave them. Clicking a row then lands in the profile
 that is signed in as that account.
 
+The pickers apply the moment you change them — there is a **Test** button beside them that
+opens one page so you can see where it lands. Only the token needs an explicit **Verify
+token** press, because it is checked against the API before being stored.
+
 Safari has profiles but no way to choose one from outside the app, and Firefox's `-P` depends
 on what is already running; both are offered without a profile picker rather than with one
 that would not work.
@@ -93,6 +97,20 @@ catch people out:
 
 `scripts/smoke-test.sh` prints how many organisations the token can actually see, which is
 the fastest way to tell "no open pull requests" from "cannot see the organisation".
+
+### Status codes
+
+Rows end in a two-character code so the width goes to the title. Hovering a row spells it out.
+
+| | | | |
+|---|---|---|---|
+| `CF` | checks failed | `CP` | checks running |
+| `CR` | changes requested | `DR` | draft |
+| `AP` | approved | `WR` | waiting for review |
+| `T3` | three unresolved threads | | |
+
+The coloured dot says the same thing at a glance: red is blocked, amber needs someone, green
+is done.
 
 ## Using it
 

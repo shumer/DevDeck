@@ -108,6 +108,26 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
         return "waiting for review"
     }
 
+    /// Two-character code for the card, so the title gets the width instead of a sentence.
+    ///
+    /// Deliberately mirrors `statusLine` case for case — the full wording is what the row's
+    /// tooltip shows, and the two drifting apart would be worse than either alone.
+    ///
+    ///     CF  checks failed        CP  checks running      T3  three unresolved threads
+    ///     CR  changes requested    DR  draft
+    ///     AP  approved             WR  waiting for review
+    public var statusCode: String {
+        if checks == .failure { return "CF" }
+        if reviewDecision == .changesRequested { return "CR" }
+        if isDraft { return "DR" }
+        if checks == .pending { return "CP" }
+        // More than nine open conversations is already the most blocked thing on the card;
+        // the exact number stops mattering and would cost a third character.
+        if unresolvedThreads > 0 { return "T\(min(unresolvedThreads, 9))" }
+        if reviewDecision == .approved { return "AP" }
+        return "WR"
+    }
+
     /// Short branch-style label for the card: `repo #123`.
     public var shortLabel: String {
         let name = repository.split(separator: "/").last.map(String.init) ?? repository

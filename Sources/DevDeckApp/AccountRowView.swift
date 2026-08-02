@@ -24,6 +24,13 @@ final class AccountRowView: NSView {
 
     var onSave: ((AccountRowView) -> Void)?
     var onRemove: ((AccountRowView) -> Void)?
+    /// Fired by everything except the token field, which needs an explicit press because it
+    /// gets verified against the API first.
+    ///
+    /// Editing a control and having nothing happen is how the browser choice silently did not
+    /// apply: the only way to commit it was a button labelled as being about the token.
+    var onChange: ((AccountRowView) -> Void)?
+    var onTestLink: ((AccountRowView) -> Void)?
 
     static let height: CGFloat = 170
 
@@ -44,10 +51,14 @@ final class AccountRowView: NSView {
         labelField.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         addSubview(labelField)
 
+        labelField.delegate = self
+
         enabledButton.frame = NSRect(x: inset + 212, y: Self.height - 33, width: 90, height: 20)
         enabledButton.setButtonType(.switch)
         enabledButton.title = "Enabled"
         enabledButton.state = account.isEnabled ? .on : .off
+        enabledButton.target = self
+        enabledButton.action = #selector(controlChanged)
         addSubview(enabledButton)
 
         let removeButton = NSButton(title: "Remove", target: self, action: #selector(remove))
@@ -60,6 +71,7 @@ final class AccountRowView: NSView {
         organizationsField.stringValue = account.organizations.joined(separator: ", ")
         organizationsField.placeholderString = "Organisations, comma separated (empty = everything the token sees)"
         organizationsField.font = NSFont.systemFont(ofSize: 11)
+        organizationsField.delegate = self
         addSubview(organizationsField)
 
         tokenField.frame = NSRect(x: inset, y: Self.height - 94, width: fieldWidth - 100, height: 22)
@@ -69,7 +81,7 @@ final class AccountRowView: NSView {
         tokenField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         addSubview(tokenField)
 
-        let saveButton = NSButton(title: "Test & save", target: self, action: #selector(save))
+        let saveButton = NSButton(title: "Verify token", target: self, action: #selector(save))
         saveButton.frame = NSRect(x: width - inset - 92, y: Self.height - 96, width: 92, height: 26)
         saveButton.bezelStyle = .rounded
         saveButton.controlSize = .small
@@ -81,14 +93,24 @@ final class AccountRowView: NSView {
         openLabel.textColor = NSColor.secondaryLabelColor
         addSubview(openLabel)
 
-        let popUpWidth = (fieldWidth - 10) / 2
+        let popUpWidth = (fieldWidth - 70) / 2
         browserPopUp.frame = NSRect(x: inset, y: Self.height - 144, width: popUpWidth, height: 24)
         browserPopUp.target = self
         browserPopUp.action = #selector(browserChanged)
         addSubview(browserPopUp)
 
-        profilePopUp.frame = NSRect(x: inset + popUpWidth + 10, y: Self.height - 144, width: popUpWidth, height: 24)
+        profilePopUp.frame = NSRect(x: inset + popUpWidth + 8, y: Self.height - 144, width: popUpWidth, height: 24)
+        profilePopUp.target = self
+        profilePopUp.action = #selector(controlChanged)
         addSubview(profilePopUp)
+
+        // Opening one link is the only honest way to know the mapping works, so it is one
+        // click away rather than something to discover by clicking a pull request.
+        let testButton = NSButton(title: "Test", target: self, action: #selector(testLink))
+        testButton.frame = NSRect(x: inset + popUpWidth * 2 + 16, y: Self.height - 145, width: 50, height: 25)
+        testButton.bezelStyle = .rounded
+        testButton.controlSize = .small
+        addSubview(testButton)
 
         statusLabel.frame = NSRect(x: inset, y: 8, width: fieldWidth, height: 18)
         statusLabel.font = NSFont.systemFont(ofSize: 11)
@@ -159,6 +181,15 @@ final class AccountRowView: NSView {
 
     @objc private func browserChanged() {
         reloadProfiles(selecting: nil)
+        onChange?(self)
+    }
+
+    @objc private func controlChanged() {
+        onChange?(self)
+    }
+
+    @objc private func testLink() {
+        onTestLink?(self)
     }
 
     private var selectedBrowserChoice: BrowserChoice {
@@ -211,5 +242,14 @@ final class AccountRowView: NSView {
 
     @objc private func remove() {
         onRemove?(self)
+    }
+}
+
+extension AccountRowView: NSTextFieldDelegate {
+    /// Text edits commit when the field is left, so a typed name or organisation list does not
+    /// need a button either.
+    func controlTextDidEndEditing(_ notification: Notification) {
+        guard let field = notification.object as? NSTextField, field !== tokenField else { return }
+        onChange?(self)
     }
 }
