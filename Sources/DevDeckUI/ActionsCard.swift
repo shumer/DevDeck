@@ -68,9 +68,11 @@ public struct ActionsCard: View {
             Spacer(minLength: 4)
 
             CardFooter(
-                leading: activity(snapshot),
+                leading: snapshot.failures.summary ?? activity(snapshot),
                 trailing: CardFreshness.text(for: state),
-                isStale: state.failure != nil || state.isStale(now: now, maxAge: 900)
+                isStale: state.failure != nil
+                    || !snapshot.failures.isEmpty
+                    || state.isStale(now: now, maxAge: 900)
             )
         }
     }

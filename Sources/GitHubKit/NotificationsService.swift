@@ -6,13 +6,20 @@ import Foundation
 public struct NotificationsService: Sendable {
     private let client: GitHubClient
     private let settings: GitHubSettings
+    private let accountID: String
 
-    /// Cache identity for the conditional request. One endpoint, one key.
-    static let cacheKey = "github.notifications"
+    /// Cache identity for the conditional request. Per account, because two accounts poll the
+    /// same endpoint with different tokens and would otherwise share one ETag.
+    var cacheKey: String { "github.notifications.\(accountID)" }
 
-    public init(client: GitHubClient, settings: GitHubSettings = .default) {
+    public init(
+        client: GitHubClient,
+        settings: GitHubSettings = .default,
+        accountID: String = GitHubAccount.defaultID
+    ) {
         self.client = client
         self.settings = settings
+        self.accountID = accountID
     }
 
     public func fetch() async throws -> InboxSnapshot {
@@ -24,16 +31,19 @@ public struct NotificationsService: Sendable {
                 URLQueryItem(name: "all", value: "false"),
                 URLQueryItem(name: "per_page", value: String(settings.maxNotifications)),
             ],
-            cacheKey: Self.cacheKey
+            cacheKey: cacheKey
         )
 
         return InboxSnapshot(
-            items: result.value.map(Self.item(from:)),
+            items: result.value.map { Self.item(from: $0, accountID: accountID) },
             serverPollInterval: result.pollIntervalSeconds
         )
     }
 
-    static func item(from payload: NotificationPayload) -> InboxItem {
+    static func item(
+        from payload: NotificationPayload,
+        accountID: String = GitHubAccount.defaultID
+    ) -> InboxItem {
         InboxItem(
             id: payload.id,
             reason: NotificationReason(apiValue: payload.reason),
@@ -41,7 +51,8 @@ public struct NotificationsService: Sendable {
             repository: payload.repository.fullName,
             updatedAt: payload.updatedAt,
             isUnread: payload.unread,
-            url: InboxItem.webURL(fromSubject: payload.subject.url)
+            url: InboxItem.webURL(fromSubject: payload.subject.url),
+            accountID: accountID
         )
     }
 }

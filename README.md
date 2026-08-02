@@ -46,6 +46,16 @@ Without a token the app opens its settings window on first launch; paste a token
 instead of running `seed-token.sh`. The token is verified against the API before it is
 stored, and it only ever lives in the login Keychain.
 
+### Several accounts
+
+One token rarely covers everything: a fine-grained token is approved per organisation, and
+some organisations sit behind SAML SSO. **Menu bar → GitHub accounts…** manages a list —
+each account has its own label, its own organisations and its own token in the Keychain.
+
+All accounts feed the same cards. Pull requests visible to two accounts are shown once. When
+one account fails, the others still render and the card footer says which one is missing;
+a card only fails outright when every account fails.
+
 ### The token
 
 A fine-grained personal access token with read access to **pull requests**, **contents** and

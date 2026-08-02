@@ -6,10 +6,16 @@ import Foundation
 public struct PullRequestsService: Sendable {
     private let client: GitHubClient
     private let settings: GitHubSettings
+    private let accountID: String
 
-    public init(client: GitHubClient, settings: GitHubSettings = .default) {
+    public init(
+        client: GitHubClient,
+        settings: GitHubSettings = .default,
+        accountID: String = GitHubAccount.defaultID
+    ) {
         self.client = client
         self.settings = settings
+        self.accountID = accountID
     }
 
     public func fetch() async throws -> PullRequestsSnapshot {
@@ -20,7 +26,7 @@ public struct PullRequestsService: Sendable {
                 limit: settings.maxPullRequests
             )
         )
-        return Self.snapshot(from: payload)
+        return Self.snapshot(from: payload, accountID: accountID)
     }
 
     /// The search string sent to GitHub.
@@ -79,13 +85,19 @@ public struct PullRequestsService: Sendable {
     }
     """
 
-    static func snapshot(from payload: SearchPayload) -> PullRequestsSnapshot {
-        let summaries = payload.search.nodes.compactMap(Self.summary(from:))
+    static func snapshot(
+        from payload: SearchPayload,
+        accountID: String = GitHubAccount.defaultID
+    ) -> PullRequestsSnapshot {
+        let summaries = payload.search.nodes.compactMap { Self.summary(from: $0, accountID: accountID) }
         return PullRequestsSnapshot(totalCount: payload.search.issueCount, pullRequests: summaries)
     }
 
     /// Search returns `Issue` nodes too; those decode with every field nil and are dropped.
-    static func summary(from node: SearchPayload.Node) -> PullRequestSummary? {
+    static func summary(
+        from node: SearchPayload.Node,
+        accountID: String = GitHubAccount.defaultID
+    ) -> PullRequestSummary? {
         guard
             let id = node.id,
             let number = node.number,
@@ -109,7 +121,8 @@ public struct PullRequestsService: Sendable {
             updatedAt: updatedAt,
             reviewDecision: ReviewDecision(apiValue: node.reviewDecision),
             checks: CheckState(apiValue: rollup),
-            unresolvedThreads: unresolved
+            unresolvedThreads: unresolved,
+            accountID: accountID
         )
     }
 }

@@ -6,6 +6,9 @@ import GitHubKit
 //
 // The suite is offline and deterministic by design, so this is the only thing that proves the
 // GraphQL document is still valid and the token still works. It prints counts, never the token.
+//
+// It checks the first account only. Extra accounts are stored in the app's own preferences
+// domain, which a command-line process does not share.
 
 let tokenStore = CompositeTokenStore.standard()
 

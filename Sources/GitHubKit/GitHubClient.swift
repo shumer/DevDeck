@@ -11,27 +11,33 @@ public struct GitHubClient: Sendable {
     private let tokenStore: any TokenStore
     private let settings: GitHubSettings
     private let userAgent: String
+    /// Which stored token this client authenticates with. One per configured account.
+    private let tokenKey: TokenKey
 
     public init(
         transport: APITransport,
         tokenStore: any TokenStore,
         settings: GitHubSettings = .default,
-        userAgent: String = "DevDeck"
+        userAgent: String = "DevDeck",
+        tokenKey: TokenKey = .github
     ) {
         self.transport = transport
         self.tokenStore = tokenStore
         self.settings = settings
         self.userAgent = userAgent
+        self.tokenKey = tokenKey
     }
 
     public static func makeDefault(
         tokenStore: any TokenStore = CompositeTokenStore.standard(),
-        settings: GitHubSettings = .default
+        settings: GitHubSettings = .default,
+        tokenKey: TokenKey = .github
     ) -> GitHubClient {
         GitHubClient(
             transport: APITransport(client: URLSessionHTTPClient.makeDefault()),
             tokenStore: tokenStore,
-            settings: settings
+            settings: settings,
+            tokenKey: tokenKey
         )
     }
 
@@ -123,7 +129,7 @@ public struct GitHubClient: Sendable {
 
     private func resolveToken() throws -> String {
         do {
-            guard let token = try tokenStore.token(for: .github), !token.isEmpty else {
+            guard let token = try tokenStore.token(for: tokenKey), !token.isEmpty else {
                 throw APIError.missingToken("GitHub")
             }
             return token

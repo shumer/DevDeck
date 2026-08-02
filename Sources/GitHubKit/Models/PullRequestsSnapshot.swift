@@ -6,13 +6,49 @@ public struct PullRequestsSnapshot: Sendable, Equatable, Codable {
     /// when the fetch limit truncates the list.
     public let totalCount: Int
     public let pullRequests: [PullRequestSummary]
+    /// Accounts that failed while this snapshot was assembled.
+    public let failures: [AccountFailure]
 
-    public init(totalCount: Int, pullRequests: [PullRequestSummary]) {
+    public init(
+        totalCount: Int,
+        pullRequests: [PullRequestSummary],
+        failures: [AccountFailure] = []
+    ) {
         self.totalCount = totalCount
         self.pullRequests = pullRequests
+        self.failures = failures
     }
 
     public static let empty = PullRequestsSnapshot(totalCount: 0, pullRequests: [])
+
+    /// Combines one snapshot per account into the single list the card draws.
+    ///
+    /// Deduplicated by pull request id: two accounts with access to the same repository would
+    /// otherwise show every shared pull request twice.
+    public static func merging(
+        _ snapshots: [PullRequestsSnapshot],
+        failures: [AccountFailure] = []
+    ) -> PullRequestsSnapshot {
+        var seen = Set<String>()
+        var merged: [PullRequestSummary] = []
+        var total = 0
+
+        for snapshot in snapshots {
+            total += snapshot.totalCount
+            for pullRequest in snapshot.pullRequests where seen.insert(pullRequest.id).inserted {
+                merged.append(pullRequest)
+            }
+        }
+
+        // The per-account totals double-count anything deduplicated above, so trim the total
+        // by exactly what was dropped rather than reporting a number the list cannot back up.
+        let duplicates = snapshots.reduce(0) { $0 + $1.pullRequests.count } - merged.count
+        return PullRequestsSnapshot(
+            totalCount: max(0, total - duplicates),
+            pullRequests: merged,
+            failures: failures + snapshots.flatMap(\.failures)
+        )
+    }
 
     public var blockedCount: Int {
         pullRequests.filter { $0.health == .blocked }.count

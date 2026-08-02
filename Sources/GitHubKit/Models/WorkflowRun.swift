@@ -54,6 +54,7 @@ public struct WorkflowRun: Sendable, Equatable, Codable, Identifiable {
     public let startedAt: Date
     public let updatedAt: Date
     public let url: URL?
+    public let accountID: String
 
     public init(
         id: Int,
@@ -64,8 +65,10 @@ public struct WorkflowRun: Sendable, Equatable, Codable, Identifiable {
         conclusion: RunConclusion,
         startedAt: Date,
         updatedAt: Date,
-        url: URL?
+        url: URL?,
+        accountID: String = GitHubAccount.defaultID
     ) {
+        self.accountID = accountID
         self.id = id
         self.name = name
         self.repository = repository

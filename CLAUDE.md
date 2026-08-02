@@ -29,7 +29,14 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
   sleeping. Use `FakeHTTPClient`, `InMemoryTokenStore`, `InMemoryPreferences`,
   `RecordingSleeper`, `MutableDateProvider`. Live checks belong in `Tools/Smoke`.
 - **Tokens only ever go to the Keychain.** Never into the repository, `UserDefaults`, a
-  dotfile, a log line or a commit.
+  dotfile, a log line or a commit. A stored token is never written back into a text field —
+  the settings row says one exists, and typing replaces it.
+- **Account ids are Keychain filenames.** `GitHubAccount.id` is never renamed, and the first
+  account keeps the un-suffixed key `github`.
+- **A card fails only when every account fails.** Partial failures go on the snapshot as
+  `[AccountFailure]` and are drawn in the footer.
+- **Cache keys are namespaced per account**, or two tokens polling one endpoint share an
+  `ETag` and serve each other's data.
 - **A hidden card fetches nothing.** New cards must respect `DeckController.setActiveCards`.
 
 ## Style

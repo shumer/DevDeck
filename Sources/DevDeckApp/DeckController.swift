@@ -16,6 +16,7 @@ final class DeckController: ObservableObject {
 
     private let preferences: Preferences
     private let tokenStore: any TokenStore
+    private let accountsStore: GitHubAccountsStore
     private var settings: GitHubSettings
     private var loop: Task<Void, Never>?
     private var consecutiveFailures = 0
@@ -23,9 +24,15 @@ final class DeckController: ObservableObject {
     /// Cards currently on screen. Nothing is fetched for a hidden card.
     private var activeCards: Set<CardID> = []
 
-    init(preferences: Preferences, tokenStore: any TokenStore, settings: GitHubSettings = .default) {
+    init(
+        preferences: Preferences,
+        tokenStore: any TokenStore,
+        accountsStore: GitHubAccountsStore,
+        settings: GitHubSettings = .default
+    ) {
         self.preferences = preferences
         self.tokenStore = tokenStore
+        self.accountsStore = accountsStore
         self.settings = settings
     }
 
@@ -71,8 +78,14 @@ final class DeckController: ObservableObject {
         }
     }
 
-    private var client: GitHubClient {
-        GitHubClient.makeDefault(tokenStore: tokenStore, settings: settings)
+    /// Rebuilt every pass so an account added in settings is picked up on the next refresh
+    /// without restarting anything.
+    private var workspace: GitHubWorkspace {
+        GitHubWorkspace(
+            accounts: accountsStore.enabledAccounts(),
+            tokenStore: tokenStore,
+            settings: settings
+        )
     }
 
     /// Runs one pass over every active card and returns how long to wait before the next one.
@@ -81,15 +94,14 @@ final class DeckController: ObservableObject {
     /// the network is down, everything fails together and the deck should back off as a whole
     /// rather than three times over.
     private func refreshOnce() async -> TimeInterval {
-        let client = self.client
+        let workspace = self.workspace
         var errors: [APIError] = []
         var serverHint: TimeInterval?
 
         if activeCards.contains(.githubPullRequests) {
             pullRequests.beginRefresh()
             do {
-                let snapshot = try await PullRequestsService(client: client, settings: settings).fetch()
-                pullRequests.succeed(snapshot, at: Date())
+                pullRequests.succeed(try await workspace.pullRequests(), at: Date())
             } catch {
                 let apiError = Self.apiError(from: error)
                 pullRequests.fail(apiError)
@@ -100,7 +112,7 @@ final class DeckController: ObservableObject {
         if activeCards.contains(.githubInbox) {
             inbox.beginRefresh()
             do {
-                let snapshot = try await NotificationsService(client: client, settings: settings).fetch()
+                let snapshot = try await workspace.inbox()
                 inbox.succeed(snapshot, at: Date())
                 // GitHub states how often it wants to be polled on this endpoint; ignoring it
                 // is the fastest way to get a token throttled.
@@ -115,8 +127,9 @@ final class DeckController: ObservableObject {
         if activeCards.contains(.githubActions) {
             actions.beginRefresh()
             do {
-                let snapshot = try await ActionsService(client: client, settings: settings)
-                    .fetch(repositories: actionsRepositories)
+                let snapshot = try await workspace.actions(
+                    repositoriesByAccount: actionsRepositoriesByAccount
+                )
                 actions.succeed(snapshot, at: Date())
             } catch {
                 let apiError = Self.apiError(from: error)
@@ -139,17 +152,35 @@ final class DeckController: ObservableObject {
         )
     }
 
-    /// Repositories the Actions card watches: the configured list, or the ones the open pull
-    /// requests are in. Falling back keeps the card useful with no configuration at all.
-    private var actionsRepositories: [String] {
-        guard settings.actionsRepositories.isEmpty else { return settings.actionsRepositories }
-        guard let snapshot = pullRequests.value else { return [] }
-        var seen: [String] = []
-        for pullRequest in snapshot.prioritized() where !seen.contains(pullRequest.repository) {
-            seen.append(pullRequest.repository)
-            if seen.count == 5 { break }
+    /// Repositories the Actions card watches, per account.
+    ///
+    /// A repository belongs to exactly one account, so the list has to be grouped rather than
+    /// broadcast: asking every account about every repository would spend most of the requests
+    /// on 404s. With nothing configured it follows the open pull requests, five per account,
+    /// which keeps the card useful with no configuration at all.
+    private var actionsRepositoriesByAccount: [String: [String]] {
+        let accounts = accountsStore.enabledAccounts()
+
+        if !settings.actionsRepositories.isEmpty {
+            var grouped: [String: [String]] = [:]
+            for repository in settings.actionsRepositories {
+                let owner = String(repository.split(separator: "/").first ?? "")
+                let account = accounts.first { $0.organizations.contains(owner) } ?? accounts.first
+                guard let account else { continue }
+                grouped[account.id, default: []].append(repository)
+            }
+            return grouped
         }
-        return seen
+
+        guard let snapshot = pullRequests.value else { return [:] }
+        var grouped: [String: [String]] = [:]
+        for pullRequest in snapshot.prioritized() {
+            var repositories = grouped[pullRequest.accountID] ?? []
+            guard repositories.count < 5, !repositories.contains(pullRequest.repository) else { continue }
+            repositories.append(pullRequest.repository)
+            grouped[pullRequest.accountID] = repositories
+        }
+        return grouped
     }
 
     private static func apiError(from error: Error) -> APIError {

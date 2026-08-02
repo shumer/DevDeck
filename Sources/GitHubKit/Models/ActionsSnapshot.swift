@@ -6,14 +6,34 @@ public struct ActionsSnapshot: Sendable, Equatable, Codable {
     public let windowDays: Int
     /// Repositories that were asked for, including ones that returned nothing.
     public let repositories: [String]
+    public let failures: [AccountFailure]
 
-    public init(runs: [WorkflowRun], windowDays: Int, repositories: [String]) {
+    public init(
+        runs: [WorkflowRun],
+        windowDays: Int,
+        repositories: [String],
+        failures: [AccountFailure] = []
+    ) {
         self.runs = runs
         self.windowDays = windowDays
         self.repositories = repositories
+        self.failures = failures
     }
 
     public static let empty = ActionsSnapshot(runs: [], windowDays: 7, repositories: [])
+
+    /// Combines one snapshot per account, newest run first.
+    public static func merging(
+        _ snapshots: [ActionsSnapshot],
+        failures: [AccountFailure] = []
+    ) -> ActionsSnapshot {
+        ActionsSnapshot(
+            runs: snapshots.flatMap(\.runs).sorted { $0.startedAt > $1.startedAt },
+            windowDays: snapshots.first?.windowDays ?? 7,
+            repositories: snapshots.flatMap(\.repositories),
+            failures: failures + snapshots.flatMap(\.failures)
+        )
+    }
 
     /// Share of decisive runs that passed, 0…1. Nil when nothing decisive ran in the window —
     /// which is different from 0% and must not be drawn as a red zero.

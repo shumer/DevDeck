@@ -37,7 +37,7 @@ func runActionsTests(_ run: TestRun) async {
         try expect(request.url.absoluteString.contains("/repos/editoria/ledwall/actions/runs"))
         try expect(request.url.absoluteString.contains("per_page=50"))
         try expect(request.url.absoluteString.contains("created="))
-        try expectEqual(request.cacheKey, "github.actions.editoria/ledwall")
+        try expectEqual(request.cacheKey, "github.actions.default.editoria/ledwall")
     }
 
     await run.test("statuses and conclusions map to what the card draws") {

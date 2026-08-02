@@ -20,11 +20,13 @@ that reaches for a window cannot be covered by it.
 
 ```
 DeckController (@MainActor)
-   ├─ owns CardState<PullRequestsSnapshot>
+   ├─ owns CardState<…> for each card
    ├─ refresh loop: fetch → succeed/fail → RefreshPolicy.nextDelay → sleep
    └─ knows which cards are active; a hidden card is never fetched
 
-PullRequestsService → GitHubClient → APITransport → HTTPClient → URLSession
+GitHubWorkspace  ── one GitHubClient per configured account, fanned out concurrently
+   └─ PullRequestsService / NotificationsService / ActionsService
+                        → GitHubClient → APITransport → HTTPClient → URLSession
                                           │
                                           ├─ HTTPCache: ETag / If-None-Match, 304 handling
                                           ├─ RateLimit: parses x-ratelimit-* headers
@@ -51,6 +53,28 @@ with the catalog on every read, so:
 - a card that is enabled but not implemented never renders — `visibleCards()` filters it.
 
 Card identifiers are persisted strings (`github.pullRequests`). **They must never change.**
+
+## Accounts
+
+`GitHubAccount` is one identity with one token: a slug id, a label, a base URL, the
+organisations it covers, and an enabled flag. `GitHubAccountsStore` persists the list; the
+token lives in the Keychain under the account's own key.
+
+`GitHubWorkspace` fans a card's fetch out over every enabled account and merges the results.
+The rule everywhere: **a card fails only when every account fails.** A partial failure is
+carried on the snapshot as `[AccountFailure]` and drawn in the card footer, because blanking a
+card over one expired token is how a deck stops being trusted.
+
+Two details worth keeping in mind when adding a card:
+
+- Every model carries `accountID`. Cross-account work needs it — the Actions card groups
+  repositories by account, since asking every account about every repository would spend most
+  of its requests on 404s.
+- Cache keys are per account (`github.notifications.<account>`). Two accounts polling the same
+  endpoint with different tokens would otherwise share one `ETag` and serve each other's data.
+
+The first account keeps the un-suffixed Keychain key, so a token stored before accounts
+existed keeps working with no migration.
 
 ## Placement
 

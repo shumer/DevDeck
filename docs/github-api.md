@@ -96,6 +96,19 @@ Two further failure modes look like "everything is fine but empty":
 `scripts/smoke-test.sh` prints organisation and repository counts, which distinguishes an
 empty result from a token that cannot see the work.
 
+## Several accounts
+
+`GitHubWorkspace` runs every card's fetch once per enabled account, concurrently, and merges
+the results. Practical consequences:
+
+- Rate limits are **per token**, so a second account adds budget rather than consuming it.
+- Cache keys carry the account id (`github.notifications.<account>`); sharing one would mean
+  two tokens revalidating against each other's `ETag`.
+- Pull requests visible to two accounts are deduplicated by node id, and the total is reduced
+  by exactly what was dropped.
+- A failing account becomes an `AccountFailure` on the snapshot, not a thrown error. The card
+  only fails when every account does.
+
 ## Errors
 
 GraphQL answers `200` with an `errors` array. `GitHubClient` turns that into

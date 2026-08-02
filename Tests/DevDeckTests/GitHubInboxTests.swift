@@ -28,7 +28,8 @@ func runInboxTests(_ run: TestRun) async {
         try expectEqual(request.method, .get)
         try expect(request.url.absoluteString.contains("/notifications"))
         try expect(request.url.absoluteString.contains("all=false"))
-        try expectEqual(request.cacheKey, "github.notifications", "polling relies on the ETag")
+        try expectEqual(request.cacheKey, "github.notifications.default",
+                        "polling relies on the ETag, and each account has its own")
         try expectEqual(request.headers["X-GitHub-Api-Version"], "2022-11-28")
     }
 
