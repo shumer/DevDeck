@@ -50,6 +50,8 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
   often started by hand, and a card that says "stopped" while the site serves is worse than no
   card.
 - **Project ids are card identifiers** (`arc.project.<id>`) and are never renamed.
+- **Menus are populated by `menuNeedsUpdate`, never built and handed to a view.** A menu built
+  once keeps the checkmarks it had at creation, which is how the lock toggle looked stuck on.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it
   is verified first. A control that silently does nothing until some other button is pressed
   is how the browser choice failed to take effect at all.

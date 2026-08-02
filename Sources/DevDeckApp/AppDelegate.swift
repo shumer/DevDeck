@@ -148,7 +148,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         window.level = displayMode.windowLevel
         window.isMovableByWindowBackground = !preferences.isLocked
         window.delegate = self
-        window.contentView?.menu = buildMenu()
+        // Empty, with a delegate: `menuNeedsUpdate` fills it in every time it opens. A menu
+        // built once here would keep whatever checkmarks were right at launch — the lock and
+        // the card toggles would look stuck no matter what was actually set.
+        let contextMenu = NSMenu()
+        contextMenu.delegate = self
+        window.contentView?.menu = contextMenu
         window.orderFrontRegardless()
         panels[card] = window
     }
@@ -239,12 +244,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         populate(menu)
     }
 
-    private func buildMenu() -> NSMenu {
-        let menu = NSMenu()
-        populate(menu)
-        return menu
-    }
-
+    /// Every menu in the app is repopulated here as it opens, so a checkmark can never show
+    /// state from whenever the menu happened to be created.
     private func populate(_ menu: NSMenu) {
         // AppKit re-enables any item whose target responds to the action unless automatic
         // enabling is off — without this the not-built-yet cards become clickable again.
