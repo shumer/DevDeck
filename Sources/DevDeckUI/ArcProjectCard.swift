@@ -5,7 +5,7 @@ import SwiftUI
 /// One Arc XP project: where to open it, and whether its local stack is up.
 public struct ArcProjectCard: View {
     /// Everything except the chip rows and the branch line.
-    private static let baseHeight: Double = 146
+    private static let baseHeight: Double = 153
     private static let chipRowHeight: Double = 25
     private static let branchRowHeight: Double = 18
 
@@ -194,9 +194,11 @@ public struct ArcProjectCard: View {
                     .fixedSize()
             }
         }
-        .padding(.top, 11)
+        // The rule separates the links above from the stack below, so it needs air on both
+        // sides: drawn too close to the top it clipped the bottom of the chips.
+        .padding(.top, 18)
         .padding(.bottom, 1)
-        .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1).offset(y: -5) }
+        .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1).offset(y: -9) }
         .help(status.detail ?? stackText)
     }
 
