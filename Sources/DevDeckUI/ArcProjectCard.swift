@@ -5,7 +5,7 @@ import SwiftUI
 /// One Arc XP project: where to open it, and whether its local stack is up.
 public struct ArcProjectCard: View {
     /// Everything except the chip rows and the branch line.
-    private static let baseHeight: Double = 153
+    private static let baseHeight: Double = 158
     private static let chipRowHeight: Double = 25
     private static let branchRowHeight: Double = 18
 
@@ -55,6 +55,7 @@ public struct ArcProjectCard: View {
     public var body: some View {
         CardChrome(title: "Arc · \(project.title)", pill: pill) {
             links
+            separator
             stackRow
             branchRow
             controls
@@ -178,6 +179,16 @@ public struct ArcProjectCard: View {
             .help(help)
     }
 
+    /// A real element between the two halves of the card rather than an overlay nudged into
+    /// place. The overlay was anchored to the top of the row below it, so every attempt to
+    /// give it room moved the text down and the line further up into the chips.
+    private var separator: some View {
+        Rectangle()
+            .fill(DeckTheme.faint)
+            .frame(height: 1)
+            .padding(.top, 12)
+    }
+
     private var stackRow: some View {
         HStack(spacing: 8) {
             Circle().fill(stackColor).frame(width: 7, height: 7)
@@ -194,11 +205,7 @@ public struct ArcProjectCard: View {
                     .fixedSize()
             }
         }
-        // The rule separates the links above from the stack below, so it needs air on both
-        // sides: drawn too close to the top it clipped the bottom of the chips.
-        .padding(.top, 18)
-        .padding(.bottom, 1)
-        .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1).offset(y: -9) }
+        .padding(.top, 10)
         .help(status.detail ?? stackText)
     }
 
