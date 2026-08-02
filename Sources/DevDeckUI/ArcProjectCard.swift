@@ -4,7 +4,7 @@ import SwiftUI
 
 /// One Arc XP project: where to open it, and whether its local stack is up.
 public struct ArcProjectCard: View {
-    public static let size = CGSize(width: CardMetrics.width, height: 184)
+    public static let size = CGSize(width: CardMetrics.width, height: 196)
 
     private let project: ArcProject
     private let status: LocalStackStatus
@@ -37,7 +37,9 @@ public struct ArcProjectCard: View {
             links
             stackRow
             controls
-            Spacer(minLength: 2)
+            // The footer is a different kind of thing from the buttons above it — reading
+            // material, not controls — so it gets air rather than sitting against them.
+            Spacer(minLength: 12)
             CardFooter(leading: project.organization, trailing: freshness, isStale: false)
         }
     }
@@ -143,6 +145,8 @@ public struct ArcProjectCard: View {
         }
     }
 
+    /// The four buttons share the full width, so the row lines up with the footer beneath it
+    /// and with the card's own edges instead of trailing off mid-card.
     private var controls: some View {
         HStack(spacing: 6) {
             if status.isRunning {
@@ -157,7 +161,7 @@ public struct ArcProjectCard: View {
             button("Folder", isEnabled: project.supportsLocalStack, action: onRevealFolder)
             button("Terminal", isEnabled: project.supportsLocalStack, action: onOpenTerminal)
         }
-        .padding(.top, 10)
+        .padding(.top, 12)
     }
 
     private func button(
@@ -169,7 +173,8 @@ public struct ArcProjectCard: View {
         Text(title)
             .font(.system(size: 11.5, weight: .medium))
             .foregroundStyle(isEnabled ? tint : tint.opacity(0.3))
-            .padding(.horizontal, 9)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 5)
             // A resting fill, not just a hairline border: on glass a bare outline reads as a
             // label rather than as something to press.
