@@ -16,9 +16,17 @@
 - **A browser and profile per account**, so a row opens as the identity that owns it, plus
   per-row account chips and click-to-expand cards.
 
+- **Arc XP projects** — one card per project: editable link templates opened in the project's
+  own browser, local Fusion stack status from the engine's health URL, and start, stop and
+  restart running the Arc CLI in the project folder.
+- **Settings with sections** — GitHub accounts, Arc projects and General kept apart in one
+  window, and a menu-bar icon that says which app it belongs to.
+
 ## Next
 
-1. **Mark as read** from the inbox card, so the panel is not read-only.
+1. **Bundle versions on the project card** — live version per environment, which needs an org
+   token and the Developer Center endpoints pinned down against a real organisation.
+2. **Mark as read** from the inbox card, so the panel is not read-only.
 2. **Resizable panels** — dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
 3. **Arc XP · organizations** — see the open questions below. Nothing is built until the

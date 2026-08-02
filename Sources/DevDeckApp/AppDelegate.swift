@@ -1,4 +1,5 @@
 import AppKit
+import ArcKit
 import Combine
 import DevDeckCore
 import DevDeckUI
@@ -11,16 +12,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let preferences = Preferences()
     private let tokenStore: any TokenStore = CompositeTokenStore.standard()
     private let accountsStore = GitHubAccountsStore(backend: UserDefaults.standard)
+    private let projectsStore = ArcProjectsStore(backend: UserDefaults.standard)
 
     private lazy var controller = DeckController(
         preferences: preferences,
         tokenStore: tokenStore,
-        accountsStore: accountsStore
+        accountsStore: accountsStore,
+        projectsStore: projectsStore
     )
     private lazy var settingsController = SettingsWindowController(
         tokenStore: tokenStore,
-        accountsStore: accountsStore
+        accountsStore: accountsStore,
+        projectsStore: projectsStore,
+        preferences: preferences
     ) { [weak self] in
+        // A project added or removed in settings changes the card list, not just the data.
+        self?.syncPanels()
         self?.controller.refreshNow()
     }
 
@@ -73,8 +80,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Panels
 
+    /// The built-in cards plus one per configured Arc project.
+    private var catalog: [CardDescriptor] {
+        CardCatalog.all(including: projectsStore.projects().map { project in
+            CardDescriptor(
+                id: project.cardID,
+                title: project.title,
+                subtitle: "Arc · \(project.organization)",
+                isImplemented: true,
+                isEnabledByDefault: true
+            )
+        })
+    }
+
     private var visibleCards: [CardID] {
-        preferences.cardLayout.visibleCards().map(\.id)
+        preferences.cardLayout.visibleCards(catalog: catalog).map(\.id)
     }
 
     /// Brings the on-screen panels in line with the saved layout, and tells the controller
@@ -182,19 +202,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Menu bar
 
+    /// A stack of panels — the app is a deck of cards on the desktop, and the icon should say
+    /// so at a glance. Numbers go in the tooltip: a bare "8" in the menu bar belongs to
+    /// nothing in particular.
     private func updateStatusItem() {
         guard let button = statusItem?.button else { return }
         let summary = controller.statusSummary
-        let color: NSColor = summary.isUnknown
-            ? .secondaryLabelColor
-            : (summary.isAlert ? NSColor.systemRed : NSColor.labelColor)
-        button.attributedTitle = NSAttributedString(
-            string: "◆ \(summary.text)",
-            attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
-                .foregroundColor: color,
-            ]
-        )
+
+        let configuration = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        let image = NSImage(systemSymbolName: "rectangle.stack", accessibilityDescription: "DevDeck")?
+            .withSymbolConfiguration(configuration)
+
+        // Template images follow the menu bar's own light and dark appearance; the alert state
+        // opts out of that deliberately, because red is the message.
+        image?.isTemplate = !summary.isAlert
+        button.image = image
+        button.contentTintColor = summary.isAlert ? .systemRed : nil
+        button.imagePosition = .imageOnly
+        button.attributedTitle = NSAttributedString(string: "")
+        button.toolTip = summary.tooltip
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -217,21 +243,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         header.isEnabled = false
         menu.addItem(header)
 
-        let layout = preferences.cardLayout
-        for card in layout.resolved() {
-            let item = NSMenuItem(
-                title: "   " + card.descriptor.title,
-                action: #selector(toggleCard(_:)),
-                keyEquivalent: ""
-            )
-            item.state = card.isEnabled ? .on : .off
-            item.representedObject = card.id.rawValue
-            item.target = self
-            if !card.descriptor.isImplemented {
-                item.isEnabled = false
-                item.toolTip = "Not built yet"
+        let resolved = preferences.cardLayout.resolved(catalog: catalog)
+        let projectIDs = Set(projectsStore.projects().map(\.cardID))
+
+        for card in resolved where !projectIDs.contains(card.id) {
+            menu.addItem(cardItem(card))
+        }
+
+        // Projects get their own group: with several of them the built-in cards would
+        // otherwise be lost in the middle of a list of site names.
+        let projectCards = resolved.filter { projectIDs.contains($0.id) }
+        if !projectCards.isEmpty {
+            menu.addItem(.separator())
+            let header = NSMenuItem(title: "Arc projects", action: nil, keyEquivalent: "")
+            header.isEnabled = false
+            menu.addItem(header)
+            for card in projectCards {
+                menu.addItem(cardItem(card))
             }
-            menu.addItem(item)
         }
 
         menu.addItem(.separator())
@@ -262,7 +291,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         for (title, selector) in [
             ("Tidy panels into a column", #selector(restack)),
             ("Refresh now", #selector(refreshNow)),
-            ("GitHub accounts…", #selector(openSettings)),
+            ("Settings…", #selector(openSettings)),
         ] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
             item.target = self
@@ -277,11 +306,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Actions
 
+    private func cardItem(_ card: ResolvedCard) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: "   " + card.descriptor.title,
+            action: #selector(toggleCard(_:)),
+            keyEquivalent: ""
+        )
+        item.state = card.isEnabled ? .on : .off
+        item.representedObject = card.id.rawValue
+        item.target = self
+        if !card.descriptor.isImplemented {
+            item.isEnabled = false
+            item.toolTip = "Not built yet"
+        }
+        return item
+    }
+
     @objc private func toggleCard(_ item: NSMenuItem) {
         guard let raw = item.representedObject as? String else { return }
         let card = CardID(rawValue: raw)
         var layout = preferences.cardLayout
-        layout.setEnabled(!layout.isEnabled(card), for: card)
+        layout.setEnabled(!layout.isEnabled(card, catalog: catalog), for: card)
         preferences.cardLayout = layout
         syncPanels()
     }

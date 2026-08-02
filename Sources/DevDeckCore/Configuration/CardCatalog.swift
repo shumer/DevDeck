@@ -82,4 +82,11 @@ public enum CardCatalog {
     public static func descriptor(for id: CardID) -> CardDescriptor? {
         all.first { $0.id == id }
     }
+
+    /// The catalog plus whatever cards the user's own configuration adds — one per Arc
+    /// project, for instance. Layout and menu code always works against this, so a project
+    /// added in settings becomes a card without any change here.
+    public static func all(including dynamic: [CardDescriptor]) -> [CardDescriptor] {
+        all.filter { descriptor in !dynamic.contains { $0.id == descriptor.id } } + dynamic
+    }
 }
