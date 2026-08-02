@@ -5,13 +5,34 @@ public struct InboxSnapshot: Sendable, Equatable, Codable {
     public let items: [InboxItem]
     /// What the server asked for through `X-Poll-Interval`, if anything.
     public let serverPollInterval: TimeInterval?
+    public let failures: [AccountFailure]
 
-    public init(items: [InboxItem], serverPollInterval: TimeInterval? = nil) {
+    public init(
+        items: [InboxItem],
+        serverPollInterval: TimeInterval? = nil,
+        failures: [AccountFailure] = []
+    ) {
         self.items = items
         self.serverPollInterval = serverPollInterval
+        self.failures = failures
     }
 
     public static let empty = InboxSnapshot(items: [], serverPollInterval: nil)
+
+    /// Combines one snapshot per account.
+    ///
+    /// The poll interval is the largest any server asked for: honouring the shortest would
+    /// throttle the account that asked for the longest.
+    public static func merging(
+        _ snapshots: [InboxSnapshot],
+        failures: [AccountFailure] = []
+    ) -> InboxSnapshot {
+        InboxSnapshot(
+            items: snapshots.flatMap(\.items),
+            serverPollInterval: snapshots.compactMap(\.serverPollInterval).max(),
+            failures: failures + snapshots.flatMap(\.failures)
+        )
+    }
 
     public var unreadCount: Int {
         items.filter(\.isUnread).count

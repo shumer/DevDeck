@@ -9,15 +9,18 @@ public struct ActionsService: Sendable {
     private let client: GitHubClient
     private let settings: GitHubSettings
     private let clock: any DateProvider
+    private let accountID: String
 
     public init(
         client: GitHubClient,
         settings: GitHubSettings = .default,
-        clock: any DateProvider = SystemDateProvider()
+        clock: any DateProvider = SystemDateProvider(),
+        accountID: String = GitHubAccount.defaultID
     ) {
         self.client = client
         self.settings = settings
         self.clock = clock
+        self.accountID = accountID
     }
 
     /// Fetches runs for `repositories`, or for the configured list when none are given.
@@ -74,9 +77,11 @@ public struct ActionsService: Sendable {
                 URLQueryItem(name: "per_page", value: "50"),
                 URLQueryItem(name: "created", value: ">=\(since)"),
             ],
-            cacheKey: "github.actions.\(name)"
+            cacheKey: "github.actions.\(accountID).\(name)"
         )
-        return result.value.workflowRuns.map { Self.run(from: $0, repository: name) }
+        return result.value.workflowRuns.map {
+            Self.run(from: $0, repository: name, accountID: accountID)
+        }
     }
 
     /// GitHub's `created` filter takes a plain date, in UTC.
@@ -89,7 +94,11 @@ public struct ActionsService: Sendable {
         return formatter.string(from: start)
     }
 
-    static func run(from payload: WorkflowRunsPayload.Run, repository: String) -> WorkflowRun {
+    static func run(
+        from payload: WorkflowRunsPayload.Run,
+        repository: String,
+        accountID: String = GitHubAccount.defaultID
+    ) -> WorkflowRun {
         WorkflowRun(
             id: payload.id,
             name: payload.name ?? "workflow",
@@ -100,7 +109,8 @@ public struct ActionsService: Sendable {
             // `run_started_at` is absent on older runs; `created_at` is the next best anchor.
             startedAt: payload.runStartedAt ?? payload.createdAt,
             updatedAt: payload.updatedAt,
-            url: payload.htmlURL
+            url: payload.htmlURL,
+            accountID: accountID
         )
     }
 }

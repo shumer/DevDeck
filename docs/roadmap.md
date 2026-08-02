@@ -11,11 +11,12 @@
 - **GitHub · Actions** — success rate over a window, running and failed runs, one request per
   repository with per-repository caching and per-repository failure tolerance.
 
+- **Several GitHub accounts** — one token per account, all feeding the same cards, with
+  partial failures shown in the footer instead of blanking the card.
+
 ## Next
 
-1. **Several GitHub accounts** — one token per organisation, merged into the same cards, with
-   a partial-failure marker when one account is unreachable.
-2. **Mark as read** from the inbox card, so the panel is not read-only.
+1. **Mark as read** from the inbox card, so the panel is not read-only.
 3. **Arc XP · organizations** — see the open questions below. Nothing is built until the
    functionality is agreed.
 4. **Local Fusion stack** — container state, ports, start/stop. Needs a process-running layer

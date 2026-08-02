@@ -59,6 +59,8 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     public let reviewDecision: ReviewDecision
     public let checks: CheckState
     public let unresolvedThreads: Int
+    /// Which configured account this came from. Rows from several accounts share one card.
+    public let accountID: String
 
     public init(
         id: String,
@@ -71,8 +73,10 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
         updatedAt: Date,
         reviewDecision: ReviewDecision,
         checks: CheckState,
-        unresolvedThreads: Int
+        unresolvedThreads: Int,
+        accountID: String = GitHubAccount.defaultID
     ) {
+        self.accountID = accountID
         self.id = id
         self.number = number
         self.title = title

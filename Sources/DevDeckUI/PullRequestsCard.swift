@@ -80,9 +80,11 @@ public struct PullRequestsCard: View {
         Spacer(minLength: 4)
 
         CardFooter(
-            leading: footerLeading(snapshot),
+            leading: snapshot.failures.summary ?? footerLeading(snapshot),
             trailing: CardFreshness.text(for: state),
-            isStale: state.failure != nil || state.isStale(now: now, maxAge: 600)
+            isStale: state.failure != nil
+                || !snapshot.failures.isEmpty
+                || state.isStale(now: now, maxAge: 600)
         )
     }
 

@@ -65,11 +65,13 @@ public struct InboxCard: View {
         Spacer(minLength: 4)
 
         CardFooter(
-            leading: snapshot.items.isEmpty
+            leading: snapshot.failures.summary ?? (snapshot.items.isEmpty
                 ? "nothing waiting"
-                : "\(snapshot.repositoryCount) repo\(snapshot.repositoryCount == 1 ? "" : "s")",
+                : "\(snapshot.repositoryCount) repo\(snapshot.repositoryCount == 1 ? "" : "s")"),
             trailing: CardFreshness.text(for: state),
-            isStale: state.failure != nil || state.isStale(now: now, maxAge: 600)
+            isStale: state.failure != nil
+                || !snapshot.failures.isEmpty
+                || state.isStale(now: now, maxAge: 600)
         )
     }
 

@@ -75,6 +75,7 @@ public struct InboxItem: Sendable, Equatable, Codable, Identifiable {
     public let isUnread: Bool
     /// Where a click goes. Nil when the subject has no addressable web page.
     public let url: URL?
+    public let accountID: String
 
     public init(
         id: String,
@@ -83,8 +84,10 @@ public struct InboxItem: Sendable, Equatable, Codable, Identifiable {
         repository: String,
         updatedAt: Date,
         isUnread: Bool,
-        url: URL?
+        url: URL?,
+        accountID: String = GitHubAccount.defaultID
     ) {
+        self.accountID = accountID
         self.id = id
         self.reason = reason
         self.title = title

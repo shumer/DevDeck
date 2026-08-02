@@ -10,9 +10,17 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private let preferences = Preferences()
     private let tokenStore: any TokenStore = CompositeTokenStore.standard()
+    private let accountsStore = GitHubAccountsStore(backend: UserDefaults.standard)
 
-    private lazy var controller = DeckController(preferences: preferences, tokenStore: tokenStore)
-    private lazy var settingsController = SettingsWindowController(tokenStore: tokenStore) { [weak self] in
+    private lazy var controller = DeckController(
+        preferences: preferences,
+        tokenStore: tokenStore,
+        accountsStore: accountsStore
+    )
+    private lazy var settingsController = SettingsWindowController(
+        tokenStore: tokenStore,
+        accountsStore: accountsStore
+    ) { [weak self] in
         self?.controller.refreshNow()
     }
 
@@ -41,8 +49,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         updateStatusItem()
         controller.start()
 
-        // No token yet means nothing can load; open the one window that fixes that.
-        if ((try? tokenStore.token(for: .github)) ?? nil) == nil {
+        // No token on any account means nothing can load; open the one window that fixes that.
+        let hasAnyToken = accountsStore.accounts().contains { account in
+            ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
+        }
+        if !hasAnyToken {
             settingsController.show()
         }
 
@@ -214,7 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         for (title, selector) in [
             ("Tidy panels into a column", #selector(restack)),
             ("Refresh now", #selector(refreshNow)),
-            ("Settings…", #selector(openSettings)),
+            ("GitHub accounts…", #selector(openSettings)),
         ] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
             item.target = self
