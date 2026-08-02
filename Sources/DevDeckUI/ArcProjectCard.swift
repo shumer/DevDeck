@@ -4,7 +4,11 @@ import SwiftUI
 
 /// One Arc XP project: where to open it, and whether its local stack is up.
 public struct ArcProjectCard: View {
-    public static let size = CGSize(width: CardMetrics.width, height: 196)
+    /// The branch gets its own line, so it never competes with the status text for room —
+    /// "is it running" must not be the thing that gets truncated.
+    public static func size(hasBranch: Bool) -> CGSize {
+        CGSize(width: CardMetrics.width, height: hasBranch ? 214 : 196)
+    }
 
     private let project: ArcProject
     private let status: LocalStackStatus
@@ -36,6 +40,7 @@ public struct ArcProjectCard: View {
         CardChrome(title: "Arc · \(project.title)", pill: pill) {
             links
             stackRow
+            branchRow
             controls
             // The footer is a different kind of thing from the buttons above it — reading
             // material, not controls — so it gets air rather than sitting against them.
@@ -110,17 +115,6 @@ public struct ArcProjectCard: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 6)
-            if let branch = status.branch {
-                // What the stack is actually serving. It changes under you when you switch
-                // branches in a terminal, which is exactly when it is worth seeing.
-                Text("⌥ \(branch)")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(DeckTheme.blue)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .layoutPriority(1)
-                    .help("checked out branch")
-            }
             if let version = status.engineVersion {
                 Text(version)
                     .font(.system(size: 11, design: .monospaced))
@@ -132,6 +126,27 @@ public struct ArcProjectCard: View {
         .padding(.bottom, 1)
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1).offset(y: -5) }
         .help(status.detail ?? stackText)
+    }
+
+    /// What the stack is serving. It changes under you when you switch branches in a
+    /// terminal, which is exactly when it is worth seeing.
+    @ViewBuilder
+    private var branchRow: some View {
+        if let branch = status.branch {
+            HStack(spacing: 8) {
+                Text("⎇")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeckTheme.label)
+                Text(branch)
+                    .font(.system(size: 11.5, design: .monospaced))
+                    .foregroundStyle(DeckTheme.blue)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 6)
+            .help("checked out branch")
+        }
     }
 
     private var stackColor: Color {
