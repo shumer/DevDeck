@@ -27,13 +27,20 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
         return URL(string: resolved)
     }
 
+    /// Defaults follow the sandbox host, which is where day-to-day work happens:
+    /// `https://sandbox.ilgiornale.arcpublishing.com/home/` for org `ilgiornale`.
+    ///
+    /// A project pointed at production edits the templates — that is why they are fields and
+    /// not constants. Only PageBuilder is confirmed against a real organisation; the rest are
+    /// the same host with the path each tool is usually mounted at, and the Test button in
+    /// settings is there to check them one at a time.
     public static func defaults() -> [ArcLink] {
         [
-            ArcLink(label: "PageBuilder", urlTemplate: "https://{org}.arcpublishing.com/pagebuilder", isEnabled: true),
-            ArcLink(label: "Composer", urlTemplate: "https://{org}.arcpublishing.com/composer", isEnabled: true),
-            ArcLink(label: "Dev Center", urlTemplate: "https://{org}.arcpublishing.com/developer", isEnabled: true),
-            ArcLink(label: "Site Service", urlTemplate: "https://{org}.arcpublishing.com/developer/sites", isEnabled: false),
-            ArcLink(label: "Delivery API", urlTemplate: "https://api.{org}.arcpublishing.com/content/v4", isEnabled: false),
+            ArcLink(label: "PageBuilder", urlTemplate: "https://sandbox.{org}.arcpublishing.com/home/", isEnabled: true),
+            ArcLink(label: "Composer", urlTemplate: "https://sandbox.{org}.arcpublishing.com/composer/", isEnabled: true),
+            ArcLink(label: "Dev Center", urlTemplate: "https://sandbox.{org}.arcpublishing.com/developer/", isEnabled: true),
+            ArcLink(label: "Site Service", urlTemplate: "https://sandbox.{org}.arcpublishing.com/developer/sites/", isEnabled: false),
+            ArcLink(label: "Delivery API", urlTemplate: "https://api.sandbox.{org}.arcpublishing.com/content/v4", isEnabled: false),
         ]
     }
 }

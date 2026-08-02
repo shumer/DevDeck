@@ -38,7 +38,8 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(links.first?.label, "PageBuilder")
         try expectEqual(
             links.first?.url.absoluteString,
-            "https://editoriaitaliana.arcpublishing.com/pagebuilder"
+            "https://sandbox.editoriaitaliana.arcpublishing.com/home/",
+            "the confirmed PageBuilder shape, per organisation"
         )
     }
 
