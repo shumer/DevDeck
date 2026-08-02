@@ -156,7 +156,9 @@ you use, the browser they open in, and control of its local Fusion stack.
   a terminal therefore shows as running too — the card reports what is actually serving.
 - **The port comes from the project's `.env`.** Fusion defaults to 80, but `PORT` in the
   checkout overrides it, and that file is the only honest source. Leave **Local URL** empty
-  and the card follows it; fill it in only for a stack that does not.
+  and the card follows it; fill it in only for a stack that does not. The chip says
+  **Local site** and greys out while the stack is down; the address it opens is in its
+  tooltip, along with every other link's.
 - **After a start the card waits.** `fusion daemon` returns as soon as the containers exist,
   while the engine needs longer to serve, so the card polls for up to a minute before
   concluding anything — and if nothing ever answers it names the URL it tried.
