@@ -13,7 +13,7 @@ Pull requests across every account a token can see, worst first:
 │ GITHUB · MY PULL REQUESTS        2 BLOCKED │
 │                                            │
 │ 8 open                                     │
-│ ● WORK  Add the ledwall feed loop       CF │
+│ ● WORK  Add the article feed loop       CF │
 │ ● WORK  Fix the image fill on cards     CR │
 │ ● HOME  Bump the theme components       WR │
 │           show 5 more ⌄                    │
@@ -25,14 +25,14 @@ An Arc XP project: the links you use, and its local Fusion stack:
 
 ```
 ┌────────────────────────────────────────────┐
-│ ARC · IL GIORNALE            LOCAL STOPPED │
+│ ARC · ACME NEWS              LOCAL STOPPED │
 │ PageBuilder   Composer   Deployer          │
 │ Local site    Sandbox    Prod              │
 │ ────────────────────────────────────────── │
 │ ● local stack not running                  │
-│ ⎇ fix/EI-303-video-play-badge              │
+│ ⎇ fix/PROJ-142-video-badge                 │
 │ [▶ Start] [↻ Restart] [Folder] [Terminal]  │
-│ sandbox.ilgiornale                23:25:49 │
+│ sandbox.acme                      23:25:49 │
 └────────────────────────────────────────────┘
 ```
 
@@ -41,14 +41,14 @@ the checkout:
 
 ```
 ┌────────────────────────────────────────────┐
-│ DDEV · NASDAQIR                    RUNNING │
+│ DDEV · ACME SHOP                   RUNNING │
 │ Mailpit                                    │
 │ Local site   Test   UAT   Prod             │
 │ ────────────────────────────────────────── │
 │ ● php 8.4 · mysql 8.0                      │
 │ ⎇ main                                     │
 │ [⏻ Stop] [↻ Restart] [Folder] [Terminal]   │
-│ drupal 10.6.11 · NasdaqIR         23:41:02 │
+│ drupal 10.6.11 · acme-shop        23:41:02 │
 └────────────────────────────────────────────┘
 ```
 
@@ -179,9 +179,9 @@ the fastest way to tell "no open pull requests" from "cannot see the organisatio
 you use, the browser they open in, and control of its local Fusion stack.
 
 - **Links** are templates with `{org}` and `{site}` substituted. **The organisation field
-  carries the environment**: type `sandbox.ilgiornale` for the sandbox and `ilgiornale` for
+  carries the environment**: type `sandbox.acme` for the sandbox and `acme` for
   production, and the templates add nothing of their own — PageBuilder becomes
-  `https://sandbox.ilgiornale.arcpublishing.com/home/`. PageBuilder, Composer and Deployer are
+  `https://sandbox.acme.arcpublishing.com/home/`. PageBuilder, Composer and Deployer are
   confirmed against a real organisation; Site Service and Delivery API are guesses, so press
   **Test** on each and edit the field in place when it is wrong.
 - **Sandbox and Prod ship empty**: a published site lives on its own domain and there is
