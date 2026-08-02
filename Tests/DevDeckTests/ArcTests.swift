@@ -86,6 +86,25 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(theirs.urlTemplate, "https://internal.example.com/dev")
     }
 
+    await run.test("site links come before the admin ones") {
+        var project = makeProject()
+        project.links = [
+            ArcLink(label: "PageBuilder", urlTemplate: "https://{org}.example.com/home", isEnabled: true),
+            ArcLink(label: "Sandbox", urlTemplate: "https://sandbox.example.com", isEnabled: true, kind: .site),
+            ArcLink(label: "Prod", urlTemplate: "https://example.com", isEnabled: true, kind: .site),
+        ]
+        try expectEqual(project.resolvedLinks.map(\.label), ["Sandbox", "Prod", "PageBuilder"],
+                        "the site is what you look at; the tooling is where you go to work")
+    }
+
+    await run.test("links stored before kinds existed are admin tooling") {
+        let json = """
+        { "label": "PageBuilder", "urlTemplate": "https://{org}.arcpublishing.com/home/", "isEnabled": true }
+        """
+        let link = try JSONDecoder().decode(ArcLink.self, from: Data(json.utf8))
+        try expectEqual(link.kind, .admin)
+    }
+
     await run.test("a link with no URL yet is simply not drawn") {
         var project = makeProject()
         project.links = [ArcLink(label: "Prod", urlTemplate: "", isEnabled: true)]
