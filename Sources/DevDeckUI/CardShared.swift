@@ -1,5 +1,56 @@
+import AppKit
 import DevDeckCore
 import SwiftUI
+
+/// Makes something look and feel clickable: it lights up under the cursor and the cursor
+/// itself turns into a hand.
+///
+/// Panels sit behind other windows, so hover tracking only starts once the deck has been
+/// clicked and the app is active. That is why the controls also carry a resting fill — the
+/// affordance cannot depend on hover alone.
+public struct ClickableHighlight: ViewModifier {
+    private let cornerRadius: CGFloat
+    private let isEnabled: Bool
+    @State private var isHovering = false
+
+    public init(cornerRadius: CGFloat, isEnabled: Bool) {
+        self.cornerRadius = cornerRadius
+        self.isEnabled = isEnabled
+    }
+
+    public func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(Color.white.opacity(isHovering && isEnabled ? 0.09 : 0))
+            )
+            .onHover { hovering in
+                guard isEnabled else { return }
+                isHovering = hovering
+                // push/pop rather than set: a card can have several of these, and set() would
+                // leave the arrow behind whenever the pointer left one for another.
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .onDisappear {
+                // A panel resized or hidden while the pointer is inside it would otherwise
+                // leave the hand cursor stuck over the desktop.
+                if isHovering {
+                    isHovering = false
+                    NSCursor.pop()
+                }
+            }
+    }
+}
+
+public extension View {
+    func clickable(cornerRadius: CGFloat = 6, isEnabled: Bool = true) -> some View {
+        modifier(ClickableHighlight(cornerRadius: cornerRadius, isEnabled: isEnabled))
+    }
+}
 
 /// What a card shows before its first successful load, or when it has nothing to show.
 public struct CardPlaceholder<Value: Sendable & Equatable>: View {
@@ -67,6 +118,7 @@ public struct CardExpander: View {
             .padding(.bottom, 1)
             .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
             .contentShape(Rectangle())
+            .clickable()
             .onTapGesture(perform: onToggle)
     }
 }

@@ -158,6 +158,10 @@ Drag a panel anywhere; the position is remembered per card. Click a row to open 
 request, double-click the panel background to open the list on github.com, right-click a
 panel for the same menu.
 
+Anything clickable lights up under the pointer and turns the cursor into a hand. Because the
+panels sit behind other windows, that tracking starts once the deck itself has been clicked —
+so buttons and links also carry a resting fill rather than relying on hover to look pressable.
+
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — modules, data flow, where to add a card

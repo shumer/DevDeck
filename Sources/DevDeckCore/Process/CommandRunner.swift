@@ -13,16 +13,38 @@ public struct CommandResult: Sendable, Equatable {
 
     public var succeeded: Bool { exitCode == 0 }
 
-    /// The most useful line to show when something failed: the last non-empty line of stderr,
-    /// falling back to stdout for tools that report failures on the wrong stream.
+    /// Boilerplate that tools print after the actual failure. Taking the last line blindly
+    /// puts "a complete log can be found in …" on the card instead of the reason.
+    private static let noise = [
+        "a complete log of this run",
+        "for more information",
+        "see the full log",
+    ]
+
+    /// The most useful line to show when something failed.
+    ///
+    /// Prefers the first line that names an error, because tools print the cause first and
+    /// then footer noise; falls back to the last real line, and to stdout for tools that
+    /// report failures on the wrong stream.
     public var failureLine: String? {
-        let candidates = [standardError, standardOutput]
-        for stream in candidates {
-            let line = stream
+        for stream in [standardError, standardOutput] {
+            let lines = stream
                 .split(separator: "\n", omittingEmptySubsequences: true)
                 .map { $0.trimmingCharacters(in: .whitespaces) }
-                .last { !$0.isEmpty }
-            if let line, !line.isEmpty { return line }
+                .filter { line in
+                    guard !line.isEmpty else { return false }
+                    let lowercased = line.lowercased()
+                    return !Self.noise.contains { lowercased.contains($0) }
+                }
+
+            if let named = lines.first(where: { line in
+                let lowercased = line.lowercased()
+                return lowercased.contains("error") || lowercased.contains("fatal")
+                    || lowercased.contains("cannot") || lowercased.contains("denied")
+            }) {
+                return named
+            }
+            if let last = lines.last { return last }
         }
         return nil
     }
@@ -64,6 +86,33 @@ public struct ShellCommandRunner: CommandRunning {
             throw CommandError.missingDirectory(directory.path)
         }
 
+        // Everything below blocks, and the caller is on the main actor: without hopping to a
+        // background queue the app freezes for as long as the command runs, which for a stack
+        // that takes a minute to come up looks exactly like a button that does nothing.
+        return try await withCheckedThrowingContinuation { continuation in
+            Self.queue.async {
+                do {
+                    continuation.resume(returning: try Self.execute(
+                        shell: shell,
+                        command: command,
+                        directory: directory,
+                        timeout: timeout
+                    ))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private static let queue = DispatchQueue(label: "com.shumer.devdeck.commands", qos: .userInitiated)
+
+    private static func execute(
+        shell: String,
+        command: String,
+        directory: URL,
+        timeout: TimeInterval
+    ) throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: shell)
         process.arguments = ["-lc", command]
@@ -73,6 +122,9 @@ public struct ShellCommandRunner: CommandRunning {
         let error = Pipe()
         process.standardOutput = output
         process.standardError = error
+        // No stdin at all. `npx` asks "Ok to proceed?" when a package is missing, and a
+        // command waiting on an answer nobody can give never returns.
+        process.standardInput = FileHandle.nullDevice
 
         do {
             try process.run()
@@ -80,15 +132,24 @@ public struct ShellCommandRunner: CommandRunning {
             throw CommandError.launchFailed(error.localizedDescription)
         }
 
-        let watchdog = Task {
-            try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+        let watchdog = DispatchWorkItem {
             if process.isRunning { process.terminate() }
         }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: watchdog)
 
-        // Both pipes have to be drained before waiting: a command that writes more than the
-        // pipe buffer holds would block forever otherwise.
-        let outputData = output.fileHandleForReading.readDataToEndOfFile()
-        let errorData = error.fileHandleForReading.readDataToEndOfFile()
+        // Both pipes are drained at once: reading one to the end first deadlocks as soon as
+        // the other fills its buffer, and build output fills it easily.
+        var outputData = Data()
+        var errorData = Data()
+        let group = DispatchGroup()
+        DispatchQueue.global().async(group: group) {
+            outputData = output.fileHandleForReading.readDataToEndOfFile()
+        }
+        DispatchQueue.global().async(group: group) {
+            errorData = error.fileHandleForReading.readDataToEndOfFile()
+        }
+        group.wait()
+
         process.waitUntilExit()
         watchdog.cancel()
 

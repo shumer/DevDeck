@@ -127,6 +127,7 @@ public struct InboxCard: View {
         .frame(height: CardMetrics.rowHeight - 1)
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
         .contentShape(Rectangle())
+        .clickable(isEnabled: item.url != nil)
         .onTapGesture { if let url = item.url { onOpen(url, item.accountID) } }
         .help("\(item.shortRepository) — \(item.title)")
     }

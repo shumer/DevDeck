@@ -92,6 +92,7 @@ public struct ArcProjectCard: View {
             .padding(.vertical, 4)
             .background(color.opacity(isDimmed ? 0.07 : 0.15), in: RoundedRectangle(cornerRadius: 7))
             .contentShape(Rectangle())
+            .clickable(cornerRadius: 7, isEnabled: !isDimmed)
             .onTapGesture(perform: action)
     }
 
@@ -167,11 +168,21 @@ public struct ArcProjectCard: View {
             .foregroundStyle(isEnabled ? tint : tint.opacity(0.3))
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
+            // A resting fill, not just a hairline border: on glass a bare outline reads as a
+            // label rather than as something to press.
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(isEnabled ? 0.1 : 0.03))
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Color.white.opacity(isEnabled ? 0.2 : 0.08), lineWidth: 1)
+                    .strokeBorder(
+                        isEnabled ? tint.opacity(0.45) : Color.white.opacity(0.08),
+                        lineWidth: 1
+                    )
             )
             .contentShape(Rectangle())
+            .clickable(cornerRadius: 8, isEnabled: isEnabled)
             .onTapGesture { if isEnabled { action() } }
     }
 

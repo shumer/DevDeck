@@ -23,9 +23,16 @@ the foreground.
    and `down` map to their own commands, and every one of them is editable per project.
    Restart is stop followed by start, sequentially — starting before the ports are released
    fails in a way that looks like a broken stack.
-3. **Commands run through `zsh -lc`** in the project folder. An app launched from Finder
-   inherits a bare `PATH` with no Homebrew and no nvm, so a plain `npx` is not found and the
-   button appears to do nothing at all.
+3. **Commands run through `zsh -lc`** in the project folder, on a background queue, with
+   `/dev/null` as stdin. Each part earns its place:
+   - a login shell, because an app launched from Finder has no Homebrew and no nvm on `PATH`
+     and a plain `npx` is not found;
+   - a background queue, because the caller is the main actor and blocking it freezes the
+     whole app for as long as the command runs — which looks exactly like a dead button;
+   - no stdin, because `npx` asks "Ok to proceed?" when a package is missing and a command
+     waiting for an answer nobody can give never returns;
+   - both pipes drained concurrently, because reading one to the end first deadlocks as soon
+     as the other fills its buffer, and build output fills it easily.
 4. **A command owns the card's status while it runs.** The 10-second status poll skips a
    project that is mid-command, and a failed command leaves its last error line on the card
    instead of silently reverting to "stopped".
