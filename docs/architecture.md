@@ -8,8 +8,10 @@ DevDeckApp     AppKit shell — windows, menu bar, placement, settings
 DevDeckUI      SwiftUI cards — pure rendering of a CardState
     │
 GitHubKit      one integration: GraphQL documents, models, services
+ArcKit         one integration: projects, link templates, local Fusion stack
     │
-DevDeckCore    no AppKit, no integration specifics: config, HTTP, tokens, policies
+DevDeckCore    no AppKit, no integration specifics: config, HTTP, tokens, policies,
+               command runner
 ```
 
 The rule that keeps this honest: **`DevDeckCore` and every integration module must build and
@@ -36,6 +38,23 @@ GitHubWorkspace  ── one GitHubClient per configured account, fanned out conc
 `CardState` keeps the last good value across failures on purpose. A panel showing a slightly
 old number with a visible staleness marker beats a panel that blanks itself whenever the
 network hiccups.
+
+## Arc projects and the local stack
+
+An `ArcProject` is a card: an organisation, a set of link templates, a browser, a folder and
+the commands that run in it. Projects are stored as a list, and each one contributes a
+`CardDescriptor` with the identifier `arc.project.<id>` through `CardCatalog.all(including:)`.
+Everything downstream — the layout merge, the menu, the panel sizing — works against that
+merged catalog, so adding a project in settings creates a card with no code change.
+
+`LocalStackService` answers "is it running" by requesting the project's health URL rather than
+inspecting processes, and runs its commands through `ShellCommandRunner`. Both decisions, and
+why the obvious alternatives are wrong, are in [adr/0005-local-stack.md](adr/0005-local-stack.md).
+
+Local status polls on its own 10-second loop in `DeckController`, separate from the API
+refresh: a stack that just came up should appear within seconds, and the probe is local and
+cheap. A project mid-command is skipped by the poll so the card cannot flicker back to
+"stopped" during a restart.
 
 ## Cards
 

@@ -44,6 +44,12 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
   — that is what puts a work pull request in the work browser profile.
 - **`statusCode` and `statusLine` mirror each other case for case.** The code is on the row,
   the wording is in its tooltip; the two drifting apart is worse than either alone.
+- **Local commands run through `ShellCommandRunner`** (a login shell) in the project folder.
+  A bare `Process` with `npx` cannot find node when the app is launched from Finder.
+- **Local stack state comes from the health URL**, never from the process table — the stack is
+  often started by hand, and a card that says "stopped" while the site serves is worse than no
+  card.
+- **Project ids are card identifiers** (`arc.project.<id>`) and are never renamed.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it
   is verified first. A control that silently does nothing until some other button is pressed
   is how the browser choice failed to take effect at all.

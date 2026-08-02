@@ -26,8 +26,8 @@ Native macOS, built from a SwiftPM package with no Xcode required.
 | GitHub · my pull requests | working | yes |
 | GitHub · inbox (notifications) | working | yes |
 | GitHub · Actions | working | no |
-| Arc XP · organizations and bundles | in design — see [docs/roadmap.md](docs/roadmap.md) | no |
-| Local Fusion stack | planned | no |
+| Arc XP · one card per project | working | added per project |
+| Arc XP · deployed bundle versions | planned — needs an org token | — |
 
 The Actions card watches the repositories your open pull requests are in, up to five, unless
 `actionsRepositories` says otherwise.
@@ -98,6 +98,29 @@ catch people out:
 `scripts/smoke-test.sh` prints how many organisations the token can actually see, which is
 the fastest way to tell "no open pull requests" from "cannot see the organisation".
 
+## Arc XP projects
+
+**Settings → Arc projects → Add project.** Each project becomes its own card with the links
+you use, the browser they open in, and control of its local Fusion stack.
+
+- **Links** are templates with `{org}` and `{site}` substituted, and they are editable because
+  Arc URLs differ between organisations and Fusion versions. Press **Test** to see where one
+  actually lands before trusting it.
+- **Local stack** buttons run the Arc CLI in the project folder: **Start** is `npx fusion
+  daemon` (the CLI's background mode — `fusion start` runs in the foreground and would hold
+  the app hostage), **Stop** is `npx fusion stop`, **Restart** is one then the other. All three
+  are editable per project.
+- **Running or not** is answered by asking the engine, not by watching processes: the card
+  requests `http://localhost/release`, which is what the Arc docs point at, and shows the
+  engine version it reports. That means a stack you started by hand in a terminal shows as
+  running too — the card reports what is actually serving.
+- **Folder** opens the checkout in Finder, **Terminal** opens it in iTerm, Warp or Terminal,
+  whichever is installed.
+
+Commands run through a login shell (`zsh -lc`) on purpose. An app launched from Finder
+inherits a bare `PATH` with no Homebrew and no nvm, so a plain `npx` would not be found and
+the buttons would appear to do nothing.
+
 ### Status codes
 
 Rows end in a two-character code so the width goes to the title. Hovering a row spells it out.
@@ -114,13 +137,19 @@ is done.
 
 ## Using it
 
-Everything lives in the menu-bar menu:
+The menu-bar item is a stack of panels, and it turns red when something needs you — the
+numbers are in its tooltip rather than in the menu bar, where a bare count belongs to no app
+in particular.
 
-- **Cards** — show or hide each card; a hidden card is not fetched at all.
+Everything else lives in its menu:
+
+- **Cards** — show or hide each card; a hidden card is not fetched at all. Arc projects get
+  their own group below the built-in cards.
 - **Keep on desktop / Float above windows** — panels behind your windows, or above them.
 - **Lock position** — stop dragging once the layout is right.
 - **Tidy panels into a column** — close up gaps without resetting where you put them.
-- **Start at login**, **Refresh now**, **Settings…**
+- **Start at login**, **Refresh now**, **Settings…** — one window with GitHub accounts, Arc
+  projects and General kept in separate sections.
 
 Drag a panel anywhere; the position is remembered per card. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
@@ -138,12 +167,13 @@ panel for the same menu.
 
 ```
 Sources/
-  DevDeckCore/     configuration, cards, HTTP transport, tokens, refresh policy
-  GitHubKit/       GraphQL client, models, pull request service
+  DevDeckCore/     configuration, cards, HTTP transport, tokens, policies, command runner
+  GitHubKit/       GraphQL and REST clients, models, per-account fan-out
+  ArcKit/          Arc projects, link templates, local Fusion stack
   DevDeckUI/       SwiftUI cards and the shared visual language
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (48 tests, offline)
+  DevDeckTests/    the suite (114 tests, offline)
 Tools/Smoke/       live API check
 ```

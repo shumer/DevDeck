@@ -11,6 +11,7 @@ let package = Package(
     products: [
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
         .library(name: "GitHubKit", targets: ["GitHubKit"]),
+        .library(name: "ArcKit", targets: ["ArcKit"]),
         .library(name: "DevDeckUI", targets: ["DevDeckUI"]),
         .executable(name: "DevDeck", targets: ["DevDeckApp"]),
     ],
@@ -22,17 +23,20 @@ let package = Package(
         // GitHub integration: GraphQL queries, models, card snapshots.
         .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
 
+        // Arc XP integration: projects, their links and their local Fusion stack.
+        .target(name: "ArcKit", dependencies: ["DevDeckCore"]),
+
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(
             name: "DevDeckUI",
-            dependencies: ["DevDeckCore", "GitHubKit"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
         // The AppKit shell: borderless panels, menu bar, placement and locking.
         .executableTarget(
             name: "DevDeckApp",
-            dependencies: ["DevDeckCore", "GitHubKit", "DevDeckUI"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DevDeckUI"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
@@ -50,7 +54,7 @@ let package = Package(
         // The suite itself: a plain executable that exits non-zero on failure.
         .executableTarget(
             name: "DevDeckTests",
-            dependencies: ["DevDeckCore", "GitHubKit", "TestHarness"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "TestHarness"],
             path: "Tests/DevDeckTests"
         ),
     ]

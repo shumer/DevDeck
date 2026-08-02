@@ -1,3 +1,4 @@
+import ArcKit
 import Combine
 import DevDeckCore
 import Foundation
@@ -18,11 +19,19 @@ final class DeckController: ObservableObject {
     /// at this now" gesture, and a deck that comes back tall the next morning is a surprise.
     @Published private(set) var expandedCards: Set<CardID> = []
 
+    /// Local stack state per Arc project id.
+    @Published private(set) var stackStatuses: [String: LocalStackStatus] = [:]
+
     private let preferences: Preferences
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
+    private let projectsStore: ArcProjectsStore
+    private let commandRunner: any CommandRunning
     private var settings: GitHubSettings
     private var loop: Task<Void, Never>?
+    /// A separate, faster loop: a stack that has just come up should show up in seconds, not
+    /// on the API refresh cadence.
+    private var stackLoop: Task<Void, Never>?
     private var consecutiveFailures = 0
 
     /// Cards currently on screen. Nothing is fetched for a hidden card.
@@ -32,11 +41,15 @@ final class DeckController: ObservableObject {
         preferences: Preferences,
         tokenStore: any TokenStore,
         accountsStore: GitHubAccountsStore,
+        projectsStore: ArcProjectsStore,
+        commandRunner: any CommandRunning = ShellCommandRunner(),
         settings: GitHubSettings = .default
     ) {
         self.preferences = preferences
         self.tokenStore = tokenStore
         self.accountsStore = accountsStore
+        self.projectsStore = projectsStore
+        self.commandRunner = commandRunner
         self.settings = settings
     }
 
@@ -47,6 +60,7 @@ final class DeckController: ObservableObject {
     func setActiveCards(_ cards: Set<CardID>) {
         activeCards = cards
         restart()
+        restartStackLoop()
     }
 
     func start() {
@@ -56,6 +70,82 @@ final class DeckController: ObservableObject {
     func stop() {
         loop?.cancel()
         loop = nil
+        stackLoop?.cancel()
+        stackLoop = nil
+    }
+
+    // MARK: Arc projects
+
+    /// Projects with a card on screen.
+    private var activeProjects: [ArcProject] {
+        projectsStore.enabledProjects().filter { activeCards.contains($0.cardID) }
+    }
+
+    func project(forCard card: CardID) -> ArcProject? {
+        projectsStore.project(forCard: card)
+    }
+
+    func stackStatus(for project: ArcProject) -> LocalStackStatus {
+        stackStatuses[project.id] ?? (project.supportsLocalStack
+            ? LocalStackStatus(state: .stopped)
+            : .unavailable)
+    }
+
+    private func restartStackLoop() {
+        stackLoop?.cancel()
+        guard !activeProjects.isEmpty else {
+            stackLoop = nil
+            return
+        }
+        stackLoop = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.refreshStacks()
+                do {
+                    try await Task.sleep(nanoseconds: 10_000_000_000)
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private func refreshStacks() async {
+        for project in activeProjects {
+            // A command issued from the card owns the status until it finishes; probing over
+            // the top of it would flip the card back to "stopped" mid-restart.
+            if stackStatuses[project.id]?.isBusy == true { continue }
+            let service = LocalStackService(project: project, runner: commandRunner)
+            stackStatuses[project.id] = await service.status()
+        }
+    }
+
+    /// Runs a stack command and keeps the card honest while it does.
+    func perform(_ action: LocalStackAction, for project: ArcProject) {
+        guard project.supportsLocalStack else { return }
+        stackStatuses[project.id] = LocalStackStatus(
+            state: .working,
+            detail: action.progressText,
+            checkedAt: Date()
+        )
+
+        Task { [weak self] in
+            guard let self else { return }
+            let service = LocalStackService(project: project, runner: self.commandRunner)
+            let result = await service.perform(action)
+
+            if let result, !result.succeeded {
+                // Show why rather than silently flipping back to "stopped": a failed start is
+                // the moment the card is most worth reading.
+                self.stackStatuses[project.id] = LocalStackStatus(
+                    state: .stopped,
+                    detail: result.failureLine ?? "\(action.title.lowercased()) failed",
+                    checkedAt: Date()
+                )
+            } else {
+                self.stackStatuses[project.id] = await service.status()
+            }
+        }
     }
 
     /// Cancels the pending wait and refetches immediately.
@@ -222,34 +312,45 @@ final class DeckController: ObservableObject {
 
     // MARK: Menu bar summary
 
-    /// What the menu-bar item shows: open pull requests, and unread notifications when that
-    /// card is on. `–` while nothing has loaded yet.
-    var statusSummary: (text: String, isAlert: Bool, isUnknown: Bool) {
-        var parts: [String] = []
+    /// What the menu-bar item conveys.
+    ///
+    /// The icon carries the identity and one bit of state — is anything wrong. The numbers
+    /// live in the tooltip: a bare count in the menu bar says nothing about which app it
+    /// belongs to, which is exactly the complaint it earned.
+    var statusSummary: (tooltip: String, isAlert: Bool) {
+        var lines: [String] = []
         var isAlert = false
-        var isUnknown = true
 
         if activeCards.contains(.githubPullRequests) {
             if let snapshot = pullRequests.value {
-                parts.append("◆ \(snapshot.totalCount)")
-                isAlert = isAlert || snapshot.blockedCount > 0
-                isUnknown = false
+                var line = "\(snapshot.totalCount) open pull request\(snapshot.totalCount == 1 ? "" : "s")"
+                if snapshot.blockedCount > 0 {
+                    line += ", \(snapshot.blockedCount) blocked"
+                    isAlert = true
+                }
+                lines.append(line)
             } else {
-                parts.append("◆ –")
+                lines.append("Pull requests: not loaded yet")
             }
         }
 
         if activeCards.contains(.githubInbox) {
             if let snapshot = inbox.value {
-                parts.append("✉ \(snapshot.unreadCount)")
-                isAlert = isAlert || snapshot.actionableCount > 0
-                isUnknown = false
-            } else {
-                parts.append("✉ –")
+                var line = "\(snapshot.unreadCount) unread"
+                if snapshot.actionableCount > 0 {
+                    line += ", \(snapshot.actionableCount) waiting on you"
+                    isAlert = true
+                }
+                lines.append(line)
             }
         }
 
-        if parts.isEmpty { parts.append("◆") }
-        return (parts.joined(separator: "  "), isAlert, isUnknown)
+        for project in activeProjects {
+            let status = stackStatus(for: project)
+            lines.append("\(project.title): local stack \(status.state.rawValue)")
+        }
+
+        if lines.isEmpty { lines.append("No cards on screen") }
+        return (("DevDeck\n" + lines.joined(separator: "\n")), isAlert)
     }
 }
