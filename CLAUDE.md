@@ -49,7 +49,12 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
 - **Local stack state comes from the health URL**, never from the process table — the stack is
   often started by hand, and a card that says "stopped" while the site serves is worse than no
   card.
-- **Project ids are card identifiers** (`arc.project.<id>`) and are never renamed.
+- **Project ids are card identifiers** (`arc.project.<id>`, `ddev.project.<id>`) and are never
+  renamed.
+- **Settings rows are laid out by `RowLayout`**, never by hand-computed frames. A label placed
+  over the control above it is what hand-computed `y` values produce.
+- **Panel positions anchor on the top-left corner**, and a shift caused by a card growing is
+  never persisted — that pair is what stops the deck creeping apart between launches.
 - **Menus are populated by `menuNeedsUpdate`, never built and handed to a view.** A menu built
   once keeps the checkmarks it had at creation, which is how the lock toggle looked stuck on.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it

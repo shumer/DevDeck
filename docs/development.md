@@ -15,14 +15,18 @@ That single fact shapes the project:
 ## Commands
 
 ```bash
-./run-tests.sh              # offline suite; non-zero exit on failure
-scripts/smoke-test.sh       # one real API call using the stored token
-./build.sh                  # tests, build, bundle, install to /Applications, launch
-./build.sh --no-install     # build the bundle only
-./build.sh --skip-tests     # do not do this
-swift run DevDeck           # run from the terminal without bundling
-pkill -f DevDeck            # quit a running instance
+./run-tests.sh                    # offline suite; non-zero exit on failure
+scripts/smoke-test.sh             # one real API call using the stored token
+./build.sh                        # tests, build, bundle, install to /Applications, launch
+./build.sh --no-install           # build the bundle only
+./build.sh --skip-tests           # do not do this
+swift run DevDeck                 # run from the terminal without bundling
+swift run IconPreview out.png     # draw the menu-bar icon at menu-bar size, at 2×
+pkill -f DevDeck                  # quit a running instance
 ```
+
+The DDEV cards need the `ddev` CLI on the PATH a login shell sees; the Arc cards need Docker
+for their Fusion stack. Neither is needed to build or to run the suite.
 
 ## Tests
 
@@ -41,10 +45,17 @@ await run.test("a 304 is answered from the cache") {
 Rules:
 
 - **Offline and deterministic.** No test may touch the network, the Keychain or
-  `UserDefaults`. Use `FakeHTTPClient`, `InMemoryTokenStore`, `InMemoryPreferences`.
-- **No real waiting.** Inject `RecordingSleeper` and `MutableDateProvider` instead of
-  sleeping or reading the clock.
-- Live behaviour belongs in `Tools/Smoke`, not in the suite.
+  `UserDefaults`. Use `FakeHTTPClient`, `InMemoryTokenStore`, `InMemoryPreferences`,
+  `StubCommandRunner`.
+- **No real waiting.** Inject `RecordingSleeper`, `AdvancingSleeper` and `MutableDateProvider`
+  instead of sleeping or reading the clock.
+- Live API behaviour belongs in `Tools/Smoke`, not in the suite.
+- **One deliberate exception:** `CommandRunnerTests` runs real processes — `echo`, `cat`,
+  `sleep` — and writes temporary files. Every bug it covers was invisible to a stub: a blocked
+  main thread, a command waiting on stdin, a timeout that never fired, a deadlocked pipe. It
+  stays local, takes about a second, and touches nothing outside `NSTemporaryDirectory()`.
+  Tests that read `.env`, `.git/HEAD`, `.ddev/config.yaml` or `composer.lock` write those
+  files into a temporary folder for the same reason.
 
 ## Keychain and ad-hoc signing
 
