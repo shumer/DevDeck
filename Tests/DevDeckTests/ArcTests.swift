@@ -99,6 +99,22 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(project.resolvedLinks.count, 4, "configured order is left as it is")
     }
 
+    await run.test("a site link stored before kinds existed is put back in its row") {
+        // Sandbox and Prod shipped one build before kinds did, so a URL typed in between was
+        // saved without one and read back as admin tooling — five chips in the top row.
+        let json = """
+        { "id": "p", "title": "P", "organization": "ilgiornale", "healthPath": "/release",
+          "isEnabled": true, "localURL": "",
+          "links": [
+            { "label": "Sandbox", "urlTemplate": "https://sandbox.example.com", "isEnabled": true },
+            { "label": "Prod", "urlTemplate": "https://example.com", "isEnabled": true }
+          ] }
+        """
+        let project = try JSONDecoder().decode(ArcProject.self, from: Data(json.utf8))
+        try expectEqual(project.siteLinks.map(\.label), ["Sandbox", "Prod"])
+        try expect(!project.adminLinks.contains { $0.label == "Sandbox" || $0.label == "Prod" })
+    }
+
     await run.test("links stored before kinds existed are admin tooling") {
         let json = """
         { "label": "PageBuilder", "urlTemplate": "https://{org}.arcpublishing.com/home/", "isEnabled": true }
