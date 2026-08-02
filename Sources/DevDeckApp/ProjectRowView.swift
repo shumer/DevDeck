@@ -118,7 +118,8 @@ final class ProjectRowView: NSView {
             let template = NSTextField()
             template.frame = NSRect(x: inset + 110, y: y, width: full - 110, height: 21)
             template.stringValue = link.urlTemplate
-            configure(template, mono: true)
+            // The site links ship empty because nothing can derive a published domain.
+            configure(template, mono: true, placeholder: "https://…")
             linkFields.append(template)
         }
 
@@ -206,8 +207,8 @@ final class ProjectRowView: NSView {
             var updated = link
             if index < linkChecks.count { updated.isEnabled = linkChecks[index].state == .on }
             if index < linkFields.count {
-                let template = linkFields[index].stringValue.trimmingCharacters(in: .whitespaces)
-                if !template.isEmpty { updated.urlTemplate = template }
+                // Taken as typed, including empty: clearing a field has to mean something.
+                updated.urlTemplate = linkFields[index].stringValue.trimmingCharacters(in: .whitespaces)
             }
             return updated
         }
