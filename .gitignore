@@ -1,0 +1,15 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+build/
+dist/
+DevDeck.app/
+
+.DS_Store
+*.local
+env.local
+.env
+
+config.json
