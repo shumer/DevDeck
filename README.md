@@ -6,17 +6,50 @@ plus a menu-bar item with the count.
 
 Native macOS, built from a SwiftPM package with no Xcode required.
 
+Pull requests across every account a token can see, worst first:
+
 ```
-┌──────────────────────────────────────────┐
-│ GITHUB · MY PULL REQUESTS     2 BLOCKED  │
-│                                          │
-│  7 open                                  │
-│  ● feat/composer-block     checks failed │
-│  ● fix/pb-image-fill  changes requested  │
-│  ● chore/bundle-bump           approved  │
-│                                          │
-│  3 repos · 2 orgs             20:16:39   │
-└──────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│ GITHUB · MY PULL REQUESTS        2 BLOCKED │
+│                                            │
+│ 8 open                                     │
+│ ● WORK  Add the ledwall feed loop       CF │
+│ ● WORK  Fix the image fill on cards     CR │
+│ ● HOME  Bump the theme components       WR │
+│           show 5 more ⌄                    │
+│ 4 repos · 2 orgs                  23:26:37 │
+└────────────────────────────────────────────┘
+```
+
+An Arc XP project: the links you use, and its local Fusion stack:
+
+```
+┌────────────────────────────────────────────┐
+│ ARC · IL GIORNALE            LOCAL STOPPED │
+│ PageBuilder   Composer   Deployer          │
+│ Local site    Sandbox    Prod              │
+│ ────────────────────────────────────────── │
+│ ● local stack not running                  │
+│ ⎇ fix/EI-303-video-play-badge              │
+│ [▶ Start] [↻ Restart] [Folder] [Terminal]  │
+│ sandbox.ilgiornale                23:25:49 │
+└────────────────────────────────────────────┘
+```
+
+A DDEV project, which can describe itself — versions, state and URLs all come from DDEV or
+the checkout:
+
+```
+┌────────────────────────────────────────────┐
+│ DDEV · NASDAQIR                    RUNNING │
+│ Mailpit                                    │
+│ Local site   Test   UAT   Prod             │
+│ ────────────────────────────────────────── │
+│ ● php 8.4 · mysql 8.0                      │
+│ ⎇ main                                     │
+│ [⏻ Stop] [↻ Restart] [Folder] [Terminal]   │
+│ drupal 10.6.11 · NasdaqIR         23:41:02 │
+└────────────────────────────────────────────┘
 ```
 
 ## Status
