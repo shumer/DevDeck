@@ -1,4 +1,6 @@
+import ArcKit
 import DevDeckCore
+import DevDeckUI
 import Foundation
 import GitHubKit
 import TestHarness
@@ -34,6 +36,35 @@ func runPresentationTests(_ run: TestRun) async {
 
         try expectEqual(CardMetrics.height(base: 127, total: 2, isExpanded: false), 127 + 27 * 2,
                         "no expander, no extra height")
+    }
+
+    run.section("Cards — Arc chip rows")
+
+    await run.test("the usual link sets fit on one row each") {
+        try expectEqual(ArcProjectCard.rowCount(labels: ["PageBuilder", "Composer", "Deployer"]), 1)
+        try expectEqual(ArcProjectCard.rowCount(labels: ["Local site", "Sandbox", "Prod"]), 1)
+        try expectEqual(ArcProjectCard.rowCount(labels: []), 0, "no chips, no row")
+    }
+
+    await run.test("a longer list wraps, and the height follows it") {
+        let many = ["PageBuilder", "Composer", "Deployer", "Site Service", "Delivery API"]
+        try expect(ArcProjectCard.rowCount(labels: many) >= 2, "five links do not fit on 284 points")
+
+        var project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
+        project.links = many.map { ArcLink(label: $0, urlTemplate: "https://example.com/\($0)", isEnabled: true) }
+        let tall = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped))
+
+        project.links = Array(project.links.prefix(3))
+        let short = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped))
+
+        try expect(tall.height > short.height, "a wrapped row has to be paid for in height")
+    }
+
+    await run.test("the branch line adds its own height") {
+        let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
+        let without = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped))
+        let with = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped, branch: "main"))
+        try expectEqual(with.height - without.height, 18)
     }
 
     run.section("Browsers")

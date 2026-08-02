@@ -62,7 +62,9 @@ let package = Package(
         // The suite itself: a plain executable that exits non-zero on failure.
         .executableTarget(
             name: "DevDeckTests",
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "TestHarness"],
+            // DevDeckUI is here for the card-sizing arithmetic, which the panels depend on
+            // being right and which is plain maths rather than anything drawn.
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DevDeckUI", "TestHarness"],
             path: "Tests/DevDeckTests"
         ),
     ]

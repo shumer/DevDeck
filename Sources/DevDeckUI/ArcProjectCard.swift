@@ -4,10 +4,52 @@ import SwiftUI
 
 /// One Arc XP project: where to open it, and whether its local stack is up.
 public struct ArcProjectCard: View {
-    /// The branch gets its own line, so it never competes with the status text for room —
-    /// "is it running" must not be the thing that gets truncated.
-    public static func size(hasBranch: Bool) -> CGSize {
-        CGSize(width: CardMetrics.width, height: hasBranch ? 214 : 196)
+    /// Everything except the chip rows and the branch line.
+    private static let baseHeight: Double = 146
+    private static let chipRowHeight: Double = 25
+    private static let branchRowHeight: Double = 18
+
+    /// How many rows a set of chips wraps onto.
+    ///
+    /// An estimate from label lengths rather than a real layout pass: the card is a fixed-size
+    /// panel, so the height has to be known before anything is drawn. Being a few points
+    /// generous costs nothing; being short clips the footer, which is what happened when the
+    /// link list grew.
+    nonisolated public static func rowCount(labels: [String], width: Double = CardMetrics.width - 36) -> Int {
+        guard !labels.isEmpty else { return 0 }
+
+        var rows = 1
+        var used: Double = 0
+        for label in labels {
+            let chip = Double(label.count) * 6.6 + 20
+            let needed = used == 0 ? chip : used + 6 + chip
+            if needed > width, used > 0 {
+                rows += 1
+                used = chip
+            } else {
+                used = needed
+            }
+        }
+        return rows
+    }
+
+    /// The branch and each wrapped chip row add their own height, so the footer keeps its
+    /// place however many links a project ends up with.
+    nonisolated public static func size(for project: ArcProject, status: LocalStackStatus) -> CGSize {
+        var environmentLabels = project.siteLinks.map(\.label)
+        if (status.siteURL ?? project.localSiteURL) != nil {
+            environmentLabels.insert("Local site", at: 0)
+        }
+
+        let rows = rowCount(labels: project.adminLinks.map(\.label))
+            + rowCount(labels: environmentLabels)
+
+        return CGSize(
+            width: CardMetrics.width,
+            height: baseHeight
+                + Double(rows) * chipRowHeight
+                + (status.branch != nil ? branchRowHeight : 0)
+        )
     }
 
     private let project: ArcProject
@@ -59,7 +101,6 @@ public struct ArcProjectCard: View {
     }
 
     private var links: some View {
-        // A wrapping row: five links at a readable size do not fit on one line at 320 points.
         // Two rows, not one wrapping list: Arc's tooling on top, the environments you can open
         // below it. Colour separates them too, and separates production from the rest.
         VStack(alignment: .leading, spacing: 6) {
@@ -75,28 +116,63 @@ public struct ArcProjectCard: View {
         .padding(.top, 11)
     }
 
-    private var environmentRow: some View {
-        FlowRow(spacing: 6) {
-            if let local = status.siteURL ?? project.localSiteURL {
-                // "Local site" rather than the port: the port is an implementation detail of
-                // this checkout, and it is one hover away for anyone who wants it.
-                chip(
-                    "Local site",
+    /// One chip on the environment row.
+    private struct EnvironmentChip: Identifiable {
+        let id: String
+        let label: String
+        let color: Color
+        let isDimmed: Bool
+        let help: String
+        let url: URL?
+    }
+
+    /// Built as a list rather than as `if let` followed by `ForEach`: a conditional first
+    /// child inside the custom layout put the local chip after the others, which is how it
+    /// ended up on a row of its own.
+    private var environmentChips: [EnvironmentChip] {
+        var chips: [EnvironmentChip] = []
+
+        if let local = status.siteURL ?? project.localSiteURL {
+            chips.append(
+                EnvironmentChip(
+                    id: "local",
+                    // "Local site" rather than the port: the port is an implementation detail
+                    // of this checkout, and it is one hover away for anyone who wants it.
+                    label: "Local site",
                     color: status.isRunning ? DeckTheme.green : DeckTheme.label,
                     isDimmed: !status.isRunning,
                     help: status.isRunning
                         ? local.absoluteString
-                        : "\(local.absoluteString) — the local stack is not running"
-                ) {
+                        : "\(local.absoluteString) — the local stack is not running",
                     // Opening a stopped stack lands on a connection error, which reads as a
                     // broken app rather than a stopped one.
-                    guard status.isRunning else { return }
-                    onOpen(local)
-                }
-            }
-            ForEach(project.siteLinks) { link in
-                chip(link.label, color: colour(for: link), help: link.url.absoluteString) {
-                    onOpen(link.url)
+                    url: status.isRunning ? local : nil
+                )
+            )
+        }
+
+        for link in project.siteLinks {
+            chips.append(
+                EnvironmentChip(
+                    id: link.label,
+                    label: link.label,
+                    color: colour(for: link),
+                    isDimmed: false,
+                    help: link.url.absoluteString,
+                    url: link.url
+                )
+            )
+        }
+
+        return chips
+    }
+
+    private var environmentRow: some View {
+        FlowRow(spacing: 6) {
+            ForEach(environmentChips) { item in
+                chip(item.label, color: item.color, isDimmed: item.isDimmed, help: item.help) {
+                    guard let url = item.url else { return }
+                    onOpen(url)
                 }
             }
         }
