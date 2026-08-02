@@ -10,11 +10,36 @@ public struct DDEVCustomLink: Sendable, Equatable, Codable, Identifiable {
     /// `{site}` is substituted with the project's primary URL.
     public var urlTemplate: String
     public var isEnabled: Bool
+    public var kind: DDEVLinkKind
 
-    public init(label: String, urlTemplate: String, isEnabled: Bool = true) {
+    public init(
+        label: String,
+        urlTemplate: String,
+        isEnabled: Bool = true,
+        kind: DDEVLinkKind = .tool
+    ) {
         self.label = label
         self.urlTemplate = urlTemplate
         self.isEnabled = isEnabled
+        self.kind = kind
+    }
+
+    /// Links stored before kinds existed were extra tooling; the environments arrived with
+    /// the field.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        label = try container.decode(String.self, forKey: .label)
+        urlTemplate = try container.decode(String.self, forKey: .urlTemplate)
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        kind = try container.decodeIfPresent(DDEVLinkKind.self, forKey: .kind) ?? .tool
+    }
+
+    /// The deployed environments. Nothing can derive them — each lives on its own domain — so
+    /// they ship empty for the user to paste in, beside the local one DDEV already knows.
+    public static func defaultEnvironments() -> [DDEVCustomLink] {
+        ["Test", "UAT", "Prod"].map {
+            DDEVCustomLink(label: $0, urlTemplate: "", isEnabled: false, kind: .site)
+        }
     }
 
     public var id: String { label }
@@ -53,7 +78,7 @@ public struct DDEVProject: Sendable, Equatable, Codable, Identifiable {
         folder: String? = nil,
         showsMailpit: Bool = true,
         showsXhgui: Bool = false,
-        customLinks: [DDEVCustomLink] = [],
+        customLinks: [DDEVCustomLink] = DDEVCustomLink.defaultEnvironments(),
         browser: BrowserChoice = .systemDefault,
         isEnabled: Bool = true
     ) {
@@ -76,7 +101,11 @@ public struct DDEVProject: Sendable, Equatable, Codable, Identifiable {
         folder = try container.decodeIfPresent(String.self, forKey: .folder)
         showsMailpit = try container.decodeIfPresent(Bool.self, forKey: .showsMailpit) ?? true
         showsXhgui = try container.decodeIfPresent(Bool.self, forKey: .showsXhgui) ?? false
-        customLinks = try container.decodeIfPresent([DDEVCustomLink].self, forKey: .customLinks) ?? []
+        // Environments added after a project was created are appended, so an existing card
+        // does not quietly miss them.
+        let stored = try container.decodeIfPresent([DDEVCustomLink].self, forKey: .customLinks) ?? []
+        let known = Set(stored.map(\.label))
+        customLinks = stored + DDEVCustomLink.defaultEnvironments().filter { !known.contains($0.label) }
         browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
     }
@@ -110,34 +139,51 @@ public struct DDEVProject: Sendable, Equatable, Codable, Identifiable {
         return "\(candidate)-\(index)"
     }
 
-    /// The chips for this project, given what DDEV last reported.
-    ///
-    /// A link to a stopped project goes nowhere, so those chips are dimmed rather than
-    /// hidden: the row keeps its shape and says why nothing happens.
-    public func links(status: DDEVStatus) -> [DDEVResolvedLink] {
+    /// Tooling: what DDEV runs alongside the site, plus any extra links of that kind.
+    public func toolLinks(status: DDEVStatus) -> [DDEVResolvedLink] {
         let entry = status.entry
         var links: [DDEVResolvedLink] = []
 
-        if let site = entry?.primaryURL {
-            links.append(DDEVResolvedLink(label: "Site", url: site, kind: .site))
-        }
         if showsMailpit, let mailpit = entry?.mailpitURL {
             links.append(DDEVResolvedLink(label: "Mailpit", url: mailpit, kind: .tool))
         }
         if showsXhgui, let xhgui = entry?.xhguiURL {
             links.append(DDEVResolvedLink(label: "xhgui", url: xhgui, kind: .tool))
         }
-        for custom in customLinks where custom.isEnabled {
-            guard let url = custom.url(primaryURL: entry?.primaryURL) else { continue }
-            links.append(DDEVResolvedLink(label: custom.label, url: url, kind: .tool))
-        }
-
+        links.append(contentsOf: resolve(customLinks.filter { $0.kind == .tool }, entry: entry))
         return links
+    }
+
+    /// The environments, local first: the local one comes from DDEV, the deployed ones are
+    /// typed in because nothing can derive a published domain.
+    public func environmentLinks(status: DDEVStatus) -> [DDEVResolvedLink] {
+        let entry = status.entry
+        var links: [DDEVResolvedLink] = []
+
+        if let site = entry?.primaryURL {
+            links.append(DDEVResolvedLink(label: "Local site", url: site, kind: .site))
+        }
+        links.append(contentsOf: resolve(customLinks.filter { $0.kind == .site }, entry: entry))
+        return links
+    }
+
+    /// Everything the card can open, tooling first.
+    public func links(status: DDEVStatus) -> [DDEVResolvedLink] {
+        toolLinks(status: status) + environmentLinks(status: status)
+    }
+
+    private func resolve(_ links: [DDEVCustomLink], entry: DDEVListEntry?) -> [DDEVResolvedLink] {
+        links.compactMap { link in
+            guard link.isEnabled, let url = link.url(primaryURL: entry?.primaryURL) else { return nil }
+            return DDEVResolvedLink(label: link.label, url: url, kind: link.kind)
+        }
     }
 }
 
-public enum DDEVLinkKind: Sendable, Equatable {
+public enum DDEVLinkKind: String, Sendable, Equatable, Codable {
+    /// The site itself, in some environment.
     case site
+    /// Something you work in rather than look at: Mailpit, a profiler, an admin page.
     case tool
 }
 

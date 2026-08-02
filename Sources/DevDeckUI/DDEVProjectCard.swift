@@ -34,10 +34,14 @@ public struct DDEVProjectCard: View {
     }
 
     nonisolated public static func size(for project: DDEVProject, status: DDEVStatus) -> CGSize {
-        CGSize(
+        var rows = 0
+        if !project.toolLinks(status: status).isEmpty { rows += 1 }
+        if !project.environmentLinks(status: status).isEmpty { rows += 1 }
+
+        return CGSize(
             width: CardMetrics.width,
             height: baseHeight
-                + (project.links(status: status).isEmpty ? 0 : chipRowHeight)
+                + Double(rows) * chipRowHeight
                 + (status.branch != nil ? CardBranchRow.height : 0)
         )
     }
@@ -66,26 +70,45 @@ public struct DDEVProjectCard: View {
         }
     }
 
+    /// Two rows, as on the Arc card: what DDEV runs on top, the environments you can open
+    /// below. Only the local one depends on the project being up.
     private var links: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            row(project.toolLinks(status: status))
+            row(project.environmentLinks(status: status))
+        }
+        .padding(.top, 11)
+    }
+
+    private func row(_ links: [DDEVResolvedLink]) -> some View {
         HStack(spacing: 6) {
-            ForEach(project.links(status: status)) { link in
+            ForEach(links) { link in
+                let isLocal = link.kind == .site && link.label == "Local site"
+                // A deployed environment is reachable whether or not the container is up; only
+                // the local one goes nowhere, and a link into a stopped project lands on a
+                // connection error that reads as a broken app.
+                let isDimmed = isLocal && !status.isRunning
                 CardChip(
                     link.label,
-                    color: link.kind == .site ? DeckTheme.green : DeckTheme.blue,
-                    isDimmed: !status.isRunning,
-                    help: status.isRunning
-                        ? link.url.absoluteString
-                        : "\(link.url.absoluteString) — the project is not running"
+                    color: colour(for: link, isLocal: isLocal),
+                    isDimmed: isDimmed,
+                    help: isDimmed
+                        ? "\(link.url.absoluteString) — the project is not running"
+                        : link.url.absoluteString
                 ) {
-                    // A link into a stopped project lands on a connection error, which reads
-                    // as a broken app rather than a stopped one.
-                    guard status.isRunning else { return }
+                    guard !isDimmed else { return }
                     onOpen(link.url)
                 }
             }
             Spacer(minLength: 0)
         }
-        .padding(.top, 11)
+    }
+
+    private func colour(for link: DDEVResolvedLink, isLocal: Bool) -> Color {
+        guard link.kind == .site else { return DeckTheme.blue }
+        if isLocal { return DeckTheme.green }
+        // Production is the one worth a beat of hesitation, so it is the one that is not calm.
+        return link.label.lowercased().contains("prod") ? DeckTheme.amber : DeckTheme.violet
     }
 
     private var stateRow: some View {

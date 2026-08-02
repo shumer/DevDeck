@@ -18,6 +18,8 @@ final class DDEVProjectRowView: NSView {
     private let xhguiButton = NSButton()
     private let browserPopUp = NSPopUpButton()
     private let profilePopUp = NSPopUpButton()
+    private var linkChecks: [NSButton] = []
+    private var linkFields: [NSTextField] = []
     private let statusLabel = NSTextField(labelWithString: "")
 
     private var browsers: [InstalledBrowser] = []
@@ -28,13 +30,15 @@ final class DDEVProjectRowView: NSView {
     var onTestLink: ((DDEVProjectRowView) -> Void)?
     var onChooseFolder: ((DDEVProjectRowView) -> Void)?
 
-    /// Tall enough for what the layout above places: a title row, the folder, the link
-    /// toggles, the browser pickers and a status line.
-    static let height: CGFloat = 212
+    /// The fixed blocks plus a line per deployed environment. `RowLayout` places from the
+    /// top down, so this only has to be generous enough not to clip the last line.
+    static func height(for project: DDEVProject) -> CGFloat {
+        226 + CGFloat(project.customLinks.count) * 26
+    }
 
     init(project: DDEVProject, width: CGFloat) {
         self.project = project
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height(for: project)))
 
         wantsLayer = true
         layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
@@ -87,7 +91,28 @@ final class DDEVProjectRowView: NSView {
         xhguiButton.state = project.showsXhgui ? .on : .off
         xhguiButton.target = self
         xhguiButton.action = #selector(controlChanged)
-        layout.row([(mailpitButton, 100), (xhguiButton, 100)], height: 20, gap: 12)
+        layout.row([(mailpitButton, 100), (xhguiButton, 100)], height: 20, gap: 10)
+
+        layout.caption("Deployed sites — the local one comes from ddev")
+        for link in project.customLinks {
+            let check = NSButton(checkboxWithTitle: "", target: self, action: #selector(controlChanged))
+            check.state = link.isEnabled ? .on : .off
+            linkChecks.append(check)
+
+            let name = NSTextField(labelWithString: link.label)
+            name.font = NSFont.systemFont(ofSize: 11)
+            name.lineBreakMode = .byTruncatingTail
+
+            let address = NSTextField()
+            address.stringValue = link.urlTemplate
+            address.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+            address.placeholderString = "https://…"
+            address.delegate = self
+            linkFields.append(address)
+
+            layout.row([(check, 18), (name, 64), (address, nil)], height: 22, gap: 4, spacing: 4)
+        }
+        layout.space(8)
 
         layout.caption("Open links in")
         browserPopUp.target = self
@@ -122,6 +147,17 @@ final class DDEVProjectRowView: NSView {
         edited.showsMailpit = mailpitButton.state == .on
         edited.showsXhgui = xhguiButton.state == .on
         edited.browser = selectedBrowserChoice
+
+        edited.customLinks = zip(project.customLinks.indices, project.customLinks).map { index, link in
+            var updated = link
+            if index < linkChecks.count { updated.isEnabled = linkChecks[index].state == .on }
+            if index < linkFields.count {
+                // Taken as typed, including empty: clearing a field has to mean something.
+                updated.urlTemplate = linkFields[index].stringValue.trimmingCharacters(in: .whitespaces)
+            }
+            return updated
+        }
+
         return edited
     }
 

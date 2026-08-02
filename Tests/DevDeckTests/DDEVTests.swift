@@ -182,21 +182,54 @@ func runDDEVTests(_ run: TestRun) async {
         try expectEqual(DDEVProject(id: "p", name: "nasdaqir", title: "  ").displayTitle, "nasdaqir")
     }
 
-    await run.test("links follow what ddev reports and what the project asked for") {
+    await run.test("tooling and environments are separate rows") {
         let status = DDEVStatus(state: .running, entry: entries.first)
 
         let plain = DDEVProject(id: "g", name: "Governance")
-        try expectEqual(plain.links(status: status).map(\.label), ["Site", "Mailpit"],
+        try expectEqual(plain.toolLinks(status: status).map(\.label), ["Mailpit"],
                         "xhgui is off until someone wants it")
+        try expectEqual(plain.environmentLinks(status: status).map(\.label), ["Local site"],
+                        "the deployed ones ship empty")
 
         let everything = DDEVProject(id: "g", name: "Governance", showsXhgui: true)
-        try expectEqual(everything.links(status: status).map(\.label), ["Site", "Mailpit", "xhgui"])
+        try expectEqual(everything.toolLinks(status: status).map(\.label), ["Mailpit", "xhgui"])
 
         let quiet = DDEVProject(id: "g", name: "Governance", showsMailpit: false)
-        try expectEqual(quiet.links(status: status).map(\.label), ["Site"])
+        try expect(quiet.toolLinks(status: status).isEmpty)
     }
 
-    await run.test("a custom link can point at a path on the site") {
+    await run.test("test, uat and prod appear once their addresses are typed in") {
+        let status = DDEVStatus(state: .running, entry: entries.first)
+        var project = DDEVProject(id: "g", name: "Governance")
+
+        try expectEqual(project.customLinks.map(\.label), ["Test", "UAT", "Prod"],
+                        "the three environments are offered, empty and off")
+
+        project.customLinks[0].urlTemplate = "https://test.example.com"
+        project.customLinks[0].isEnabled = true
+        project.customLinks[2].urlTemplate = "https://example.com"
+        project.customLinks[2].isEnabled = true
+
+        try expectEqual(
+            project.environmentLinks(status: status).map(\.label),
+            ["Local site", "Test", "Prod"],
+            "local first, then whatever has an address"
+        )
+        try expect(project.toolLinks(status: status).allSatisfy { $0.kind == .tool })
+    }
+
+    await run.test("an environment added since the project was created is picked up") {
+        let json = """
+        { "id": "g", "name": "Governance",
+          "customLinks": [{ "label": "Test", "urlTemplate": "https://test.example.com", "isEnabled": true }] }
+        """
+        let project = try JSONDecoder().decode(DDEVProject.self, from: Data(json.utf8))
+        try expectEqual(project.customLinks.map(\.label), ["Test", "UAT", "Prod"])
+        try expectEqual(project.customLinks.first?.kind, .tool,
+                        "a link stored before kinds existed keeps being what it was")
+    }
+
+    await run.test("a link can point at a path on the local site") {
         let status = DDEVStatus(state: .running, entry: entries.last)
         let project = DDEVProject(
             id: "n",
@@ -205,14 +238,22 @@ func runDDEVTests(_ run: TestRun) async {
             customLinks: [DDEVCustomLink(label: "Admin", urlTemplate: "{site}/user/login")]
         )
         try expectEqual(
-            project.links(status: status).last?.url.absoluteString,
+            project.toolLinks(status: status).first?.url.absoluteString,
             "https://nasdaqir.ddev.site/user/login"
         )
     }
 
-    await run.test("nothing is linked before ddev has reported anything") {
-        let project = DDEVProject(id: "n", name: "nasdaqir")
+    await run.test("only the local link waits on ddev; a typed address does not") {
+        var project = DDEVProject(id: "n", name: "nasdaqir")
         try expect(project.links(status: DDEVStatus(state: .unknown)).isEmpty)
+
+        project.customLinks[2].urlTemplate = "https://example.com"
+        project.customLinks[2].isEnabled = true
+        try expectEqual(
+            project.environmentLinks(status: DDEVStatus(state: .unknown)).map(\.label),
+            ["Prod"],
+            "production is reachable whether or not the container is up"
+        )
     }
 
     await run.test("actions map onto the ddev commands") {

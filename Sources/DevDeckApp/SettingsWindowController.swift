@@ -248,7 +248,7 @@ final class SettingsWindowController: NSObject {
                 row.onChooseFolder = { [weak self] in self?.chooseDDEVFolder($0) }
                 documentView.addSubview(row)
                 ddevRows.append(row)
-                y += DDEVProjectRowView.height + 10
+                y += DDEVProjectRowView.height(for: project) + 10
             }
             if ddevProjectsStore.projects().isEmpty {
                 y = layoutHint("No projects yet — press Add project.", at: y, in: documentView)
