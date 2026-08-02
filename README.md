@@ -141,12 +141,14 @@ the fastest way to tell "no open pull requests" from "cannot see the organisatio
 **Settings → Arc projects → Add project.** Each project becomes its own card with the links
 you use, the browser they open in, and control of its local Fusion stack.
 
-- **Links** are templates with `{org}` and `{site}` substituted. The defaults point at the
-  sandbox host — organisation `ilgiornale` gives
-  `https://sandbox.ilgiornale.arcpublishing.com/home/` for PageBuilder. Only that one is
-  confirmed against a real organisation; the others use the same host with the usual path, so
-  press **Test** on each to see where it actually lands, and edit the field in place when it
-  is wrong. A project pointed at production edits the host the same way.
+- **Links** are templates with `{org}` and `{site}` substituted. **The organisation field
+  carries the environment**: type `sandbox.ilgiornale` for the sandbox and `ilgiornale` for
+  production, and the templates add nothing of their own — PageBuilder becomes
+  `https://sandbox.ilgiornale.arcpublishing.com/home/`. PageBuilder, Composer and Deployer are
+  confirmed against a real organisation; Site Service and Delivery API are guesses, so press
+  **Test** on each and edit the field in place when it is wrong.
+- **Sandbox and Prod ship empty**, next to the local link: a published site lives on its own
+  domain and there is nothing to derive it from. Paste the URLs in and switch them on.
 - **Local stack** buttons run the Arc CLI in the project folder: **Start** is `npx fusion
   daemon` (the CLI's background mode — `fusion start` runs in the foreground and would hold
   the app hostage), **Stop** is `npx fusion stop`, **Restart** is one then the other. All three

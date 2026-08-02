@@ -27,22 +27,47 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
         return URL(string: resolved)
     }
 
-    /// Defaults follow the sandbox host, which is where day-to-day work happens:
-    /// `https://sandbox.ilgiornale.arcpublishing.com/home/` for org `ilgiornale`.
+    /// Templates never add an environment prefix of their own.
     ///
-    /// A project pointed at production edits the templates — that is why they are fields and
-    /// not constants. Only PageBuilder is confirmed against a real organisation; the rest are
-    /// the same host with the path each tool is usually mounted at, and the Test button in
-    /// settings is there to check them one at a time.
+    /// The organisation field carries the whole host label — `sandbox.ilgiornale` for the
+    /// sandbox, `ilgiornale` for production — so a template that helpfully prepended
+    /// `sandbox.` produced `sandbox.sandbox.ilgiornale`. One place owns the environment, and
+    /// it is the field the user types.
+    ///
+    /// Only PageBuilder, Composer and the Deployer are confirmed against a real organisation;
+    /// the last two are the same host with the path each tool is usually mounted at, and the
+    /// Test button in settings is there to check them one at a time.
     public static func defaults() -> [ArcLink] {
         [
-            ArcLink(label: "PageBuilder", urlTemplate: "https://sandbox.{org}.arcpublishing.com/home/", isEnabled: true),
-            ArcLink(label: "Composer", urlTemplate: "https://sandbox.{org}.arcpublishing.com/composer/", isEnabled: true),
-            ArcLink(label: "Deployer", urlTemplate: "https://sandbox.{org}.arcpublishing.com/deployments/fusion/", isEnabled: true),
-            ArcLink(label: "Site Service", urlTemplate: "https://sandbox.{org}.arcpublishing.com/developer/sites/", isEnabled: false),
-            ArcLink(label: "Delivery API", urlTemplate: "https://api.sandbox.{org}.arcpublishing.com/content/v4", isEnabled: false),
+            ArcLink(label: "PageBuilder", urlTemplate: "https://{org}.arcpublishing.com/home/", isEnabled: true),
+            ArcLink(label: "Composer", urlTemplate: "https://{org}.arcpublishing.com/composer", isEnabled: true),
+            ArcLink(label: "Deployer", urlTemplate: "https://{org}.arcpublishing.com/deployments/fusion/", isEnabled: true),
+            ArcLink(label: "Site Service", urlTemplate: "https://{org}.arcpublishing.com/developer/sites", isEnabled: false),
+            ArcLink(label: "Delivery API", urlTemplate: "https://api.{org}.arcpublishing.com/content/v4", isEnabled: false),
+            // The published sites. There is nothing to derive them from — a site lives on its
+            // own domain — so they ship empty for the user to paste in, next to the local one.
+            ArcLink(label: "Sandbox", urlTemplate: "", isEnabled: false),
+            ArcLink(label: "Prod", urlTemplate: "", isEnabled: false),
         ]
     }
+
+    /// Templates shipped by earlier builds, mapped onto what they should have been.
+    ///
+    /// Only exact matches are rewritten: a template the user has edited is theirs, however
+    /// close it looks to one of ours.
+    static let supersededTemplates: [String: String] = [
+        "https://{org}.arcpublishing.com/pagebuilder": "https://{org}.arcpublishing.com/home/",
+        "https://sandbox.{org}.arcpublishing.com/home/": "https://{org}.arcpublishing.com/home/",
+        "https://sandbox.{org}.arcpublishing.com/composer/": "https://{org}.arcpublishing.com/composer",
+        "https://{org}.arcpublishing.com/developer": "https://{org}.arcpublishing.com/deployments/fusion/",
+        "https://sandbox.{org}.arcpublishing.com/developer/": "https://{org}.arcpublishing.com/deployments/fusion/",
+        "https://sandbox.{org}.arcpublishing.com/deployments/fusion/": "https://{org}.arcpublishing.com/deployments/fusion/",
+        "https://sandbox.{org}.arcpublishing.com/developer/sites/": "https://{org}.arcpublishing.com/developer/sites",
+        "https://api.sandbox.{org}.arcpublishing.com/content/v4": "https://api.{org}.arcpublishing.com/content/v4",
+    ]
+
+    /// Labels that were renamed along the way.
+    static let renamedLabels: [String: String] = ["Dev Center": "Deployer"]
 }
 
 /// An Arc XP project: where it lives on the web, where it lives on disk, and how to run it.
@@ -129,18 +154,7 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         organization = try container.decodeIfPresent(String.self, forKey: .organization) ?? ""
         site = try container.decodeIfPresent(String.self, forKey: .site)
         let storedLinks = try container.decodeIfPresent([ArcLink].self, forKey: .links) ?? ArcLink.defaults()
-        // "Dev Center" pointing at /developer was a guess of ours, and the real page is the
-        // Deployer. A link the user has edited keeps whatever they made it.
-        links = storedLinks.map { link in
-            guard link.label == "Dev Center",
-                  link.urlTemplate == "https://sandbox.{org}.arcpublishing.com/developer/"
-                      || link.urlTemplate == "https://{org}.arcpublishing.com/developer"
-            else { return link }
-            var replacement = ArcLink.defaults().first { $0.label == "Deployer" }
-                ?? ArcLink(label: "Deployer", urlTemplate: "https://sandbox.{org}.arcpublishing.com/deployments/fusion/", isEnabled: true)
-            replacement.isEnabled = link.isEnabled
-            return replacement
-        }
+        links = ArcProject.migrate(links: storedLinks)
         browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
         folder = try container.decodeIfPresent(String.self, forKey: .folder)
         startCommand = try container.decodeIfPresent(String.self, forKey: .startCommand) ?? "npx fusion daemon"
@@ -155,6 +169,34 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         // to the checkout; a project genuinely on port 80 resolves to the same URL anyway.
         let storedLocalURL = try container.decodeIfPresent(String.self, forKey: .localURL) ?? ""
         localURL = storedLocalURL == "http://localhost" ? "" : storedLocalURL
+    }
+
+    /// Brings a stored link list up to date: rewrites templates this project shipped and got
+    /// wrong, applies renames, and appends links added since — otherwise a project made last
+    /// week never learns about the ones added this week.
+    static func migrate(links: [ArcLink]) -> [ArcLink] {
+        let defaults = ArcLink.defaults()
+
+        var updated = links.map { link -> ArcLink in
+            var link = link
+            if let template = ArcLink.supersededTemplates[link.urlTemplate] {
+                link.urlTemplate = template
+            }
+            // Renamed only when it is still our link. Someone who pointed "Dev Center" at
+            // their own page named it, and that name stays.
+            if let newLabel = ArcLink.renamedLabels[link.label],
+               let target = defaults.first(where: { $0.label == newLabel }),
+               link.urlTemplate == target.urlTemplate {
+                link.label = newLabel
+            }
+            return link
+        }
+
+        let known = Set(updated.map(\.label))
+        for missing in ArcLink.defaults() where !known.contains(missing.label) {
+            updated.append(missing)
+        }
+        return updated
     }
 
     /// Where the local stack serves: the override when one is set, otherwise `PORT` from the

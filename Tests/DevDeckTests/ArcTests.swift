@@ -34,40 +34,62 @@ func runArcTests(_ run: TestRun) async {
 
     await run.test("links substitute the organisation and site") {
         let links = makeProject().resolvedLinks
-        try expectEqual(links.count, 3, "only the three defaults are enabled out of the box")
+        try expectEqual(links.count, 3, "only the three admin links are enabled out of the box")
         try expectEqual(links.first?.label, "PageBuilder")
         try expectEqual(
             links.first?.url.absoluteString,
-            "https://sandbox.editoriaitaliana.arcpublishing.com/home/",
-            "the confirmed PageBuilder shape, per organisation"
+            "https://editoriaitaliana.arcpublishing.com/home/",
+            "the confirmed PageBuilder shape — the environment lives in the organisation field"
         )
     }
 
-    await run.test("the guessed Dev Center link becomes the Deployer") {
+    await run.test("templates never prepend an environment of their own") {
+        // The organisation field carries the whole host label, so a template that added
+        // `sandbox.` produced sandbox.sandbox.ilgiornale.
+        var project = makeProject()
+        project.organization = "sandbox.ilgiornale"
+        project.links = ArcLink.defaults()
+        let byLabel = Dictionary(uniqueKeysWithValues: project.resolvedLinks.map { ($0.label, $0.url.absoluteString) })
+        try expectEqual(byLabel["PageBuilder"], "https://sandbox.ilgiornale.arcpublishing.com/home/")
+        try expectEqual(byLabel["Deployer"], "https://sandbox.ilgiornale.arcpublishing.com/deployments/fusion/")
+    }
+
+    await run.test("stored links are brought up to date on read") {
         let json = """
-        { "id": "p", "title": "P", "organization": "ilgiornale", "healthPath": "/release",
+        { "id": "p", "title": "P", "organization": "sandbox.ilgiornale", "healthPath": "/release",
           "isEnabled": true, "localURL": "",
           "links": [
-            { "label": "Dev Center", "urlTemplate": "https://sandbox.{org}.arcpublishing.com/developer/", "isEnabled": false },
-            { "label": "Composer", "urlTemplate": "https://sandbox.{org}.arcpublishing.com/composer/", "isEnabled": true }
+            { "label": "PageBuilder", "urlTemplate": "https://{org}.arcpublishing.com/pagebuilder", "isEnabled": true },
+            { "label": "Dev Center", "urlTemplate": "https://{org}.arcpublishing.com/developer", "isEnabled": false }
           ] }
         """
         let project = try JSONDecoder().decode(ArcProject.self, from: Data(json.utf8))
-        let replaced = try expectNotNil(project.links.first, "first link")
-        try expectEqual(replaced.label, "Deployer")
-        try expectEqual(replaced.urlTemplate, "https://sandbox.{org}.arcpublishing.com/deployments/fusion/")
-        try expect(!replaced.isEnabled, "whether it was shown is the user's choice, not ours")
-        try expectEqual(project.links.last?.label, "Composer", "other links are untouched")
+        let byLabel = Dictionary(uniqueKeysWithValues: project.links.map { ($0.label, $0) })
+
+        try expectEqual(byLabel["PageBuilder"]?.urlTemplate, "https://{org}.arcpublishing.com/home/",
+                        "the old guessed path is replaced")
+        try expectEqual(byLabel["Deployer"]?.urlTemplate, "https://{org}.arcpublishing.com/deployments/fusion/")
+        try expect(byLabel["Deployer"]?.isEnabled == false, "whether it is shown stays the user's choice")
+        try expect(byLabel["Sandbox"] != nil && byLabel["Prod"] != nil,
+                   "links added since this project was created are appended")
     }
 
-    await run.test("a Dev Center link someone edited is left alone") {
+    await run.test("a Dev Center link someone edited keeps its name and its URL") {
         let json = """
         { "id": "p", "title": "P", "organization": "ilgiornale", "healthPath": "/release",
           "isEnabled": true, "localURL": "",
           "links": [{ "label": "Dev Center", "urlTemplate": "https://internal.example.com/dev", "isEnabled": true }] }
         """
         let project = try JSONDecoder().decode(ArcProject.self, from: Data(json.utf8))
-        try expectEqual(project.links.first?.urlTemplate, "https://internal.example.com/dev")
+        let theirs = try expectNotNil(project.links.first, "their link")
+        try expectEqual(theirs.label, "Dev Center")
+        try expectEqual(theirs.urlTemplate, "https://internal.example.com/dev")
+    }
+
+    await run.test("a link with no URL yet is simply not drawn") {
+        var project = makeProject()
+        project.links = [ArcLink(label: "Prod", urlTemplate: "", isEnabled: true)]
+        try expect(project.resolvedLinks.isEmpty, "an empty template has nothing to open")
     }
 
     await run.test("a disabled link does not reach the card") {
