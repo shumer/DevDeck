@@ -48,11 +48,21 @@ Rules:
 
 ## Keychain and ad-hoc signing
 
-The app is ad-hoc signed, so its code signature changes on every build and macOS may prompt
-before letting the new binary read the Keychain item. `scripts/seed-token.sh` writes the item
-with `-A` (any application may read it) to avoid a prompt after every rebuild. The app's own
-Settings window writes a normally-scoped item instead. If you get a prompt loop, re-run
-`scripts/seed-token.sh`.
+The app is ad-hoc signed, so its code signature changes on every build and macOS asks for the
+login keychain before letting the new binary read a token it stored earlier.
+
+**"Always Allow" holds until the next `./build.sh`, and no longer** — the rebuilt binary is a
+different identity as far as the keychain is concerned. In day-to-day use, where the app is
+not being rebuilt, the prompt appears once and then stays quiet.
+
+`scripts/seed-token.sh` writes its item with `-A` (any application may read it), so tokens
+seeded that way never prompt at all; the Settings window writes normally-scoped items. If the
+prompting gets in the way during a stretch of rebuilding, re-seed the token with the script.
+
+The permanent fix, if it is ever worth the one-time setup, is a self-signed code-signing
+certificate in the login keychain and `codesign -s "<name>"` in `build.sh` instead of `-`:
+a stable identity means one "Always Allow" forever. Deliberately not done — the prompt is
+tolerable and the certificate is a manual Keychain Access step.
 
 ## Definition of done
 
