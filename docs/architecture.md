@@ -147,9 +147,31 @@ fixed and shifting the rest of the column out of the way.
   panels.
 - `.floating` → `.floating`.
 
-Locking sets `isMovableByWindowBackground = false`. Positions are stored per card and only
-restored when the saved frame still overlaps a screen by at least 80×40 points, so a panel
-can never come back 99% off-screen.
+Locking sets `isMovableByWindowBackground = false`.
+
+Two details keep a deck stable across launches, and both were bugs first:
+
+- **Positions anchor on the top-left corner**, not AppKit's bottom-left origin. Cards change
+  height as their data arrives, so a card restored at its stored bottom starts with its top
+  lower than the user left it and then grows downwards from there.
+- **A panel opens at the height it last settled at**, remembered per card, and a shift caused
+  by a card growing is never persisted. Without the first, every launch began with a short
+  panel that shoved the column down as it filled; without the second, that shove was saved and
+  the deck crept apart a little further each time.
+
+A saved position is only used when the frame still overlaps a screen by at least 80×40 points,
+so a panel can never come back 99% off-screen.
+
+## Settings windows
+
+One window with a sidebar: GitHub accounts, Arc projects, DDEV projects, General. Rows are
+built in code and laid out by `RowLayout`, which places controls from the top down and moves
+its cursor by what was actually placed. Every field used to carry a hand-computed `y`, which
+is how three lines of the DDEV row ended up drawn on top of each other — with a cursor, that
+overlap stops being expressible.
+
+Everything applies as it is edited. Only a token waits for a button, because it is verified
+against the API before being stored.
 
 ## Concurrency
 

@@ -63,14 +63,15 @@ the checkout:
 | DDEV · one card per project | working | added per project |
 | Arc XP · deployed bundle versions | planned — needs an org token | — |
 
-The Actions card watches the repositories your open pull requests are in, up to five, unless
-`actionsRepositories` says otherwise.
+The Actions card follows the repositories your open pull requests are in, up to five per
+account. A fixed list instead of that is a field in `GitHubSettings` with no settings screen
+behind it yet.
 
 ## Build and run
 
 Needs the Swift 6 toolchain from the Command Line Tools — `xcode-select --install`. **Xcode is
-not required**: there is no project file and nothing here opens in it. Docker is only needed
-for the Arc cards' local stack.
+not required**: there is no project file and nothing here opens in it. Docker is needed only
+by the project cards that run something locally — Arc's Fusion stack and DDEV.
 
 ```bash
 git clone git@github.com:shumer/DesktopWidgets.git widgets && cd widgets
@@ -96,7 +97,7 @@ only works for the installed copy.
 | `swift run DevDeck` | runs from the terminal without bundling — handy for `print` debugging |
 | `pkill -f DevDeck` | quits every running copy |
 
-**Settings → General shows the running version** — `DevDeck 0.1 (build 21)` — and which bundle
+**Settings → General shows the running version** — `DevDeck 0.2 (build 30)` — and which bundle
 it came from. The marketing number lives in `VERSION` and is bumped by hand when a release
 earns a name; the build number is the commit count, so it moves on every rebuild. That is the
 quickest way to tell whether the copy in front of you is the change you just made or the one
@@ -273,7 +274,7 @@ Everything else lives in its menu:
 - **Lock position** — stop dragging once the layout is right.
 - **Tidy panels into a column** — close up gaps without resetting where you put them.
 - **Start at login**, **Refresh now**, **Settings…** — one window with GitHub accounts, Arc
-  projects and General kept in separate sections.
+  projects, DDEV projects and General kept in separate sections.
 
 Drag a panel anywhere; the position is remembered per card. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
@@ -288,20 +289,25 @@ so buttons and links also carry a resting fill rather than relying on hover to l
 - [docs/architecture.md](docs/architecture.md) — modules, data flow, where to add a card
 - [docs/github-api.md](docs/github-api.md) — the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) — toolchain, scripts, definition of done
-- [docs/roadmap.md](docs/roadmap.md) — what is next and the open questions on Arc XP
-- [docs/adr/](docs/adr/) — why native, why SwiftPM only, why cards are configurable
+- [docs/roadmap.md](docs/roadmap.md) — what is done and what is next
+- [docs/adr/](docs/adr/) — why native, why SwiftPM only, why cards are configurable, why
+  accounts are plural, how local stacks are driven, why DDEV shares one call
 
 ## Layout
 
 ```
 Sources/
-  DevDeckCore/     configuration, cards, HTTP transport, tokens, policies, command runner
+  DevDeckCore/     configuration, cards, HTTP transport, tokens, policies, command runner,
+                   git branch, browser choice
   GitHubKit/       GraphQL and REST clients, models, per-account fan-out
-  ArcKit/          Arc projects, link templates, local Fusion stack
-  DevDeckUI/       SwiftUI cards and the shared visual language
+  ArcKit/          Arc projects, link templates, local Fusion stack, .env port
+  DDEVKit/         DDEV projects, ddev list, .ddev/config.yaml, composer.lock version
+  DevDeckUI/       SwiftUI cards, the shared card pieces and the visual language
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (114 tests, offline)
-Tools/Smoke/       live API check
+  DevDeckTests/    the suite (167 tests, offline)
+Tools/
+  Smoke/           live API check
+  IconPreview/     renders the menu-bar icon at the size it is actually seen
 ```
