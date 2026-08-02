@@ -5,16 +5,16 @@ import SwiftUI
 /// "GitHub Actions": is the pipeline healthy, and what is broken right now.
 public struct ActionsCard: View {
     public static let visibleRows = 2
-    public static let size = CGSize(width: 320, height: 190)
+    public static let size = CGSize(width: CardMetrics.width, height: 190)
 
     private let state: CardState<ActionsSnapshot>
     private let now: Date
-    private let onOpen: (URL) -> Void
+    private let onOpen: (URL, String) -> Void
 
     public init(
         state: CardState<ActionsSnapshot>,
         now: Date = Date(),
-        onOpen: @escaping (URL) -> Void = { _ in }
+        onOpen: @escaping (URL, String) -> Void = { _, _ in }
     ) {
         self.state = state
         self.now = now
@@ -115,7 +115,7 @@ public struct ActionsCard: View {
         .padding(.vertical, 6)
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
         .contentShape(Rectangle())
-        .onTapGesture { if let url = run.url { onOpen(url) } }
+        .onTapGesture { if let url = run.url { onOpen(url, run.accountID) } }
         .help("\(run.repository) · \(run.name) on \(run.branch)")
     }
 

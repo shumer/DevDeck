@@ -14,6 +14,10 @@ final class DeckController: ObservableObject {
     @Published private(set) var inbox = CardState<InboxSnapshot>()
     @Published private(set) var actions = CardState<ActionsSnapshot>()
 
+    /// Cards currently showing every row they have. Not persisted: expanding is a "let me look
+    /// at this now" gesture, and a deck that comes back tall the next morning is a surprise.
+    @Published private(set) var expandedCards: Set<CardID> = []
+
     private let preferences: Preferences
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
@@ -57,6 +61,35 @@ final class DeckController: ObservableObject {
     /// Cancels the pending wait and refetches immediately.
     func refreshNow() {
         restart()
+    }
+
+    // MARK: Presentation
+
+    func isExpanded(_ card: CardID) -> Bool {
+        expandedCards.contains(card)
+    }
+
+    func toggleExpanded(_ card: CardID) {
+        if expandedCards.contains(card) {
+            expandedCards.remove(card)
+        } else {
+            expandedCards.insert(card)
+        }
+    }
+
+    /// Account id to label, for the per-row chips. Cards only draw chips when there is more
+    /// than one account, so this doubles as the "is this a multi-account deck" answer.
+    var accountLabels: [String: String] {
+        Dictionary(
+            accountsStore.enabledAccounts().map { ($0.id, $0.label) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
+    /// Where this account's links open. An unknown id — a row left over from an account that
+    /// was just removed — falls back to the system default.
+    func browser(for accountID: String) -> BrowserChoice {
+        accountsStore.accounts().first { $0.id == accountID }?.browser ?? .systemDefault
     }
 
     private func restart() {

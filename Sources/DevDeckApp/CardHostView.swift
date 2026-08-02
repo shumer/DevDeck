@@ -7,7 +7,7 @@ import SwiftUI
 /// Maps a card identifier onto its view and its panel size.
 ///
 /// The single place that knows "this identifier draws that card" — adding a card means one
-/// case here and one descriptor in `CardCatalog`.
+/// branch here and one descriptor in `CardCatalog`.
 struct CardHostView: View {
     @ObservedObject var controller: DeckController
     let card: CardID
@@ -15,9 +15,21 @@ struct CardHostView: View {
     var body: some View {
         Group {
             if card == .githubPullRequests {
-                PullRequestsCard(state: controller.pullRequests, onOpen: open)
+                PullRequestsCard(
+                    state: controller.pullRequests,
+                    accountLabels: controller.accountLabels,
+                    isExpanded: controller.isExpanded(card),
+                    onOpen: open,
+                    onToggleExpand: { controller.toggleExpanded(card) }
+                )
             } else if card == .githubInbox {
-                InboxCard(state: controller.inbox, onOpen: open)
+                InboxCard(
+                    state: controller.inbox,
+                    accountLabels: controller.accountLabels,
+                    isExpanded: controller.isExpanded(card),
+                    onOpen: open,
+                    onToggleExpand: { controller.toggleExpanded(card) }
+                )
             } else if card == .githubActions {
                 ActionsCard(state: controller.actions, onOpen: open)
             } else {
@@ -26,9 +38,9 @@ struct CardHostView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
-            if let url = CardHostView.dashboardURL(for: card) {
-                NSWorkspace.shared.open(url)
-            }
+            guard let url = CardHostView.dashboardURL(for: card) else { return }
+            // The dashboard belongs to whichever account is first; there is no row to ask.
+            LinkOpener.open(url, using: controller.browser(for: controller.accountLabels.keys.sorted().first ?? ""))
         }
     }
 
@@ -42,16 +54,26 @@ struct CardHostView: View {
         }
     }
 
-    private func open(_ url: URL) {
-        NSWorkspace.shared.open(url)
+    /// Rows open in the browser of the account they belong to — one signed-in GitHub identity
+    /// per browser profile is the whole reason accounts exist.
+    private func open(_ url: URL, _ accountID: String) {
+        LinkOpener.open(url, using: controller.browser(for: accountID))
     }
 
-    static func size(for card: CardID) -> NSSize {
+    @MainActor
+    static func size(for card: CardID, controller: DeckController) -> NSSize {
         switch card {
-        case .githubPullRequests: return PullRequestsCard.size
-        case .githubInbox: return InboxCard.size
-        case .githubActions: return ActionsCard.size
-        default: return NSSize(width: 320, height: 150)
+        case .githubPullRequests:
+            return PullRequestsCard.size(
+                for: controller.pullRequests,
+                isExpanded: controller.isExpanded(card)
+            )
+        case .githubInbox:
+            return InboxCard.size(for: controller.inbox, isExpanded: controller.isExpanded(card))
+        case .githubActions:
+            return ActionsCard.size
+        default:
+            return NSSize(width: CardMetrics.width, height: 150)
         }
     }
 

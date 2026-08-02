@@ -54,7 +54,27 @@ each account has its own label, its own organisations and its own token in the K
 
 All accounts feed the same cards. Pull requests visible to two accounts are shown once. When
 one account fails, the others still render and the card footer says which one is missing;
-a card only fails outright when every account fails.
+a card only fails outright when every account fails. With more than one account configured,
+every row carries a chip saying which one it came from.
+
+### Links open as the right identity
+
+github.com allows one signed-in identity per browser profile, so "open in the default browser"
+is wrong half the time when work and personal accounts are both on the deck. Each account has
+an **Open links in** setting: a browser, and for Chrome, Edge, Brave, Vivaldi and Chromium a
+profile as well, listed by the names you gave them. Clicking a row then lands in the profile
+that is signed in as that account.
+
+Safari has profiles but no way to choose one from outside the app, and Firefox's `-P` depends
+on what is already running; both are offered without a profile picker rather than with one
+that would not work.
+
+### Seeing everything
+
+Cards show three rows and a **show N more** line. Clicking it grows the panel to show up to
+twelve, pushing the panels below it down; clicking again collapses. It is deliberately not
+remembered — expanding is a "let me look at this now" gesture, and a deck that comes back tall
+the next morning is a surprise.
 
 ### The token
 
