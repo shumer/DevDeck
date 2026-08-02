@@ -17,19 +17,36 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
     /// token can see.
     public var organizations: [String]
     public var isEnabled: Bool
+    /// Where this account's links open. One signed-in GitHub identity per browser profile is
+    /// the whole reason accounts need their own browser.
+    public var browser: BrowserChoice
 
     public init(
         id: String,
         label: String,
         apiBaseURL: URL = URL(string: "https://api.github.com")!,
         organizations: [String] = [],
-        isEnabled: Bool = true
+        isEnabled: Bool = true,
+        browser: BrowserChoice = .systemDefault
     ) {
         self.id = id
         self.label = label
         self.apiBaseURL = apiBaseURL
         self.organizations = organizations
         self.isEnabled = isEnabled
+        self.browser = browser
+    }
+
+    /// Accounts stored before browsers were configurable decode without the field.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        label = try container.decode(String.self, forKey: .label)
+        apiBaseURL = try container.decodeIfPresent(URL.self, forKey: .apiBaseURL)
+            ?? URL(string: "https://api.github.com")!
+        organizations = try container.decodeIfPresent([String].self, forKey: .organizations) ?? []
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
     }
 
     public static let defaultID = "default"

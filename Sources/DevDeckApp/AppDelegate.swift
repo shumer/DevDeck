@@ -40,10 +40,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.delegate = self
         statusItem.menu = menu
 
-        controller.$pullRequests
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateStatusItem() }
-            .store(in: &cancellables)
+        // Panels are sized from the data, so anything that changes it can change their height.
+        Publishers.Merge4(
+            controller.$pullRequests.map { _ in () },
+            controller.$inbox.map { _ in () },
+            controller.$actions.map { _ in () },
+            controller.$expandedCards.map { _ in () }
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+            self?.updateStatusItem()
+            self?.syncPanelSizes()
+        }
+        .store(in: &cancellables)
 
         syncPanels()
         updateStatusItem()
@@ -77,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             let vacated = window.frame
             window.orderOut(nil)
             panels[card] = nil
-            closeGap(below: vacated, height: vacated.height + DeckTheme.panelGap)
+            shiftColumn(below: vacated, by: vacated.height + DeckTheme.panelGap)
         }
 
         for card in wanted where panels[card] == nil {
@@ -87,8 +96,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         controller.setActiveCards(Set(wanted))
     }
 
+    /// Grows and shrinks panels as their contents change, keeping the top edge where it is and
+    /// pushing the rest of the column out of the way.
+    private func syncPanelSizes() {
+        for (card, window) in panels {
+            let size = CardHostView.size(for: card, controller: controller)
+            let old = window.frame
+            guard abs(old.height - size.height) > 0.5 || abs(old.width - size.width) > 0.5 else { continue }
+
+            let frame = NSRect(
+                x: old.origin.x,
+                y: old.maxY - size.height,
+                width: size.width,
+                height: size.height
+            )
+            window.setFrame(frame, display: true, animate: false)
+            window.invalidateShadow()
+            preferences.setOrigin(NSStringFromPoint(frame.origin), for: card)
+            // Selection uses the old frame: those are the panels that were below before the
+            // resize, and they are the ones that have to make room.
+            shiftColumn(below: old, by: old.height - size.height)
+        }
+    }
+
     private func showPanel(_ card: CardID) {
-        let size = CardHostView.size(for: card)
+        let size = CardHostView.size(for: card, controller: controller)
         let hosting = NSHostingView(rootView: CardHostView(controller: controller, card: card))
         let window = PanelWindow(card: card, size: size, origin: origin(for: card, size: size), content: hosting)
         window.level = displayMode.windowLevel
@@ -117,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         var y = screen.maxY - 28
         for candidate in visibleCards {
-            let candidateSize = CardHostView.size(for: candidate)
+            let candidateSize = CardHostView.size(for: candidate, controller: controller)
             if candidate == card {
                 return NSPoint(x: screen.maxX - candidateSize.width - 28, y: y - candidateSize.height)
             }
@@ -126,14 +158,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         return NSPoint(x: screen.maxX - size.width - 28, y: y - size.height)
     }
 
-    /// Moves panels below `frame` in the same column up, so hiding a card does not leave a
-    /// card-shaped hole in the stack.
-    private func closeGap(below frame: NSRect, height: CGFloat) {
+    /// Moves every panel sitting under `frame` in the same column by `dy` — positive is up,
+    /// since AppKit's y grows upward.
+    ///
+    /// This is what stops a hidden card leaving a card-shaped hole, and what makes room when a
+    /// card is expanded. Only panels that overlap horizontally are touched, so a deliberately
+    /// scattered layout is left alone.
+    private func shiftColumn(below frame: NSRect, by dy: CGFloat) {
+        guard dy != 0 else { return }
         for (card, window) in panels {
             let current = window.frame
             guard current.maxY <= frame.minY + 1 else { continue }
             guard current.maxX > frame.minX, current.minX < frame.maxX else { continue }
-            window.setFrameOrigin(NSPoint(x: current.origin.x, y: current.origin.y + height))
+            window.setFrameOrigin(NSPoint(x: current.origin.x, y: current.origin.y + dy))
             preferences.setOrigin(NSStringFromPoint(window.frame.origin), for: card)
         }
     }

@@ -12,25 +12,46 @@ public extension PullRequestHealth {
     }
 }
 
-/// "My pull requests": how many are open, and the few that need something done.
+/// "My pull requests": how many are open, and the ones that need something done.
 public struct PullRequestsCard: View {
-    /// How many rows fit before the card would have to scroll. Panels do not scroll —
-    /// a widget that needs scrolling has stopped being glanceable.
-    public static let visibleRows = 3
-    public static let size = CGSize(width: 320, height: 208)
+    /// Everything above the rows: title, count and footer.
+    public static let baseHeight: Double = 127
 
     private let state: CardState<PullRequestsSnapshot>
     private let now: Date
-    private let onOpen: (URL) -> Void
+    /// Account id to label. More than one entry turns the per-row chips on.
+    private let accountLabels: [String: String]
+    private let isExpanded: Bool
+    private let onOpen: (URL, String) -> Void
+    private let onToggleExpand: () -> Void
 
     public init(
         state: CardState<PullRequestsSnapshot>,
         now: Date = Date(),
-        onOpen: @escaping (URL) -> Void = { _ in }
+        accountLabels: [String: String] = [:],
+        isExpanded: Bool = false,
+        onOpen: @escaping (URL, String) -> Void = { _, _ in },
+        onToggleExpand: @escaping () -> Void = {}
     ) {
         self.state = state
         self.now = now
+        self.accountLabels = accountLabels
+        self.isExpanded = isExpanded
         self.onOpen = onOpen
+        self.onToggleExpand = onToggleExpand
+    }
+
+    /// Panel size for the current contents. The app resizes the window with this, so the card
+    /// and the panel never disagree about how much room the rows need.
+    public static func size(
+        for state: CardState<PullRequestsSnapshot>,
+        isExpanded: Bool
+    ) -> CGSize {
+        let total = state.value?.pullRequests.count ?? 0
+        return CGSize(
+            width: CardMetrics.width,
+            height: CardMetrics.height(base: baseHeight, total: total, isExpanded: isExpanded)
+        )
     }
 
     public var body: some View {
@@ -61,7 +82,7 @@ public struct PullRequestsCard: View {
     private func content(_ snapshot: PullRequestsSnapshot) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("\(snapshot.totalCount)")
-                .font(.system(size: 42, weight: .bold, design: .default))
+                .font(.system(size: 42, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(snapshot.blockedCount > 0 ? DeckTheme.red : DeckTheme.green)
             Text("open")
@@ -70,12 +91,23 @@ public struct PullRequestsCard: View {
         }
         .padding(.top, 2)
 
+        let total = snapshot.pullRequests.count
+        let rows = CardMetrics.rowCount(total: total, isExpanded: isExpanded)
+
         VStack(spacing: 0) {
-            ForEach(snapshot.prioritized(limit: Self.visibleRows)) { pullRequest in
+            ForEach(snapshot.prioritized(limit: rows)) { pullRequest in
                 row(pullRequest)
             }
         }
         .padding(.top, 6)
+
+        if CardMetrics.showsExpander(total: total) {
+            CardExpander(
+                hidden: total - CardMetrics.collapsedRows,
+                isExpanded: isExpanded,
+                onToggle: onToggleExpand
+            )
+        }
 
         Spacer(minLength: 4)
 
@@ -93,6 +125,9 @@ public struct PullRequestsCard: View {
             Circle()
                 .fill(pullRequest.health.color)
                 .frame(width: 7, height: 7)
+            if accountLabels.count > 1, let label = accountLabels[pullRequest.accountID] {
+                AccountChip(label)
+            }
             Text(pullRequest.title)
                 .font(.system(size: 12.5))
                 .foregroundStyle(DeckTheme.value)
@@ -105,19 +140,21 @@ public struct PullRequestsCard: View {
                 .lineLimit(1)
                 .fixedSize()
         }
-        .padding(.vertical, 6)
+        .frame(height: CardMetrics.rowHeight - 1)
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
         .contentShape(Rectangle())
-        .onTapGesture { onOpen(pullRequest.url) }
+        .onTapGesture { onOpen(pullRequest.url, pullRequest.accountID) }
         .help("\(pullRequest.shortLabel) — \(pullRequest.statusLine)")
     }
 
     private func footerLeading(_ snapshot: PullRequestsSnapshot) -> String {
         let repositories = snapshot.repositoryCount
         let organizations = snapshot.organizationCount
-        let hidden = snapshot.pullRequests.count - Self.visibleRows
         var text = "\(repositories) repo\(repositories == 1 ? "" : "s") · \(organizations) org\(organizations == 1 ? "" : "s")"
-        if hidden > 0 { text += " · +\(hidden) more" }
+        // Only the rows beyond the expanded ceiling are worth mentioning here; the ones the
+        // expander would reveal are its own business.
+        let beyondCeiling = CardMetrics.hiddenWhenExpanded(total: snapshot.pullRequests.count)
+        if isExpanded, beyondCeiling > 0 { text += " · +\(beyondCeiling) not shown" }
         return text
     }
 }

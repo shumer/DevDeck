@@ -38,6 +38,10 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
 - **Cache keys are namespaced per account**, or two tokens polling one endpoint share an
   `ETag` and serve each other's data.
 - **A hidden card fetches nothing.** New cards must respect `DeckController.setActiveCards`.
+- **Row height and panel height come from `CardMetrics`.** The card and the window it lives in
+  must not compute it separately, or the last row gets clipped.
+- **Links open through `LinkOpener` with the row's account**, never `NSWorkspace.open` directly
+  — that is what puts a work pull request in the work browser profile.
 
 ## Style
 

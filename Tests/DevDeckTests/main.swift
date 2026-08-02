@@ -10,5 +10,6 @@ await runGitHubTests(run)
 await runInboxTests(run)
 await runActionsTests(run)
 await runAccountsTests(run)
+await runPresentationTests(run)
 
 run.finish()

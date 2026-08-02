@@ -1,8 +1,9 @@
 import AppKit
+import DevDeckCore
 import GitHubKit
 
-/// One account in the settings window: what it is called, which organisations it covers, and
-/// a field for its token.
+/// One account in the settings window: what it is called, which organisations it covers, where
+/// its links open, and a field for its token.
 ///
 /// The token field is always empty on screen. A stored secret is never written back into the
 /// UI — the row says whether one exists, and typing replaces it.
@@ -15,11 +16,16 @@ final class AccountRowView: NSView {
     private let tokenField = NSSecureTextField()
     private let statusLabel = NSTextField(labelWithString: "")
     private let enabledButton = NSButton()
+    private let browserPopUp = NSPopUpButton()
+    private let profilePopUp = NSPopUpButton()
+
+    private var browsers: [InstalledBrowser] = []
+    private var profiles: [BrowserProfile] = []
 
     var onSave: ((AccountRowView) -> Void)?
     var onRemove: ((AccountRowView) -> Void)?
 
-    static let height: CGFloat = 132
+    static let height: CGFloat = 170
 
     init(account: GitHubAccount, hasToken: Bool, width: CGFloat) {
         self.account = account
@@ -69,17 +75,102 @@ final class AccountRowView: NSView {
         saveButton.controlSize = .small
         addSubview(saveButton)
 
-        statusLabel.frame = NSRect(x: inset, y: 10, width: fieldWidth, height: 18)
+        let openLabel = NSTextField(labelWithString: "Open links in")
+        openLabel.frame = NSRect(x: inset, y: Self.height - 118, width: 200, height: 16)
+        openLabel.font = NSFont.systemFont(ofSize: 10)
+        openLabel.textColor = NSColor.secondaryLabelColor
+        addSubview(openLabel)
+
+        let popUpWidth = (fieldWidth - 10) / 2
+        browserPopUp.frame = NSRect(x: inset, y: Self.height - 144, width: popUpWidth, height: 24)
+        browserPopUp.target = self
+        browserPopUp.action = #selector(browserChanged)
+        addSubview(browserPopUp)
+
+        profilePopUp.frame = NSRect(x: inset + popUpWidth + 10, y: Self.height - 144, width: popUpWidth, height: 24)
+        addSubview(profilePopUp)
+
+        statusLabel.frame = NSRect(x: inset, y: 8, width: fieldWidth, height: 18)
         statusLabel.font = NSFont.systemFont(ofSize: 11)
         statusLabel.textColor = NSColor.secondaryLabelColor
         statusLabel.stringValue = hasToken ? "Token stored." : "No token yet."
         addSubview(statusLabel)
+
+        loadBrowsers()
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not used — this view is built in code")
     }
+
+    // MARK: Browser pickers
+
+    private func loadBrowsers() {
+        browsers = BrowserCatalog.installedBrowsers()
+
+        browserPopUp.removeAllItems()
+        browserPopUp.addItem(withTitle: "Default browser")
+        for browser in browsers {
+            browserPopUp.addItem(withTitle: browser.name)
+        }
+
+        if let identifier = account.browser.bundleIdentifier,
+           let index = browsers.firstIndex(where: { $0.bundleIdentifier == identifier.lowercased() }) {
+            browserPopUp.selectItem(at: index + 1)
+        } else {
+            browserPopUp.selectItem(at: 0)
+        }
+
+        reloadProfiles(selecting: account.browser.profileDirectory)
+    }
+
+    private var selectedBrowser: InstalledBrowser? {
+        let index = browserPopUp.indexOfSelectedItem - 1
+        guard index >= 0, index < browsers.count else { return nil }
+        return browsers[index]
+    }
+
+    private func reloadProfiles(selecting directory: String?) {
+        profilePopUp.removeAllItems()
+
+        guard let browser = selectedBrowser, browser.supportsProfiles else {
+            profiles = []
+            // Safari and Firefox cannot be told which profile to use from outside, so the
+            // picker says so rather than offering a control that would do nothing.
+            profilePopUp.addItem(withTitle: selectedBrowser == nil ? "—" : "not supported")
+            profilePopUp.isEnabled = false
+            return
+        }
+
+        profiles = BrowserCatalog.profiles(for: browser.bundleIdentifier)
+        profilePopUp.isEnabled = !profiles.isEmpty
+        profilePopUp.addItem(withTitle: profiles.isEmpty ? "not launched yet" : "Whatever it opens")
+        for profile in profiles {
+            profilePopUp.addItem(withTitle: profile.name)
+        }
+
+        if let directory, let index = profiles.firstIndex(where: { $0.directory == directory }) {
+            profilePopUp.selectItem(at: index + 1)
+        } else {
+            profilePopUp.selectItem(at: 0)
+        }
+    }
+
+    @objc private func browserChanged() {
+        reloadProfiles(selecting: nil)
+    }
+
+    private var selectedBrowserChoice: BrowserChoice {
+        guard let browser = selectedBrowser else { return .systemDefault }
+        let profileIndex = profilePopUp.indexOfSelectedItem - 1
+        let profile = (profileIndex >= 0 && profileIndex < profiles.count)
+            ? profiles[profileIndex].directory
+            : nil
+        return BrowserChoice(bundleIdentifier: browser.bundleIdentifier, profileDirectory: profile)
+    }
+
+    // MARK: Editing
 
     /// The account as edited, without touching the identifier the token is filed under.
     var editedAccount: GitHubAccount {
@@ -92,6 +183,7 @@ final class AccountRowView: NSView {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         edited.isEnabled = enabledButton.state == .on
+        edited.browser = selectedBrowserChoice
         return edited
     }
 

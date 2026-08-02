@@ -13,10 +13,14 @@
 
 - **Several GitHub accounts** — one token per account, all feeding the same cards, with
   partial failures shown in the footer instead of blanking the card.
+- **A browser and profile per account**, so a row opens as the identity that owns it, plus
+  per-row account chips and click-to-expand cards.
 
 ## Next
 
 1. **Mark as read** from the inbox card, so the panel is not read-only.
+2. **Resizable panels** — dragging the bottom edge instead of the expander, if the three-row
+   default plus expansion turns out not to be enough.
 3. **Arc XP · organizations** — see the open questions below. Nothing is built until the
    functionality is agreed.
 4. **Local Fusion stack** — container state, ports, start/stop. Needs a process-running layer

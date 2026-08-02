@@ -25,6 +25,52 @@ public struct CardPlaceholder<Value: Sendable & Equatable>: View {
     }
 }
 
+/// Which account a row came from. Only drawn when more than one is configured — with a single
+/// account the chip would be noise on every row.
+public struct AccountChip: View {
+    private let label: String
+
+    public init(_ label: String) {
+        self.label = label
+    }
+
+    public var body: some View {
+        Text(label.uppercased())
+            .font(.system(size: 9, weight: .semibold))
+            .kerning(0.5)
+            .foregroundStyle(DeckTheme.blue)
+            .lineLimit(1)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(DeckTheme.blue.opacity(0.16), in: RoundedRectangle(cornerRadius: 4))
+    }
+}
+
+/// The row that grows and shrinks the card.
+public struct CardExpander: View {
+    private let hidden: Int
+    private let isExpanded: Bool
+    private let onToggle: () -> Void
+
+    public init(hidden: Int, isExpanded: Bool, onToggle: @escaping () -> Void) {
+        self.hidden = hidden
+        self.isExpanded = isExpanded
+        self.onToggle = onToggle
+    }
+
+    public var body: some View {
+        Text(isExpanded ? "show less ⌃" : "show \(hidden) more ⌄")
+            .font(.system(size: 11))
+            .foregroundStyle(DeckTheme.label)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 5)
+            .padding(.bottom, 1)
+            .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onToggle)
+    }
+}
+
 public enum CardFreshness {
     /// Shows the failure rather than a timestamp when the last refresh broke: a clock that
     /// keeps ticking while the data is frozen is the worst of both.

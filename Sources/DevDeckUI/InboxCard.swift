@@ -2,23 +2,39 @@ import DevDeckCore
 import GitHubKit
 import SwiftUI
 
-/// "GitHub inbox": what is waiting on me, newest and loudest first.
+/// "GitHub inbox": what is waiting on me, loudest first.
 public struct InboxCard: View {
-    public static let visibleRows = 3
-    public static let size = CGSize(width: 320, height: 200)
+    public static let baseHeight: Double = 119
 
     private let state: CardState<InboxSnapshot>
     private let now: Date
-    private let onOpen: (URL) -> Void
+    private let accountLabels: [String: String]
+    private let isExpanded: Bool
+    private let onOpen: (URL, String) -> Void
+    private let onToggleExpand: () -> Void
 
     public init(
         state: CardState<InboxSnapshot>,
         now: Date = Date(),
-        onOpen: @escaping (URL) -> Void = { _ in }
+        accountLabels: [String: String] = [:],
+        isExpanded: Bool = false,
+        onOpen: @escaping (URL, String) -> Void = { _, _ in },
+        onToggleExpand: @escaping () -> Void = {}
     ) {
         self.state = state
         self.now = now
+        self.accountLabels = accountLabels
+        self.isExpanded = isExpanded
         self.onOpen = onOpen
+        self.onToggleExpand = onToggleExpand
+    }
+
+    public static func size(for state: CardState<InboxSnapshot>, isExpanded: Bool) -> CGSize {
+        let total = state.value?.items.count ?? 0
+        return CGSize(
+            width: CardMetrics.width,
+            height: CardMetrics.height(base: baseHeight, total: total, isExpanded: isExpanded)
+        )
     }
 
     public var body: some View {
@@ -55,12 +71,23 @@ public struct InboxCard: View {
         }
         .padding(.top, 2)
 
+        let total = snapshot.items.count
+        let rows = CardMetrics.rowCount(total: total, isExpanded: isExpanded)
+
         VStack(spacing: 0) {
-            ForEach(snapshot.prioritized(limit: Self.visibleRows)) { item in
+            ForEach(snapshot.prioritized(limit: rows)) { item in
                 row(item)
             }
         }
         .padding(.top, 6)
+
+        if CardMetrics.showsExpander(total: total) {
+            CardExpander(
+                hidden: total - CardMetrics.collapsedRows,
+                isExpanded: isExpanded,
+                onToggle: onToggleExpand
+            )
+        }
 
         Spacer(minLength: 4)
 
@@ -83,6 +110,9 @@ public struct InboxCard: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 5))
+            if accountLabels.count > 1, let label = accountLabels[item.accountID] {
+                AccountChip(label)
+            }
             Text(item.title)
                 .font(.system(size: 12.5))
                 .foregroundStyle(item.isUnread ? DeckTheme.value : DeckTheme.label)
@@ -94,10 +124,10 @@ public struct InboxCard: View {
                 .foregroundStyle(DeckTheme.label)
                 .fixedSize()
         }
-        .padding(.vertical, 6)
+        .frame(height: CardMetrics.rowHeight - 1)
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
         .contentShape(Rectangle())
-        .onTapGesture { if let url = item.url { onOpen(url) } }
+        .onTapGesture { if let url = item.url { onOpen(url, item.accountID) } }
         .help("\(item.shortRepository) — \(item.title)")
     }
 }

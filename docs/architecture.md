@@ -76,6 +76,28 @@ Two details worth keeping in mind when adding a card:
 The first account keeps the un-suffixed Keychain key, so a token stored before accounts
 existed keeps working with no migration.
 
+## Opening links
+
+`BrowserChoice` (a bundle identifier plus an optional Chromium `--profile-directory`) hangs off
+the account; `LinkOpener` in the app target does the opening. Chromium only reads
+`--profile-directory` at launch and routes the request to its running process itself, so the
+open is issued with `createsNewApplicationInstance` — the API equivalent of `open -na … --args`.
+Anything that fails, or a browser that has since been uninstalled, falls back to the system
+default rather than doing nothing.
+
+`ChromiumProfiles.parse(localState:)` lives in `DevDeckCore` so the suite can cover it; the app
+supplies the bytes from `~/Library/Application Support/<browser>/Local State`.
+
+## Card sizing
+
+`CardMetrics` in `DevDeckCore` owns the row-count and height arithmetic, because two places
+have to agree on it exactly: the SwiftUI card drawing the rows and the AppKit panel being
+resized around them. A disagreement shows up as a clipped last row or a strip of empty glass.
+
+Expansion state lives on `DeckController` and is published, so `AppDelegate.syncPanelSizes()`
+resizes the window whenever either the data or the expansion changes — keeping the top edge
+fixed and shifting the rest of the column out of the way.
+
 ## Placement
 
 `DisplayMode` lives in `DevDeckCore` so it can be persisted and tested; the app maps it to an
