@@ -149,10 +149,10 @@ you use, the browser they open in, and control of its local Fusion stack.
   **Test** on each and edit the field in place when it is wrong.
 - **Sandbox and Prod ship empty**: a published site lives on its own domain and there is
   nothing to derive it from. Paste the URLs in and switch them on.
-- **Environments come first and are coloured apart from the tooling** — local (green when the
-  stack is up, grey when it is not), then sandbox in violet, then production in amber, then
-  PageBuilder, Composer and the Deployer in blue. Production is the one worth a beat of
-  hesitation, so it is the one that is not calm.
+- **Two rows.** Arc's tooling on top — PageBuilder, Composer, Deployer, all in blue — and the
+  environments you can open below it, in the order local, sandbox, production. The local chip
+  is green while the stack is up and grey when it is not, sandbox is violet and production
+  amber: production is the one worth a beat of hesitation, so it is the one that is not calm.
 - **Local stack** buttons run the Arc CLI in the project folder: **Start** is `npx fusion
   daemon` (the CLI's background mode — `fusion start` runs in the foreground and would hold
   the app hostage), **Stop** is `npx fusion stop`, **Restart** is one then the other. All three
