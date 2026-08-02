@@ -16,9 +16,18 @@ the foreground.
 
 ## Decision
 
-1. **Status comes from the engine's own health URL** — `http://localhost/release`, which the
-   Arc documentation points at, and which reports the running engine version as a bonus. Both
-   the base URL and the path are per-project settings.
+1. **Status comes from the engine's own health URL** — `/release`, which the Arc documentation
+   points at and which reports the running engine version as a bonus.
+
+   **The port is read from the project's `.env`.** The docs say bare `localhost`, and a real
+   checkout answered on 8080 because its `.env` sets `PORT=8080` — so a port written into
+   settings is stale the moment someone edits that file. `Local URL` stays as an override for
+   a stack that does not follow `PORT`, and is empty by default.
+
+   **A start waits for the engine.** `fusion daemon` returns when the containers exist, not
+   when the engine serves; checking once and declaring failure is how a warming stack reads as
+   "did not start". The card polls for up to a minute and, if nothing answers, says which URL
+   it tried — that message is nearly always about the port.
 2. **Start is `npx fusion daemon`**, the CLI's documented background mode. `stop`, `rebuild`
    and `down` map to their own commands, and every one of them is editable per project.
    Restart is stop followed by start, sequentially — starting before the ports are released

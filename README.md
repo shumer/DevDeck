@@ -114,9 +114,14 @@ you use, the browser they open in, and control of its local Fusion stack.
   the app hostage), **Stop** is `npx fusion stop`, **Restart** is one then the other. All three
   are editable per project.
 - **Running or not** is answered by asking the engine, not by watching processes: the card
-  requests `http://localhost/release`, which is what the Arc docs point at, and shows the
-  engine version it reports. That means a stack you started by hand in a terminal shows as
-  running too — the card reports what is actually serving.
+  requests `/release` and shows the engine version it reports. A stack you started by hand in
+  a terminal therefore shows as running too — the card reports what is actually serving.
+- **The port comes from the project's `.env`.** Fusion defaults to 80, but `PORT` in the
+  checkout overrides it, and that file is the only honest source. Leave **Local URL** empty
+  and the card follows it; fill it in only for a stack that does not.
+- **After a start the card waits.** `fusion daemon` returns as soon as the containers exist,
+  while the engine needs longer to serve, so the card polls for up to a minute before
+  concluding anything — and if nothing ever answers it names the URL it tried.
 - **Folder** opens the checkout in Finder, **Terminal** opens it in iTerm, Warp or Terminal,
   whichever is installed.
 

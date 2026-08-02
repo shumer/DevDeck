@@ -57,9 +57,9 @@ public struct ArcProjectCard: View {
             ForEach(project.resolvedLinks, id: \.label) { link in
                 chip(link.label, color: DeckTheme.blue) { onOpen(link.url) }
             }
-            if let local = project.localSiteURL {
+            if let local = status.siteURL ?? project.localSiteURL {
                 chip(
-                    localLabel,
+                    localLabel(local),
                     color: status.isRunning ? DeckTheme.green : DeckTheme.label,
                     isDimmed: !status.isRunning
                 ) {
@@ -73,10 +73,11 @@ public struct ArcProjectCard: View {
         .padding(.top, 11)
     }
 
-    private var localLabel: String {
-        guard let host = URL(string: project.localURL) else { return "local" }
-        if let port = host.port { return ":\(port)" }
-        return "local"
+    /// Shows the port the stack really serves on, which comes from the project's `.env`
+    /// rather than from a setting.
+    private func localLabel(_ url: URL) -> String {
+        guard let port = url.port else { return "local" }
+        return ":\(port)"
     }
 
     private func chip(

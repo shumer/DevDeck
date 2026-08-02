@@ -100,13 +100,19 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue, forKey: "panels.locked") }
     }
 
-    /// Saved panel origin as an AppKit point string, or nil when the card has never been moved.
-    public func origin(for card: CardID) -> String? {
-        backend.string(forKey: "panels.\(card.rawValue).origin")
+    /// Saved panel position as an AppKit point string, or nil when the card has never been moved.
+    ///
+    /// The point is the **top-left** corner, not AppKit's bottom-left origin. Cards change
+    /// height as their data arrives, and anchoring on the bottom made every launch place the
+    /// card lower than the user left it: the panel is created short, so its top starts below
+    /// where it was, and then it grows downwards from there. The top edge is the edge a person
+    /// lines panels up by, so that is what is stored.
+    public func topLeft(for card: CardID) -> String? {
+        backend.string(forKey: "panels.\(card.rawValue).top")
     }
 
-    public func setOrigin(_ value: String?, for card: CardID) {
-        backend.set(value, forKey: "panels.\(card.rawValue).origin")
+    public func setTopLeft(_ value: String?, for card: CardID) {
+        backend.set(value, forKey: "panels.\(card.rawValue).top")
     }
 
     // MARK: Refresh

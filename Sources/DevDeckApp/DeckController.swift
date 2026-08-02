@@ -142,7 +142,21 @@ final class DeckController: ObservableObject {
                     detail: result.failureLine ?? "\(action.title.lowercased()) failed",
                     checkedAt: Date()
                 )
-            } else {
+                return
+            }
+
+            switch action {
+            case .start, .restart:
+                // The command returns as soon as the containers are up; the engine takes
+                // longer to serve. Keep the card honest about waiting instead of declaring
+                // failure a second after a successful start.
+                self.stackStatuses[project.id] = LocalStackStatus(
+                    state: .working,
+                    detail: "waiting for the engine…",
+                    checkedAt: Date()
+                )
+                self.stackStatuses[project.id] = await service.waitUntilRunning()
+            case .stop, .rebuild, .teardown:
                 self.stackStatuses[project.id] = await service.status()
             }
         }
