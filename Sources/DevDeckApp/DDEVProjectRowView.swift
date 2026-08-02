@@ -28,7 +28,9 @@ final class DDEVProjectRowView: NSView {
     var onTestLink: ((DDEVProjectRowView) -> Void)?
     var onChooseFolder: ((DDEVProjectRowView) -> Void)?
 
-    static let height: CGFloat = 196
+    /// Tall enough for what the layout above places: a title row, the folder, the link
+    /// toggles, the browser pickers and a status line.
+    static let height: CGFloat = 212
 
     init(project: DDEVProject, width: CGFloat) {
         self.project = project
@@ -38,99 +40,70 @@ final class DDEVProjectRowView: NSView {
         layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
         layer?.cornerRadius = 8
 
-        let inset: CGFloat = 12
-        let full = width - inset * 2
-        var y = bounds.height - 34
+        let layout = RowLayout(in: self)
 
-        func label(_ text: String, _ top: CGFloat, x: CGFloat = inset, width: CGFloat = 260) {
-            let field = NSTextField(labelWithString: text)
-            field.frame = NSRect(x: x, y: top, width: width, height: 15)
-            field.font = NSFont.systemFont(ofSize: 10)
-            field.textColor = NSColor.secondaryLabelColor
-            addSubview(field)
-        }
-
-        titleField.frame = NSRect(x: inset, y: y, width: 190, height: 22)
         titleField.stringValue = project.title
         titleField.placeholderString = project.name
         titleField.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         titleField.delegate = self
-        addSubview(titleField)
 
-        enabledButton.frame = NSRect(x: inset + 200, y: y + 1, width: 90, height: 20)
         enabledButton.setButtonType(.switch)
         enabledButton.title = "Enabled"
         enabledButton.state = project.isEnabled ? .on : .off
         enabledButton.target = self
         enabledButton.action = #selector(controlChanged)
-        addSubview(enabledButton)
 
         let removeButton = NSButton(title: "Remove", target: self, action: #selector(remove))
-        removeButton.frame = NSRect(x: width - inset - 80, y: y - 2, width: 80, height: 24)
         removeButton.bezelStyle = .rounded
         removeButton.controlSize = .small
-        addSubview(removeButton)
 
-        y -= 26
-        label("DDEV name — \(project.name); everything else comes from the project itself", y, width: full)
+        layout.row(
+            [(titleField, nil), (enabledButton, 90), (removeButton, 80)],
+            height: 24,
+            gap: 4
+        )
+        layout.caption("DDEV name — \(project.name); the type, URLs and state come from DDEV itself", gap: 10)
 
-        y -= 30
-        label("Project folder", y + 22, width: full)
-        folderField.frame = NSRect(x: inset, y: y, width: full - 86, height: 22)
+        layout.caption("Project folder")
         folderField.stringValue = project.folder ?? ""
         folderField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         folderField.placeholderString = "~/Projects/…"
         folderField.delegate = self
-        addSubview(folderField)
 
         let chooseButton = NSButton(title: "Choose…", target: self, action: #selector(chooseFolder))
-        chooseButton.frame = NSRect(x: width - inset - 78, y: y - 1, width: 78, height: 25)
         chooseButton.bezelStyle = .rounded
         chooseButton.controlSize = .small
-        addSubview(chooseButton)
+        layout.row([(folderField, nil), (chooseButton, 80)], height: 24, gap: 12)
 
-        y -= 28
-        label("Links on the card — the site is always there", y + 18, width: full)
-        y -= 4
-        mailpitButton.frame = NSRect(x: inset, y: y, width: 100, height: 20)
+        layout.caption("Links on the card — the site itself is always there")
         mailpitButton.setButtonType(.switch)
         mailpitButton.title = "Mailpit"
         mailpitButton.state = project.showsMailpit ? .on : .off
         mailpitButton.target = self
         mailpitButton.action = #selector(controlChanged)
-        addSubview(mailpitButton)
 
-        xhguiButton.frame = NSRect(x: inset + 110, y: y, width: 100, height: 20)
         xhguiButton.setButtonType(.switch)
         xhguiButton.title = "xhgui"
         xhguiButton.state = project.showsXhgui ? .on : .off
         xhguiButton.target = self
         xhguiButton.action = #selector(controlChanged)
-        addSubview(xhguiButton)
+        layout.row([(mailpitButton, 100), (xhguiButton, 100)], height: 20, gap: 12)
 
-        y -= 32
-        label("Open links in", y + 22, width: full)
-        let popUpWidth = (full - 70) / 2
-        browserPopUp.frame = NSRect(x: inset, y: y, width: popUpWidth, height: 24)
+        layout.caption("Open links in")
         browserPopUp.target = self
         browserPopUp.action = #selector(browserChanged)
-        addSubview(browserPopUp)
-
-        profilePopUp.frame = NSRect(x: inset + popUpWidth + 8, y: y, width: popUpWidth, height: 24)
         profilePopUp.target = self
         profilePopUp.action = #selector(controlChanged)
-        addSubview(profilePopUp)
 
         let testButton = NSButton(title: "Test", target: self, action: #selector(testLink))
-        testButton.frame = NSRect(x: inset + popUpWidth * 2 + 16, y: y - 1, width: 50, height: 25)
         testButton.bezelStyle = .rounded
         testButton.controlSize = .small
-        addSubview(testButton)
+        layout.row([(browserPopUp, nil), (profilePopUp, nil), (testButton, 52)], height: 24, gap: 10)
 
-        statusLabel.frame = NSRect(x: inset, y: 8, width: full, height: 16)
         statusLabel.font = NSFont.systemFont(ofSize: 11)
         statusLabel.textColor = NSColor.secondaryLabelColor
-        addSubview(statusLabel)
+        statusLabel.lineBreakMode = .byTruncatingTail
+        layout.place(statusLabel, height: 16, gap: 0)
 
         loadBrowsers()
     }

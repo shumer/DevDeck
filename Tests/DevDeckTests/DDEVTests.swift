@@ -134,6 +134,46 @@ func runDDEVTests(_ run: TestRun) async {
         try expectNil(DDEVStatus(state: .running).versionsLine)
     }
 
+    run.section("DDEV — what the project is built on")
+
+    await run.test("the version comes from composer.lock, not from ddev's type") {
+        // Real numbers from this machine: both projects say `type: drupal9` in their DDEV
+        // config while running Drupal 11 and 10. The lock file cannot drift that way.
+        let lock = """
+        {"packages":[
+          {"name":"drupal/core-recommended","version":"11.4.4"},
+          {"name":"drupal/core","version":"11.4.4"},
+          {"name":"symfony/framework-bundle","version":"v7.1.0"}
+        ]}
+        """
+        try expectEqual(ProjectFramework.parse(composerLock: Data(lock.utf8)), "drupal 11.4.4")
+    }
+
+    await run.test("a leading v on the tag is dropped") {
+        let lock = """
+        {"packages":[{"name":"laravel/framework","version":"v11.9.2"}]}
+        """
+        try expectEqual(ProjectFramework.parse(composerLock: Data(lock.utf8)), "laravel 11.9.2")
+    }
+
+    await run.test("no lock file, or nothing recognised, says nothing") {
+        try expectNil(ProjectFramework.parse(composerLock: Data("{}".utf8)))
+        try expectNil(ProjectFramework.parse(composerLock: Data("not json".utf8)))
+        let unknown = """
+        {"packages":[{"name":"vendor/thing","version":"1.0"}]}
+        """
+        try expectNil(ProjectFramework.parse(composerLock: Data(unknown.utf8)))
+        try expectNil(ProjectFramework.label(in: nil))
+    }
+
+    await run.test("the footer falls back to ddev's type when there is no lock file") {
+        let fromLock = DDEVStatus(state: .running, entry: entries.first, framework: "drupal 11.4.4")
+        try expectEqual(fromLock.frameworkLabel, "drupal 11.4.4")
+
+        let withoutLock = DDEVStatus(state: .running, entry: entries.first)
+        try expectEqual(withoutLock.frameworkLabel, "drupal9", "stale, but better than nothing")
+    }
+
     run.section("DDEV — projects and links")
 
     await run.test("the title falls back to the ddev name") {

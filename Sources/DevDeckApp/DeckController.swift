@@ -187,17 +187,30 @@ final class DeckController: ObservableObject {
     }
 
     /// One `ddev list` answers for every card, so the cost does not grow with the deck.
-    private func refreshDDEV() async {
+    /// `finished` names projects whose command has just returned. They are refreshed even
+    /// though their status still says "working" — it says that because this very call is what
+    /// clears it, and skipping them left a card stuck on "starting…" over a project that had
+    /// been up for minutes.
+    private func refreshDDEV(finished: Set<String> = []) async {
         let projects = activeDDEVProjects
         guard !projects.isEmpty else { return }
 
         let entries = await ddevEnvironment.list()
         for project in projects {
-            // A command from the card owns the status until it finishes, or the poll would
-            // flip the card back mid-restart.
-            if ddevStatuses[project.id]?.isBusy == true { continue }
+            // A command from the card owns the status while it runs, or the poll would flip
+            // the card back mid-restart. A stale "working" is overruled: a task that died
+            // without reporting must not freeze the card for the rest of the session.
+            if !finished.contains(project.id), isBusyAndFresh(project.id) { continue }
             ddevStatuses[project.id] = ddevEnvironment.status(for: project, entries: entries)
         }
+    }
+
+    /// Long enough for a first `ddev start` that pulls images, short enough that a lost task
+    /// does not strand the card.
+    private func isBusyAndFresh(_ projectID: String) -> Bool {
+        guard let status = ddevStatuses[projectID], status.isBusy else { return false }
+        guard let checkedAt = status.checkedAt else { return true }
+        return Date().timeIntervalSince(checkedAt) < 900
     }
 
     func perform(_ action: DDEVAction, for project: DDEVProject) {
@@ -228,7 +241,7 @@ final class DeckController: ObservableObject {
                 return
             }
 
-            await self.refreshDDEV()
+            await self.refreshDDEV(finished: [project.id])
         }
     }
 
@@ -247,8 +260,11 @@ final class DeckController: ObservableObject {
 
         Task { [weak self] in
             guard let self else { return }
+            let powered = Set(self.activeDDEVProjects.map(\.id))
             _ = await self.ddevEnvironment.powerOff()
-            await self.refreshDDEV()
+            // Every card was marked working a moment ago, so every card is the one this
+            // refresh is clearing.
+            await self.refreshDDEV(finished: powered)
         }
     }
 

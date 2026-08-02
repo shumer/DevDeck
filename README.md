@@ -189,6 +189,10 @@ folder to go hunting for — DDEV already knows every project on the machine.
 
 - **One `ddev list -j` answers for the whole deck.** Six cards cost the same as one, which is
   why this is a shared environment rather than a probe per project.
+- **The framework version comes from `composer.lock`.** DDEV's own `type:` is a setting
+  nobody updates after an upgrade — two projects here still said `drupal9` while running
+  Drupal 11.4.4 and 10.6.11 — so the footer reads the lock file, which cannot drift that way,
+  and falls back to the DDEV type only when there is no lock file at all.
 - **PHP and database versions come from `.ddev/config.yaml`.** `ddev list` does not carry
   them and `ddev describe` is a process per project, while the file is right there in the
   checkout — the same trick as Arc's `PORT` and the git branch.
