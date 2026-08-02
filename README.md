@@ -62,8 +62,11 @@ only works for the installed copy.
 | `swift run DevDeck` | runs from the terminal without bundling — handy for `print` debugging |
 | `pkill -f DevDeck` | quits every running copy |
 
-The version on the About-style tooltip comes from `VERSION` (bumped by hand when a release
-earns a name) plus the commit count as the build number, so it always moves.
+**Settings → General shows the running version** — `DevDeck 0.1 (build 21)` — and which bundle
+it came from. The marketing number lives in `VERSION` and is bumped by hand when a release
+earns a name; the build number is the commit count, so it moves on every rebuild. That is the
+quickest way to tell whether the copy in front of you is the change you just made or the one
+that was already running.
 
 **After every rebuild macOS asks for the login keychain once.** Ad-hoc signing gives the app a
 new identity each build, so "Always Allow" holds only until the next `./build.sh`. See
