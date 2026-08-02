@@ -40,6 +40,14 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
+        // Renders the menu-bar icon to a PNG. A 15-point drawing cannot be judged from source.
+        .executableTarget(
+            name: "IconPreview",
+            dependencies: ["DevDeckUI"],
+            path: "Tools/IconPreview",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+
         // Live check against the real API, run by scripts/smoke-test.sh.
         .executableTarget(
             name: "DevDeckSmoke",
