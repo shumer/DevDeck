@@ -2,13 +2,13 @@ import AppKit
 import DDEVKit
 import DevDeckCore
 
-/// One DDEV project in the settings window.
+/// The form for one DDEV project.
 ///
-/// Much shorter than the Arc row on purpose: DDEV knows the name, the type, the URLs and the
-/// state, so the only things worth asking about are the folder, what to call it, and where
-/// its links should open.
+/// Much shorter than the Arc one on purpose: DDEV knows the name, the type, the URLs and the
+/// state, so the only things worth asking about are the folder, what to call it, and where its
+/// links should open.
 @MainActor
-final class DDEVProjectRowView: NSView {
+final class DDEVProjectRowView: FlippedContainer {
     private(set) var project: DDEVProject
 
     private let titleField = NSTextField()
@@ -26,60 +26,42 @@ final class DDEVProjectRowView: NSView {
     private var profiles: [BrowserProfile] = []
 
     var onChange: ((DDEVProjectRowView) -> Void)?
-    var onRemove: ((DDEVProjectRowView) -> Void)?
     var onTestLink: ((DDEVProjectRowView) -> Void)?
     var onChooseFolder: ((DDEVProjectRowView) -> Void)?
 
-    /// The fixed blocks plus a line per deployed environment. `RowLayout` places from the
-    /// top down, so this only has to be generous enough not to clip the last line.
-    static func height(for project: DDEVProject) -> CGFloat {
-        226 + CGFloat(project.customLinks.count) * 26
-    }
-
     init(project: DDEVProject, width: CGFloat) {
         self.project = project
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height(for: project)))
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
 
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
-        layer?.cornerRadius = 8
+        let form = FormLayout(in: self)
 
-        let layout = RowLayout(in: self)
-
+        form.beginGroup()
         titleField.stringValue = project.title
         titleField.placeholderString = project.name
-        titleField.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         titleField.delegate = self
+        form.row("Name", [(titleField, nil)])
 
         enabledButton.setButtonType(.switch)
-        enabledButton.title = "Enabled"
+        enabledButton.title = "Show a card for this project"
         enabledButton.state = project.isEnabled ? .on : .off
         enabledButton.target = self
         enabledButton.action = #selector(controlChanged)
+        form.row("", [(enabledButton, nil)], height: 20)
 
-        let removeButton = NSButton(title: "Remove", target: self, action: #selector(remove))
-        removeButton.bezelStyle = .rounded
-        removeButton.controlSize = .small
-
-        layout.row(
-            [(titleField, nil), (enabledButton, 90), (removeButton, 80)],
-            height: 24,
-            gap: 4
-        )
-        layout.caption("DDEV name — \(project.name); the type, URLs and state come from DDEV itself", gap: 10)
-
-        layout.caption("Project folder")
         folderField.stringValue = project.folder ?? ""
         folderField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         folderField.placeholderString = "~/Projects/…"
         folderField.delegate = self
-
         let chooseButton = NSButton(title: "Choose…", target: self, action: #selector(chooseFolder))
         chooseButton.bezelStyle = .rounded
         chooseButton.controlSize = .small
-        layout.row([(folderField, nil), (chooseButton, 80)], height: 24, gap: 12)
+        form.row("Folder", [(folderField, nil), (chooseButton, 84)])
+        form.endGroup()
+        form.footnote("The DDEV name is \(project.name). Its type, URLs and state come from DDEV "
+            + "itself; PHP and database versions are read from .ddev/config.yaml.")
 
-        layout.caption("Links on the card — the site itself is always there")
+        form.header("Links on the card")
+        form.beginGroup()
         mailpitButton.setButtonType(.switch)
         mailpitButton.title = "Mailpit"
         mailpitButton.state = project.showsMailpit ? .on : .off
@@ -91,17 +73,12 @@ final class DDEVProjectRowView: NSView {
         xhguiButton.state = project.showsXhgui ? .on : .off
         xhguiButton.target = self
         xhguiButton.action = #selector(controlChanged)
-        layout.row([(mailpitButton, 100), (xhguiButton, 100)], height: 20, gap: 10)
+        form.row("Tools", [(mailpitButton, 90), (xhguiButton, nil)], height: 20)
 
-        layout.caption("Deployed sites — the local one comes from ddev")
         for link in project.customLinks {
             let check = NSButton(checkboxWithTitle: "", target: self, action: #selector(controlChanged))
             check.state = link.isEnabled ? .on : .off
             linkChecks.append(check)
-
-            let name = NSTextField(labelWithString: link.label)
-            name.font = NSFont.systemFont(ofSize: 11)
-            name.lineBreakMode = .byTruncatingTail
 
             let address = NSTextField()
             address.stringValue = link.urlTemplate
@@ -110,26 +87,26 @@ final class DDEVProjectRowView: NSView {
             address.delegate = self
             linkFields.append(address)
 
-            layout.row([(check, 18), (name, 64), (address, nil)], height: 22, gap: 4, spacing: 4)
+            form.row(link.label, [(check, 18), (address, nil)], height: 22)
         }
-        layout.space(8)
+        form.endGroup()
+        form.footnote("The local site comes from DDEV. The deployed ones live on their own "
+            + "domains, so there is nothing to derive them from.")
 
-        layout.caption("Open links in")
+        form.header("Open links in")
+        form.beginGroup()
         browserPopUp.target = self
         browserPopUp.action = #selector(browserChanged)
         profilePopUp.target = self
         profilePopUp.action = #selector(controlChanged)
-
         let testButton = NSButton(title: "Test", target: self, action: #selector(testLink))
         testButton.bezelStyle = .rounded
         testButton.controlSize = .small
-        layout.row([(browserPopUp, nil), (profilePopUp, nil), (testButton, 52)], height: 24, gap: 10)
+        form.row("Browser", [(browserPopUp, nil), (profilePopUp, nil), (testButton, 56)])
+        form.note(statusLabel)
+        form.endGroup()
 
-        statusLabel.font = NSFont.systemFont(ofSize: 11)
-        statusLabel.textColor = NSColor.secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
-        layout.place(statusLabel, height: 16, gap: 0)
-
+        frame.size.height = form.usedHeight
         loadBrowsers()
     }
 
@@ -242,10 +219,6 @@ final class DDEVProjectRowView: NSView {
 
     @objc private func chooseFolder() {
         onChooseFolder?(self)
-    }
-
-    @objc private func remove() {
-        onRemove?(self)
     }
 }
 
