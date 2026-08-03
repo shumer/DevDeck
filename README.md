@@ -125,8 +125,8 @@ Settings live in the `com.shumer.devdeck` preferences domain. To start over:
 ### Several accounts
 
 One token rarely covers everything: a fine-grained token is approved per organisation, and
-some organisations sit behind SAML SSO. **Menu bar → GitHub accounts…** manages a list —
-each account has its own label, its own organisations and its own token in the Keychain.
+some organisations sit behind SAML SSO. **Settings → GitHub accounts** manages a list — each
+account has its own label, its own organisations and its own token in the Keychain.
 
 All accounts feed the same cards. Pull requests visible to two accounts are shown once. When
 one account fails, the others still render and the card footer says which one is missing;
@@ -273,8 +273,14 @@ Everything else lives in its menu:
 - **Keep on desktop / Float above windows** — panels behind your windows, or above them.
 - **Lock position** — stop dragging once the layout is right.
 - **Tidy panels into a column** — close up gaps without resetting where you put them.
-- **Start at login**, **Refresh now**, **Settings…** — one window with GitHub accounts, Arc
-  projects, DDEV projects and General kept in separate sections.
+- **Start at login**, **Refresh now**, **Settings…**
+
+The settings window is three columns: the sections — GitHub accounts, Arc projects, DDEV
+projects, General — then what is in the section, then the form for the one selected. Only one
+account or project has a form on screen at a time, which is what keeps two similarly named
+projects apart, and the form stretches with the window. Add and remove are the `+` and `−`
+under the list. Everything applies as you change it; only a token waits for **Verify token**,
+because it is checked against the API before being stored.
 
 Drag a panel anywhere; the position is remembered per card. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
