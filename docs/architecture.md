@@ -162,13 +162,30 @@ Two details keep a deck stable across launches, and both were bugs first:
 A saved position is only used when the frame still overlaps a screen by at least 80×40 points,
 so a panel can never come back 99% off-screen.
 
-## Settings windows
+## The settings window
 
-One window with a sidebar: GitHub accounts, Arc projects, DDEV projects, General. Rows are
-built in code and laid out by `RowLayout`, which places controls from the top down and moves
-its cursor by what was actually placed. Every field used to carry a hand-computed `y`, which
-is how three lines of the DDEV row ended up drawn on top of each other — with a cursor, that
-overlap stops being expressible.
+Three columns: the sections, the things in the selected section, and the form for one of them.
+
+```
+sections          list                     form
+GitHub accounts   ● Governance             ┌ Name        [ Governance        ] ┐
+Arc projects        whistleblower          │ Folder      [ /Users/…  ][Choose]│
+DDEV projects ▸   ○ nasdaqir               └───────────────────────────────────┘
+General             NasdaqIR               Links on the card …
+                  [+] [−]
+```
+
+The middle column is the answer to a real problem: with every project's fields stacked down one
+page, it was impossible to see where one ended and the next began. Only the selected item has a
+form, and the list carries the identity — name, what tells it apart, and a state dot.
+
+Forms are built by `FormLayout`, which places from the top down and moves its cursor by what it
+actually placed; a control passed a `nil` width shares whatever is left over. That is both
+halves of what was wrong before: labels drawn over the controls above them, and a fixed-width
+form leaving dead space down the right of the window. The form is rebuilt on resize, which is
+cheap and keeps every field stretched to the window.
+
+`General` has nothing to list, so its page takes the list column's width as well.
 
 Everything applies as it is edited. Only a token waits for a button, because it is verified
 against the API before being stored.

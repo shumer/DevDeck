@@ -2,12 +2,12 @@ import AppKit
 import ArcKit
 import DevDeckCore
 
-/// One Arc project in the settings window.
+/// The form for one Arc project.
 ///
-/// Everything here applies as it is edited, like the account rows — a control that waits for
-/// a button nobody presses is how the browser choice failed to take effect the first time.
+/// Everything applies as it is edited — a control that waits for a button nobody presses is
+/// how the browser choice failed to take effect the first time.
 @MainActor
-final class ProjectRowView: NSView {
+final class ProjectRowView: FlippedContainer {
     private(set) var project: ArcProject
 
     private let titleField = NSTextField()
@@ -29,77 +29,93 @@ final class ProjectRowView: NSView {
     private var profiles: [BrowserProfile] = []
 
     var onChange: ((ProjectRowView) -> Void)?
-    var onRemove: ((ProjectRowView) -> Void)?
     var onTestLink: ((ProjectRowView) -> Void)?
     var onChooseFolder: ((ProjectRowView) -> Void)?
 
-    /// The fixed blocks plus one line per link template. `RowLayout` places from the top
-    /// down, so this only has to be generous enough not to clip the last line.
-    static func height(for project: ArcProject) -> CGFloat {
-        296 + CGFloat(project.links.count) * 26
-    }
-
     init(project: ArcProject, width: CGFloat) {
         self.project = project
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height(for: project)))
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
 
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
-        layer?.cornerRadius = 8
-
-        let layout = RowLayout(in: self)
-
-        func field(_ target: NSTextField, mono: Bool = false, placeholder: String = "") {
-            target.font = mono
-                ? NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-                : NSFont.systemFont(ofSize: 12)
-            target.placeholderString = placeholder
-            target.delegate = self
+        func mono(_ field: NSTextField, placeholder: String = "") {
+            field.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+            field.placeholderString = placeholder
+            field.delegate = self
         }
 
+        let form = FormLayout(in: self)
+
+        form.beginGroup()
         titleField.stringValue = project.title
-        titleField.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         titleField.delegate = self
+        form.row("Name", [(titleField, nil)])
 
         enabledButton.setButtonType(.switch)
-        enabledButton.title = "Enabled"
+        enabledButton.title = "Show a card for this project"
         enabledButton.state = project.isEnabled ? .on : .off
         enabledButton.target = self
         enabledButton.action = #selector(controlChanged)
+        form.row("", [(enabledButton, nil)], height: 20)
 
-        let removeButton = NSButton(title: "Remove", target: self, action: #selector(remove))
-        removeButton.bezelStyle = .rounded
-        removeButton.controlSize = .small
-        layout.row([(titleField, nil), (enabledButton, 90), (removeButton, 80)], height: 24, gap: 10)
-
-        layout.caption("Organisation — includes the environment, such as sandbox.ilgiornale")
         organizationField.stringValue = project.organization
-        field(organizationField, placeholder: "sandbox.ilgiornale")
-        siteField.stringValue = project.site ?? ""
-        field(siteField, placeholder: "site id (optional)")
-        layout.row([(organizationField, nil), (siteField, nil)], height: 24, gap: 12)
+        organizationField.placeholderString = "sandbox.acme"
+        organizationField.delegate = self
+        form.row("Organisation", [(organizationField, nil)])
 
-        layout.caption("Links on the card — {org} and {site} are substituted")
+        siteField.stringValue = project.site ?? ""
+        siteField.placeholderString = "optional"
+        siteField.delegate = self
+        form.row("Site id", [(siteField, nil)])
+        form.endGroup()
+        form.footnote("The organisation carries the environment: sandbox.acme for the sandbox, "
+            + "acme for production. Templates add nothing of their own.")
+
+        form.header("Links on the card")
+        form.beginGroup()
         for link in project.links {
             let check = NSButton(checkboxWithTitle: "", target: self, action: #selector(controlChanged))
             check.state = link.isEnabled ? .on : .off
             linkChecks.append(check)
 
-            let name = NSTextField(labelWithString: link.label)
-            name.font = NSFont.systemFont(ofSize: 11)
-            name.lineBreakMode = .byTruncatingTail
-
             let template = NSTextField()
             template.stringValue = link.urlTemplate
-            // The site links ship empty because nothing can derive a published domain.
-            field(template, mono: true, placeholder: "https://…")
+            mono(template, placeholder: "https://…")
             linkFields.append(template)
 
-            layout.row([(check, 18), (name, 86), (template, nil)], height: 22, gap: 4, spacing: 4)
+            form.row(link.label, [(check, 18), (template, nil)], height: 22)
         }
-        layout.space(8)
+        form.endGroup()
+        form.footnote("{org} and {site} are substituted. Sandbox and Prod ship empty because a "
+            + "published site lives on its own domain.")
 
-        layout.caption("Open links in")
+        form.header("Local stack")
+        form.beginGroup()
+        folderField.stringValue = project.folder ?? ""
+        mono(folderField, placeholder: "~/Projects/…")
+        let chooseButton = NSButton(title: "Choose…", target: self, action: #selector(chooseFolder))
+        chooseButton.bezelStyle = .rounded
+        chooseButton.controlSize = .small
+        form.row("Folder", [(folderField, nil), (chooseButton, 84)])
+
+        startField.stringValue = project.startCommand
+        mono(startField)
+        form.row("Start", [(startField, nil)])
+
+        stopField.stringValue = project.stopCommand
+        mono(stopField)
+        form.row("Stop", [(stopField, nil)])
+
+        localURLField.stringValue = project.localURL
+        mono(localURLField, placeholder: EnvFile.localURL(in: project.folderURL))
+        form.row("Local URL", [(localURLField, nil)])
+
+        healthField.stringValue = project.healthPath
+        mono(healthField, placeholder: "/release")
+        form.row("Health path", [(healthField, nil)])
+        form.endGroup()
+        form.footnote("Leave the local URL empty and the card reads PORT from the project's .env.")
+
+        form.header("Open links in")
+        form.beginGroup()
         browserPopUp.target = self
         browserPopUp.action = #selector(browserChanged)
         profilePopUp.target = self
@@ -107,35 +123,11 @@ final class ProjectRowView: NSView {
         let testButton = NSButton(title: "Test", target: self, action: #selector(testLink))
         testButton.bezelStyle = .rounded
         testButton.controlSize = .small
-        layout.row([(browserPopUp, nil), (profilePopUp, nil), (testButton, 52)], height: 24, gap: 12)
+        form.row("Browser", [(browserPopUp, nil), (profilePopUp, nil), (testButton, 56)])
+        form.note(statusLabel)
+        form.endGroup()
 
-        layout.caption("Project folder")
-        folderField.stringValue = project.folder ?? ""
-        field(folderField, mono: true, placeholder: "~/Projects/…")
-        let chooseButton = NSButton(title: "Choose…", target: self, action: #selector(chooseFolder))
-        chooseButton.bezelStyle = .rounded
-        chooseButton.controlSize = .small
-        layout.row([(folderField, nil), (chooseButton, 80)], height: 24, gap: 12)
-
-        layout.caption("Start and stop commands")
-        startField.stringValue = project.startCommand
-        field(startField, mono: true)
-        stopField.stringValue = project.stopCommand
-        field(stopField, mono: true)
-        layout.row([(startField, nil), (stopField, nil)], height: 24, gap: 12)
-
-        layout.caption("Local URL — empty reads PORT from the project's .env — and health path")
-        localURLField.stringValue = project.localURL
-        field(localURLField, mono: true, placeholder: EnvFile.localURL(in: project.folderURL))
-        healthField.stringValue = project.healthPath
-        field(healthField, mono: true, placeholder: "/release")
-        layout.row([(localURLField, nil), (healthField, nil)], height: 24, gap: 10)
-
-        statusLabel.font = NSFont.systemFont(ofSize: 11)
-        statusLabel.textColor = NSColor.secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
-        layout.place(statusLabel, height: 16, gap: 0)
-
+        frame.size.height = form.usedHeight
         loadBrowsers()
     }
 
@@ -256,10 +248,6 @@ final class ProjectRowView: NSView {
 
     @objc private func chooseFolder() {
         onChooseFolder?(self)
-    }
-
-    @objc private func remove() {
-        onRemove?(self)
     }
 }
 

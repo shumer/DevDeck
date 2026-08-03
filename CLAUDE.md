@@ -68,8 +68,10 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
   card.
 - **Project ids are card identifiers** (`arc.project.<id>`, `ddev.project.<id>`) and are never
   renamed.
-- **Settings rows are laid out by `RowLayout`**, never by hand-computed frames. A label placed
-  over the control above it is what hand-computed `y` values produce.
+- **Settings forms are built with `FormLayout`**, never with hand-computed frames. A label
+  placed over the control above it is what hand-computed `y` values produce. Controls that
+  should stretch pass a `nil` width; nothing in a settings form is a fixed number of points
+  wide.
 - **Panel positions anchor on the top-left corner**, and a shift caused by a card growing is
   never persisted — that pair is what stops the deck creeping apart between launches.
 - **Menus are populated by `menuNeedsUpdate`, never built and handed to a view.** A menu built

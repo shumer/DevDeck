@@ -4,13 +4,13 @@ import DDEVKit
 import DevDeckCore
 import GitHubKit
 
-/// The settings window.
+/// The settings window: sections, then the things in a section, then the form for one of them.
 ///
-/// One window with a sidebar rather than a window per integration: GitHub and Arc share
-/// nothing but the browser picker, and mixing their fields in one list is exactly what makes
-/// a settings screen unreadable once there are two of anything.
+/// Three columns rather than one long page. With every project's fields stacked under each
+/// other it was impossible to see where one ended and the next began, and the form column is
+/// what absorbs the window's width instead of leaving dead space down the right.
 @MainActor
-final class SettingsWindowController: NSObject {
+final class SettingsWindowController: NSObject, NSWindowDelegate {
     enum Section: String, CaseIterable {
         case github
         case arc
@@ -25,6 +25,9 @@ final class SettingsWindowController: NSObject {
             case .general: return "General"
             }
         }
+
+        /// General is a page, not a list of things.
+        var hasList: Bool { self != .general }
     }
 
     private let tokenStore: any TokenStore
@@ -36,18 +39,22 @@ final class SettingsWindowController: NSObject {
     private let onChanged: () -> Void
 
     private var window: NSWindow?
-    private var documentView: NSView?
+    private var sidebar: NSView?
     private var sidebarButtons: [Section: NSButton] = [:]
-    private var addButton: NSButton?
+    private var list: SettingsListView?
+    private var detailScroll: NSScrollView?
+    private var detail: FlippedContainer?
+
     private var section: Section = .github
+    /// Which item each section was last left on.
+    private var selection: [Section: String] = [:]
 
-    private var accountRows: [AccountRowView] = []
-    private var projectRows: [ProjectRowView] = []
-    private var ddevRows: [DDEVProjectRowView] = []
+    private var accountRow: AccountRowView?
+    private var projectRow: ProjectRowView?
+    private var ddevRow: DDEVProjectRowView?
 
-    private static let width: CGFloat = 640
-    private static let sidebarWidth: CGFloat = 176
-    private static let rowWidth: CGFloat = 428
+    private static let sidebarWidth: CGFloat = 184
+    private static let listWidth: CGFloat = 196
 
     init(
         tokenStore: any TokenStore,
@@ -65,6 +72,8 @@ final class SettingsWindowController: NSObject {
         self.onChanged = onChanged
     }
 
+    // MARK: Window
+
     func show(_ section: Section = .github) {
         if let window {
             select(section)
@@ -74,49 +83,47 @@ final class SettingsWindowController: NSObject {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: Self.width, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 880, height: 580),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "DevDeck — Settings"
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: Self.width, height: 380)
+        window.minSize = NSSize(width: 720, height: 440)
+        window.delegate = self
         window.center()
 
         let content = NSView(frame: window.contentRect(forFrameRect: window.frame))
+        content.wantsLayer = true
+        content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
-        let sidebar = NSView(frame: NSRect(x: 0, y: 0, width: Self.sidebarWidth, height: content.bounds.height))
-        sidebar.autoresizingMask = [.height]
-        sidebar.wantsLayer = true
-        sidebar.layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.6).cgColor
-        content.addSubview(sidebar)
+        buildSidebar(in: content)
 
-        var y = content.bounds.height - 46
-        for item in Section.allCases {
-            let button = NSButton(title: item.title, target: self, action: #selector(sectionClicked(_:)))
-            button.frame = NSRect(x: 10, y: y, width: Self.sidebarWidth - 20, height: 26)
-            button.isBordered = false
-            button.alignment = .left
-            button.font = NSFont.systemFont(ofSize: 12.5)
-            button.autoresizingMask = [.minYMargin]
-            button.identifier = NSUserInterfaceItemIdentifier(item.rawValue)
-            sidebar.addSubview(button)
-            sidebarButtons[item] = button
-            y -= 30
-        }
-
-        let add = NSButton(title: "Add", target: self, action: #selector(addItem))
-        add.frame = NSRect(x: 12, y: 14, width: Self.sidebarWidth - 24, height: 28)
-        add.bezelStyle = .rounded
-        sidebar.addSubview(add)
-        addButton = add
-
-        let scroll = NSScrollView(
+        let list = SettingsListView(
             frame: NSRect(
                 x: Self.sidebarWidth,
                 y: 0,
-                width: content.bounds.width - Self.sidebarWidth,
+                width: Self.listWidth,
+                height: content.bounds.height
+            )
+        )
+        list.autoresizingMask = [.height]
+        list.onSelect = { [weak self] id in
+            guard let self else { return }
+            self.selection[self.section] = id
+            self.reloadDetail()
+        }
+        list.onAdd = { [weak self] in self?.addItem() }
+        list.onRemove = { [weak self] in self?.removeSelected() }
+        content.addSubview(list)
+        self.list = list
+
+        let scroll = NSScrollView(
+            frame: NSRect(
+                x: Self.sidebarWidth + Self.listWidth,
+                y: 0,
+                width: content.bounds.width - Self.sidebarWidth - Self.listWidth,
                 height: content.bounds.height
             )
         )
@@ -125,10 +132,7 @@ final class SettingsWindowController: NSObject {
         scroll.drawsBackground = false
         scroll.autoresizingMask = [.width, .height]
         content.addSubview(scroll)
-
-        let document = FlippedView(frame: NSRect(x: 0, y: 0, width: Self.rowWidth + 24, height: 0))
-        scroll.documentView = document
-        documentView = document
+        detailScroll = scroll
 
         window.contentView = content
         self.window = window
@@ -136,6 +140,51 @@ final class SettingsWindowController: NSObject {
         select(section)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    private func buildSidebar(in content: NSView) {
+        let sidebar = NSView(frame: NSRect(x: 0, y: 0, width: Self.sidebarWidth, height: content.bounds.height))
+        sidebar.autoresizingMask = [.height]
+        sidebar.wantsLayer = true
+        sidebar.layer?.backgroundColor = NSColor.underPageBackgroundColor.withAlphaComponent(0.6).cgColor
+        content.addSubview(sidebar)
+        self.sidebar = sidebar
+
+        let header = NSTextField(labelWithString: "SETTINGS")
+        header.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
+        header.textColor = NSColor.tertiaryLabelColor
+        header.frame = NSRect(x: 18, y: content.bounds.height - 40, width: 120, height: 14)
+        header.autoresizingMask = [.minYMargin]
+        sidebar.addSubview(header)
+
+        var y = content.bounds.height - 68
+        for item in Section.allCases {
+            let button = NSButton(title: "  " + item.title, target: self, action: #selector(sectionClicked(_:)))
+            button.frame = NSRect(x: 10, y: y, width: Self.sidebarWidth - 20, height: 28)
+            button.isBordered = false
+            button.alignment = .left
+            button.font = NSFont.systemFont(ofSize: 13)
+            button.wantsLayer = true
+            button.layer?.cornerRadius = 6
+            button.layer?.cornerCurve = .continuous
+            button.autoresizingMask = [.minYMargin]
+            button.identifier = NSUserInterfaceItemIdentifier(item.rawValue)
+            sidebar.addSubview(button)
+            sidebarButtons[item] = button
+            y -= 32
+        }
+
+        let separator = NSView(frame: NSRect(x: Self.sidebarWidth - 1, y: 0, width: 1, height: content.bounds.height))
+        separator.wantsLayer = true
+        separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        separator.autoresizingMask = [.height]
+        sidebar.addSubview(separator)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        // The form is laid out for a width, so it is rebuilt when the width changes. Cheap,
+        // and it keeps every field stretched to the window instead of stopping short of it.
+        reloadDetail()
     }
 
     // MARK: Sections
@@ -147,143 +196,270 @@ final class SettingsWindowController: NSObject {
 
     private func select(_ item: Section) {
         section = item
+
         for (candidate, button) in sidebarButtons {
             let isSelected = candidate == item
-            button.contentTintColor = isSelected ? .controlAccentColor : .labelColor
-            button.font = NSFont.systemFont(ofSize: 12.5, weight: isSelected ? .semibold : .regular)
+            button.layer?.backgroundColor = isSelected
+                ? NSColor.controlAccentColor.cgColor
+                : NSColor.clear.cgColor
+            button.contentTintColor = isSelected ? .white : .labelColor
+            button.attributedTitle = NSAttributedString(
+                string: "  " + candidate.title,
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 13, weight: isSelected ? .semibold : .regular),
+                    .foregroundColor: isSelected ? NSColor.white : NSColor.labelColor,
+                ]
+            )
         }
-        addButton?.title = (item == .arc || item == .ddev) ? "Add project" : "Add account"
-        addButton?.isHidden = item == .general
-        reload()
+
+        layoutColumns()
+        reloadList()
+        reloadDetail()
     }
 
-    @objc private func addItem() {
+    /// General has nothing to list, so its page takes the list column's width too.
+    private func layoutColumns() {
+        guard let content = window?.contentView, let list, let detailScroll else { return }
+        let showsList = section.hasList
+        list.isHidden = !showsList
+
+        let detailLeft = Self.sidebarWidth + (showsList ? Self.listWidth : 0)
+        detailScroll.frame = NSRect(
+            x: detailLeft,
+            y: 0,
+            width: content.bounds.width - detailLeft,
+            height: content.bounds.height
+        )
+    }
+
+    // MARK: The list column
+
+    private func reloadList() {
+        guard let list else { return }
+
+        let items: [SettingsListItem]
+        switch section {
+        case .github:
+            items = accountsStore.accounts().map { account in
+                let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
+                return SettingsListItem(
+                    id: account.id,
+                    title: account.label,
+                    subtitle: hasToken ? "token stored" : "no token yet",
+                    state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
+                )
+            }
+        case .arc:
+            items = projectsStore.projects().map { project in
+                SettingsListItem(
+                    id: project.id,
+                    title: project.title,
+                    subtitle: project.organization.isEmpty ? "no organisation" : project.organization,
+                    state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+                )
+            }
+        case .ddev:
+            items = ddevProjectsStore.projects().map { project in
+                SettingsListItem(
+                    id: project.id,
+                    title: project.displayTitle,
+                    subtitle: project.folderURL?.lastPathComponent ?? "no folder",
+                    state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+                )
+            }
+        case .general:
+            items = []
+        }
+
+        let stored = selection[section]
+        let valid = items.contains { $0.id == stored } ? stored : items.first?.id
+        selection[section] = valid
+        list.show(items, selecting: valid)
+    }
+
+    // MARK: The form column
+
+    private func reloadDetail() {
+        guard let detailScroll else { return }
+
+        accountRow = nil
+        projectRow = nil
+        ddevRow = nil
+
+        let width = max(detailScroll.contentSize.width, 320)
+        let container = FlippedContainer(frame: NSRect(x: 0, y: 0, width: width, height: 10))
+        detail = container
+
+        switch section {
+        case .github:
+            buildAccountForm(in: container, width: width)
+        case .arc:
+            buildArcForm(in: container, width: width)
+        case .ddev:
+            buildDDEVForm(in: container, width: width)
+        case .general:
+            buildGeneralForm(in: container, width: width)
+        }
+
+        container.frame.size.height = max(
+            container.subviews.map { $0.frame.maxY }.max() ?? 0,
+            detailScroll.contentSize.height
+        )
+        detailScroll.documentView = container
+    }
+
+    private func place(_ row: NSView, in container: FlippedContainer) {
+        row.frame.origin = .zero
+        container.addSubview(row)
+    }
+
+    private func emptyState(_ text: String, in container: FlippedContainer, width: CGFloat) {
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.font = NSFont.systemFont(ofSize: 12)
+        label.textColor = NSColor.secondaryLabelColor
+        label.frame = NSRect(x: 20, y: 20, width: width - 40, height: 40)
+        container.addSubview(label)
+    }
+
+    private func buildAccountForm(in container: FlippedContainer, width: CGFloat) {
+        guard let id = selection[.github],
+              let account = accountsStore.accounts().first(where: { $0.id == id })
+        else {
+            emptyState("No accounts yet — press + below the list.", in: container, width: width)
+            return
+        }
+
+        let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
+        let row = AccountRowView(account: account, hasToken: hasToken, width: width)
+        row.onChange = { [weak self] in self?.applyAccountEdits($0) }
+        row.onSave = { [weak self] in self?.saveAccount($0) }
+        row.onTestLink = { [weak self] in self?.testAccountLink($0) }
+        place(row, in: container)
+        accountRow = row
+    }
+
+    private func buildArcForm(in container: FlippedContainer, width: CGFloat) {
+        guard let id = selection[.arc],
+              let project = projectsStore.projects().first(where: { $0.id == id })
+        else {
+            emptyState("No Arc projects yet — press + below the list.", in: container, width: width)
+            return
+        }
+
+        let row = ProjectRowView(project: project, width: width)
+        row.onChange = { [weak self] in self?.applyProjectEdits($0) }
+        row.onTestLink = { [weak self] in self?.testProjectLink($0) }
+        row.onChooseFolder = { [weak self] in self?.chooseFolder($0) }
+        place(row, in: container)
+        projectRow = row
+    }
+
+    private func buildDDEVForm(in container: FlippedContainer, width: CGFloat) {
+        guard let id = selection[.ddev],
+              let project = ddevProjectsStore.projects().first(where: { $0.id == id })
+        else {
+            emptyState(
+                "No DDEV projects yet — press + below the list and pick one ddev already knows.",
+                in: container,
+                width: width
+            )
+            return
+        }
+
+        let row = DDEVProjectRowView(project: project, width: width)
+        row.onChange = { [weak self] in self?.applyDDEVEdits($0) }
+        row.onTestLink = { [weak self] in self?.testDDEVLink($0) }
+        row.onChooseFolder = { [weak self] in self?.chooseDDEVFolder($0) }
+        place(row, in: container)
+        ddevRow = row
+    }
+
+    private func buildGeneralForm(in container: FlippedContainer, width: CGFloat) {
+        let form = FormLayout(in: container)
+        form.header("About")
+        form.beginGroup()
+
+        let version = NSTextField(labelWithString: AppVersion.summary)
+        version.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        form.row("Version", [(version, nil)], height: 18)
+
+        let location = NSTextField(labelWithString: AppVersion.location)
+        location.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        location.lineBreakMode = .byTruncatingMiddle
+        location.textColor = NSColor.secondaryLabelColor
+        form.row("Running from", [(location, nil)], height: 18)
+
+        let interval = NSTextField(labelWithString: "\(Int(preferences.refreshIntervalSeconds)) seconds")
+        interval.font = NSFont.systemFont(ofSize: 13)
+        form.row("Refresh", [(interval, nil)], height: 18)
+        form.endGroup()
+        form.footnote("The build number is the commit count, so it moves on every rebuild — the "
+            + "quickest way to tell whether the copy in front of you is the change you just made.")
+
+        form.footnote("Placement, locking and start-at-login live in the menu-bar menu.")
+    }
+
+    // MARK: Adding and removing
+
+    private func addItem() {
         switch section {
         case .github:
             var accounts = accountsStore.accounts()
             let id = GitHubAccount.makeID(from: "account", existing: accounts.map(\.id))
             accounts.append(GitHubAccount(id: id, label: "New account"))
             accountsStore.save(accounts)
+            selection[.github] = id
         case .arc:
             var projects = projectsStore.projects()
             let id = ArcProject.makeID(from: "project", existing: projects.map(\.id))
             projects.append(ArcProject(id: id, title: "New project", organization: ""))
             projectsStore.save(projects)
+            selection[.arc] = id
             onChanged()
         case .ddev:
-            // DDEV knows its own projects, so the sensible "add" is a list to pick from
-            // rather than a folder to go hunting for.
+            // DDEV knows its own projects, so the sensible "add" is a list to pick from rather
+            // than a folder to go hunting for.
             addDDEVProject()
             return
         case .general:
             return
         }
-        reload()
+        reloadList()
+        reloadDetail()
     }
 
-    private func reload() {
-        guard let documentView else { return }
-        for view in documentView.subviews { view.removeFromSuperview() }
-        accountRows = []
-        projectRows = []
-
-        var y: CGFloat = 12
+    private func removeSelected() {
         switch section {
         case .github:
-            y = layoutHint(
-                "One account per token. A fine-grained token must be approved by each "
-                    + "organisation, and the inbox card also needs the account-level notifications "
-                    + "permission.",
-                at: y,
-                in: documentView
-            )
-            for account in accountsStore.accounts() {
-                let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
-                let row = AccountRowView(account: account, hasToken: hasToken, width: Self.rowWidth)
-                row.frame.origin = NSPoint(x: 12, y: y)
-                row.onSave = { [weak self] in self?.saveAccount($0) }
-                row.onRemove = { [weak self] in self?.removeAccount($0) }
-                row.onChange = { [weak self] in self?.applyAccountEdits($0) }
-                row.onTestLink = { [weak self] in self?.testAccountLink($0) }
-                documentView.addSubview(row)
-                accountRows.append(row)
-                y += AccountRowView.height + 10
-            }
-
+            guard let id = selection[.github],
+                  let account = accountsStore.accounts().first(where: { $0.id == id }),
+                  confirm("Remove \(account.label)?", detail: "Its token is deleted from the Keychain as well.")
+            else { return }
+            try? tokenStore.setToken(nil, for: account.tokenKey)
+            accountsStore.save(accountsStore.accounts().filter { $0.id != id })
         case .arc:
-            y = layoutHint(
-                "One card per project. Link templates are editable because Arc URLs differ "
-                    + "between organisations — press Test to see where one lands.",
-                at: y,
-                in: documentView
-            )
-            for project in projectsStore.projects() {
-                let row = ProjectRowView(project: project, width: Self.rowWidth)
-                row.frame.origin = NSPoint(x: 12, y: y)
-                row.onChange = { [weak self] in self?.applyProjectEdits($0) }
-                row.onRemove = { [weak self] in self?.removeProject($0) }
-                row.onTestLink = { [weak self] in self?.testProjectLink($0) }
-                row.onChooseFolder = { [weak self] in self?.chooseFolder($0) }
-                documentView.addSubview(row)
-                projectRows.append(row)
-                y += ProjectRowView.height(for: project) + 10
-            }
-            if projectsStore.projects().isEmpty {
-                y = layoutHint("No projects yet — press Add project.", at: y, in: documentView)
-            }
-
+            guard let id = selection[.arc],
+                  let project = projectsStore.projects().first(where: { $0.id == id }),
+                  confirm("Remove \(project.title)?", detail: "The card disappears from the deck.")
+            else { return }
+            projectsStore.save(projectsStore.projects().filter { $0.id != id })
         case .ddev:
-            y = layoutHint(
-                "One card per DDEV project. The name, type, URLs and state come from DDEV "
-                    + "itself; PHP and database versions are read from .ddev/config.yaml.",
-                at: y,
-                in: documentView
-            )
-            for project in ddevProjectsStore.projects() {
-                let row = DDEVProjectRowView(project: project, width: Self.rowWidth)
-                row.frame.origin = NSPoint(x: 12, y: y)
-                row.onChange = { [weak self] in self?.applyDDEVEdits($0) }
-                row.onRemove = { [weak self] in self?.removeDDEVProject($0) }
-                row.onTestLink = { [weak self] in self?.testDDEVLink($0) }
-                row.onChooseFolder = { [weak self] in self?.chooseDDEVFolder($0) }
-                documentView.addSubview(row)
-                ddevRows.append(row)
-                y += DDEVProjectRowView.height(for: project) + 10
-            }
-            if ddevProjectsStore.projects().isEmpty {
-                y = layoutHint("No projects yet — press Add project.", at: y, in: documentView)
-            }
-
+            guard let id = selection[.ddev],
+                  let project = ddevProjectsStore.projects().first(where: { $0.id == id }),
+                  confirm(
+                      "Remove \(project.displayTitle)?",
+                      detail: "The card disappears from the deck. The project itself is untouched."
+                  )
+            else { return }
+            ddevProjectsStore.save(ddevProjectsStore.projects().filter { $0.id != id })
         case .general:
-            y = layoutHint(AppVersion.summary, at: y, in: documentView, bold: true)
-            y = layoutHint("Running from \(AppVersion.location)", at: y, in: documentView)
-            y = layoutHint(
-                "Panels refresh every \(Int(preferences.refreshIntervalSeconds)) seconds. "
-                    + "Placement, locking and start-at-login live in the menu-bar menu.",
-                at: y,
-                in: documentView
-            )
+            return
         }
 
-        documentView.frame = NSRect(x: 0, y: 0, width: Self.rowWidth + 24, height: max(y, 1))
-    }
-
-    @discardableResult
-    private func layoutHint(
-        _ text: String,
-        at y: CGFloat,
-        in parent: NSView,
-        bold: Bool = false
-    ) -> CGFloat {
-        let hint = NSTextField(wrappingLabelWithString: text)
-        hint.frame = NSRect(x: 12, y: y, width: Self.rowWidth, height: bold ? 20 : 46)
-        hint.font = NSFont.systemFont(ofSize: bold ? 13 : 11, weight: bold ? .semibold : .regular)
-        hint.textColor = bold ? NSColor.labelColor : NSColor.secondaryLabelColor
-        hint.isEditable = false
-        hint.isSelectable = true
-        hint.drawsBackground = false
-        parent.addSubview(hint)
-        return y + (bold ? 26 : 54)
+        selection[section] = nil
+        reloadList()
+        reloadDetail()
+        onChanged()
     }
 
     // MARK: GitHub accounts
@@ -293,6 +469,7 @@ final class SettingsWindowController: NSObject {
         persist(edited)
         row.apply(edited)
         row.setStatus(Self.browserSummary(browser: edited.browser))
+        reloadList()
         onChanged()
     }
 
@@ -311,17 +488,6 @@ final class SettingsWindowController: NSObject {
         return "Saved. Links open in \(name) · \(profile)."
     }
 
-    private func removeAccount(_ row: AccountRowView) {
-        guard confirm(
-            "Remove \(row.account.label)?",
-            detail: "Its token is deleted from the Keychain as well."
-        ) else { return }
-        try? tokenStore.setToken(nil, for: row.account.tokenKey)
-        accountsStore.save(accountsStore.accounts().filter { $0.id != row.account.id })
-        reload()
-        onChanged()
-    }
-
     private func saveAccount(_ row: AccountRowView) {
         let edited = row.editedAccount
         let token = row.enteredToken
@@ -337,8 +503,8 @@ final class SettingsWindowController: NSObject {
         row.setStatus("Checking…")
         Task { [weak self] in
             guard let self else { return }
-            // Verify before storing: a rejected token that silently lands in the Keychain
-            // turns into a card that fails for reasons nobody can see.
+            // Verify before storing: a rejected token that silently lands in the Keychain turns
+            // into a card that fails for reasons nobody can see.
             let probe = GitHubClient.makeDefault(
                 tokenStore: InMemoryTokenStore(tokens: [edited.tokenKey: token]),
                 settings: edited.settings(basedOn: .default),
@@ -355,6 +521,7 @@ final class SettingsWindowController: NSObject {
                 row.apply(edited)
                 row.clearTokenField()
                 row.setStatus("Saved — \(snapshot.totalCount) open pull requests.")
+                self.reloadList()
                 self.onChanged()
             } catch let error as APIError {
                 row.setStatus("Rejected — \(error.displayMessage)", isError: true)
@@ -414,14 +581,13 @@ final class SettingsWindowController: NSObject {
         projectsStore.save(projects)
         row.apply(edited)
         row.setStatus(Self.browserSummary(browser: edited.browser))
+        reloadList()
         onChanged()
     }
 
     private func testProjectLink(_ row: ProjectRowView) {
         applyProjectEdits(row)
         let project = row.editedProject
-        // The first enabled link is the one the card shows first, so it is the honest thing
-        // to test with.
         guard let link = project.resolvedLinks.first else {
             row.setStatus("No enabled link to test.", isError: true)
             return
@@ -430,31 +596,15 @@ final class SettingsWindowController: NSObject {
         LinkOpener.open(link.url, using: project.browser)
     }
 
-    private func removeProject(_ row: ProjectRowView) {
-        guard confirm("Remove \(row.project.title)?", detail: "The card disappears from the deck.") else {
-            return
-        }
-        projectsStore.save(projectsStore.projects().filter { $0.id != row.project.id })
-        reload()
-        onChanged()
-    }
-
     private func chooseFolder(_ row: ProjectRowView) {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
-        panel.message = "Pick the project checkout — the folder the fusion commands run in."
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = chooseDirectory(message: "Pick the project checkout — the folder the fusion commands run in.")
+        else { return }
         row.setFolder(url.path)
     }
 
     // MARK: DDEV projects
 
     /// Offers what `ddev list` found rather than making the user go looking for a folder.
-    /// DDEV already knows every project on the machine; asking for a path would be asking a
-    /// question the tool can answer itself.
     private func addDDEVProject() {
         Task { [weak self] in
             guard let self else { return }
@@ -494,15 +644,12 @@ final class SettingsWindowController: NSObject {
             let index = max(0, min(popUp.indexOfSelectedItem, candidates.count - 1))
             let chosen = candidates[index]
             var projects = self.ddevProjectsStore.projects()
-            projects.append(
-                DDEVProject(
-                    id: DDEVProject.makeID(from: chosen.name, existing: projects.map(\.id)),
-                    name: chosen.name,
-                    folder: chosen.approot
-                )
-            )
+            let id = DDEVProject.makeID(from: chosen.name, existing: projects.map(\.id))
+            projects.append(DDEVProject(id: id, name: chosen.name, folder: chosen.approot))
             self.ddevProjectsStore.save(projects)
-            self.reload()
+            self.selection[.ddev] = id
+            self.reloadList()
+            self.reloadDetail()
             self.onChanged()
         }
     }
@@ -527,6 +674,7 @@ final class SettingsWindowController: NSObject {
         ddevProjectsStore.save(projects)
         row.apply(edited)
         row.setStatus(Self.browserSummary(browser: edited.browser))
+        reloadList()
         onChanged()
     }
 
@@ -547,27 +695,11 @@ final class SettingsWindowController: NSObject {
         }
     }
 
-    private func removeDDEVProject(_ row: DDEVProjectRowView) {
-        let removed = confirm(
-            "Remove \(row.project.displayTitle)?",
-            detail: "The card disappears from the deck. The project itself is untouched."
-        )
-        guard removed else { return }
-        ddevProjectsStore.save(ddevProjectsStore.projects().filter { $0.id != row.project.id })
-        reload()
-        onChanged()
-    }
-
     private func chooseDDEVFolder(_ row: DDEVProjectRowView) {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
-        panel.message = "Pick the project checkout — the folder holding .ddev."
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        // Said plainly rather than refused: the folder may be right and the project not set
-        // up yet, and that is the user's business.
+        guard let url = chooseDirectory(message: "Pick the project checkout — the folder holding .ddev.")
+        else { return }
+        // Said plainly rather than refused: the folder may be right and the project not set up
+        // yet, and that is the user's business.
         if !DDEVConfig.isProject(url) {
             row.setStatus("No .ddev/config.yaml in that folder.", isError: true)
         }
@@ -575,6 +707,17 @@ final class SettingsWindowController: NSObject {
     }
 
     // MARK: Shared
+
+    private func chooseDirectory(message: String) -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        panel.message = message
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
+    }
 
     private func confirm(_ message: String, detail: String) -> Bool {
         let alert = NSAlert()
@@ -584,9 +727,4 @@ final class SettingsWindowController: NSObject {
         alert.addButton(withTitle: "Cancel")
         return alert.runModal() == .alertFirstButtonReturn
     }
-}
-
-/// Rows are laid out from the top, which is the opposite of AppKit's default.
-private final class FlippedView: NSView {
-    override var isFlipped: Bool { true }
 }
