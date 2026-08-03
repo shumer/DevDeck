@@ -28,6 +28,12 @@
   and database versions read from the checkout, paused treated as its own state, and a global
   power off in the menu. Shipped as 0.2.
 
+- **Plain projects** — a card for anything with a folder and a command: the folder is read for
+  a suggestion when the project is added, a command that holds its process is started detached
+  with a log and a pid, and the health URL decides whether it is running. Shipped as 0.3.
+- **The Docker gate** — one probe for the whole deck, and cards that need containers say
+  "Docker is not running" and offer to start it rather than a Start that cannot work.
+
 ## Next
 
 1. **Bundle versions on the project card** — live version per environment, which needs an org
@@ -35,14 +41,12 @@
 2. **Mark as read** from the inbox card, so the panel is not read-only.
 3. **Resizable panels** — dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
-4. **A generic project card** — for what is neither Arc nor DDEV: a folder, a command, a
-   health URL and the same links. Designed, not built; the open question is how to start
-   something that holds its process, such as `npm run dev`, rather than returning like
-   `docker compose up -d`.
-5. **Adding a link to a project by hand** — Test, UAT and Prod are editable, but there is no
+4. **Adding a link to a project by hand** — Test, UAT and Prod are editable, but there is no
    button for an extra one of your own; the model already carries them.
-6. **A fixed repository list for the Actions card** — `GitHubSettings.actionsRepositories`
+5. **A fixed repository list for the Actions card** — `GitHubSettings.actionsRepositories`
    exists and nothing in settings writes it.
+6. **Tailing a plain project's log in place** — the Logs button opens the file in Console,
+   which is fine for reading a failure and poor for watching a build.
 
 ## Not planned
 

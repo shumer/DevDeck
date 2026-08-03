@@ -13,6 +13,7 @@ let package = Package(
         .library(name: "GitHubKit", targets: ["GitHubKit"]),
         .library(name: "ArcKit", targets: ["ArcKit"]),
         .library(name: "DDEVKit", targets: ["DDEVKit"]),
+        .library(name: "ProjectKit", targets: ["ProjectKit"]),
         .library(name: "DevDeckUI", targets: ["DevDeckUI"]),
         .executable(name: "DevDeck", targets: ["DevDeckApp"]),
     ],
@@ -30,17 +31,20 @@ let package = Package(
         // DDEV integration: projects, their state and their containers.
         .target(name: "DDEVKit", dependencies: ["DevDeckCore"]),
 
+        // Projects that are neither: a folder, a command and a health URL.
+        .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(
             name: "DevDeckUI",
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "ProjectKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
         // The AppKit shell: borderless panels, menu bar, placement and locking.
         .executableTarget(
             name: "DevDeckApp",
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "DevDeckUI"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
@@ -68,7 +72,7 @@ let package = Package(
             name: "DevDeckTests",
             // DevDeckUI is here for the card-sizing arithmetic, which the panels depend on
             // being right and which is plain maths rather than anything drawn.
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "DevDeckUI", "TestHarness"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI", "TestHarness"],
             path: "Tests/DevDeckTests"
         ),
     ]

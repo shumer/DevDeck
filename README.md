@@ -52,6 +52,37 @@ the checkout:
 └────────────────────────────────────────────┘
 ```
 
+Anything else — a folder, a command and a URL that proves it worked:
+
+```
+┌────────────────────────────────────────────┐
+│ PROJECT · ACME PORTAL              RUNNING │
+│ pgAdmin   Traefik                          │
+│ Local site   UAT   Prod                    │
+│ ────────────────────────────────────────── │
+│ ● docker compose up -d                     │
+│ ⎇ feat/PROJ-77-tables                      │
+│ [⏻ Stop] [↻ Restart] [Logs] [Folder]       │
+│ docker compose · acme-portal      23:58:04 │
+└────────────────────────────────────────────┘
+```
+
+When Docker is not running, every card that needs it says so instead of offering a Start that
+cannot work:
+
+```
+┌────────────────────────────────────────────┐
+│ DDEV · ACME SHOP                DOCKER OFF │
+│ Mailpit                                    │
+│ Local site   Test   UAT   Prod             │
+│ ────────────────────────────────────────── │
+│ ● Docker is not running — start it first   │
+│ ⎇ main                                     │
+│ [▶ Start Docker] [↻ Restart] [Folder] [⋯]  │
+│ drupal 10.6.11 · acme-shop        23:41:02 │
+└────────────────────────────────────────────┘
+```
+
 ## Status
 
 | Card | State | On by default |
@@ -61,6 +92,7 @@ the checkout:
 | GitHub · Actions | working | no |
 | Arc XP · one card per project | working | added per project |
 | DDEV · one card per project | working | added per project |
+| Project · one card per project | working | added per project |
 | Arc XP · deployed bundle versions | planned — needs an org token | — |
 
 The Actions card follows the repositories your open pull requests are in, up to five per
@@ -70,8 +102,9 @@ behind it yet.
 ## Build and run
 
 Needs the Swift 6 toolchain from the Command Line Tools — `xcode-select --install`. **Xcode is
-not required**: there is no project file and nothing here opens in it. Docker is needed only
-by the project cards that run something locally — Arc's Fusion stack and DDEV.
+not required**: there is no project file and nothing here opens in it. Docker is needed only by
+the project cards that run something in containers — Arc's Fusion stack, DDEV, and any plain
+project marked as needing it — and the deck says plainly when it is not running.
 
 ```bash
 git clone git@github.com:shumer/DesktopWidgets.git widgets && cd widgets
@@ -97,7 +130,7 @@ only works for the installed copy.
 | `swift run DevDeck` | runs from the terminal without bundling — handy for `print` debugging |
 | `pkill -f DevDeck` | quits every running copy |
 
-**Settings → General shows the running version** — `DevDeck 0.2 (build 30)` — and which bundle
+**Settings → General shows the running version** — `DevDeck 0.3 (build 31)` — and which bundle
 it came from. The marketing number lives in `VERSION` and is bumped by hand when a release
 earns a name; the build number is the commit count, so it moves on every rebuild. That is the
 quickest way to tell whether the copy in front of you is the change you just made or the one
@@ -244,6 +277,54 @@ folder to go hunting for — DDEV already knows every project on the machine.
 - **Power off all DDEV** in the menu runs `ddev poweroff` — every project and the router, for
   when the laptop needs its memory back.
 
+## Plain projects
+
+Everything that is neither Arc nor DDEV: a compose stack, a dev server, a Makefile. **Settings
+→ Projects → +** asks for a folder and then reads it — a compose file, a `dev` script in
+`package.json`, a `up:` target in a Makefile — and fills the commands in for you. The **Detect**
+button does the same again later, and nothing is ever guessed over something you typed.
+
+- **One checkbox decides how the command is run.** *The command keeps running* is on for
+  `npm run dev` and off for `docker compose up -d`. A command that holds its process is started
+  detached with `nohup`, its output goes to a log under `~/Library/Application
+  Support/DevDeck/projects`, and its process id is written down beside it; **Logs** on the card
+  opens that file. A command that returns is simply run and waited for, with its output kept in
+  the same log.
+- **Stop kills the whole tree** when there is no stop command of your own. `npm run dev` is a
+  wrapper, and killing it alone leaves the server it spawned holding the port — which then makes
+  the next start fail for a reason nothing on screen would explain.
+- **The health URL decides whether it is running**, exactly as the Arc card asks the engine.
+  Any answer counts, including a 404: a dev server that serves nothing at `/` is still serving.
+  A stack you started yourself in a terminal therefore reads as running too.
+- **Live process, silent URL, is `starting…`** rather than stopped — that is a dev server
+  compiling, and it resolves itself within seconds.
+- **Test, UAT and Prod ship empty**, next to the local site, the same as everywhere else. Extra
+  tooling links may use `{site}` to avoid repeating the port.
+- **Needs Docker** puts the card behind the Docker check below. It is ticked for you when the
+  folder is a compose project.
+
+The commands run in the project folder through a login shell, so `npm`, `make` and `docker` are
+found the same way your terminal finds them.
+
+## Docker
+
+Every local project sits on a container runtime, and a Start pressed without one produces a wall
+of shell output the card has nowhere to put. So the deck asks first, once for the whole deck, on
+the same ten-second loop: `docker version --format '{{.Server.Version}}'`.
+
+- **The daemon is asked, not the process table.** Colima, OrbStack, Rancher and a remote context
+  all serve `docker` with no Docker Desktop anywhere, and looking for a running app would call
+  every one of them "not running".
+- **A card that needs Docker says so** — the pill reads `docker off`, the state line says why,
+  and the Start button becomes **▶ Start Docker**, which opens Docker Desktop (or OrbStack,
+  Rancher, Podman Desktop) without stealing focus. The card then says `docker starting…` until
+  the daemon answers.
+- **A running project is never gated.** Something is clearly serving it, and no probe beats that.
+- **Not having asked yet blocks nothing**, so the first second of a launch does not grey out
+  every button.
+- Where there is no runtime application to open — Colima is a CLI — the card shows a disabled
+  Start rather than a button that would do nothing.
+
 ### Status codes
 
 Rows end in a two-character code so the width goes to the title. Hovering a row spells it out.
@@ -276,7 +357,7 @@ Everything else lives in its menu:
 - **Start at login**, **Refresh now**, **Settings…**
 
 The settings window is three columns: the sections — GitHub accounts, Arc projects, DDEV
-projects, General — then what is in the section, then the form for the one selected. Only one
+projects, Projects, General — then what is in the section, then the form for the one selected. Only one
 account or project has a form on screen at a time, which is what keeps two similarly named
 projects apart, and the form stretches with the window. Add and remove are the `+` and `−`
 under the list. Everything applies as you change it; only a token waits for **Verify token**,
@@ -297,22 +378,24 @@ so buttons and links also carry a resting fill rather than relying on hover to l
 - [docs/development.md](docs/development.md) — toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) — what is done and what is next
 - [docs/adr/](docs/adr/) — why native, why SwiftPM only, why cards are configurable, why
-  accounts are plural, how local stacks are driven, why DDEV shares one call
+  accounts are plural, how local stacks are driven, why DDEV shares one call, how a plain
+  project is started, why Docker is checked first
 
 ## Layout
 
 ```
 Sources/
   DevDeckCore/     configuration, cards, HTTP transport, tokens, policies, command runner,
-                   git branch, browser choice
+                   git branch, browser choice, the Docker probe
   GitHubKit/       GraphQL and REST clients, models, per-account fan-out
   ArcKit/          Arc projects, link templates, local Fusion stack, .env port
   DDEVKit/         DDEV projects, ddev list, .ddev/config.yaml, composer.lock version
+  ProjectKit/      plain projects: folder probe, detached start, log and pid, health check
   DevDeckUI/       SwiftUI cards, the shared card pieces and the visual language
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (167 tests, offline)
+  DevDeckTests/    the suite (196 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

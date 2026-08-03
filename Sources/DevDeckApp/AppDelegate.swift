@@ -5,6 +5,7 @@ import Combine
 import DevDeckCore
 import DevDeckUI
 import GitHubKit
+import ProjectKit
 import ServiceManagement
 import SwiftUI
 
@@ -15,19 +16,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let accountsStore = GitHubAccountsStore(backend: UserDefaults.standard)
     private let projectsStore = ArcProjectsStore(backend: UserDefaults.standard)
     private let ddevProjectsStore = DDEVProjectsStore(backend: UserDefaults.standard)
+    private let localProjectsStore = LocalProjectsStore(backend: UserDefaults.standard)
 
     private lazy var controller = DeckController(
         preferences: preferences,
         tokenStore: tokenStore,
         accountsStore: accountsStore,
         projectsStore: projectsStore,
-        ddevProjectsStore: ddevProjectsStore
+        ddevProjectsStore: ddevProjectsStore,
+        localProjectsStore: localProjectsStore
     )
     private lazy var settingsController = SettingsWindowController(
         tokenStore: tokenStore,
         accountsStore: accountsStore,
         projectsStore: projectsStore,
         ddevProjectsStore: ddevProjectsStore,
+        localProjectsStore: localProjectsStore,
         preferences: preferences
     ) { [weak self] in
         // A project added or removed in settings changes the card list, not just the data.
@@ -51,12 +55,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.delegate = self
         statusItem.menu = menu
 
-        // Panels are sized from the data, so anything that changes it can change their height.
-        Publishers.Merge4(
-            controller.$pullRequests.map { _ in () },
-            controller.$inbox.map { _ in () },
-            controller.$actions.map { _ in () },
-            controller.$expandedCards.map { _ in () }
+        // Panels are sized from the data, so anything that changes it can change their height —
+        // a branch line appearing on a project card counts just as much as a pull request does.
+        Publishers.MergeMany(
+            controller.$pullRequests.map { _ in () }.eraseToAnyPublisher(),
+            controller.$inbox.map { _ in () }.eraseToAnyPublisher(),
+            controller.$actions.map { _ in () }.eraseToAnyPublisher(),
+            controller.$expandedCards.map { _ in () }.eraseToAnyPublisher(),
+            controller.$stackStatuses.map { _ in () }.eraseToAnyPublisher(),
+            controller.$ddevStatuses.map { _ in () }.eraseToAnyPublisher(),
+            controller.$localStatuses.map { _ in () }.eraseToAnyPublisher()
         )
         .receive(on: RunLoop.main)
         .sink { [weak self] _ in
@@ -104,7 +112,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 isEnabledByDefault: true
             )
         }
-        return CardCatalog.all(including: arc + ddev)
+        let plain = localProjectsStore.projects().map { project in
+            CardDescriptor(
+                id: project.cardID,
+                title: project.displayTitle,
+                subtitle: project.startCommand.isEmpty ? "Project" : "Project · \(project.startCommand)",
+                isImplemented: true,
+                isEnabledByDefault: true
+            )
+        }
+        return CardCatalog.all(including: arc + ddev + plain)
     }
 
     private var visibleCards: [CardID] {
@@ -278,8 +295,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let resolved = preferences.cardLayout.resolved(catalog: catalog)
         let arcIDs = Set(projectsStore.projects().map(\.cardID))
         let ddevIDs = Set(ddevProjectsStore.projects().map(\.cardID))
+        let plainIDs = Set(localProjectsStore.projects().map(\.cardID))
+        let projectIDs = arcIDs.union(ddevIDs).union(plainIDs)
 
-        for card in resolved where !arcIDs.contains(card.id) && !ddevIDs.contains(card.id) {
+        for card in resolved where !projectIDs.contains(card.id) {
             menu.addItem(cardItem(card))
         }
 
@@ -287,6 +306,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // otherwise be lost in the middle of a list of site names.
         addGroup("Arc projects", cards: resolved.filter { arcIDs.contains($0.id) }, to: menu)
         addGroup("DDEV projects", cards: resolved.filter { ddevIDs.contains($0.id) }, to: menu)
+        addGroup("Projects", cards: resolved.filter { plainIDs.contains($0.id) }, to: menu)
 
         if !ddevIDs.isEmpty {
             let powerOff = NSMenuItem(

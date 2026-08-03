@@ -139,8 +139,10 @@ public struct ShellCommandRunner: CommandRunning {
 
         // Both pipes are drained at once: reading one to the end first deadlocks as soon as
         // the other fills its buffer, and build output fills it easily.
-        var outputData = Data()
-        var errorData = Data()
+        // The group is the synchronisation: nothing reads these until both blocks have
+        // finished, which the compiler cannot see from here.
+        nonisolated(unsafe) var outputData = Data()
+        nonisolated(unsafe) var errorData = Data()
         let group = DispatchGroup()
         DispatchQueue.global().async(group: group) {
             outputData = output.fileHandleForReading.readDataToEndOfFile()

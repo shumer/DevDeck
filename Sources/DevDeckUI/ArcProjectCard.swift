@@ -5,9 +5,9 @@ import SwiftUI
 /// One Arc XP project: where to open it, and whether its local stack is up.
 public struct ArcProjectCard: View {
     /// Everything except the chip rows and the branch line.
-    private static let baseHeight: Double = 158
-    private static let chipRowHeight: Double = 25
-    private static let branchRowHeight: Double = 18
+    private nonisolated static let baseHeight: Double = 158
+    private nonisolated static let chipRowHeight: Double = 25
+    private nonisolated static let branchRowHeight: Double = 18
 
     /// Height from what the card will actually contain.
     ///
@@ -28,28 +28,34 @@ public struct ArcProjectCard: View {
 
     private let project: ArcProject
     private let status: LocalStackStatus
+    private let docker: DockerStatus
     private let now: Date
     private let onOpen: (URL) -> Void
     private let onAction: (LocalStackAction) -> Void
     private let onRevealFolder: () -> Void
     private let onOpenTerminal: () -> Void
+    private let onStartDocker: (() -> Void)?
 
     public init(
         project: ArcProject,
         status: LocalStackStatus,
+        docker: DockerStatus = DockerStatus(state: .unknown),
         now: Date = Date(),
         onOpen: @escaping (URL) -> Void = { _ in },
         onAction: @escaping (LocalStackAction) -> Void = { _ in },
         onRevealFolder: @escaping () -> Void = {},
-        onOpenTerminal: @escaping () -> Void = {}
+        onOpenTerminal: @escaping () -> Void = {},
+        onStartDocker: (() -> Void)? = nil
     ) {
         self.project = project
         self.status = status
+        self.docker = docker
         self.now = now
         self.onOpen = onOpen
         self.onAction = onAction
         self.onRevealFolder = onRevealFolder
         self.onOpenTerminal = onOpenTerminal
+        self.onStartDocker = onStartDocker
     }
 
     public var body: some View {
@@ -66,7 +72,18 @@ public struct ArcProjectCard: View {
         }
     }
 
+    /// Whether the card is currently about Docker rather than about the stack. Fusion runs in
+    /// containers, so a project with a folder always needs it.
+    private var isDockerBlocked: Bool {
+        DockerGate.blocks(
+            docker,
+            isRunning: status.isRunning,
+            requiresDocker: project.supportsLocalStack
+        )
+    }
+
     private var pill: (text: String, color: Color)? {
+        if isDockerBlocked { return DockerGate.pill(docker) }
         switch status.state {
         case .running: return ("local running", DeckTheme.green)
         case .stopped: return ("local stopped", DeckTheme.label)
@@ -178,6 +195,7 @@ public struct ArcProjectCard: View {
     }
 
     private var stackColor: Color {
+        if isDockerBlocked { return DockerGate.color(docker) }
         switch status.state {
         case .running: return DeckTheme.green
         case .working: return DeckTheme.amber
@@ -186,6 +204,9 @@ public struct ArcProjectCard: View {
     }
 
     private var stackText: String {
+        // Docker first: `fusion daemon` fails at the first container without it, and "local
+        // stack not running" would be a true sentence that helps nobody.
+        if isDockerBlocked { return DockerGate.text(docker) }
         switch status.state {
         case .running:
             guard let containers = status.containers else { return "local stack up" }
@@ -203,7 +224,10 @@ public struct ArcProjectCard: View {
     /// and with the card's own edges instead of trailing off mid-card.
     private var controls: some View {
         HStack(spacing: 6) {
-            if status.isRunning {
+            if isDockerBlocked {
+                DockerGate.startButton(docker, onStart: onStartDocker)
+                button("↻ Restart", isEnabled: false) {}
+            } else if status.isRunning {
                 button("⏻ Stop", tint: DeckTheme.red) { onAction(.stop) }
                 button("↻ Restart") { onAction(.restart) }
             } else {

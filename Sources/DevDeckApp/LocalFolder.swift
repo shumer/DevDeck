@@ -1,12 +1,23 @@
 import AppKit
 import Foundation
 
-/// The two ways a project folder is opened from a card.
+/// The ways a project's files are opened from a card.
 @MainActor
 enum LocalFolder {
     static func reveal(_ folder: URL?) {
         guard let folder else { return }
         NSWorkspace.shared.activateFileViewerSelecting([folder])
+    }
+
+    /// Opens a file in whatever handles it — the log of a project that was started from here.
+    /// A missing file is revealed instead of opened, because the folder is still the answer to
+    /// "where would it be".
+    static func open(_ file: URL) {
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            NSWorkspace.shared.activateFileViewerSelecting([file.deletingLastPathComponent()])
+            return
+        }
+        NSWorkspace.shared.open(file)
     }
 
     /// Opens the folder in a terminal.

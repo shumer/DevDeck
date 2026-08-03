@@ -66,8 +66,17 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
 - **Local stack state comes from the health URL**, never from the process table — the stack is
   often started by hand, and a card that says "stopped" while the site serves is worse than no
   card.
-- **Project ids are card identifiers** (`arc.project.<id>`, `ddev.project.<id>`) and are never
-  renamed.
+- **Docker state comes from the daemon** (`docker version`), never from a running Docker.app —
+  Colima, OrbStack and a remote context all serve `docker` with no application at all. One
+  probe per refresh feeds the whole deck.
+- **A card never offers a Start that cannot work.** Anything containerised goes through
+  `DockerGate`, which owns the wording, the colour and the button for that condition in one
+  place.
+- **A plain project's start is detached with a log and a pid.** A background child holding the
+  runner's pipes never returns, and Stop kills the process tree rather than the recorded pid —
+  a wrapper left behind keeps the port.
+- **Project ids are card identifiers** (`arc.project.<id>`, `ddev.project.<id>`,
+  `project.<id>`) and are never renamed.
 - **Settings forms are built with `FormLayout`**, never with hand-computed frames. A label
   placed over the control above it is what hand-computed `y` values produce. Controls that
   should stretch pass a `nil` width; nothing in a settings form is a fixed number of points
