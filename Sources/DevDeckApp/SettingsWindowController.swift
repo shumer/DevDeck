@@ -3,6 +3,7 @@ import ArcKit
 import DDEVKit
 import DevDeckCore
 import GitHubKit
+import ProjectKit
 
 /// The settings window: sections, then the things in a section, then the form for one of them.
 ///
@@ -15,6 +16,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         case github
         case arc
         case ddev
+        case project
         case general
 
         var title: String {
@@ -22,6 +24,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             case .github: return "GitHub accounts"
             case .arc: return "Arc projects"
             case .ddev: return "DDEV projects"
+            case .project: return "Projects"
             case .general: return "General"
             }
         }
@@ -34,6 +37,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let accountsStore: GitHubAccountsStore
     private let projectsStore: ArcProjectsStore
     private let ddevProjectsStore: DDEVProjectsStore
+    private let localProjectsStore: LocalProjectsStore
     private let ddevEnvironment = DDEVEnvironment()
     private let preferences: Preferences
     private let onChanged: () -> Void
@@ -52,6 +56,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var accountRow: AccountRowView?
     private var projectRow: ProjectRowView?
     private var ddevRow: DDEVProjectRowView?
+    private var localRow: LocalProjectRowView?
 
     private static let sidebarWidth: CGFloat = 184
     private static let listWidth: CGFloat = 196
@@ -61,6 +66,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         accountsStore: GitHubAccountsStore,
         projectsStore: ArcProjectsStore,
         ddevProjectsStore: DDEVProjectsStore,
+        localProjectsStore: LocalProjectsStore,
         preferences: Preferences,
         onChanged: @escaping () -> Void
     ) {
@@ -68,6 +74,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.accountsStore = accountsStore
         self.projectsStore = projectsStore
         self.ddevProjectsStore = ddevProjectsStore
+        self.localProjectsStore = localProjectsStore
         self.preferences = preferences
         self.onChanged = onChanged
     }
@@ -267,6 +274,17 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
                 )
             }
+        case .project:
+            items = localProjectsStore.projects().map { project in
+                SettingsListItem(
+                    id: project.id,
+                    title: project.displayTitle,
+                    // The command rather than the folder: with several checkouts under one
+                    // parent the folder names look alike, and the command is what differs.
+                    subtitle: project.startCommand.isEmpty ? "no start command" : project.startCommand,
+                    state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+                )
+            }
         case .general:
             items = []
         }
@@ -285,6 +303,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         accountRow = nil
         projectRow = nil
         ddevRow = nil
+        localRow = nil
 
         let width = max(detailScroll.contentSize.width, 320)
         let container = FlippedContainer(frame: NSRect(x: 0, y: 0, width: width, height: 10))
@@ -297,6 +316,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             buildArcForm(in: container, width: width)
         case .ddev:
             buildDDEVForm(in: container, width: width)
+        case .project:
+            buildLocalProjectForm(in: container, width: width)
         case .general:
             buildGeneralForm(in: container, width: width)
         }
@@ -374,6 +395,28 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         ddevRow = row
     }
 
+    private func buildLocalProjectForm(in container: FlippedContainer, width: CGFloat) {
+        guard let id = selection[.project],
+              let project = localProjectsStore.projects().first(where: { $0.id == id })
+        else {
+            emptyState(
+                "No projects yet — press + below the list and pick a folder. Anything with a "
+                    + "folder and a command belongs here: docker compose, a dev server, a Makefile.",
+                in: container,
+                width: width
+            )
+            return
+        }
+
+        let row = LocalProjectRowView(project: project, width: width)
+        row.onChange = { [weak self] in self?.applyLocalProjectEdits($0) }
+        row.onTestLink = { [weak self] in self?.testLocalProjectLink($0) }
+        row.onChooseFolder = { [weak self] in self?.chooseLocalProjectFolder($0) }
+        row.onDetect = { [weak self] in self?.detectLocalProject($0) }
+        place(row, in: container)
+        localRow = row
+    }
+
     private func buildGeneralForm(in container: FlippedContainer, width: CGFloat) {
         let form = FormLayout(in: container)
         form.header("About")
@@ -421,6 +464,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             // than a folder to go hunting for.
             addDDEVProject()
             return
+        case .project:
+            // Nothing knows about these projects, so the folder is the one thing that has to be
+            // asked for — and once it is known, the folder itself answers most of the rest.
+            addLocalProject()
+            return
         case .general:
             return
         }
@@ -452,6 +500,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                   )
             else { return }
             ddevProjectsStore.save(ddevProjectsStore.projects().filter { $0.id != id })
+        case .project:
+            guard let id = selection[.project],
+                  let project = localProjectsStore.projects().first(where: { $0.id == id }),
+                  confirm(
+                      "Remove \(project.displayTitle)?",
+                      detail: "The card disappears from the deck. Anything it started keeps running."
+                  )
+            else { return }
+            localProjectsStore.save(localProjectsStore.projects().filter { $0.id != id })
         case .general:
             return
         }
@@ -704,6 +761,88 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             row.setStatus("No .ddev/config.yaml in that folder.", isError: true)
         }
         row.setFolder(url.path)
+    }
+
+    // MARK: Plain projects
+
+    /// Adds a project from a folder, filling in what the folder already says about itself.
+    private func addLocalProject() {
+        guard let url = chooseDirectory(
+            message: "Pick the project folder — the one its start command runs in."
+        ) else { return }
+
+        var projects = localProjectsStore.projects()
+        let name = url.lastPathComponent
+        let id = LocalProject.makeID(from: name, existing: projects.map(\.id))
+        var project = LocalProject(id: id, title: name, folder: url.path)
+
+        // Applied on creation only. From here on the fields belong to the user, and a later
+        // guess must never quietly replace what they typed — the Detect button is how they ask
+        // for one.
+        if let suggestion = ProjectProbe.suggestion(for: url) {
+            project.subtitle = suggestion.subtitle
+            project.startCommand = suggestion.startCommand
+            project.stopCommand = suggestion.stopCommand
+            project.holdsProcess = suggestion.holdsProcess
+            project.requiresDocker = suggestion.requiresDocker
+            project.healthURL = suggestion.healthURL
+        }
+
+        projects.append(project)
+        localProjectsStore.save(projects)
+        selection[.project] = id
+        reloadList()
+        reloadDetail()
+        onChanged()
+    }
+
+    private func applyLocalProjectEdits(_ row: LocalProjectRowView) {
+        let edited = row.editedProject
+        var projects = localProjectsStore.projects()
+        if let index = projects.firstIndex(where: { $0.id == edited.id }) {
+            projects[index] = edited
+        } else {
+            projects.append(edited)
+        }
+        localProjectsStore.save(projects)
+        row.apply(edited)
+        row.setStatus(Self.browserSummary(browser: edited.browser))
+        reloadList()
+        onChanged()
+    }
+
+    private func testLocalProjectLink(_ row: LocalProjectRowView) {
+        applyLocalProjectEdits(row)
+        let project = row.editedProject
+        guard let link = project.environmentLinks().first ?? project.toolLinks().first else {
+            row.setStatus("No link to test — set a health URL or an environment.", isError: true)
+            return
+        }
+        row.setStatus("Opening \(link.url.absoluteString)")
+        LinkOpener.open(link.url, using: project.browser)
+    }
+
+    private func chooseLocalProjectFolder(_ row: LocalProjectRowView) {
+        guard let url = chooseDirectory(
+            message: "Pick the project folder — the one its start command runs in."
+        ) else { return }
+        row.setFolder(url.path)
+    }
+
+    private func detectLocalProject(_ row: LocalProjectRowView) {
+        guard let folder = row.editedProject.folderURL else {
+            row.setStatus("Set a folder first.", isError: true)
+            return
+        }
+        guard let suggestion = ProjectProbe.suggestion(for: folder) else {
+            row.setStatus(
+                "Nothing recognisable in that folder — no compose file, package.json script or Makefile target.",
+                isError: true
+            )
+            return
+        }
+        row.applySuggestion(suggestion)
+        row.setStatus("Filled in from the folder — \(suggestion.startCommand)")
     }
 
     // MARK: Shared

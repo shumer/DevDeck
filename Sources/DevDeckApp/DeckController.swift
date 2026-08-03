@@ -4,6 +4,7 @@ import DDEVKit
 import DevDeckCore
 import Foundation
 import GitHubKit
+import ProjectKit
 
 /// Owns the data every panel renders and the loop that keeps it fresh.
 ///
@@ -26,12 +27,20 @@ final class DeckController: ObservableObject {
     /// DDEV state per project id.
     @Published private(set) var ddevStatuses: [String: DDEVStatus] = [:]
 
+    /// Plain project state per project id.
+    @Published private(set) var localStatuses: [String: LocalProjectStatus] = [:]
+
+    /// The container runtime every local project sits on. One answer for the whole deck.
+    @Published private(set) var docker = DockerStatus(state: .unknown)
+
     private let preferences: Preferences
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
     private let projectsStore: ArcProjectsStore
     private let ddevProjectsStore: DDEVProjectsStore
+    private let localProjectsStore: LocalProjectsStore
     private let ddevEnvironment: DDEVEnvironment
+    private let dockerEnvironment: DockerEnvironment
     private let commandRunner: any CommandRunning
     private var settings: GitHubSettings
     private var loop: Task<Void, Never>?
@@ -49,6 +58,7 @@ final class DeckController: ObservableObject {
         accountsStore: GitHubAccountsStore,
         projectsStore: ArcProjectsStore,
         ddevProjectsStore: DDEVProjectsStore,
+        localProjectsStore: LocalProjectsStore,
         commandRunner: any CommandRunning = ShellCommandRunner(),
         settings: GitHubSettings = .default
     ) {
@@ -57,7 +67,9 @@ final class DeckController: ObservableObject {
         self.accountsStore = accountsStore
         self.projectsStore = projectsStore
         self.ddevProjectsStore = ddevProjectsStore
+        self.localProjectsStore = localProjectsStore
         self.ddevEnvironment = DDEVEnvironment(runner: commandRunner)
+        self.dockerEnvironment = DockerEnvironment(runner: commandRunner)
         self.commandRunner = commandRunner
         self.settings = settings
     }
@@ -102,15 +114,19 @@ final class DeckController: ObservableObject {
 
     private func restartStackLoop() {
         stackLoop?.cancel()
-        guard !activeProjects.isEmpty || !activeDDEVProjects.isEmpty else {
+        guard !activeProjects.isEmpty || !activeDDEVProjects.isEmpty || !activeLocalProjects.isEmpty else {
             stackLoop = nil
             return
         }
         stackLoop = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
+                // Docker first: every card below it reports something different when the
+                // runtime is down, and one probe answers for all of them.
+                await self.refreshDocker()
                 await self.refreshStacks()
                 await self.refreshDDEV()
+                await self.refreshLocalProjects()
                 do {
                     try await Task.sleep(nanoseconds: 10_000_000_000)
                 } catch {
@@ -265,6 +281,117 @@ final class DeckController: ObservableObject {
             // Every card was marked working a moment ago, so every card is the one this
             // refresh is clearing.
             await self.refreshDDEV(finished: powered)
+        }
+    }
+
+    // MARK: Docker
+
+    /// Whether there is a runtime to launch on this machine. Read once: an app does not appear
+    /// in /Applications mid-session, and this is asked on every card draw.
+    private(set) lazy var canStartDocker: Bool = DockerApp.installedURL() != nil
+
+    /// Opens the runtime and says so on the cards until it answers.
+    func startDockerRuntime() {
+        guard canStartDocker else { return }
+        docker = DockerStatus(state: .starting, checkedAt: Date())
+        DockerApp.launch()
+    }
+
+    private func refreshDocker() async {
+        let probed = await dockerEnvironment.status()
+        // Docker Desktop takes the better part of a minute to come up, and flipping the cards
+        // back to "not running" in between is how a button looks like it did nothing. The
+        // window is bounded so a launch that silently failed cannot leave the deck waiting
+        // forever.
+        if docker.state == .starting, !probed.isReady,
+           let startedAt = docker.checkedAt, Date().timeIntervalSince(startedAt) < 180 {
+            return
+        }
+        docker = probed
+    }
+
+    // MARK: Plain projects
+
+    private var activeLocalProjects: [LocalProject] {
+        localProjectsStore.enabledProjects().filter { activeCards.contains($0.cardID) }
+    }
+
+    func localProject(forCard card: CardID) -> LocalProject? {
+        localProjectsStore.project(forCard: card)
+    }
+
+    func localStatus(for project: LocalProject) -> LocalProjectStatus {
+        localStatuses[project.id] ?? (project.supportsCommands
+            ? LocalProjectStatus(state: .stopped)
+            : .unavailable)
+    }
+
+    func logURL(for project: LocalProject) -> URL {
+        LocalProjectService(project: project, runner: commandRunner).logURL
+    }
+
+    private func refreshLocalProjects(finished: Set<String> = []) async {
+        for project in activeLocalProjects {
+            // A command issued from the card owns the status until it finishes, or the poll
+            // flips the card back to "stopped" mid-restart. A stale "working" is overruled: a
+            // task that died without reporting must not freeze the card for the session.
+            if !finished.contains(project.id), isLocalBusyAndFresh(project.id) { continue }
+            let service = LocalProjectService(project: project, runner: commandRunner)
+            localStatuses[project.id] = await service.status()
+        }
+    }
+
+    private func isLocalBusyAndFresh(_ projectID: String) -> Bool {
+        guard let status = localStatuses[projectID], status.isBusy else { return false }
+        guard let checkedAt = status.checkedAt else { return true }
+        return Date().timeIntervalSince(checkedAt) < 900
+    }
+
+    func perform(_ action: LocalProjectAction, for project: LocalProject) {
+        guard project.supportsCommands else { return }
+        let previous = localStatuses[project.id]
+        localStatuses[project.id] = LocalProjectStatus(
+            state: .working,
+            detail: action.progressText,
+            checkedAt: Date(),
+            branch: previous?.branch,
+            hasLog: previous?.hasLog ?? false
+        )
+
+        Task { [weak self] in
+            guard let self else { return }
+            let service = LocalProjectService(project: project, runner: self.commandRunner)
+            let result = await service.perform(action)
+
+            if let result, !result.succeeded {
+                // A failed start is the moment the card is most worth reading, so the reason
+                // stays on it rather than being replaced by a bare "stopped".
+                self.localStatuses[project.id] = LocalProjectStatus(
+                    state: .stopped,
+                    detail: result.failureLine ?? "\(action.title.lowercased()) failed",
+                    checkedAt: Date(),
+                    branch: previous?.branch,
+                    hasLog: true
+                )
+                return
+            }
+
+            switch action {
+            case .start, .restart:
+                // The command returns long before a dev server has compiled or a container has
+                // opened its port. Keep the card honest about waiting instead of declaring
+                // failure a second after a successful start.
+                self.localStatuses[project.id] = LocalProjectStatus(
+                    state: .working,
+                    detail: "waiting for the site…",
+                    checkedAt: Date(),
+                    branch: previous?.branch,
+                    hasLog: true
+                )
+                self.localStatuses[project.id] = await service.waitUntilRunning()
+            case .stop:
+                self.localStatuses[project.id] = await service.status()
+            }
         }
     }
 
@@ -468,6 +595,17 @@ final class DeckController: ObservableObject {
         for project in activeProjects {
             let status = stackStatus(for: project)
             lines.append("\(project.title): local stack \(status.state.rawValue)")
+        }
+
+        for project in activeLocalProjects {
+            lines.append("\(project.displayTitle): \(localStatus(for: project).state.rawValue)")
+        }
+
+        // Said once, at the bottom, rather than repeated on every project line. Not an alert:
+        // Docker being off is a normal state of a laptop, not something gone wrong.
+        if let reason = docker.blockingReason, !activeProjects.isEmpty || !activeDDEVProjects.isEmpty
+            || !activeLocalProjects.isEmpty {
+            lines.append(reason)
         }
 
         if lines.isEmpty { lines.append("No cards on screen") }

@@ -146,7 +146,7 @@ public struct CardBranchRow: View {
         self.branch = branch
     }
 
-    public static let height: Double = 18
+    public nonisolated static let height: Double = 18
 
     public var body: some View {
         HStack(spacing: 8) {

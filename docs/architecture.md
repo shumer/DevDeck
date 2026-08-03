@@ -10,9 +10,10 @@ DevDeckUI      SwiftUI cards — pure rendering of a CardState
 GitHubKit      one integration: GraphQL documents, models, services
 ArcKit         one integration: projects, link templates, local Fusion stack
 DDEVKit        one integration: projects, ddev list, .ddev/config.yaml
+ProjectKit     one integration: plain projects — folder probe, detached start, health check
     │
 DevDeckCore    no AppKit, no integration specifics: config, HTTP, tokens, policies,
-               command runner
+               command runner, the Docker probe
 ```
 
 The rule that keeps this honest: **`DevDeckCore` and every integration module must build and
@@ -59,14 +60,34 @@ cheap. A project mid-command is skipped by the poll so the card cannot flicker b
 
 ## Local project cards
 
-Arc and DDEV cards are the same shape and are built from the same pieces — `CardChip`,
-`CardActionButton`, `CardSeparator`, `CardStateRow`, `CardBranchRow` in `DevDeckUI`. Anything
-that looks like a card of a local project belongs there rather than in one card's file: two
-copies of the same layout drift, and this project has already watched that happen once.
+Arc, DDEV and plain project cards are the same shape and are built from the same pieces —
+`CardChip`, `CardActionButton`, `CardSeparator`, `CardStateRow`, `CardBranchRow` in `DevDeckUI`.
+Anything that looks like a card of a local project belongs there rather than in one card's file:
+two copies of the same layout drift, and this project has already watched that happen once.
 
 `DDEVEnvironment` differs from `LocalStackService` in one structural way — it is shared rather
 than per project, because `ddev list -j` answers for every project at once. See
 [adr/0006-ddev-projects.md](adr/0006-ddev-projects.md).
+
+`LocalProjectService` is the third of them, for projects nothing else describes. Its one
+structural difference is that it has to launch a command that may never return, so it keeps a
+log file and a process id per project under Application Support — see
+[adr/0007-plain-projects.md](adr/0007-plain-projects.md). Everything else is the same shape:
+the health URL decides "running", and the branch comes from `.git/HEAD`.
+
+## The Docker gate
+
+`DockerEnvironment` in `DevDeckCore` runs one probe for the whole deck at the top of the local
+loop, and `DeckController` publishes the result. Cards do not fetch it; they are handed a
+`DockerStatus` and ask `DockerGate` what to draw, so the wording and the colours cannot drift
+between Arc, DDEV and plain cards.
+
+Two states carry weight beyond "not running". `unknown` means nothing has been asked yet and
+must not gate anything, or the first poll of every launch greys out every button. `starting` is
+set locally when the Start Docker button launches the runtime, and survives up to three minutes
+of probes that still say "no" — Docker Desktop takes the better part of a minute, and flipping
+back in between is what makes a button look broken. See
+[adr/0008-docker-precondition.md](adr/0008-docker-precondition.md).
 
 ## Cards
 
@@ -164,7 +185,8 @@ so a panel can never come back 99% off-screen.
 
 ## The settings window
 
-Three columns: the sections, the things in the selected section, and the form for one of them.
+Four sections and three columns: the sections, the things in the selected section, and the form
+for one of them.
 
 ```
 sections          list                     form

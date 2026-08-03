@@ -4,6 +4,7 @@ import DDEVKit
 import DevDeckCore
 import DevDeckUI
 import GitHubKit
+import ProjectKit
 import SwiftUI
 
 /// Maps a card identifier onto its view and its panel size.
@@ -38,19 +39,34 @@ struct CardHostView: View {
                 DDEVProjectCard(
                     project: project,
                     status: controller.ddevStatus(for: project),
+                    docker: controller.docker,
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
-                    onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) }
+                    onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
+                    onStartDocker: startDocker
                 )
             } else if let project = controller.project(forCard: card) {
                 ArcProjectCard(
                     project: project,
                     status: controller.stackStatus(for: project),
+                    docker: controller.docker,
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
-                    onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) }
+                    onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
+                    onStartDocker: startDocker
+                )
+            } else if let project = controller.localProject(forCard: card) {
+                LocalProjectCard(
+                    project: project,
+                    status: controller.localStatus(for: project),
+                    docker: controller.docker,
+                    onOpen: { LinkOpener.open($0, using: project.browser) },
+                    onAction: { controller.perform($0, for: project) },
+                    onOpenLog: { LocalFolder.open(controller.logURL(for: project)) },
+                    onRevealFolder: { LocalFolder.reveal(project.folderURL) },
+                    onStartDocker: startDocker
                 )
             } else {
                 unimplemented
@@ -74,6 +90,12 @@ struct CardHostView: View {
         }
     }
 
+    /// Nil on a machine whose runtime has no application to open, which is how the cards know
+    /// to show a disabled Start rather than a button that would do nothing.
+    private var startDocker: (() -> Void)? {
+        controller.canStartDocker ? { controller.startDockerRuntime() } : nil
+    }
+
     /// Rows open in the browser of the account they belong to — one signed-in GitHub identity
     /// per browser profile is the whole reason accounts exist.
     private func open(_ url: URL, _ accountID: String) {
@@ -95,6 +117,9 @@ struct CardHostView: View {
         default:
             if let project = controller.ddevProject(forCard: card) {
                 return DDEVProjectCard.size(for: project, status: controller.ddevStatus(for: project))
+            }
+            if let project = controller.localProject(forCard: card) {
+                return LocalProjectCard.size(for: project, status: controller.localStatus(for: project))
             }
             guard let project = controller.project(forCard: card) else {
                 return NSSize(width: CardMetrics.width, height: 150)

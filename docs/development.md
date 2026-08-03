@@ -25,8 +25,9 @@ swift run IconPreview out.png     # draw the menu-bar icon at menu-bar size, at 
 pkill -f DevDeck                  # quit a running instance
 ```
 
-The DDEV cards need the `ddev` CLI on the PATH a login shell sees; the Arc cards need Docker
-for their Fusion stack. Neither is needed to build or to run the suite.
+The DDEV cards need the `ddev` CLI on the PATH a login shell sees; Arc, DDEV and any plain
+project marked as needing it want Docker running, and say so on the card when it is not.
+Neither is needed to build or to run the suite.
 
 ## Tests
 
