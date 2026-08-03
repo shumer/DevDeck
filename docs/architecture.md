@@ -183,6 +183,15 @@ Two details keep a deck stable across launches, and both were bugs first:
 A saved position is only used when the frame still overlaps a screen by at least 80×40 points,
 so a panel can never come back 99% off-screen.
 
+**Tidying wraps into columns.** `DeckLayout.tidy` in `DevDeckCore` returns the top-left corner
+for each panel: down from the anchor, and into a new column beside it as soon as the next panel
+would hang below the visible frame. It is arithmetic in the core rather than a loop in the
+delegate because it decides whether a panel ends up somewhere the mouse can reach — six cards
+are over a thousand points tall, and a single column buried the last of them under the bottom
+edge and then saved that position. The column grows towards whichever side of the anchor has
+more room, and a new column is clamped inside the screen: overlapping panels can be dragged
+apart, off-screen ones cannot.
+
 ## The settings window
 
 Four sections and three columns: the sections, the things in the selected section, and the form

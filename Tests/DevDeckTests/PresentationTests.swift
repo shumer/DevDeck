@@ -38,6 +38,72 @@ func runPresentationTests(_ run: TestRun) async {
                         "no expander, no extra height")
     }
 
+    run.section("Cards — tidying the deck")
+
+    // A real deck: the five cards on this machine, on the built-in display.
+    let screen = CGRect(x: 0, y: 0, width: 1512, height: 957)
+    let deck = [
+        CGSize(width: 320, height: 222),
+        CGSize(width: 320, height: 222),
+        CGSize(width: 320, height: 215),
+        CGSize(width: 320, height: 190),
+        CGSize(width: 320, height: 215),
+    ]
+
+    await run.test("a column that would run off the bottom wraps into the next one") {
+        let places = DeckLayout.tidy(
+            sizes: deck,
+            anchorTopLeft: CGPoint(x: 24, y: 940),
+            screen: screen,
+            gap: 12
+        )
+        try expectEqual(places.count, deck.count)
+        try expectEqual(places[0], CGPoint(x: 24, y: 940), "the anchor does not move")
+        try expectEqual(places[1], CGPoint(x: 24, y: 940 - 222 - 12))
+        // Four cards and their gaps come to 885 points, and a fifth would end below zero.
+        try expectEqual(places[4], CGPoint(x: 24 + 320 + 12, y: 940), "the fifth starts a new column")
+
+        for (place, size) in zip(places, deck) {
+            try expect(place.y - size.height >= screen.minY, "nothing may hang below the screen")
+        }
+    }
+
+    await run.test("the columns grow towards the free side of the screen") {
+        // Anchored against the right edge, the only way out is leftwards.
+        let places = DeckLayout.tidy(
+            sizes: deck,
+            anchorTopLeft: CGPoint(x: 1512 - 320 - 24, y: 940),
+            screen: screen,
+            gap: 12
+        )
+        try expectEqual(places[4].x, 1512 - 320 - 24 - 320 - 12)
+        try expect(places.allSatisfy { $0.x >= screen.minX })
+    }
+
+    await run.test("a deck that fits is simply closed up") {
+        let places = DeckLayout.tidy(
+            sizes: Array(deck.prefix(3)),
+            anchorTopLeft: CGPoint(x: 100, y: 900),
+            screen: screen,
+            gap: 12
+        )
+        try expectEqual(places.map(\.x), [100, 100, 100], "one column is enough")
+        try expectEqual(places.map(\.y), [900, 900 - 234, 900 - 234 - 234])
+    }
+
+    await run.test("a panel taller than the screen is placed rather than looped over") {
+        let places = DeckLayout.tidy(
+            sizes: [CGSize(width: 320, height: 2000), CGSize(width: 320, height: 200)],
+            anchorTopLeft: CGPoint(x: 24, y: 940),
+            screen: screen,
+            gap: 12
+        )
+        try expectEqual(places.count, 2)
+        try expectEqual(places[0], CGPoint(x: 24, y: 940), "it goes where it was going to go")
+        try expectEqual(places[1].x, 24 + 320 + 12, "and the next one starts a column of its own")
+        try expect(DeckLayout.tidy(sizes: [], anchorTopLeft: .zero, screen: screen, gap: 12).isEmpty)
+    }
+
     run.section("Cards — Arc chip rows")
 
     await run.test("each row that has chips is paid for, and no more") {
