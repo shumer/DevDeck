@@ -345,7 +345,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
         menu.addItem(.separator())
         for (title, selector) in [
-            ("Tidy panels into a column", #selector(restack)),
+            ("Tidy panels into columns", #selector(restack)),
             ("Refresh now", #selector(refreshNow)),
             ("Settings…", #selector(openSettings)),
         ] {
@@ -415,19 +415,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
     }
 
-    /// Closes up the column while keeping it where the user put it: anchor on the topmost
-    /// panel and stack the rest beneath it. It deliberately does not reset to a corner.
+    /// Closes up the deck while keeping it where the user put it: anchor on the topmost panel
+    /// and stack the rest beneath it, starting a new column whenever the next card would hang
+    /// below the screen. It deliberately does not reset to a corner.
+    ///
+    /// The wrapping is not a nicety. Six cards are over a thousand points tall, and a single
+    /// column pushed the last of them under the bottom edge — where nothing can grab it, and
+    /// the position was saved.
     @objc private func restack() {
         let ordered = visibleCards.compactMap { card in panels[card].map { (card, $0) } }
         guard let anchor = ordered.max(by: { $0.1.frame.maxY < $1.1.frame.maxY })?.1 else { return }
 
-        var y = anchor.frame.maxY
-        let x = anchor.frame.minX
-        for (card, window) in ordered {
-            y -= window.frame.height
-            window.setFrameOrigin(NSPoint(x: x, y: y))
+        let screen = NSScreen.screens.first { $0.visibleFrame.intersects(anchor.frame) }?.visibleFrame
+            ?? NSScreen.main?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+
+        let placements = DeckLayout.tidy(
+            sizes: ordered.map(\.1.frame.size),
+            anchorTopLeft: CGPoint(x: anchor.frame.minX, y: anchor.frame.maxY),
+            screen: screen,
+            gap: DeckTheme.panelGap
+        )
+
+        for (index, (card, window)) in ordered.enumerated() {
+            let topLeft = placements[index]
+            window.setFrameOrigin(NSPoint(x: topLeft.x, y: topLeft.y - window.frame.height))
             persistPosition(of: card)
-            y -= DeckTheme.panelGap
         }
     }
 
