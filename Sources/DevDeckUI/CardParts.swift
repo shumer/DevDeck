@@ -336,23 +336,23 @@ public struct CardHeroRow: View {
 /// them, and "which branch is this" must not be the thing that gets truncated.
 public struct CardMetaBlock: View {
     private let branch: String?
-    private let branchURL: URL?
+    private let repositoryURL: URL?
     private let leading: String?
     private let trailing: String?
-    private let onOpenBranch: ((URL) -> Void)?
+    private let onOpenRepository: ((URL) -> Void)?
 
     public init(
         branch: String?,
-        branchURL: URL? = nil,
+        repositoryURL: URL? = nil,
         leading: String?,
         trailing: String? = nil,
-        onOpenBranch: ((URL) -> Void)? = nil
+        onOpenRepository: ((URL) -> Void)? = nil
     ) {
         self.branch = branch
-        self.branchURL = branchURL
+        self.repositoryURL = repositoryURL
         self.leading = leading
         self.trailing = trailing
-        self.onOpenBranch = onOpenBranch
+        self.onOpenRepository = onOpenRepository
     }
 
     public nonisolated static let branchHeight: Double = 15
@@ -394,14 +394,18 @@ public struct CardMetaBlock: View {
         .padding(.top, Self.topPadding)
     }
 
-    /// The branch, and — when the checkout has an origin — the way to that branch on the web.
+    /// The branch, and — when the checkout has an origin — the way to the repository.
     ///
     /// The line was already blue and monospaced, which is what a link looks like; all it was
     /// missing was being one. The arrow is what says so at rest, since these panels sit behind
     /// other windows and hover cannot be relied on to announce anything.
+    ///
+    /// It opens the repository rather than this branch. A branch link has to be right about
+    /// whether the remote has the branch, and being wrong lands on a 404 — while the reason to
+    /// click was to reach the repository without hunting for it.
     @ViewBuilder
     private func branchRow(_ branch: String) -> some View {
-        let isLink = branchURL != nil && onOpenBranch != nil
+        let isLink = repositoryURL != nil && onOpenRepository != nil
 
         HStack(spacing: 5) {
             Text("⎇ \(branch)")
@@ -420,9 +424,9 @@ public struct CardMetaBlock: View {
         .contentShape(Rectangle())
         .clickable(cornerRadius: 5, isEnabled: isLink)
         .onTapGesture {
-            guard let branchURL, let onOpenBranch else { return }
-            onOpenBranch(branchURL)
+            guard let repositoryURL, let onOpenRepository else { return }
+            onOpenRepository(repositoryURL)
         }
-        .help(branchURL.map { "\($0.absoluteString)" } ?? "checked out branch")
+        .help(repositoryURL.map { "\($0.absoluteString) — the branch is \(branch)" } ?? "checked out branch")
     }
 }

@@ -57,10 +57,10 @@ public struct ArcProjectCard: View {
             hero
             CardMetaBlock(
                 branch: status.branch,
-                branchURL: status.branchURL,
+                repositoryURL: status.repositoryURL,
                 leading: project.organization,
                 trailing: status.engineVersion,
-                onOpenBranch: onOpen
+                onOpenRepository: onOpen
             )
             chips
             controls
