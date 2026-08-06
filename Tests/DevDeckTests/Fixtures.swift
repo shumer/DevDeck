@@ -10,7 +10,7 @@ enum Fixtures {
     static let pullRequestSearch = """
     {
       "data": {
-        "search": {
+        "mine": {
           "issueCount": 7,
           "nodes": [
             {
@@ -62,6 +62,65 @@ enum Fixtures {
               "commits": { "nodes": [{ "commit": { "statusCheckRollup": null } }] }
             },
             {}
+          ]
+        },
+        "reviewing": {
+          "issueCount": 1,
+          "nodes": [
+            {
+              "id": "PR_review",
+              "number": 902,
+              "title": "IW-164 - Approvers resource for the proofing API",
+              "url": "https://github.com/editoria/ledwall/pull/902",
+              "isDraft": false,
+              "updatedAt": "2026-07-28T07:00:00Z",
+              "repository": { "nameWithOwner": "editoria/ledwall", "owner": { "login": "editoria" } },
+              "reviewDecision": "APPROVED",
+              "reviewThreads": { "nodes": [] },
+              "commits": { "nodes": [{ "commit": { "statusCheckRollup": { "state": "SUCCESS" } } }] }
+            }
+          ]
+        }
+      }
+    }
+    """
+
+    /// The same pull request answering both searches, which a fork or a team rule can produce.
+    static let pullRequestOverlap = """
+    {
+      "data": {
+        "mine": {
+          "issueCount": 1,
+          "nodes": [
+            {
+              "id": "PR_same",
+              "number": 5,
+              "title": "chore/bundle-bump",
+              "url": "https://github.com/shumer/tools/pull/5",
+              "isDraft": false,
+              "updatedAt": "2026-08-01T08:00:00Z",
+              "repository": { "nameWithOwner": "shumer/tools", "owner": { "login": "shumer" } },
+              "reviewDecision": "APPROVED",
+              "reviewThreads": { "nodes": [] },
+              "commits": { "nodes": [{ "commit": { "statusCheckRollup": { "state": "SUCCESS" } } }] }
+            }
+          ]
+        },
+        "reviewing": {
+          "issueCount": 1,
+          "nodes": [
+            {
+              "id": "PR_same",
+              "number": 5,
+              "title": "chore/bundle-bump",
+              "url": "https://github.com/shumer/tools/pull/5",
+              "isDraft": false,
+              "updatedAt": "2026-08-01T08:00:00Z",
+              "repository": { "nameWithOwner": "shumer/tools", "owner": { "login": "shumer" } },
+              "reviewDecision": "APPROVED",
+              "reviewThreads": { "nodes": [] },
+              "commits": { "nodes": [{ "commit": { "statusCheckRollup": { "state": "SUCCESS" } } }] }
+            }
           ]
         }
       }

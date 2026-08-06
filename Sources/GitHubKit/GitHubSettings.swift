@@ -9,6 +9,11 @@ public struct GitHubSettings: Sendable, Equatable, Codable {
     /// on the card is the server-side total, not this slice.
     public var maxPullRequests: Int
     public var includeDrafts: Bool
+    /// Whether the card also carries pull requests that are waiting for your review.
+    ///
+    /// On by default: a review someone is waiting on is more urgent than most of your own
+    /// pull requests, and it is the half of "what do I owe today" the card used to miss.
+    public var includesReviewRequests: Bool
     /// When non-empty, only these organisations are searched.
     public var organizations: [String]
     public var maxNotifications: Int
@@ -23,6 +28,7 @@ public struct GitHubSettings: Sendable, Equatable, Codable {
         apiBaseURL: URL = URL(string: "https://api.github.com")!,
         maxPullRequests: Int = 20,
         includeDrafts: Bool = true,
+        includesReviewRequests: Bool = true,
         organizations: [String] = [],
         maxNotifications: Int = 50,
         actionsRepositories: [String] = [],
@@ -31,6 +37,7 @@ public struct GitHubSettings: Sendable, Equatable, Codable {
         self.apiBaseURL = apiBaseURL
         self.maxPullRequests = maxPullRequests
         self.includeDrafts = includeDrafts
+        self.includesReviewRequests = includesReviewRequests
         self.organizations = organizations
         self.maxNotifications = maxNotifications
         self.actionsRepositories = actionsRepositories

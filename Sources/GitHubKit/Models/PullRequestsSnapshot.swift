@@ -66,15 +66,26 @@ public struct PullRequestsSnapshot: Sendable, Equatable, Codable {
         Set(pullRequests.map(\.organization)).count
     }
 
+    /// How many of the rows are somebody waiting on you rather than you waiting on somebody.
+    public var reviewRequestCount: Int {
+        pullRequests.filter(\.isReviewRequest).count
+    }
+
     /// Rows for the card body: worst first, then most recently touched.
     ///
-    /// Sorting by health rather than by date is deliberate — the reason to look at the card
-    /// is to find the PR that is stuck, and that one is rarely the newest.
+    /// Sorting by health rather than by date is deliberate — the reason to look at the card is
+    /// to find the PR that is stuck, and that one is rarely the newest. A review someone is
+    /// waiting on sits just under the blocked ones: it is the only row where the person held up
+    /// is not you.
     public func prioritized(limit: Int? = nil) -> [PullRequestSummary] {
-        let order: [PullRequestHealth: Int] = [.blocked: 0, .attention: 1, .ready: 2]
+        func rank(_ pullRequest: PullRequestSummary) -> Int {
+            if pullRequest.health == .blocked { return 0 }
+            if pullRequest.isReviewRequest { return 1 }
+            return pullRequest.health == .attention ? 2 : 3
+        }
         let sorted = pullRequests.sorted { left, right in
-            let leftRank = order[left.health] ?? 3
-            let rightRank = order[right.health] ?? 3
+            let leftRank = rank(left)
+            let rightRank = rank(right)
             if leftRank != rightRank { return leftRank < rightRank }
             return left.updatedAt > right.updatedAt
         }

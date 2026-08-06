@@ -44,8 +44,8 @@ public enum CardCatalog {
     public static let all: [CardDescriptor] = [
         CardDescriptor(
             id: .githubPullRequests,
-            title: "My pull requests",
-            subtitle: "Open PRs with checks, reviews and unresolved threads",
+            title: "Pull requests",
+            subtitle: "Yours, plus the ones waiting for your review",
             isImplemented: true,
             isEnabledByDefault: true
         ),

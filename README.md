@@ -6,16 +6,17 @@ plus a menu-bar item with the count.
 
 Native macOS, built from a SwiftPM package with no Xcode required.
 
-Pull requests across every account a token can see, worst first:
+Pull requests across every account a token can see — yours and the ones waiting on your
+review — worst first:
 
 ```
 ┌────────────────────────────────────────────┐
-│  MY PULL REQUESTS                 23:26:37 │
+│  PULL REQUESTS                    23:26:37 │
 │ 8 open                          2 BLOCKED  │
 │ ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ │
 │ ● WORK PROJ-142 Add the article feed…   CF │
 │ ● WORK PROJ-77  Fix the image fill on…  CR │
-│ ● HOME          Bump the theme compon…  WR │
+│ ● WORK 👁 IW-164 Approvers resource…    RV │
 │           show 5 more ⌄                    │
 │ 4 repos · 2 orgs                           │
 └────────────────────────────────────────────┘
@@ -80,13 +81,19 @@ cannot work:
 
 | Card | State | On by default |
 |---|---|---|
-| GitHub · my pull requests | working | yes |
+| GitHub · pull requests | working | yes |
 | GitHub · inbox (notifications) | working | yes |
 | GitHub · Actions | working | no |
 | Arc XP · one card per project | working | added per project |
 | DDEV · one card per project | working | added per project |
 | Project · one card per project | working | added per project |
 | Arc XP · deployed bundle versions | planned — needs an org token | — |
+
+**The card carries both halves of "what do I owe today."** Your own open pull requests, and
+the ones somebody has asked you to review — two searches in one GraphQL request, because
+GitHub's search cannot OR those qualifiers. A review someone is waiting on sorts just under the
+blocked rows, wears an eye and the code `RV`, and leaves the card the moment you review it. Turn
+it off with `includesReviewRequests` if you would rather the card stayed only about your work.
 
 The Actions card follows the repositories your open pull requests are in, up to five per
 account. A fixed list instead of that is a field in `GitHubSettings` with no settings screen
@@ -327,10 +334,10 @@ Rows end in a two-character code so the width goes to the title. Hovering a row 
 
 | | | | |
 |---|---|---|---|
-| `CF` | checks failed | `CP` | checks running |
-| `CR` | changes requested | `DR` | draft |
-| `AP` | approved | `WR` | waiting for review |
-| `T3` | three unresolved threads | | |
+| `RV` | waiting for **your** review | `CP` | checks running |
+| `CF` | checks failed | `DR` | draft |
+| `CR` | changes requested | `AP` | approved |
+| `T3` | three unresolved threads | `WR` | waiting for review |
 
 The coloured dot says the same thing at a glance: red is blocked, amber needs someone, green
 is done.
@@ -427,7 +434,7 @@ Sources/
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (218 tests, offline)
+  DevDeckTests/    the suite (223 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

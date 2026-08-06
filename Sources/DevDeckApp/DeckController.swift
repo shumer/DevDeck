@@ -575,6 +575,10 @@ final class DeckController: ObservableObject {
                     line += ", \(snapshot.blockedCount) blocked"
                     isAlert = true
                 }
+                if snapshot.reviewRequestCount > 0 {
+                    line += ", \(snapshot.reviewRequestCount) waiting for your review"
+                    isAlert = true
+                }
                 lines.append(line)
             } else {
                 lines.append("Pull requests: not loaded yet")

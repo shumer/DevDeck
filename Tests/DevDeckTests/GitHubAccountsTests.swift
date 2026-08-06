@@ -161,7 +161,7 @@ func runAccountsTests(_ run: TestRun) async {
         )
 
         let snapshot = try await workspace.pullRequests()
-        try expectEqual(snapshot.pullRequests.count, 4, "the healthy account still reports")
+        try expectEqual(snapshot.pullRequests.count, 5, "the healthy account still reports")
         try expectEqual(snapshot.failures.count, 1)
         try expectEqual(snapshot.failures.first?.account, "Personal")
         try expectEqual(snapshot.failures.first?.message, "Token rejected")

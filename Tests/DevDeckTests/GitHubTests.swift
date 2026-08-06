@@ -43,8 +43,9 @@ func runGitHubTests(_ run: TestRun) async {
 
     await run.test("the response decodes into a snapshot") {
         let snapshot = try expectNotNil(snapshot, "snapshot")
-        try expectEqual(snapshot.totalCount, 7, "the count comes from the server, not the slice")
-        try expectEqual(snapshot.pullRequests.count, 4, "the non-pull-request node is dropped")
+        try expectEqual(snapshot.totalCount, 8,
+                        "seven of mine reported by the server, plus the one waiting on my review")
+        try expectEqual(snapshot.pullRequests.count, 5, "the non-pull-request node is dropped")
         try expectEqual(snapshot.repositoryCount, 3)
         try expectEqual(snapshot.organizationCount, 2)
     }
@@ -84,13 +85,50 @@ func runGitHubTests(_ run: TestRun) async {
         try expectEqual(draft.statusLine, "draft")
     }
 
-    await run.test("rows are ordered worst first, then most recent") {
+    await run.test("a review someone is waiting on is carried, and marked as theirs") {
+        let snapshot = try expectNotNil(snapshot, "snapshot")
+        let review = try expectNotNil(
+            snapshot.pullRequests.first { $0.isReviewRequest }, "the review request"
+        )
+        try expectEqual(review.id, "PR_review")
+        try expectEqual(review.statusCode, "RV")
+        try expectEqual(review.statusLine, "waiting for your review")
+        try expectEqual(review.health, .attention, "approved and green, but you still owe it")
+        try expectEqual(snapshot.reviewRequestCount, 1)
+        try expectEqual(review.ticket.key, "IW-164", "the ticket key is split out as on any row")
+    }
+
+    await run.test("rows are ordered worst first, and a review owed outranks my own work") {
         let snapshot = try expectNotNil(snapshot, "snapshot")
         try expectEqual(snapshot.prioritized().map(\.id),
-                        ["PR_failing", "PR_changes", "PR_draft", "PR_ready"])
+                        ["PR_failing", "PR_changes", "PR_review", "PR_draft", "PR_ready"])
         try expectEqual(snapshot.prioritized(limit: 2).map(\.id), ["PR_failing", "PR_changes"])
         try expectEqual(snapshot.blockedCount, 2)
         try expectEqual(snapshot.readyCount, 1)
+    }
+
+    await run.test("the two searches go out together, and both are asked for") {
+        let request = try expectNotNil(await http.request(at: 0), "request")
+        let body = String(decoding: request.body ?? Data(), as: UTF8.self)
+        try expect(body.contains("author:@me"), "mine")
+        try expect(body.contains("review-requested:@me"), "and what is waiting on me")
+        try expectEqual(await http.requestCount, 1, "one round trip, not two")
+    }
+
+    await run.test("a pull request answering both searches is counted once, as mine") {
+        let (client, _) = makeClient(responses: [.success(.json(Fixtures.pullRequestOverlap))])
+        let snapshot = try expectNotNil(try? await PullRequestsService(client: client).fetch(), "snapshot")
+        try expectEqual(snapshot.pullRequests.count, 1)
+        try expect(!snapshot.pullRequests[0].isReviewRequest, "yours wins the tie")
+        try expectEqual(snapshot.totalCount, 1)
+    }
+
+    await run.test("switching review requests off stops asking for them") {
+        var settings = GitHubSettings.default
+        settings.includesReviewRequests = false
+        let query = PullRequestsService.reviewQuery(settings: settings)
+        try expect(!query.contains("review-requested"), "nothing is asked for")
+        try expect(!query.isEmpty, "and the query is still valid — GitHub rejects an empty one")
     }
 
     run.section("GitHub — API mapping")

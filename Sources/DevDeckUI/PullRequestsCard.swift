@@ -12,7 +12,11 @@ public extension PullRequestHealth {
     }
 }
 
-/// "My pull requests": how many are open, and the ones that need something done.
+/// Pull requests: yours, plus the ones waiting on a review from you.
+///
+/// Both halves of "what do I owe today" on one card. A review someone is waiting on sits just
+/// under the blocked ones and carries an eye rather than the two-letter code of its own state:
+/// what matters about it is not whether its checks pass but that it is not yours.
 public struct PullRequestsCard: View {
     /// Everything that is not a row: chrome, the count, the distribution bar and the footer.
     public nonisolated static let baseHeight: Double = 110
@@ -56,7 +60,7 @@ public struct PullRequestsCard: View {
 
     public var body: some View {
         CardChrome(
-            title: "GitHub · my pull requests",
+            title: "GitHub · pull requests",
             glyph: .github,
             timestamp: CardFreshness.text(for: state)
         ) {
@@ -75,6 +79,10 @@ public struct PullRequestsCard: View {
         guard let snapshot = state.value else { return nil }
         if snapshot.blockedCount > 0 {
             return ("\(snapshot.blockedCount) blocked", DeckTheme.red)
+        }
+        // Someone waiting on you outranks anything of yours that is merely in progress.
+        if snapshot.reviewRequestCount > 0 {
+            return ("\(snapshot.reviewRequestCount) to review", DeckTheme.amber)
         }
         if snapshot.totalCount == 0 {
             return ("clear", DeckTheme.green)
@@ -170,6 +178,14 @@ public struct PullRequestsCard: View {
             }
             // The ticket key gets its own monospaced column: left in the sentence it eats the
             // width the subject needs, which is how a row reads `IR-6257 - Dr…r the core flip.`
+            // Not mine: the row is here because somebody is waiting, and the eye needs to know
+            // that before it reads the title.
+            if pullRequest.isReviewRequest {
+                Image(systemName: "eye")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(DeckTheme.amber)
+                    .help("waiting for your review")
+            }
             if let key = ticket.key {
                 Text(key)
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
