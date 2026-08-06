@@ -80,19 +80,20 @@ public struct LocalProjectCard: View {
 
     private var hero: some View {
         CardHeroRow(
-            color: heroColor,
+            color: heroState.color,
+            tone: heroState.tone,
             text: heroText,
             note: status.pid.map { "pid \($0)" },
             help: status.detail ?? heroText
         )
     }
 
-    private var heroColor: Color {
-        if isDockerBlocked { return DockerGate.color(docker) }
+    private var heroState: (color: Color, tone: CardStateTone) {
+        if isDockerBlocked { return (DockerGate.color(docker), .alert) }
         switch status.state {
-        case .running: return DeckTheme.green
-        case .starting, .working: return DeckTheme.amber
-        case .stopped, .unavailable: return DeckTheme.label
+        case .running: return (DeckTheme.green, .good)
+        case .starting, .working: return (DeckTheme.amber, .alert)
+        case .stopped, .unavailable: return (DeckTheme.label, .neutral)
         }
     }
 

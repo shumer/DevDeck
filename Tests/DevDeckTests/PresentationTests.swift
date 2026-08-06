@@ -163,19 +163,45 @@ func runPresentationTests(_ run: TestRun) async {
 
     run.section("Cards — the control row")
 
-    await run.test("the prominent action is half again as wide as the quiet ones") {
+    await run.test("every button gets the same air around its label") {
+        // The real row, with the label that caused this: `Terminal` all but touched its border
+        // while `Logs` sat in a field of space, because the four shared the width equally.
         let actions = [
-            CardAction("Start", isProminent: true),
-            CardAction("Restart"),
-            CardAction("Folder"),
-            CardAction("Terminal"),
+            CardAction("Stop", systemImage: "power", isProminent: true),
+            CardAction("Restart", systemImage: "arrow.clockwise"),
+            CardAction("Logs", systemImage: "doc.text"),
+            CardAction("Terminal", systemImage: "terminal"),
         ]
         let widths = CardActionRow.widths(for: actions)
         try expectEqual(widths.count, 4)
-        try expectEqual((widths[0] / widths[1] * 100).rounded(), 150)
+
+        // Padding is width minus contents, and it has to be the same on every quiet button.
+        let padding = zip(widths.dropFirst(), ["Restart", "Logs", "Terminal"]).map { width, title in
+            width - CardActionRow.contentWidth(of: CardAction(title, systemImage: "x"))
+        }
+        for value in padding {
+            try expect(abs(value - padding[0]) < 0.01, "the same air on each: \(padding)")
+            try expect(value >= CardActionRow.labelPadding * 2, "and enough of it")
+        }
+        try expect(widths[0] > widths[1], "the prominent one still leads")
+
         let total = widths.reduce(0, +) + CardActionRow.spacing * 3
         try expectEqual(total.rounded(), CardChromeMetrics.contentWidth.rounded(),
                         "the row fills the card exactly, so it lines up with everything above it")
+    }
+
+    await run.test("a row too full to fit shrinks in proportion rather than truncating one label") {
+        let crowded = [
+            CardAction("Start Docker", systemImage: "shippingbox.fill", isProminent: true),
+            CardAction("Restart", systemImage: "arrow.clockwise"),
+            CardAction("Terminal", systemImage: "terminal"),
+            CardAction("Folder", systemImage: "folder"),
+            CardAction("Logs", systemImage: "doc.text"),
+        ]
+        let widths = CardActionRow.widths(for: crowded)
+        let total = widths.reduce(0, +) + CardActionRow.spacing * Double(crowded.count - 1)
+        try expect(total <= CardChromeMetrics.contentWidth + 0.5, "it fits, whatever it costs")
+        try expect(widths.allSatisfy { $0 > 30 }, "and nothing collapses")
     }
 
     run.section("Browsers")

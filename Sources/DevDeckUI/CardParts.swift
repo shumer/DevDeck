@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Pieces shared by every card that fronts a local project.
@@ -193,45 +194,102 @@ public struct CardActionRow: View {
         .padding(.top, Self.topPadding)
     }
 
-    /// The row fills the card exactly, so its edges line up with the chips and the meta above.
+    /// Space either side of a button's label. The same on every button, which is the point.
+    public nonisolated static let labelPadding: Double = 10
+    /// How much wider the prominent action is than its own contents need.
+    public nonisolated static let prominentPadding: Double = 24
+    private nonisolated static let iconWidth: Double = 12
+    private nonisolated static let iconSpacing: Double = 4
+
+    /// Widths from what each button actually contains, plus the same padding on every one.
+    ///
+    /// Four equal shares looked tidy in a mockup and wrong on screen: `Terminal` all but touched
+    /// its own border while `Logs` sat in a field of space. Measuring the labels is what makes
+    /// the padding uniform, which is the thing the eye actually reads as "these are the same
+    /// kind of button". Whatever is left over is shared out equally, so the row still fills the
+    /// card and lines up with the chips above it.
     public nonisolated static func widths(for actions: [CardAction]) -> [Double] {
         guard !actions.isEmpty else { return [] }
-        let units = actions.reduce(0.0) { $0 + ($1.isProminent ? prominentShare : 1) }
-        let available = CardChromeMetrics.contentWidth - spacing * Double(actions.count - 1)
-        return actions.map { (available / units) * ($0.isProminent ? prominentShare : 1) }
+        let gaps = spacing * Double(actions.count - 1)
+        let available = CardChromeMetrics.contentWidth - gaps
+        let intrinsic = actions.map(intrinsicWidth(of:))
+        let total = intrinsic.reduce(0, +)
+
+        guard total < available else {
+            // Not enough room for everything: shrink in proportion rather than let one label
+            // truncate while another keeps its air.
+            return intrinsic.map { $0 * (available / total) }
+        }
+        let surplus = (available - total) / Double(actions.count)
+        return intrinsic.map { $0 + surplus }
+    }
+
+    /// What a button actually holds — icon, gap and label — with no padding at all.
+    public nonisolated static func contentWidth(of action: CardAction) -> Double {
+        intrinsicWidth(of: action) - labelPadding * 2 - (action.isProminent ? prominentPadding : 0)
+    }
+
+    private nonisolated static func intrinsicWidth(of action: CardAction) -> Double {
+        let font = NSFont.systemFont(
+            ofSize: action.isProminent ? 11.5 : 10.5,
+            weight: action.isProminent ? .semibold : .medium
+        )
+        let label = ceil(NSAttributedString(string: action.title, attributes: [.font: font]).size().width)
+        let icon = action.systemImage == nil ? 0 : iconWidth + iconSpacing
+        return label + icon + labelPadding * 2 + (action.isProminent ? prominentPadding : 0)
     }
 }
 
-/// The state of the thing the card is about, said as loudly as the card says anything.
+/// How much a state wants to be noticed.
+public enum CardStateTone: Sendable, Equatable {
+    /// Working as it should.
+    case good
+    /// Off, and that is nobody's problem — a stopped project is a normal thing.
+    case neutral
+    /// Busy, blocked or broken: the one a sweep down the column should catch.
+    case alert
+}
+
+/// The state of the thing the card is about — the card's focal point.
 ///
-/// This is the focal point: one glance answers "is it up", and everything else is detail for
-/// after that question is settled. It replaced a 12.5-point line that looked exactly like the
-/// three lines around it.
+/// It replaced a 12.5-point line that looked exactly like the three lines around it, and then
+/// overshot: at 20 points in near-white it was the loudest thing on the desktop. What made it
+/// shout was not the size on its own but near-white at weight 600 on dark glass, so all three
+/// knobs move a little instead of one moving a lot — 17 points, 80% white, and the colour moves
+/// out of the word and into the dot.
 public struct CardHeroRow: View {
     private let color: Color
+    private let tone: CardStateTone
     private let text: String
     private let note: String?
     private let help: String
 
-    public init(color: Color, text: String, note: String? = nil, help: String) {
+    public init(
+        color: Color,
+        tone: CardStateTone = .neutral,
+        text: String,
+        note: String? = nil,
+        help: String
+    ) {
         self.color = color
+        self.tone = tone
         self.text = text
         self.note = note
         self.help = help
     }
 
-    public nonisolated static let height: Double = 24
+    public nonisolated static let height: Double = 22
     public nonisolated static let topPadding: Double = 9
 
     public var body: some View {
         HStack(spacing: 9) {
-            Circle()
-                .fill(color)
-                .frame(width: 9, height: 9)
+            dot
             Text(text)
-                .font(.system(size: 20, weight: .semibold))
-                .kerning(-0.35)
-                .foregroundStyle(isQuiet ? DeckTheme.value.opacity(0.72) : DeckTheme.value)
+                // Colour returns to the word only when something wants attention. That is the
+                // whole asymmetry: five calm cards read as texture, the sixth reads as a state.
+                .font(.system(size: 17, weight: .semibold))
+                .kerning(-0.3)
+                .foregroundStyle(tone == .alert ? color : DeckTheme.value.opacity(0.8))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
@@ -248,8 +306,28 @@ public struct CardHeroRow: View {
         .help(help)
     }
 
-    /// A card that is simply off should not shout it; one that is broken or busy should.
-    private var isQuiet: Bool { color == DeckTheme.label }
+    /// The halo is reserved for states that mean something: a stopped project gets a plain grey
+    /// dot, so the ones that glow are worth looking at.
+    @ViewBuilder
+    private var dot: some View {
+        switch tone {
+        case .neutral:
+            Circle()
+                .fill(DeckTheme.label.opacity(0.66))
+                .frame(width: 9, height: 9)
+                .padding(1.5)
+        case .good, .alert:
+            Circle()
+                .fill(color)
+                .frame(width: 10, height: 10)
+                .background(
+                    Circle()
+                        .fill(color.opacity(tone == .alert ? 0.3 : 0.2))
+                        .frame(width: 16, height: 16)
+                )
+                .frame(width: 12, height: 12)
+        }
+    }
 }
 
 /// The quiet block under the hero: the branch, then whatever names this checkout.
