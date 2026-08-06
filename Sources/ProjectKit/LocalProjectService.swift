@@ -74,6 +74,7 @@ public struct LocalProjectService: Sendable {
         }
 
         let branch = GitCheckout.branch(in: folder)
+        let branchURL = GitCheckout.branchWebURL(in: folder, branch: branch)
         let pid = storedPID()
         let isAlive = pid.map(ProcessLiveness.isAlive) ?? false
         let hasLog = FileManager.default.fileExists(atPath: logURL.path)
@@ -86,6 +87,7 @@ public struct LocalProjectService: Sendable {
                 checkedAt: clock.now,
                 pid: isAlive ? pid : nil,
                 branch: branch,
+                branchURL: branchURL,
                 hasLog: hasLog
             )
         }
@@ -100,6 +102,7 @@ public struct LocalProjectService: Sendable {
                 checkedAt: clock.now,
                 pid: isAlive ? pid : nil,
                 branch: branch,
+                branchURL: branchURL,
                 hasLog: hasLog
             )
         } catch {
@@ -111,6 +114,7 @@ public struct LocalProjectService: Sendable {
                 checkedAt: clock.now,
                 pid: isAlive ? pid : nil,
                 branch: branch,
+                branchURL: branchURL,
                 hasLog: hasLog
             )
         }

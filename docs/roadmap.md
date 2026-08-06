@@ -38,6 +38,8 @@
   logos parsed from their own SVGs, a card 352 points wide so `Terminal` fits, and glass that
   is glass again rather than grey paint. Three directions were mocked up first; see
   [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
+- **The branch on a card is a link** to that branch on GitHub, GitLab or Bitbucket, read from
+  the checkout's own `.git/config`.
 - **The plain-project settings form**, in the same language: a header with the name and the
   card switch, commands with their captions above them, switches that explain themselves in one
   line instead of four footnotes, the live health answer in the group that asks about it, and

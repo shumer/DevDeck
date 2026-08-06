@@ -56,7 +56,13 @@ public struct LocalProjectCard: View {
             timestamp: ProjectCardMetrics.timestamp(status.checkedAt)
         ) {
             hero
-            CardMetaBlock(branch: status.branch, leading: metaLeading, trailing: project.startCommand)
+            CardMetaBlock(
+                branch: status.branch,
+                branchURL: status.branchURL,
+                leading: metaLeading,
+                trailing: project.startCommand,
+                onOpenBranch: onOpen
+            )
             chips
             controls
             Spacer(minLength: 0)
