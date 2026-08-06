@@ -58,10 +58,10 @@ public struct LocalProjectCard: View {
             hero
             CardMetaBlock(
                 branch: status.branch,
-                branchURL: status.branchURL,
+                repositoryURL: status.repositoryURL,
                 leading: metaLeading,
                 trailing: project.startCommand,
-                onOpenBranch: onOpen
+                onOpenRepository: onOpen
             )
             chips
             controls

@@ -36,7 +36,7 @@ private let gitConfig = """
 """
 
 func runVectorTests(_ run: TestRun) async {
-    run.section("Git — the branch is a link to the branch")
+    run.section("Git — the branch line links to the repository")
 
     await run.test("origin is read from its own section, not from the first url in the file") {
         // A repository with an upstream has several `url =` lines and origin's is not first.
@@ -66,63 +66,6 @@ func runVectorTests(_ run: TestRun) async {
         try expectNil(GitCheckout.webURL(fromRemote: "https://github.com"), "a host with no repo")
     }
 
-    await run.test("each host spells a branch its own way, and an unknown one is not guessed at") {
-        func branch(_ remote: String, _ name: String = "feat/IW-164") throws -> String {
-            let repository = try expectNotNil(GitCheckout.webURL(fromRemote: remote), remote)
-            return GitCheckout.branchWebURL(repository: repository, branch: name).absoluteString
-        }
-        try expectEqual(
-            try branch("git@github.com:editoria/ledwall.git"),
-            "https://github.com/editoria/ledwall/tree/feat/IW-164"
-        )
-        try expectEqual(
-            try branch("git@gitlab.com:editoria/ledwall.git"),
-            "https://gitlab.com/editoria/ledwall/-/tree/feat/IW-164"
-        )
-        try expectEqual(
-            try branch("git@git.internal.example:editoria/ledwall.git"),
-            "https://git.internal.example/editoria/ledwall",
-            "an unknown host gets the repository rather than a path that would 404"
-        )
-    }
-
-    await run.test("a branch that is not on the remote links to the repository, not to a 404") {
-        let folder = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("devdeck-refs-\(UUID().uuidString)", isDirectory: true)
-        let dotGit = folder.appendingPathComponent(".git", isDirectory: true)
-        try FileManager.default.createDirectory(at: dotGit, withIntermediateDirectories: true)
-        try gitConfig.write(to: dotGit.appendingPathComponent("config"), atomically: true, encoding: .utf8)
-        try "ref: refs/heads/wip/local-only\n".write(
-            to: dotGit.appendingPathComponent("HEAD"), atomically: true, encoding: .utf8
-        )
-
-        try expect(!GitCheckout.hasRemoteBranch(in: folder, branch: "wip/local-only"))
-        try expectEqual(
-            GitCheckout.branchWebURL(in: folder, branch: "wip/local-only")?.absoluteString,
-            "https://github.com/editoria/ledwall",
-            "a branch nobody has pushed is not a page"
-        )
-
-        // Pushed: git writes the ref as a file.
-        let remote = dotGit.appendingPathComponent("refs/remotes/origin/wip", isDirectory: true)
-        try FileManager.default.createDirectory(at: remote, withIntermediateDirectories: true)
-        try "deadbeef\n".write(
-            to: remote.appendingPathComponent("local-only"), atomically: true, encoding: .utf8
-        )
-        try expect(GitCheckout.hasRemoteBranch(in: folder, branch: "wip/local-only"))
-        try expectEqual(
-            GitCheckout.branchWebURL(in: folder, branch: "wip/local-only")?.absoluteString,
-            "https://github.com/editoria/ledwall/tree/wip/local-only"
-        )
-
-        // And a repository with many refs packs them into one file instead.
-        try "# pack-refs with: peeled fully-peeled sorted \n"
-            .appending("2f8a1c9 refs/remotes/origin/main\n")
-            .write(to: dotGit.appendingPathComponent("packed-refs"), atomically: true, encoding: .utf8)
-        try expect(GitCheckout.hasRemoteBranch(in: folder, branch: "main"), "packed refs count too")
-        try expect(!GitCheckout.hasRemoteBranch(in: folder, branch: "mai"), "and are matched whole")
-    }
-
     await run.test("a checkout with no origin has no link, and nothing breaks") {
         let folder = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("devdeck-git-\(UUID().uuidString)", isDirectory: true)
@@ -134,13 +77,12 @@ func runVectorTests(_ run: TestRun) async {
 
         try expectEqual(GitCheckout.branch(in: folder), "main")
         try expectNil(GitCheckout.originWebURL(in: folder), "no config, no link")
-        try expectNil(GitCheckout.branchWebURL(in: folder, branch: "main"), "branch link")
 
         try gitConfig.write(to: dotGit.appendingPathComponent("config"), atomically: true, encoding: .utf8)
         try expectEqual(
-            GitCheckout.branchWebURL(in: folder, branch: "main")?.absoluteString,
+            GitCheckout.originWebURL(in: folder)?.absoluteString,
             "https://github.com/editoria/ledwall",
-            "origin is known, the branch is not — so the repository it is"
+            "the repository, whatever branch is checked out — the one page that always exists"
         )
     }
 

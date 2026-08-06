@@ -57,10 +57,10 @@ public struct DDEVProjectCard: View {
             hero
             CardMetaBlock(
                 branch: status.branch,
-                branchURL: status.branchURL,
+                repositoryURL: status.repositoryURL,
                 leading: metaLeading,
                 trailing: status.versionsLine,
-                onOpenBranch: onOpen
+                onOpenRepository: onOpen
             )
             chips
             controls

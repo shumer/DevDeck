@@ -79,7 +79,7 @@ public struct DDEVEnvironment: Sendable {
     public func status(for project: DDEVProject, entries: [DDEVListEntry]?) -> DDEVStatus {
         let config = DDEVConfig.load(in: project.folderURL)
         let branch = GitCheckout.branch(in: project.folderURL)
-        let branchURL = GitCheckout.branchWebURL(in: project.folderURL, branch: branch)
+        let repositoryURL = GitCheckout.originWebURL(in: project.folderURL)
         let framework = ProjectFramework.label(in: project.folderURL)
 
         guard let entries else {
@@ -87,7 +87,7 @@ public struct DDEVEnvironment: Sendable {
                 state: .unknown,
                 config: config,
                 branch: branch,
-                branchURL: branchURL,
+                repositoryURL: repositoryURL,
                 framework: framework,
                 detail: "ddev did not answer",
                 checkedAt: clock.now
@@ -110,7 +110,7 @@ public struct DDEVEnvironment: Sendable {
                 state: .unknown,
                 config: config,
                 branch: branch,
-                branchURL: branchURL,
+                repositoryURL: repositoryURL,
                 framework: framework,
                 detail: "ddev does not know this project",
                 checkedAt: clock.now
@@ -122,7 +122,7 @@ public struct DDEVEnvironment: Sendable {
             entry: entry,
             config: config,
             branch: branch,
-            branchURL: branchURL,
+            repositoryURL: repositoryURL,
             framework: framework,
             detail: entry.state == .running ? nil : entry.statusDescription,
             checkedAt: clock.now

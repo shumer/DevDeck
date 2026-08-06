@@ -40,8 +40,8 @@
   [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
 - **Pull requests waiting for your review** on the same card as your own, from a second search
   in the same request.
-- **The branch on a card is a link** to that branch on GitHub, GitLab or Bitbucket, read from
-  the checkout's own `.git/config`.
+- **The branch on a card is a link** to the repository it came from, read from the checkout's
+  own `.git/config`.
 - **The plain-project settings form**, in the same language: a header with the name and the
   card switch, commands with their captions above them, switches that explain themselves in one
   line instead of four footnotes, the live health answer in the group that asks about it, and

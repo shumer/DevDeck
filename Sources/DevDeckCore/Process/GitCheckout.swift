@@ -29,49 +29,16 @@ public enum GitCheckout {
     ///
     /// The card already reads the branch, so the repository is one more line of the same file —
     /// and it turns the branch into the link it always looked like.
+    ///
+    /// Always the repository, never the branch. Linking the branch meant deciding whether the
+    /// remote has it, which is knowable from the refs but only as of the last fetch, and being
+    /// wrong about it landed on a 404. The point of the click is to get to the repository
+    /// without going hunting for it, and the repository is one thing that always exists.
     public static func originWebURL(in directory: URL?) -> URL? {
         guard let directory, let config = gitFile("config", in: directory) else { return nil }
         guard let contents = try? String(contentsOf: config, encoding: .utf8) else { return nil }
         guard let remote = originURL(inConfig: contents) else { return nil }
         return webURL(fromRemote: remote)
-    }
-
-    /// Where the card's branch line should go.
-    ///
-    /// The branch page only when that branch is actually on the remote, and the repository
-    /// itself otherwise. A local branch that has never been pushed is the normal state of a
-    /// checkout, and linking it produced GitHub's 404 — which is worse than useless, because
-    /// the reason to click was to get to the repository in the first place.
-    public static func branchWebURL(in directory: URL?, branch: String?) -> URL? {
-        guard let repository = originWebURL(in: directory) else { return nil }
-        guard let branch, !branch.isEmpty, hasRemoteBranch(in: directory, branch: branch) else {
-            return repository
-        }
-        return branchWebURL(repository: repository, branch: branch)
-    }
-
-    /// Whether origin is known to have this branch, as of the last fetch.
-    ///
-    /// Read from the refs rather than asked over the network: `git` writes
-    /// `refs/remotes/origin/<branch>` when it pushes or fetches one, and packs it into
-    /// `packed-refs` when there are many. Both are files, and the card is drawn from files.
-    ///
-    /// It can be out of date in one direction — a branch pushed from another machine and never
-    /// fetched here reads as absent — and that costs a click through the repository, which is
-    /// where the link goes anyway.
-    public static func hasRemoteBranch(in directory: URL?, branch: String) -> Bool {
-        guard let directory, !branch.isEmpty else { return false }
-        let reference = "refs/remotes/origin/\(branch)"
-
-        if let loose = gitFile(reference, in: directory),
-           FileManager.default.fileExists(atPath: loose.path) {
-            return true
-        }
-        guard
-            let packed = gitFile("packed-refs", in: directory),
-            let contents = try? String(contentsOf: packed, encoding: .utf8)
-        else { return false }
-        return contents.split(separator: "\n").contains { $0.hasSuffix(" \(reference)") }
     }
 
     /// `url = …` from the `[remote "origin"]` section, and nothing from any other section.
@@ -129,18 +96,6 @@ public enum GitCheckout {
         // A host with no path is not a repository — it is somebody's server.
         guard text.contains("/") else { return nil }
         return URL(string: "https://\(text)")
-    }
-
-    /// Every host spells "this branch" differently, and a host nobody here knows gets the
-    /// repository itself rather than a guessed path that lands on a 404.
-    public static func branchWebURL(repository: URL, branch: String) -> URL {
-        let encoded = branch.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? branch
-        let host = repository.host?.lowercased() ?? ""
-
-        if host.contains("github") { return repository.appendingPathComponent("tree/\(encoded)") }
-        if host.contains("gitlab") { return repository.appendingPathComponent("-/tree/\(encoded)") }
-        if host.contains("bitbucket") { return repository.appendingPathComponent("src/\(encoded)") }
-        return repository
     }
 
     /// Handles both a normal `.git` directory and the `gitdir:` pointer file that worktrees
