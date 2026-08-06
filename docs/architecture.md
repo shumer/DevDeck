@@ -152,9 +152,32 @@ supplies the bytes from `~/Library/Application Support/<browser>/Local State`.
 
 Panels are a blur over the wallpaper, and `NSVisualEffectView` takes its brightness from
 whatever is behind it — so over a bright desktop the palette's near-white text turns to mush.
-A scrim (`black` at 42%) sits between the blur and the content, which keeps the one assumption
-the palette makes — dark glass — true on any wallpaper. Contrast is a property of the surface,
-not something to chase by nudging text colours per card.
+Three things keep the surface honest, and they work together:
+
+- the window is pinned to `darkAqua`, so the `hudWindow` material stays dark whatever the system
+  appearance is doing;
+- a veil of `black` at 22% sits between the blur and the content;
+- a 1-point white hairline at 16% gives the panel an edge over a busy wallpaper.
+
+The veil used to be 42% and nothing else. That is enough black to stop being glass and start
+being grey paint, which is exactly how the cards read next to the sibling widget on the same
+desktop. Contrast is a property of the surface, not something to chase by nudging text colours
+per card — but neither is it something to buy by draining the colour out of the surface.
+
+`DeckTheme`'s three state colours are that widget's values to the digit. Two decks side by side
+with greens a shade apart look like a mistake rather than a decision.
+
+## The brand marks
+
+Each card's title carries the logo of what it is about, and those are the real logos: `BrandMark`
+holds the `d` attributes from the vendors' own SVGs, and `SVGPath` parses them into a `Path` at
+draw time — full command set, including elliptical arcs, because Docker's whale and DDEV's mark
+use them. This is what an asset catalog would normally do, and this toolchain has none.
+
+The first attempt approximated the marks with circles and triangles and looked exactly like
+that, which is why the parser is worth its hundred lines. The suite checks every mark parses,
+lands inside the box it was given, and is not a speck in the corner of it — a logo that silently
+comes out empty looks, on a card, identical to one that was never added.
 
 ## Card sizing
 

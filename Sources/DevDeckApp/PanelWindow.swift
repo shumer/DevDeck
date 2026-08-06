@@ -33,6 +33,11 @@ final class PanelWindow: NSWindow {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
+        // Pinned dark, the way the sibling widget does it. Every colour on a card is light over
+        // dark glass, and in Light Mode the hudWindow material goes pale enough that the dimmer
+        // text — the meta block, the footer — drops to roughly 1.1:1 and disappears. Pinning it
+        // is also what lets the scrim be a veil rather than the flat grey slab it had to be.
+        appearance = NSAppearance(named: .darkAqua)
         // Hover highlighting and the pointing-hand cursor need mouse-moved events; a
         // borderless window does not ask for them by default.
         acceptsMouseMovedEvents = true
@@ -48,14 +53,19 @@ final class PanelWindow: NSWindow {
         blur.layer?.masksToBounds = true
         blur.autoresizingMask = [.width, .height]
 
-        // A scrim between the blur and the content. The blur alone takes its brightness from
-        // whatever is behind the window, so on a light wallpaper the near-white text washes
-        // out. This keeps the palette's assumption — dark glass — true on any desktop.
+        // A veil between the blur and the content, so near-white text keeps its contrast over a
+        // bright wallpaper. It used to be black at 42%, which is what made the cards read as
+        // grey slabs: at that strength it stops being glass and becomes paint. With the window
+        // pinned to dark, 22% is enough — the same figure the sibling widget arrived at.
         let scrim = NSView(frame: blur.bounds)
         scrim.wantsLayer = true
-        scrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.42).cgColor
+        scrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.22).cgColor
         scrim.layer?.cornerRadius = DeckTheme.cornerRadius
         scrim.layer?.cornerCurve = .continuous
+        // A hairline of the light the glass is made of. Without it the panel has no edge of its
+        // own and dissolves into a busy wallpaper.
+        scrim.layer?.borderWidth = 1
+        scrim.layer?.borderColor = NSColor.white.withAlphaComponent(0.16).cgColor
         scrim.autoresizingMask = [.width, .height]
         blur.addSubview(scrim)
 

@@ -34,9 +34,22 @@ surface carries the state. The first was chosen.
    border at 22% instead of 45% — except the one action the card is offering, which is half
    again as wide, tinted, bolder and carries the only coloured border in the row. Every button
    gets an SF Symbol beside its label.
-6. **Every card names its kind with a drawn mark** — octocat, arc, tile, hexagon, containers,
-   hammer — in front of the title. Monochrome: on these cards colour means state, and six
-   tinted logos would compete with the thing that has to read first.
+6. **Every card names its kind with the real logo** in front of the title — the octocat, Arc's
+   A, DDEV's mark, Node's hexagon, Docker's whale, a hammer where there is no brand. They are
+   parsed from the vendors' own SVG path data at runtime rather than shipped as images: this
+   toolchain has no asset catalog, and the first attempt — marks approximated out of circles and
+   triangles — looked exactly like what it was. Each keeps its brand colour. That is the one
+   exception to "colour means state" on these cards: nobody reads a logo as a status, while a
+   grey octocat just reads as a worse octocat.
+7. **The card is 352 points wide, not 320.** The control row is the widest fixed thing on a
+   card, and at 320 the quiet buttons came to 61 points while `Terminal` with its icon needs 63.
+   The width follows the row rather than the row truncating to fit the width.
+8. **The glass got its colour back.** The panel was a 42% black scrim over the blur, which at
+   that strength stops being glass and becomes grey paint — the complaint that started this.
+   Pinning the window to `darkAqua`, the way the sibling widget on the same desktop does, keeps
+   near-white text safe over a light wallpaper at 22%, and a 1-point white hairline gives the
+   panel an edge of its own. The three state colours are now that widget's exact values: two
+   decks side by side with greens a shade apart look like a mistake rather than a decision.
 
 ## Consequences
 

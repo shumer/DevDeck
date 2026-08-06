@@ -6,7 +6,12 @@ import Foundation
 /// the SwiftUI card that draws the rows, and the AppKit panel that has to be resized around
 /// them. A disagreement shows up as a clipped last row or a strip of empty glass.
 public enum CardMetrics {
-    public static let width: Double = 320
+    /// Wide enough for the control row's labels.
+    ///
+    /// 320 left the quiet buttons 61 points across, and `Terminal` with its icon needs 63 — so
+    /// the label truncated on every card that had one. The row is the widest fixed thing on a
+    /// card, so it is what sets the width.
+    public static let width: Double = 352
     public static let rowHeight: Double = 27
     public static let expanderHeight: Double = 22
 

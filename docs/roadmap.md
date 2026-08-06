@@ -34,8 +34,9 @@
 - **The Docker gate** — one probe for the whole deck, and cards that need containers say
   "Docker is not running" and offer to start it rather than a Start that cannot work.
 - **The card redesign** — one focal point per card: the state at 20 points, the pill and the
-  footer gone, chips wrapped into one block, quieter controls with icons, and a drawn mark per
-  project kind. Three directions were mocked up first; see
+  footer gone, chips wrapped into one block, quieter controls with icons, the vendors' real
+  logos parsed from their own SVGs, a card 352 points wide so `Terminal` fits, and glass that
+  is glass again rather than grey paint. Three directions were mocked up first; see
   [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
 
 ## Next
@@ -49,7 +50,10 @@
    button for an extra one of your own; the model already carries them.
 5. **A fixed repository list for the Actions card** — `GitHubSettings.actionsRepositories`
    exists and nothing in settings writes it.
-6. **Tailing a plain project's log in place** — the Logs button opens the file in Console,
+6. **The settings forms, in the same language as the cards** — the mockup's command row,
+   toggle row with a one-line explanation instead of four footnotes, live status row and
+   coloured environment tags. Designed, not built.
+7. **Tailing a plain project's log in place** — the Logs button opens the file in Console,
    which is fine for reading a failure and poor for watching a build.
 
 ## Not planned

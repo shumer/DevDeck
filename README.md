@@ -373,10 +373,10 @@ Every project card is the same six things, in the same order, so one glance answ
 question on all of them:
 
 1. **A mark and the title**, with the time of the last check on the right. The mark says what
-   kind of project it is — the octocat, Arc's arc, DDEV's tile, Node's hexagon, Docker's
-   containers, a hammer for a Makefile. They are drawn, not shipped as images, and they are
-   monochrome on purpose: on these cards colour means state, and six tinted logos would compete
-   with the one thing that has to read first.
+   kind of project it is — the octocat, Arc's A, DDEV's mark, Node's hexagon, Docker's whale, a
+   hammer for a Makefile. They are the real logos, drawn from the vendors' own SVG path data
+   rather than shipped as images: this toolchain has no asset catalog, and a hand-drawn
+   impression of the octocat at fifteen points looks exactly like what it is.
 2. **The state, at 20 points** — `running`, `local stopped`, `Docker is not running`. This is
    the card's focal point; a detail like `pid 48213` or `mutagen paused` sits at the end of the
    same line.
@@ -413,11 +413,12 @@ Sources/
   ArcKit/          Arc projects, link templates, local Fusion stack, .env port
   DDEVKit/         DDEV projects, ddev list, .ddev/config.yaml, composer.lock version
   ProjectKit/      plain projects: folder probe, detached start, log and pid, health check
-  DevDeckUI/       SwiftUI cards, the shared card pieces and the visual language
+  DevDeckUI/       SwiftUI cards, the shared card pieces, the brand marks and their SVG
+                   parser, and the visual language
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (200 tests, offline)
+  DevDeckTests/    the suite (212 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
