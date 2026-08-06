@@ -70,7 +70,8 @@ public struct DDEVProjectCard: View {
 
     private var hero: some View {
         CardHeroRow(
-            color: heroColor,
+            color: heroState.color,
+            tone: heroState.tone,
             text: heroText,
             // "unknown" alone says nothing useful; what makes it useful is who does not know.
             note: isDockerBlocked
@@ -80,13 +81,16 @@ public struct DDEVProjectCard: View {
         )
     }
 
-    private var heroColor: Color {
-        if isDockerBlocked { return DockerGate.color(docker) }
+    private var heroState: (color: Color, tone: CardStateTone) {
+        if isDockerBlocked { return (DockerGate.color(docker), .alert) }
         switch status.state {
-        case .running: return status.mutagenWarning == nil ? DeckTheme.green : DeckTheme.amber
-        case .paused, .working: return DeckTheme.amber
-        case .stopped: return DeckTheme.label
-        case .unknown: return DeckTheme.red
+        // A broken file sync is a running project you cannot trust, so it reads as attention
+        // rather than as fine.
+        case .running:
+            return status.mutagenWarning == nil ? (DeckTheme.green, .good) : (DeckTheme.amber, .alert)
+        case .paused, .working: return (DeckTheme.amber, .alert)
+        case .stopped: return (DeckTheme.label, .neutral)
+        case .unknown: return (DeckTheme.red, .alert)
         }
     }
 

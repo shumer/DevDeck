@@ -377,10 +377,13 @@ question on all of them:
    hammer for a Makefile. They are the real logos, drawn from the vendors' own SVG path data
    rather than shipped as images: this toolchain has no asset catalog, and a hand-drawn
    impression of the octocat at fifteen points looks exactly like what it is.
-2. **The state, at 20 points** — one vocabulary on every card: `running`, `stopped`,
+2. **The state, at 17 points** — one vocabulary on every card: `running`, `stopped`,
    `starting…`, `paused`, `unknown`, `not configured`, and `Docker is not running` when that is
-   what is really in the way. This is the card's focal point; a detail like `pid 48213`,
-   `mutagen paused` or `not in ddev list` sits at the end of the same line.
+   what is really in the way. This is the card's focal point, but a quiet one: the words are
+   white at 80% and the colour lives in the dot beside them, which glows when it means something
+   and goes plain grey when a project is simply stopped. Colour returns to the words only when
+   something wants attention. A detail like `pid 48213`, `mutagen paused` or `not in ddev list`
+   sits at the end of the same line.
 3. **The branch**, on a line of its own, because branch names are longer than anything beside
    them.
 4. **What names this checkout**: the framework and folder on the left, versions or the start

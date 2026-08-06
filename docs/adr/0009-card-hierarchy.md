@@ -21,10 +21,19 @@ surface carries the state. The first was chosen.
 
 1. **The state is the hero, and every card says it the same way.** `running`, `stopped`,
    `starting…`, `paused`, `unknown`, `not configured` — Arc used to say "local stopped" where a
-   plain project said "not running", which reads as two different states. A 9-point dot and
-   20-point semibold text where a 12.5-point line used to be; details that used to share that
-   line (`pid 48213`, `mutagen paused`, `not in ddev list`, the container count) move to the end
-   of it in 10.5-point monospace.
+   plain project said "not running", which reads as two different states. A dot and 17-point
+   semibold text at 80% white where a 12.5-point line used to be; details that used to
+   share that line (`pid 48213`, `mutagen paused`, `not in ddev list`, the container count) move
+   to the end of it in 10.5-point monospace.
+
+   It went out at 20 points in near-white first, and that was too loud — the size was only part
+   of it, since near-white at weight 600 on dark glass is loud at any size. Three knobs moved a
+   little rather than one moving a lot: 17 points, 80% white, and **the colour left the word for
+   the dot**. The dot is 10 points with a 3-point halo of its own colour, and a state that means
+   nothing in particular — stopped — gets a plain grey dot with no halo at all, so the ones that
+   glow are the ones worth looking at. Colour returns to the word only when something wants
+   attention: busy, paused, blocked, broken. Five calm cards then read as texture and the sixth
+   reads as a state, which is what a column of six is for.
 2. **The status pill is gone.** It said, in nine-point caps, exactly what the hero says. Its
    place in the header went to the time of the last check, which used to occupy a whole row at
    the bottom of the card as the least important thing on it.
@@ -33,9 +42,15 @@ surface carries the state. The first was chosen.
 4. **The chips wrap into one block** with an upright divider between tooling and environments,
    rather than a row each. That divider says what a whole row of height used to say.
 5. **The controls stop shouting.** 26 points instead of 30, 10.5-point labels, and a hairline
-   border at 22% instead of 45% — except the one action the card is offering, which is half
-   again as wide, tinted, bolder and carries the only coloured border in the row. Every button
-   gets an SF Symbol beside its label.
+   border at 22% instead of 45% — except the one action the card is offering, which is tinted,
+   bolder, carries the only coloured border in the row and is given 24 points of width beyond
+   what it needs. Every button gets an SF Symbol beside its label.
+
+   Their widths come from what they contain, not from an equal share. Equal shares looked tidy
+   in a mockup and wrong on screen: `Terminal` all but touched its own border while `Logs` sat
+   in a field of space. Each button is its contents plus ten points either side, and whatever is
+   left over is shared out equally — so the padding is identical on every one, which is what the
+   eye actually reads as "these are the same kind of button".
 6. **Every card names its kind with the real logo** in front of the title — the octocat, Arc's
    A, DDEV's mark, Node's hexagon, Docker's whale, a hammer where there is no brand. They are
    parsed from the vendors' own SVG path data at runtime rather than shipped as images: this
@@ -44,8 +59,8 @@ surface carries the state. The first was chosen.
    exception to "colour means state" on these cards: nobody reads a logo as a status, while a
    grey octocat just reads as a worse octocat.
 7. **The card is 352 points wide, not 320.** The control row is the widest fixed thing on a
-   card, and at 320 the quiet buttons came to 61 points while `Terminal` with its icon needs 63.
-   The width follows the row rather than the row truncating to fit the width.
+   card, and at 320 there was not room for four buttons with their labels, let alone air around
+   them. The width follows the row rather than the row truncating to fit the width.
 8. **The glass got its colour back.** The panel was a 42% black scrim over the blur, which at
    that strength stops being glass and becomes grey paint — the complaint that started this.
    Pinning the window to `darkAqua`, the way the sibling widget on the same desktop does, keeps
