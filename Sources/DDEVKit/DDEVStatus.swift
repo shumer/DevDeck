@@ -70,6 +70,8 @@ public struct DDEVStatus: Sendable, Equatable {
     public var entry: DDEVListEntry?
     public var config: DDEVConfig
     public var branch: String?
+    /// That branch on the web, when the checkout has an origin to point at.
+    public var branchURL: URL?
     /// What the project is built on, from composer.lock — `drupal 11.4.4`.
     public var framework: String?
     /// What is happening, or why the last command failed.
@@ -81,6 +83,7 @@ public struct DDEVStatus: Sendable, Equatable {
         entry: DDEVListEntry? = nil,
         config: DDEVConfig = DDEVConfig(),
         branch: String? = nil,
+        branchURL: URL? = nil,
         framework: String? = nil,
         detail: String? = nil,
         checkedAt: Date? = nil
@@ -89,6 +92,7 @@ public struct DDEVStatus: Sendable, Equatable {
         self.entry = entry
         self.config = config
         self.branch = branch
+        self.branchURL = branchURL
         self.framework = framework
         self.detail = detail
         self.checkedAt = checkedAt

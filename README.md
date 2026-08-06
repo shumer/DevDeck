@@ -27,7 +27,7 @@ An Arc XP project: whether its local Fusion stack is up, and the links you use:
 ┌────────────────────────────────────────────┐
 │ ◔ ARC · ACME NEWS                 23:25:49 │
 │ ● stopped                                  │
-│ ⎇ fix/PROJ-142-video-badge                 │
+│ ⎇ fix/PROJ-142-video-badge ↗               │
 │ sandbox.acme                               │
 │ PageBuilder Composer Deployer │ Local site │
 │ Sandbox Prod                               │
@@ -55,7 +55,7 @@ Anything else — a folder, a command and a URL that proves it worked:
 ┌────────────────────────────────────────────┐
 │ ⬡ PROJECT · ACME PORTAL           23:58:04 │
 │ ● running                       pid 48213  │
-│ ⎇ feat/PROJ-77-tables                      │
+│ ⎇ feat/PROJ-77-tables ↗                    │
 │ docker compose · acme-portal  docker com…  │
 │ pgAdmin Traefik │ Local site UAT Prod      │
 │ [ ⏻ Stop ] [↻ Restart] [Logs] [Folder]     │
@@ -232,9 +232,12 @@ you use, the browser they open in, and control of its local Fusion stack.
 - **After a start the card waits.** `fusion daemon` returns as soon as the containers exist,
   while the engine needs longer to serve, so the card polls for up to a minute before
   concluding anything — and if nothing ever answers it names the URL it tried.
-- **The branch is on the card.** Whatever `.git/HEAD` says, read directly rather than by
-  running `git` every ten seconds — so you can see what the running stack is actually serving,
-  including after switching branches in a terminal.
+- **The branch is on the card, and clicking it opens that branch on the web.** Both come from
+  the files in `.git` — `HEAD` for the branch, `config` for origin — read directly rather than
+  by running `git` every ten seconds. So the card shows what the running stack is actually
+  serving, including after switching branches in a terminal, and the line that says so is one
+  click from the code. GitHub, GitLab and Bitbucket each get their own branch URL; any other
+  host opens at the repository rather than at a guessed path.
 - **Folder** opens the checkout in Finder, **Terminal** opens it in iTerm, Warp or Terminal,
   whichever is installed.
 
@@ -385,7 +388,9 @@ question on all of them:
    something wants attention. A detail like `pid 48213`, `mutagen paused` or `not in ddev list`
    sits at the end of the same line.
 3. **The branch**, on a line of its own, because branch names are longer than anything beside
-   them.
+   them — and it is a link: the checkout knows its origin, so clicking it opens that branch on
+   GitHub in the project's own browser. An arrow at the end of the line says so; a checkout with
+   no remote simply has no arrow.
 4. **What names this checkout**: the framework and folder on the left, versions or the start
    command on the right.
 5. **The links**, in one wrapping row: what you work in, a divider, then the environments —
@@ -422,7 +427,7 @@ Sources/
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (212 tests, offline)
+  DevDeckTests/    the suite (218 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

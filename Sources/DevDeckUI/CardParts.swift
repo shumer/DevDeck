@@ -336,13 +336,23 @@ public struct CardHeroRow: View {
 /// them, and "which branch is this" must not be the thing that gets truncated.
 public struct CardMetaBlock: View {
     private let branch: String?
+    private let branchURL: URL?
     private let leading: String?
     private let trailing: String?
+    private let onOpenBranch: ((URL) -> Void)?
 
-    public init(branch: String?, leading: String?, trailing: String? = nil) {
+    public init(
+        branch: String?,
+        branchURL: URL? = nil,
+        leading: String?,
+        trailing: String? = nil,
+        onOpenBranch: ((URL) -> Void)? = nil
+    ) {
         self.branch = branch
+        self.branchURL = branchURL
         self.leading = leading
         self.trailing = trailing
+        self.onOpenBranch = onOpenBranch
     }
 
     public nonisolated static let branchHeight: Double = 15
@@ -358,13 +368,7 @@ public struct CardMetaBlock: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let branch {
-                Text("⎇ \(branch)")
-                    .font(.system(size: 11.5, design: .monospaced))
-                    .foregroundStyle(DeckTheme.blue)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(height: Self.branchHeight, alignment: .leading)
-                    .help("checked out branch")
+                branchRow(branch)
             }
             if leading != nil || trailing != nil {
                 HStack(spacing: 12) {
@@ -388,5 +392,37 @@ public struct CardMetaBlock: View {
             }
         }
         .padding(.top, Self.topPadding)
+    }
+
+    /// The branch, and — when the checkout has an origin — the way to that branch on the web.
+    ///
+    /// The line was already blue and monospaced, which is what a link looks like; all it was
+    /// missing was being one. The arrow is what says so at rest, since these panels sit behind
+    /// other windows and hover cannot be relied on to announce anything.
+    @ViewBuilder
+    private func branchRow(_ branch: String) -> some View {
+        let isLink = branchURL != nil && onOpenBranch != nil
+
+        HStack(spacing: 5) {
+            Text("⎇ \(branch)")
+                .font(.system(size: 11.5, design: .monospaced))
+                .foregroundStyle(DeckTheme.blue)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            if isLink {
+                Image(systemName: "arrow.up.forward.square")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(DeckTheme.blue.opacity(0.7))
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: Self.branchHeight, alignment: .leading)
+        .contentShape(Rectangle())
+        .clickable(cornerRadius: 5, isEnabled: isLink)
+        .onTapGesture {
+            guard let branchURL, let onOpenBranch else { return }
+            onOpenBranch(branchURL)
+        }
+        .help(branchURL.map { "\($0.absoluteString)" } ?? "checked out branch")
     }
 }

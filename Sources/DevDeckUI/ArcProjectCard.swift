@@ -55,7 +55,13 @@ public struct ArcProjectCard: View {
             timestamp: ProjectCardMetrics.timestamp(status.checkedAt)
         ) {
             hero
-            CardMetaBlock(branch: status.branch, leading: project.organization, trailing: status.engineVersion)
+            CardMetaBlock(
+                branch: status.branch,
+                branchURL: status.branchURL,
+                leading: project.organization,
+                trailing: status.engineVersion,
+                onOpenBranch: onOpen
+            )
             chips
             controls
             Spacer(minLength: 0)

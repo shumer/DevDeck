@@ -1,4 +1,5 @@
 import CoreGraphics
+import DevDeckCore
 import DevDeckUI
 import Foundation
 import TestHarness
@@ -20,7 +21,91 @@ private func expectClose(
     )
 }
 
+private let gitConfig = """
+[core]
+    repositoryformatversion = 0
+    bare = false
+[remote "upstream"]
+    url = git@github.com:someone-else/fork.git
+    fetch = +refs/heads/*:refs/remotes/upstream/*
+[remote "origin"]
+    url = git@github.com:editoria/ledwall.git
+    fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+    remote = origin
+"""
+
 func runVectorTests(_ run: TestRun) async {
+    run.section("Git — the branch is a link to the branch")
+
+    await run.test("origin is read from its own section, not from the first url in the file") {
+        // A repository with an upstream has several `url =` lines and origin's is not first.
+        try expectEqual(
+            GitCheckout.originURL(inConfig: gitConfig),
+            "git@github.com:editoria/ledwall.git"
+        )
+        try expectNil(GitCheckout.originURL(inConfig: "[core]\n    bare = false\n"), "no origin")
+    }
+
+    await run.test("every way of writing the same repository leads to the same page") {
+        let expected = "https://github.com/editoria/ledwall"
+        for remote in [
+            "git@github.com:editoria/ledwall.git",
+            "git@github.com:editoria/ledwall",
+            "ssh://git@github.com/editoria/ledwall.git",
+            "https://github.com/editoria/ledwall.git",
+            "https://shumer@github.com/editoria/ledwall",
+        ] {
+            try expectEqual(GitCheckout.webURL(fromRemote: remote)?.absoluteString, expected, remote)
+        }
+    }
+
+    await run.test("what is not a repository produces no link at all") {
+        try expectNil(GitCheckout.webURL(fromRemote: ""), "empty")
+        try expectNil(GitCheckout.webURL(fromRemote: "/Users/x/some/local/path"), "a local path")
+        try expectNil(GitCheckout.webURL(fromRemote: "https://github.com"), "a host with no repo")
+    }
+
+    await run.test("each host spells a branch its own way, and an unknown one is not guessed at") {
+        func branch(_ remote: String, _ name: String = "feat/IW-164") throws -> String {
+            let repository = try expectNotNil(GitCheckout.webURL(fromRemote: remote), remote)
+            return GitCheckout.branchWebURL(repository: repository, branch: name).absoluteString
+        }
+        try expectEqual(
+            try branch("git@github.com:editoria/ledwall.git"),
+            "https://github.com/editoria/ledwall/tree/feat/IW-164"
+        )
+        try expectEqual(
+            try branch("git@gitlab.com:editoria/ledwall.git"),
+            "https://gitlab.com/editoria/ledwall/-/tree/feat/IW-164"
+        )
+        try expectEqual(
+            try branch("git@git.internal.example:editoria/ledwall.git"),
+            "https://git.internal.example/editoria/ledwall",
+            "an unknown host gets the repository rather than a path that would 404"
+        )
+    }
+
+    await run.test("a checkout with no origin has no link, and nothing breaks") {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("devdeck-git-\(UUID().uuidString)", isDirectory: true)
+        let dotGit = folder.appendingPathComponent(".git", isDirectory: true)
+        try FileManager.default.createDirectory(at: dotGit, withIntermediateDirectories: true)
+        try "ref: refs/heads/main\n".write(
+            to: dotGit.appendingPathComponent("HEAD"), atomically: true, encoding: .utf8
+        )
+
+        try expectEqual(GitCheckout.branch(in: folder), "main")
+        try expectNil(GitCheckout.originWebURL(in: folder), "no config, no link")
+        try expectNil(GitCheckout.branchWebURL(in: folder, branch: "main"), "branch link")
+
+        try gitConfig.write(to: dotGit.appendingPathComponent("config"), atomically: true, encoding: .utf8)
+        try expectEqual(
+            GitCheckout.branchWebURL(in: folder, branch: "main")?.absoluteString,
+            "https://github.com/editoria/ledwall/tree/main"
+        )
+    }
+
     run.section("SVG paths — the logos are real, so the parser has to be")
 
     await run.test("absolute and relative moves and lines") {

@@ -25,6 +25,8 @@ public struct LocalProjectStatus: Sendable, Equatable {
     public var pid: Int32?
     /// Branch the checkout is on — what the local site is actually serving.
     public var branch: String?
+    /// That branch on the web, when the checkout has an origin to point at.
+    public var branchURL: URL?
     /// Whether a log from a previous start is on disk to open.
     public var hasLog: Bool
 
@@ -34,6 +36,7 @@ public struct LocalProjectStatus: Sendable, Equatable {
         checkedAt: Date? = nil,
         pid: Int32? = nil,
         branch: String? = nil,
+        branchURL: URL? = nil,
         hasLog: Bool = false
     ) {
         self.state = state
@@ -41,6 +44,7 @@ public struct LocalProjectStatus: Sendable, Equatable {
         self.checkedAt = checkedAt
         self.pid = pid
         self.branch = branch
+        self.branchURL = branchURL
         self.hasLog = hasLog
     }
 
