@@ -14,8 +14,8 @@ public extension PullRequestHealth {
 
 /// "My pull requests": how many are open, and the ones that need something done.
 public struct PullRequestsCard: View {
-    /// Everything above the rows: title, count and footer.
-    public static let baseHeight: Double = 127
+    /// Everything that is not a row: chrome, the count, the distribution bar and the footer.
+    public nonisolated static let baseHeight: Double = 110
 
     private let state: CardState<PullRequestsSnapshot>
     private let now: Date
@@ -55,7 +55,11 @@ public struct PullRequestsCard: View {
     }
 
     public var body: some View {
-        CardChrome(title: "GitHub · my pull requests", pill: pill) {
+        CardChrome(
+            title: "GitHub · my pull requests",
+            glyph: .github,
+            timestamp: CardFreshness.text(for: state)
+        ) {
             if let snapshot = state.value {
                 content(snapshot)
             } else {
@@ -80,16 +84,25 @@ public struct PullRequestsCard: View {
 
     @ViewBuilder
     private func content(_ snapshot: PullRequestsSnapshot) -> some View {
+        // The count is the hero, but 28 rather than the 42 it used to be: it was the largest
+        // thing on the deck and it is not the most important one.
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("\(snapshot.totalCount)")
-                .font(.system(size: 42, weight: .bold))
+                .font(.system(size: 28, weight: .semibold))
                 .monospacedDigit()
                 .foregroundStyle(snapshot.blockedCount > 0 ? DeckTheme.red : DeckTheme.green)
             Text("open")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 12))
                 .foregroundStyle(DeckTheme.label)
+            Spacer(minLength: 6)
+            if let pill {
+                StatusPill(pill.text, color: pill.color)
+            }
         }
-        .padding(.top, 2)
+        .frame(height: 30)
+        .padding(.top, 6)
+
+        healthBar(snapshot)
 
         let total = snapshot.pullRequests.count
         let rows = CardMetrics.rowCount(total: total, isExpanded: isExpanded)
@@ -111,28 +124,63 @@ public struct PullRequestsCard: View {
 
         Spacer(minLength: 4)
 
+        // The clock moved into the header, so the footer says what the header cannot: which
+        // accounts came back empty, and whether what is on screen is still fresh.
         CardFooter(
             leading: snapshot.failures.summary ?? footerLeading(snapshot),
-            trailing: CardFreshness.text(for: state),
-            isStale: state.failure != nil
-                || !snapshot.failures.isEmpty
-                || state.isStale(now: now, maxAge: 600)
+            trailing: state.isStale(now: now, maxAge: 600) ? "stale" : nil,
+            isStale: state.failure != nil || !snapshot.failures.isEmpty
         )
     }
 
+    /// How the open pull requests are spread across blocked, needs-attention and ready.
+    ///
+    /// Four points of height for the shape of the whole list, which the three visible rows
+    /// cannot give: two blocked out of eight reads differently from two out of two.
+    @ViewBuilder
+    private func healthBar(_ snapshot: PullRequestsSnapshot) -> some View {
+        let counts = [PullRequestHealth.blocked, .attention, .ready]
+            .map { health in snapshot.pullRequests.filter { $0.health == health }.count }
+
+        if counts.reduce(0, +) > 0 {
+            HStack(spacing: 2) {
+                ForEach(Array(counts.enumerated()), id: \.offset) { index, count in
+                    if count > 0 {
+                        Capsule()
+                            .fill([DeckTheme.red, DeckTheme.amber, DeckTheme.green][index].opacity(0.8))
+                            .frame(maxWidth: .infinity)
+                            .layoutPriority(Double(count))
+                    }
+                }
+            }
+            .frame(height: 4)
+            .padding(.top, 8)
+        }
+    }
+
     private func row(_ pullRequest: PullRequestSummary) -> some View {
-        HStack(spacing: 8) {
+        let ticket = pullRequest.ticket
+
+        return HStack(spacing: 7) {
             Circle()
                 .fill(pullRequest.health.color)
-                .frame(width: 7, height: 7)
+                .frame(width: 6, height: 6)
             if accountLabels.count > 1, let label = accountLabels[pullRequest.accountID] {
                 AccountChip(label)
             }
-            Text(pullRequest.title)
-                .font(.system(size: 12.5))
+            // The ticket key gets its own monospaced column: left in the sentence it eats the
+            // width the subject needs, which is how a row reads `IR-6257 - Dr…r the core flip.`
+            if let key = ticket.key {
+                Text(key)
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(DeckTheme.value.opacity(0.62))
+                    .fixedSize()
+            }
+            Text(ticket.subject)
+                .font(.system(size: 11.5))
                 .foregroundStyle(DeckTheme.value)
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .truncationMode(.tail)
             Spacer(minLength: 6)
             Text(pullRequest.statusCode)
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))

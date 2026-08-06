@@ -10,29 +10,28 @@ Pull requests across every account a token can see, worst first:
 
 ```
 ┌────────────────────────────────────────────┐
-│ GITHUB · MY PULL REQUESTS        2 BLOCKED │
-│                                            │
-│ 8 open                                     │
-│ ● WORK  Add the article feed loop       CF │
-│ ● WORK  Fix the image fill on cards     CR │
-│ ● HOME  Bump the theme components       WR │
+│  MY PULL REQUESTS                 23:26:37 │
+│ 8 open                          2 BLOCKED  │
+│ ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ │
+│ ● WORK PROJ-142 Add the article feed…   CF │
+│ ● WORK PROJ-77  Fix the image fill on…  CR │
+│ ● HOME          Bump the theme compon…  WR │
 │           show 5 more ⌄                    │
-│ 4 repos · 2 orgs                  23:26:37 │
+│ 4 repos · 2 orgs                           │
 └────────────────────────────────────────────┘
 ```
 
-An Arc XP project: the links you use, and its local Fusion stack:
+An Arc XP project: whether its local Fusion stack is up, and the links you use:
 
 ```
 ┌────────────────────────────────────────────┐
-│ ARC · ACME NEWS              LOCAL STOPPED │
-│ PageBuilder   Composer   Deployer          │
-│ Local site    Sandbox    Prod              │
-│ ────────────────────────────────────────── │
-│ ● local stack not running                  │
+│ ◔ ARC · ACME NEWS                 23:25:49 │
+│ ● local stopped                            │
 │ ⎇ fix/PROJ-142-video-badge                 │
-│ [▶ Start] [↻ Restart] [Folder] [Terminal]  │
-│ sandbox.acme                      23:25:49 │
+│ sandbox.acme                               │
+│ PageBuilder Composer Deployer │ Local site │
+│ Sandbox Prod                               │
+│ [ ▶ Start ] [↻ Restart] [Folder] [Terminal]│
 └────────────────────────────────────────────┘
 ```
 
@@ -41,14 +40,12 @@ the checkout:
 
 ```
 ┌────────────────────────────────────────────┐
-│ DDEV · ACME SHOP                   RUNNING │
-│ Mailpit                                    │
-│ Local site   Test   UAT   Prod             │
-│ ────────────────────────────────────────── │
-│ ● php 8.4 · mysql 8.0                      │
+│ ▣ DDEV · ACME SHOP                23:41:02 │
+│ ● running                   mutagen paused │
 │ ⎇ main                                     │
-│ [⏻ Stop] [↻ Restart] [Folder] [Terminal]   │
-│ drupal 10.6.11 · acme-shop        23:41:02 │
+│ drupal 10.6.11 · acme-shop  php 8.4 · mysql│
+│ Mailpit │ Local site Test UAT Prod         │
+│ [ ⏻ Stop ] [↻ Restart] [Folder] [Terminal] │
 └────────────────────────────────────────────┘
 ```
 
@@ -56,14 +53,12 @@ Anything else — a folder, a command and a URL that proves it worked:
 
 ```
 ┌────────────────────────────────────────────┐
-│ PROJECT · ACME PORTAL              RUNNING │
-│ pgAdmin   Traefik                          │
-│ Local site   UAT   Prod                    │
-│ ────────────────────────────────────────── │
-│ ● docker compose up -d                     │
+│ ⬡ PROJECT · ACME PORTAL           23:58:04 │
+│ ● running                       pid 48213  │
 │ ⎇ feat/PROJ-77-tables                      │
-│ [⏻ Stop] [↻ Restart] [Logs] [Folder]       │
-│ docker compose · acme-portal      23:58:04 │
+│ docker compose · acme-portal  docker com…  │
+│ pgAdmin Traefik │ Local site UAT Prod      │
+│ [ ⏻ Stop ] [↻ Restart] [Logs] [Folder]     │
 └────────────────────────────────────────────┘
 ```
 
@@ -72,14 +67,12 @@ cannot work:
 
 ```
 ┌────────────────────────────────────────────┐
-│ DDEV · ACME SHOP                DOCKER OFF │
-│ Mailpit                                    │
-│ Local site   Test   UAT   Prod             │
-│ ────────────────────────────────────────── │
+│ ▣ DDEV · ACME SHOP                23:41:02 │
 │ ● Docker is not running — start it first   │
 │ ⎇ main                                     │
-│ [▶ Start Docker] [↻ Restart] [Folder] [⋯]  │
-│ drupal 10.6.11 · acme-shop        23:41:02 │
+│ drupal 10.6.11 · acme-shop                 │
+│ Mailpit │ Local site Test UAT Prod         │
+│ [▶ Start Docker] [↻ Restart][Folder][Term.]│
 └────────────────────────────────────────────┘
 ```
 
@@ -373,6 +366,32 @@ panel for the same menu.
 Anything clickable lights up under the pointer and turns the cursor into a hand. Because the
 panels sit behind other windows, that tracking starts once the deck itself has been clicked —
 so buttons and links also carry a resting fill rather than relying on hover to look pressable.
+
+### How a card is put together
+
+Every project card is the same six things, in the same order, so one glance answers the same
+question on all of them:
+
+1. **A mark and the title**, with the time of the last check on the right. The mark says what
+   kind of project it is — the octocat, Arc's arc, DDEV's tile, Node's hexagon, Docker's
+   containers, a hammer for a Makefile. They are drawn, not shipped as images, and they are
+   monochrome on purpose: on these cards colour means state, and six tinted logos would compete
+   with the one thing that has to read first.
+2. **The state, at 20 points** — `running`, `local stopped`, `Docker is not running`. This is
+   the card's focal point; a detail like `pid 48213` or `mutagen paused` sits at the end of the
+   same line.
+3. **The branch**, on a line of its own, because branch names are longer than anything beside
+   them.
+4. **What names this checkout**: the framework and folder on the left, versions or the start
+   command on the right.
+5. **The links**, in one wrapping row: what you work in, a divider, then the environments —
+   local first, then test and UAT in violet, production in amber.
+6. **The controls.** The one action that matters now is half again as wide, tinted and bolder;
+   the rest recede to a hairline. All four carry an icon.
+
+The state pill, the horizontal rule and the footer are gone: the pill said what the state line
+says, and the timestamp took a whole row to be the least important thing on the card. Cards
+came down from 249 to about 200 points and hold more than they did.
 
 ## Documentation
 

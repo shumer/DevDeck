@@ -1,4 +1,19 @@
+import DevDeckCore
 import SwiftUI
+
+/// The card frame's own measurements.
+///
+/// Separate from `CardChrome` because it is generic over its content, and a generic type's
+/// static members cannot be read without naming that content — while every size calculation in
+/// the app needs exactly these numbers.
+public enum CardChromeMetrics {
+    public static let horizontalPadding: Double = 14
+    public static let topPadding: Double = 12
+    public static let bottomPadding: Double = 12
+    public static let headerHeight: Double = 14
+    /// Width left for a card's content once the padding is taken off.
+    public static var contentWidth: Double { CardMetrics.width - horizontalPadding * 2 }
+}
 
 /// The visual language of the deck: one place for every colour and text style, so a new
 /// card looks like the existing ones without copying magic numbers.
@@ -56,61 +71,90 @@ public struct StatusPill: View {
     }
 }
 
-/// Shared card frame: title row, optional pill, then whatever the card draws.
+/// Shared card frame: the title row, then whatever the card draws.
+///
+/// The title row carries a mark saying what kind of thing this is, and on the right either a
+/// pill or the time of the last check. The timestamp moved up here from the footer: it is the
+/// least important thing on the card, and down there it took a whole row to say so.
 public struct CardChrome<Content: View>: View {
     private let title: String
+    private let glyph: CardGlyph?
     private let pill: (text: String, color: Color)?
+    private let timestamp: String?
     private let content: Content
 
     public init(
         title: String,
+        glyph: CardGlyph? = nil,
         pill: (text: String, color: Color)? = nil,
+        timestamp: String? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
+        self.glyph = glyph
         self.pill = pill
+        self.timestamp = timestamp
         self.content = content()
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
+            HStack(alignment: .center, spacing: 7) {
+                if let glyph {
+                    CardGlyphView(glyph)
+                }
                 DeckTheme.sectionLabel(title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Spacer(minLength: 8)
                 if let pill {
                     StatusPill(pill.text, color: pill.color)
+                } else if let timestamp {
+                    Text(timestamp)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.38))
+                        .fixedSize()
                 }
             }
+            .frame(height: CardChromeMetrics.headerHeight)
             content
         }
-        .padding(.horizontal, 18)
-        .padding(.top, 15)
-        .padding(.bottom, 14)
+        .padding(.horizontal, CardChromeMetrics.horizontalPadding)
+        .padding(.top, CardChromeMetrics.topPadding)
+        .padding(.bottom, CardChromeMetrics.bottomPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
-/// The footer every card shares: context on the left, freshness on the right.
+/// The footer every card shares: context on the left, an optional note on the right.
 public struct CardFooter: View {
     private let leading: String
-    private let trailing: String
+    private let trailing: String?
     private let isStale: Bool
 
-    public init(leading: String, trailing: String, isStale: Bool = false) {
+    public init(leading: String, trailing: String? = nil, isStale: Bool = false) {
         self.leading = leading
         self.trailing = trailing
         self.isStale = isStale
     }
 
+    public nonisolated static let height: Double = 14
+
     public var body: some View {
         HStack {
             Text(leading)
+                .truncationMode(.middle)
             Spacer(minLength: 6)
-            Text(trailing)
-                .foregroundStyle(isStale ? DeckTheme.amber : DeckTheme.label)
+            if let trailing {
+                Text(trailing)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(isStale ? DeckTheme.amber : DeckTheme.label)
+                    .fixedSize()
+            }
         }
-        .font(.system(size: 11))
-        .foregroundStyle(DeckTheme.label)
+        .font(.system(size: 10.5))
+        .foregroundStyle(isStale ? DeckTheme.amber : DeckTheme.label)
         .lineLimit(1)
+        .frame(height: Self.height)
     }
 }

@@ -128,6 +128,31 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
         return "WR"
     }
 
+    /// The ticket key a title starts with, and the rest of the title.
+    ///
+    /// Almost every title here begins `IR-6257 - …`, and left in the sentence the key eats the
+    /// width the actual subject needs — which is how a row ends up reading `IR-6257 - Dr…r the
+    /// core flip.` A title with no key keeps the whole string.
+    public var ticket: (key: String?, subject: String) {
+        Self.splitTicket(from: title)
+    }
+
+    static func splitTicket(from title: String) -> (key: String?, subject: String) {
+        // Uppercase project key, a number, then a separator with spaces around it. The spaces
+        // matter: `IR-6257-fix` is a branch name, not a prefix someone wrote as a label.
+        let pattern = #"^([A-Z][A-Z0-9]{1,9}-\d+)\s*[-–—:]\s+(.+)$"#
+        guard
+            let expression = try? NSRegularExpression(pattern: pattern),
+            let match = expression.firstMatch(
+                in: title,
+                range: NSRange(title.startIndex..<title.endIndex, in: title)
+            ),
+            let keyRange = Range(match.range(at: 1), in: title),
+            let subjectRange = Range(match.range(at: 2), in: title)
+        else { return (nil, title) }
+        return (String(title[keyRange]), String(title[subjectRange]))
+    }
+
     /// Short branch-style label for the card: `repo #123`.
     public var shortLabel: String {
         let name = repository.split(separator: "/").last.map(String.init) ?? repository
