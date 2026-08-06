@@ -30,11 +30,15 @@ public enum DeckTheme {
     public static let title = Color(red: 0.949, green: 0.961, blue: 0.969).opacity(0.9)
     public static let faint = Color.white.opacity(0.1)
 
-    public static let green = Color(red: 0.494, green: 0.886, blue: 0.690)
-    public static let red = Color(red: 1.0, green: 0.541, blue: 0.541)
-    public static let amber = Color(red: 0.949, green: 0.820, blue: 0.486)
-    public static let violet = Color(red: 0.788, green: 0.694, blue: 1.0)
-    public static let blue = Color(red: 0.561, green: 0.780, blue: 1.0)
+    /// The three state colours are the sibling widget's, to the digit: the two decks sit on the
+    /// same desktop, and two greens a shade apart look like a mistake rather than a decision.
+    /// They are also more saturated than what was here, which is most of what made these cards
+    /// read as grey next to it.
+    public static let green = Color(red: 0.36, green: 0.86, blue: 0.60)
+    public static let red = Color(red: 1.00, green: 0.38, blue: 0.38)
+    public static let amber = Color(red: 1.00, green: 0.80, blue: 0.28)
+    public static let violet = Color(red: 0.72, green: 0.62, blue: 1.0)
+    public static let blue = Color(red: 0.42, green: 0.72, blue: 1.0)
 
     public static let cornerRadius: CGFloat = 20
     /// Vertical spacing between stacked panels.
