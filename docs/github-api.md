@@ -9,11 +9,18 @@ the budget is 5000 points/hour and the panel polls every two minutes.
 
 ## The query
 
-`PullRequestsService.query`, operation `DevDeckPullRequests`:
+`PullRequestsService.query`, operation `DevDeckPullRequests`. **Two searches in one request**:
+GitHub's search syntax cannot express "mine or waiting on me" — `author:@me` and
+`review-requested:@me` do not OR — while GraphQL is happy to run both and hand back both, which
+costs one round trip rather than two.
 
 ```graphql
-query DevDeckPullRequests($q: String!, $limit: Int!) {
-  search(query: $q, type: ISSUE, first: $limit) {
+query DevDeckPullRequests($q: String!, $r: String!, $limit: Int!) {
+  mine:      search(query: $q, type: ISSUE, first: $limit) { ...pullRequests }
+  reviewing: search(query: $r, type: ISSUE, first: $limit) { ...pullRequests }
+}
+
+fragment pullRequests on SearchResultItemConnection {
     issueCount
     nodes {
       ... on PullRequest {
@@ -154,3 +161,18 @@ concurrently.
   `–` rather than a red zero.
 - `run_started_at` is absent on older runs, so `created_at` is the fallback anchor for the
   duration.
+
+
+## Review requests
+
+`review-requested:@me` returns the pull requests where you are still on the hook — GitHub drops
+one from that search the moment you submit a review, which is exactly when it should leave the
+card. The rows are marked `isReviewRequest`, which changes three things and nothing else: the
+health is always `attention` (whatever the checks say, the thing outstanding is you), the code
+is `RV`, and the row sorts just under the blocked ones.
+
+A pull request that answers both searches — possible across forks or with some team rules —
+is kept once, as yours.
+
+`GitHubSettings.includesReviewRequests` turns it off. The query is then replaced with one that
+matches nothing rather than left empty, because GitHub rejects an empty search string.

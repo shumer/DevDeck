@@ -61,6 +61,8 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     public let unresolvedThreads: Int
     /// Which configured account this came from. Rows from several accounts share one card.
     public let accountID: String
+    /// Somebody else's pull request, waiting on a review from you.
+    public let isReviewRequest: Bool
 
     public init(
         id: String,
@@ -74,9 +76,11 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
         reviewDecision: ReviewDecision,
         checks: CheckState,
         unresolvedThreads: Int,
-        accountID: String = GitHubAccount.defaultID
+        accountID: String = GitHubAccount.defaultID,
+        isReviewRequest: Bool = false
     ) {
         self.accountID = accountID
+        self.isReviewRequest = isReviewRequest
         self.id = id
         self.number = number
         self.title = title
@@ -91,6 +95,9 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     }
 
     public var health: PullRequestHealth {
+        // A review someone is waiting on is never "ready" and never "blocked": whatever the
+        // checks say, the thing outstanding is you.
+        if isReviewRequest { return .attention }
         if checks == .failure || reviewDecision == .changesRequested { return .blocked }
         if reviewDecision == .approved, checks != .pending, unresolvedThreads == 0 { return .ready }
         return .attention
@@ -98,6 +105,7 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
 
     /// The single most useful thing to say about this PR, in the order it matters.
     public var statusLine: String {
+        if isReviewRequest { return "waiting for your review" }
         if checks == .failure { return "checks failed" }
         if reviewDecision == .changesRequested { return "changes requested" }
         if isDraft { return "draft" }
@@ -113,10 +121,12 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     /// Deliberately mirrors `statusLine` case for case — the full wording is what the row's
     /// tooltip shows, and the two drifting apart would be worse than either alone.
     ///
-    ///     CF  checks failed        CP  checks running      T3  three unresolved threads
-    ///     CR  changes requested    DR  draft
-    ///     AP  approved             WR  waiting for review
+    ///     RV  waiting for your review                   CP  checks running
+    ///     CF  checks failed        CR  changes requested   T3  three unresolved threads
+    ///     AP  approved             DR  draft               WR  waiting for review
     public var statusCode: String {
+        // Yours to do, so it comes before anything the pull request itself is doing.
+        if isReviewRequest { return "RV" }
         if checks == .failure { return "CF" }
         if reviewDecision == .changesRequested { return "CR" }
         if isDraft { return "DR" }

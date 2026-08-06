@@ -36,11 +36,42 @@ public enum GitCheckout {
         return webURL(fromRemote: remote)
     }
 
-    /// The page for one branch of that repository, where the host has a shape for it.
+    /// Where the card's branch line should go.
+    ///
+    /// The branch page only when that branch is actually on the remote, and the repository
+    /// itself otherwise. A local branch that has never been pushed is the normal state of a
+    /// checkout, and linking it produced GitHub's 404 — which is worse than useless, because
+    /// the reason to click was to get to the repository in the first place.
     public static func branchWebURL(in directory: URL?, branch: String?) -> URL? {
         guard let repository = originWebURL(in: directory) else { return nil }
-        guard let branch, !branch.isEmpty else { return repository }
+        guard let branch, !branch.isEmpty, hasRemoteBranch(in: directory, branch: branch) else {
+            return repository
+        }
         return branchWebURL(repository: repository, branch: branch)
+    }
+
+    /// Whether origin is known to have this branch, as of the last fetch.
+    ///
+    /// Read from the refs rather than asked over the network: `git` writes
+    /// `refs/remotes/origin/<branch>` when it pushes or fetches one, and packs it into
+    /// `packed-refs` when there are many. Both are files, and the card is drawn from files.
+    ///
+    /// It can be out of date in one direction — a branch pushed from another machine and never
+    /// fetched here reads as absent — and that costs a click through the repository, which is
+    /// where the link goes anyway.
+    public static func hasRemoteBranch(in directory: URL?, branch: String) -> Bool {
+        guard let directory, !branch.isEmpty else { return false }
+        let reference = "refs/remotes/origin/\(branch)"
+
+        if let loose = gitFile(reference, in: directory),
+           FileManager.default.fileExists(atPath: loose.path) {
+            return true
+        }
+        guard
+            let packed = gitFile("packed-refs", in: directory),
+            let contents = try? String(contentsOf: packed, encoding: .utf8)
+        else { return false }
+        return contents.split(separator: "\n").contains { $0.hasSuffix(" \(reference)") }
     }
 
     /// `url = …` from the `[remote "origin"]` section, and nothing from any other section.
@@ -135,9 +166,9 @@ public enum GitCheckout {
         let resolved = path.hasPrefix("/")
             ? URL(fileURLWithPath: path)
             : directory.appendingPathComponent(path).standardizedFileURL
-        // A worktree's own directory has HEAD but shares config with the main checkout, which
-        // `commondir` points at.
-        if name == "config",
+        // A worktree's own directory has HEAD but shares everything else with the main checkout,
+        // which `commondir` points at — refs and config both live there.
+        if name != "HEAD",
            let common = try? String(contentsOf: resolved.appendingPathComponent("commondir"), encoding: .utf8) {
             let trimmed = common.trimmingCharacters(in: .whitespacesAndNewlines)
             let base = trimmed.hasPrefix("/")

@@ -19,10 +19,14 @@ public struct PullRequestsService: Sendable {
     }
 
     public func fetch() async throws -> PullRequestsSnapshot {
+        // Both searches ride in one request. GitHub's search cannot express "mine or waiting on
+        // me" in a single query — the qualifiers do not OR — but GraphQL is happy to run two and
+        // hand back both, which costs one round trip rather than two.
         let payload: SearchPayload = try await client.graphQL(
             query: Self.query,
             variables: Variables(
                 searchQuery: Self.searchQuery(settings: settings),
+                reviewQuery: Self.reviewQuery(settings: settings),
                 limit: settings.maxPullRequests
             )
         )
@@ -34,7 +38,22 @@ public struct PullRequestsService: Sendable {
     /// `archived:false` keeps read-only repositories out; `sort:updated` makes the truncated
     /// slice the most recently touched ones rather than an arbitrary page.
     public static func searchQuery(settings: GitHubSettings) -> String {
-        var parts = ["is:open", "is:pr", "author:@me", "archived:false", "sort:updated"]
+        query(subject: "author:@me", settings: settings)
+    }
+
+    /// The other half of "what do I owe today": pull requests someone is waiting on you to
+    /// review. `review-requested:@me` drops a pull request the moment you review it, which is
+    /// exactly when it should leave the card.
+    ///
+    /// Returns an empty string when the setting is off — GitHub rejects an empty search, so the
+    /// query becomes a harmless one that matches nothing rather than an error.
+    public static func reviewQuery(settings: GitHubSettings) -> String {
+        guard settings.includesReviewRequests else { return "is:pr is:open author:@me is:draft is:merged" }
+        return query(subject: "review-requested:@me", settings: settings)
+    }
+
+    private static func query(subject: String, settings: GitHubSettings) -> String {
+        var parts = ["is:open", "is:pr", subject, "archived:false", "sort:updated"]
         if !settings.includeDrafts { parts.append("draft:false") }
         parts.append(contentsOf: settings.organizations.map { "org:\($0)" })
         return parts.joined(separator: " ")
@@ -42,10 +61,12 @@ public struct PullRequestsService: Sendable {
 
     struct Variables: Encodable, Sendable {
         let searchQuery: String
+        let reviewQuery: String
         let limit: Int
 
         enum CodingKeys: String, CodingKey {
             case searchQuery = "q"
+            case reviewQuery = "r"
             case limit
         }
     }
@@ -53,8 +74,16 @@ public struct PullRequestsService: Sendable {
     /// One query for the whole card. `reviewThreads` is capped at 100 — a PR with more open
     /// conversations than that is already the most blocked thing on the card.
     static let query = """
-    query DevDeckPullRequests($q: String!, $limit: Int!) {
-      search(query: $q, type: ISSUE, first: $limit) {
+    query DevDeckPullRequests($q: String!, $r: String!, $limit: Int!) {
+      mine: search(query: $q, type: ISSUE, first: $limit) {
+        ...pullRequests
+      }
+      reviewing: search(query: $r, type: ISSUE, first: $limit) {
+        ...pullRequests
+      }
+    }
+
+    fragment pullRequests on SearchResultItemConnection {
         issueCount
         nodes {
           ... on PullRequest {
@@ -82,21 +111,33 @@ public struct PullRequestsService: Sendable {
           }
         }
       }
-    }
     """
 
     static func snapshot(
         from payload: SearchPayload,
         accountID: String = GitHubAccount.defaultID
     ) -> PullRequestsSnapshot {
-        let summaries = payload.search.nodes.compactMap { Self.summary(from: $0, accountID: accountID) }
-        return PullRequestsSnapshot(totalCount: payload.search.issueCount, pullRequests: summaries)
+        let mine = payload.mine.nodes.compactMap {
+            Self.summary(from: $0, accountID: accountID, isReviewRequest: false)
+        }
+        // Yours wins a tie: you cannot be asked to review your own pull request, but a fork or a
+        // team rule can produce one that answers both searches, and it is yours first.
+        var seen = Set(mine.map(\.id))
+        let reviewing = payload.reviewing.nodes.compactMap {
+            Self.summary(from: $0, accountID: accountID, isReviewRequest: true)
+        }.filter { seen.insert($0.id).inserted }
+
+        return PullRequestsSnapshot(
+            totalCount: payload.mine.issueCount + reviewing.count,
+            pullRequests: mine + reviewing
+        )
     }
 
     /// Search returns `Issue` nodes too; those decode with every field nil and are dropped.
     static func summary(
         from node: SearchPayload.Node,
-        accountID: String = GitHubAccount.defaultID
+        accountID: String = GitHubAccount.defaultID,
+        isReviewRequest: Bool = false
     ) -> PullRequestSummary? {
         guard
             let id = node.id,
@@ -122,7 +163,8 @@ public struct PullRequestsService: Sendable {
             reviewDecision: ReviewDecision(apiValue: node.reviewDecision),
             checks: CheckState(apiValue: rollup),
             unresolvedThreads: unresolved,
-            accountID: accountID
+            accountID: accountID,
+            isReviewRequest: isReviewRequest
         )
     }
 }
@@ -130,7 +172,8 @@ public struct PullRequestsService: Sendable {
 // MARK: - Wire format
 
 struct SearchPayload: Decodable, Sendable {
-    let search: Search
+    let mine: Search
+    let reviewing: Search
 
     struct Search: Decodable, Sendable {
         let issueCount: Int
