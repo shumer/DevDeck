@@ -72,7 +72,10 @@ public struct DDEVProjectCard: View {
         CardHeroRow(
             color: heroColor,
             text: heroText,
-            note: isDockerBlocked ? nil : status.mutagenWarning,
+            // "unknown" alone says nothing useful; what makes it useful is who does not know.
+            note: isDockerBlocked
+                ? nil
+                : (status.state == .unknown ? "not in ddev list" : status.mutagenWarning),
             help: status.detail ?? heroText
         )
     }
@@ -98,7 +101,7 @@ public struct DDEVProjectCard: View {
         case .paused: return "paused"
         case .stopped: return "stopped"
         case .working: return status.detail ?? "working…"
-        case .unknown: return "unknown to ddev"
+        case .unknown: return "unknown"
         }
     }
 

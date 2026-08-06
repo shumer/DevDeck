@@ -38,6 +38,10 @@
   logos parsed from their own SVGs, a card 352 points wide so `Terminal` fits, and glass that
   is glass again rather than grey paint. Three directions were mocked up first; see
   [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
+- **The plain-project settings form**, in the same language: a header with the name and the
+  card switch, commands with their captions above them, switches that explain themselves in one
+  line instead of four footnotes, the live health answer in the group that asks about it, and
+  environment rows tagged in their chips' colours.
 
 ## Next
 
@@ -50,9 +54,9 @@
    button for an extra one of your own; the model already carries them.
 5. **A fixed repository list for the Actions card** — `GitHubSettings.actionsRepositories`
    exists and nothing in settings writes it.
-6. **The settings forms, in the same language as the cards** — the mockup's command row,
-   toggle row with a one-line explanation instead of four footnotes, live status row and
-   coloured environment tags. Designed, not built.
+6. **The same treatment for the Arc, DDEV and account forms** — the plain-project form has the
+   header, command rows, toggle rows and coloured tags; the other three still have the label
+   gutter and the footnotes.
 7. **Tailing a plain project's log in place** — the Logs button opens the file in Console,
    which is fine for reading a failure and poor for watching a build.
 

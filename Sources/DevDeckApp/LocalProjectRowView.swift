@@ -4,10 +4,12 @@ import ProjectKit
 
 /// The form for one plain project.
 ///
-/// The longest of the three project forms, and unavoidably so: an Arc or DDEV project is
-/// described by its own tooling, while this one is described only by what is typed here. The
-/// grouping follows the three questions in order — where is it, how does it start, how do we
-/// know it worked.
+/// The longest of the project forms, and unavoidably so: an Arc or DDEV project is described by
+/// its own tooling, while this one is described only by what is typed here. What the redesign
+/// changed is where the words are. The three questions — where is it, how does it start, how do
+/// we know it worked — are now group headers, the paragraphs that used to explain the switches
+/// sit under those switches one line each, and the answer to the third question is a live row
+/// showing what the health check just returned rather than a description of how it would.
 @MainActor
 final class LocalProjectRowView: FlippedContainer {
     private(set) var project: LocalProject
@@ -35,12 +37,25 @@ final class LocalProjectRowView: FlippedContainer {
     var onTestLink: ((LocalProjectRowView) -> Void)?
     var onChooseFolder: ((LocalProjectRowView) -> Void)?
     var onDetect: ((LocalProjectRowView) -> Void)?
+    var onCheckHealth: ((LocalProjectRowView) -> Void)?
+    var onOpenLink: ((LocalProjectRowView, Int) -> Void)?
 
-    init(project: LocalProject, width: CGFloat) {
+    init(project: LocalProject, status: LocalProjectStatus, width: CGFloat) {
         self.project = project
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
 
         let form = FormLayout(in: self)
+
+        enabledButton.setButtonType(.switch)
+        enabledButton.title = ""
+        enabledButton.state = project.isEnabled ? .on : .off
+        enabledButton.target = self
+        enabledButton.action = #selector(controlChanged)
+        form.formHeader(
+            title: project.displayTitle,
+            subtitle: project.folder,
+            accessory: (label: "Show card", view: enabledButton)
+        )
 
         form.beginGroup()
         titleField.stringValue = project.title
@@ -48,88 +63,88 @@ final class LocalProjectRowView: FlippedContainer {
         titleField.delegate = self
         form.row("Name", [(titleField, nil)])
 
-        enabledButton.setButtonType(.switch)
-        enabledButton.title = "Show a card for this project"
-        enabledButton.state = project.isEnabled ? .on : .off
-        enabledButton.target = self
-        enabledButton.action = #selector(controlChanged)
-        form.row("", [(enabledButton, nil)], height: 20)
-
         folderField.stringValue = project.folder ?? ""
         folderField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         folderField.placeholderString = "~/Projects/…"
         folderField.delegate = self
-        let chooseButton = NSButton(title: "Choose…", target: self, action: #selector(chooseFolder))
-        chooseButton.bezelStyle = .rounded
-        chooseButton.controlSize = .small
-        form.row("Folder", [(folderField, nil), (chooseButton, 84)])
+        form.row("Folder", [(folderField, nil), (button("Choose…", #selector(chooseFolder)), 84)])
 
         subtitleField.stringValue = project.subtitle
         subtitleField.placeholderString = "what it is — vite, docker compose"
         subtitleField.delegate = self
-        form.row("Footer", [(subtitleField, nil)])
+        form.row("Card footer", [(subtitleField, nil)])
         form.endGroup()
 
         form.header("How it starts")
         form.beginGroup()
         startField.stringValue = project.startCommand
-        startField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        startField.font = NSFont.monospacedSystemFont(ofSize: 11.5, weight: .regular)
         startField.placeholderString = "docker compose up -d"
         startField.delegate = self
-        let detectButton = NSButton(title: "Detect", target: self, action: #selector(detect))
-        detectButton.bezelStyle = .rounded
-        detectButton.controlSize = .small
-        detectButton.toolTip = "Read the folder and fill these in"
-        form.row("Start", [(startField, nil), (detectButton, 66)])
+        form.commandRow(
+            "Start command",
+            field: startField,
+            accessory: button("Detect", #selector(detect), tooltip: "Read the folder and fill these in"),
+            isRequired: true
+        )
 
         stopField.stringValue = project.stopCommand
-        stopField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        stopField.placeholderString = "empty — kill what was started"
+        stopField.font = NSFont.monospacedSystemFont(ofSize: 11.5, weight: .regular)
+        stopField.placeholderString = "optional — DevDeck kills what it started"
         stopField.delegate = self
-        form.row("Stop", [(stopField, nil)])
+        form.commandRow("Stop command", field: stopField)
 
         holdsButton.setButtonType(.switch)
-        holdsButton.title = "The command keeps running"
+        holdsButton.title = ""
         holdsButton.state = project.holdsProcess ? .on : .off
         holdsButton.target = self
         holdsButton.action = #selector(controlChanged)
-        form.row("", [(holdsButton, nil)], height: 20)
+        form.toggleRow(
+            holdsButton,
+            title: "The command keeps running",
+            subtitle: "Started in the background, output to a log, Stop kills it and its children."
+        )
 
         dockerButton.setButtonType(.switch)
-        dockerButton.title = "Needs Docker"
+        dockerButton.title = ""
         dockerButton.state = project.requiresDocker ? .on : .off
         dockerButton.target = self
         dockerButton.action = #selector(controlChanged)
-        form.row("", [(dockerButton, nil)], height: 20)
+        form.toggleRow(
+            dockerButton,
+            title: "Needs Docker",
+            subtitle: "The card says so instead of offering a Start that cannot work."
+        )
         form.endGroup()
-        form.footnote("Tick the first one for a command that holds its terminal, such as "
-            + "npm run dev: it is started in the background, its output goes to a log the card "
-            + "can open, and Stop kills it and everything it spawned. Leave it clear for a "
-            + "command that returns on its own, such as docker compose up -d. Tick Needs Docker "
-            + "and the card says so instead of offering a Start that cannot work.")
 
-        form.header("How to tell it is up")
+        form.header("How the app knows it is up")
         form.beginGroup()
         healthField.stringValue = project.healthURL
-        healthField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        healthField.font = NSFont.monospacedSystemFont(ofSize: 11.5, weight: .regular)
         healthField.placeholderString = "http://localhost:3000"
         healthField.delegate = self
-        form.row("Health URL", [(healthField, nil)])
+        form.commandRow("Health URL", field: healthField)
 
         siteField.stringValue = project.localSiteURL
         siteField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         siteField.placeholderString = "empty — same as the health URL"
         siteField.delegate = self
         form.row("Local site", [(siteField, nil)])
+
+        form.liveRow(
+            color: Self.colour(for: status),
+            title: Self.title(for: status),
+            detail: Self.detail(for: status, project: project),
+            accessory: button("Check now", #selector(checkHealth))
+        )
         form.endGroup()
-        form.footnote("Whatever answers this URL decides whether the card says running — which "
-            + "is what keeps it honest about a stack you started yourself in a terminal. Any "
-            + "answer counts, including a 404. With it empty the card can only report on a "
-            + "process it started itself.")
+        form.footnote("Any answer counts as up, including a 404 — a dev server that serves "
+            + "nothing at / is still serving. With it empty only a process started from here "
+            + "can be reported on.")
 
         form.header("Links on the card")
         form.beginGroup()
-        for link in project.links {
+        for (index, link) in project.links.enumerated() {
             let check = NSButton(checkboxWithTitle: "", target: self, action: #selector(controlChanged))
             check.state = link.isEnabled ? .on : .off
             linkChecks.append(check)
@@ -141,7 +156,17 @@ final class LocalProjectRowView: FlippedContainer {
             address.delegate = self
             linkFields.append(address)
 
-            form.row(link.label, [(check, 18), (address, nil)], height: 22)
+            let open = button("Open", #selector(openLink(_:)))
+            open.tag = index
+            open.isEnabled = !link.urlTemplate.isEmpty
+
+            form.linkRow(
+                check,
+                tag: link.label,
+                tint: Self.tint(for: link.label),
+                field: address,
+                open: open
+            )
         }
         form.endGroup()
 
@@ -151,10 +176,11 @@ final class LocalProjectRowView: FlippedContainer {
         browserPopUp.action = #selector(browserChanged)
         profilePopUp.target = self
         profilePopUp.action = #selector(controlChanged)
-        let testButton = NSButton(title: "Test", target: self, action: #selector(testLink))
-        testButton.bezelStyle = .rounded
-        testButton.controlSize = .small
-        form.row("Browser", [(browserPopUp, nil), (profilePopUp, nil), (testButton, 56)])
+        form.row("Browser", [
+            (browserPopUp, nil),
+            (profilePopUp, nil),
+            (button("Test", #selector(testLink)), 56),
+        ])
         form.note(statusLabel)
         form.endGroup()
 
@@ -166,6 +192,51 @@ final class LocalProjectRowView: FlippedContainer {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not used — this view is built in code")
     }
+
+    private func button(_ title: String, _ action: Selector, tooltip: String? = nil) -> NSButton {
+        let button = NSButton(title: title, target: self, action: action)
+        button.bezelStyle = .rounded
+        button.controlSize = .small
+        button.toolTip = tooltip
+        return button
+    }
+
+    // MARK: The live row
+
+    /// The card's own colours, so the form and the deck agree at a glance.
+    private static func colour(for status: LocalProjectStatus) -> NSColor {
+        switch status.state {
+        case .running: return .systemGreen
+        case .starting, .working: return .systemOrange
+        case .stopped, .unavailable: return .tertiaryLabelColor
+        }
+    }
+
+    private static func title(for status: LocalProjectStatus) -> String {
+        switch status.state {
+        case .running: return "running"
+        case .starting: return "starting"
+        case .working: return "working"
+        case .stopped: return "stopped"
+        case .unavailable: return "not configured"
+        }
+    }
+
+    private static func detail(for status: LocalProjectStatus, project: LocalProject) -> String {
+        if let detail = status.detail { return detail }
+        guard let checkedAt = status.checkedAt else { return "not checked yet" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm:ss"
+        let source = project.healthCheckURL?.absoluteString ?? "no health URL"
+        return "\(source) · \(formatter.string(from: checkedAt))"
+    }
+
+    private static func tint(for label: String) -> NSColor {
+        label.lowercased().contains("prod") ? .systemOrange : .systemPurple
+    }
+
+    // MARK: Editing
 
     var editedProject: LocalProject {
         var edited = project
@@ -219,6 +290,12 @@ final class LocalProjectRowView: FlippedContainer {
     func setStatus(_ text: String, isError: Bool = false) {
         statusLabel.stringValue = text
         statusLabel.textColor = isError ? NSColor.systemRed : NSColor.secondaryLabelColor
+    }
+
+    /// The URL of one of the environment rows, for its Open button.
+    func linkURL(at index: Int) -> URL? {
+        guard index >= 0, index < linkFields.count else { return nil }
+        return URL(string: linkFields[index].stringValue.trimmingCharacters(in: .whitespaces))
     }
 
     // MARK: Browser pickers
@@ -292,6 +369,14 @@ final class LocalProjectRowView: FlippedContainer {
 
     @objc private func detect() {
         onDetect?(self)
+    }
+
+    @objc private func checkHealth() {
+        onCheckHealth?(self)
+    }
+
+    @objc private func openLink(_ sender: NSButton) {
+        onOpenLink?(self, sender.tag)
     }
 }
 

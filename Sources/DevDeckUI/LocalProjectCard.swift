@@ -102,7 +102,7 @@ public struct LocalProjectCard: View {
         case .running: return "running"
         case .starting: return "starting…"
         case .working: return status.detail ?? "working…"
-        case .stopped: return "not running"
+        case .stopped: return "stopped"
         case .unavailable: return "not configured"
         }
     }

@@ -52,6 +52,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var section: Section = .github
     /// Which item each section was last left on.
     private var selection: [Section: String] = [:]
+    /// What the last health check said, per plain project, so the form can show it.
+    private var localStatuses: [String: LocalProjectStatus] = [:]
 
     private var accountRow: AccountRowView?
     private var projectRow: ProjectRowView?
@@ -408,13 +410,30 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             return
         }
 
-        let row = LocalProjectRowView(project: project, width: width)
+        let row = LocalProjectRowView(
+            project: project,
+            status: localStatuses[project.id] ?? .unavailable,
+            width: width
+        )
         row.onChange = { [weak self] in self?.applyLocalProjectEdits($0) }
         row.onTestLink = { [weak self] in self?.testLocalProjectLink($0) }
         row.onChooseFolder = { [weak self] in self?.chooseLocalProjectFolder($0) }
         row.onDetect = { [weak self] in self?.detectLocalProject($0) }
+        row.onCheckHealth = { [weak self] in self?.checkLocalProjectHealth($0.editedProject) }
+        row.onOpenLink = { [weak self] row, index in
+            guard let url = row.linkURL(at: index) else { return }
+            self?.applyLocalProjectEdits(row)
+            LinkOpener.open(url, using: row.editedProject.browser)
+        }
         place(row, in: container)
         localRow = row
+
+        // The form is where someone lands when a card is misconfigured, and until now it said
+        // nothing about whether the settings actually work. Checked on arrival rather than on
+        // demand, because the answer is the point of the group it sits in.
+        if localStatuses[project.id] == nil {
+            checkLocalProjectHealth(project)
+        }
     }
 
     private func buildGeneralForm(in container: FlippedContainer, width: CGFloat) {
@@ -827,6 +846,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             message: "Pick the project folder — the one its start command runs in."
         ) else { return }
         row.setFolder(url.path)
+    }
+
+    /// Asks the project's health URL and redraws the form with the answer.
+    private func checkLocalProjectHealth(_ project: LocalProject) {
+        Task { [weak self] in
+            guard let self else { return }
+            let status = await LocalProjectService(project: project).status()
+            self.localStatuses[project.id] = status
+            // Only if the user is still looking at this project — the check takes a moment and
+            // they may have moved on.
+            guard self.section == .project, self.selection[.project] == project.id else { return }
+            self.reloadDetail()
+        }
     }
 
     private func detectLocalProject(_ row: LocalProjectRowView) {
