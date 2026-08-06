@@ -19,10 +19,12 @@ surface carries the state. The first was chosen.
 
 ## Decision
 
-1. **The state is the hero.** A 9-point dot and 20-point semibold text — `running`, `local
-   stopped`, `Docker is not running` — where a 12.5-point line used to be. Details that used to
-   share that line (`pid 48213`, `mutagen paused`, the container count) move to the end of it in
-   10.5-point monospace.
+1. **The state is the hero, and every card says it the same way.** `running`, `stopped`,
+   `starting…`, `paused`, `unknown`, `not configured` — Arc used to say "local stopped" where a
+   plain project said "not running", which reads as two different states. A 9-point dot and
+   20-point semibold text where a 12.5-point line used to be; details that used to share that
+   line (`pid 48213`, `mutagen paused`, `not in ddev list`, the container count) move to the end
+   of it in 10.5-point monospace.
 2. **The status pill is gone.** It said, in nine-point caps, exactly what the hero says. Its
    place in the header went to the time of the last check, which used to occupy a whole row at
    the bottom of the card as the least important thing on it.

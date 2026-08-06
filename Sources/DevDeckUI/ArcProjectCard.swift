@@ -94,11 +94,14 @@ public struct ArcProjectCard: View {
         // Docker first: `fusion daemon` fails at the first container without it, and "local
         // stack not running" would be a true sentence that helps nobody.
         if isDockerBlocked { return DockerGate.text(docker) }
+        // One vocabulary across all three cards: running, stopped, starting…, and the rest.
+        // "local stopped" here against "not running" there made two identical states look like
+        // two different ones.
         switch status.state {
-        case .running: return "local running"
+        case .running: return "running"
         case .working: return status.detail ?? "working…"
-        case .stopped: return "local stopped"
-        case .unavailable: return "no project folder"
+        case .stopped: return "stopped"
+        case .unavailable: return "not configured"
         }
     }
 

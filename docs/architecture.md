@@ -241,7 +241,23 @@ The middle column is the answer to a real problem: with every project's fields s
 page, it was impossible to see where one ended and the next began. Only the selected item has a
 form, and the list carries the identity — name, what tells it apart, and a state dot.
 
-Forms are built by `FormLayout`, which places from the top down and moves its cursor by what it
+Forms are built by `FormLayout`, which has five row shapes rather than one, because the fields
+in these forms are not all the same kind of thing:
+
+- `row` — a label in the gutter and controls beside it, for short fields like a name;
+- `commandRow` — the caption above the field instead of beside it, for the long ones (a start
+  command, a health URL). The 110-point gutter was spending a third of the row on a word;
+  without it the field is about 1.6 times wider;
+- `toggleRow` — a switch with its own one-line explanation, which is what replaced four
+  paragraphs of footnote: the sentence about a switch belongs under that switch;
+- `liveRow` — the health check's actual answer, tinted like the card, in the group that asks
+  how the app knows a project is up. The form is where someone lands when a card is
+  misconfigured, and it used to say nothing about whether the settings worked;
+- `linkRow` — a checkbox, the environment's tag in the colour its chip has on the card, then
+  the URL. The tag is what ties the row to the chip without a word of explanation.
+
+Above them, `formHeader` carries the name, the path and the one switch that is about the card
+rather than the project. All of them place from the top down and move the cursor by what was
 actually placed; a control passed a `nil` width shares whatever is left over. That is both
 halves of what was wrong before: labels drawn over the controls above them, and a fixed-width
 form leaving dead space down the right of the window. The form is rebuilt on resize, which is

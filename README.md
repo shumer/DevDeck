@@ -26,7 +26,7 @@ An Arc XP project: whether its local Fusion stack is up, and the links you use:
 ```
 ┌────────────────────────────────────────────┐
 │ ◔ ARC · ACME NEWS                 23:25:49 │
-│ ● local stopped                            │
+│ ● stopped                                  │
 │ ⎇ fix/PROJ-142-video-badge                 │
 │ sandbox.acme                               │
 │ PageBuilder Composer Deployer │ Local site │
@@ -377,9 +377,10 @@ question on all of them:
    hammer for a Makefile. They are the real logos, drawn from the vendors' own SVG path data
    rather than shipped as images: this toolchain has no asset catalog, and a hand-drawn
    impression of the octocat at fifteen points looks exactly like what it is.
-2. **The state, at 20 points** — `running`, `local stopped`, `Docker is not running`. This is
-   the card's focal point; a detail like `pid 48213` or `mutagen paused` sits at the end of the
-   same line.
+2. **The state, at 20 points** — one vocabulary on every card: `running`, `stopped`,
+   `starting…`, `paused`, `unknown`, `not configured`, and `Docker is not running` when that is
+   what is really in the way. This is the card's focal point; a detail like `pid 48213`,
+   `mutagen paused` or `not in ddev list` sits at the end of the same line.
 3. **The branch**, on a line of its own, because branch names are longer than anything beside
    them.
 4. **What names this checkout**: the framework and folder on the left, versions or the start
