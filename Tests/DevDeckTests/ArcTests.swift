@@ -312,7 +312,7 @@ func runArcTests(_ run: TestRun) async {
         let status = await service.status()
         try expectEqual(status.state, .running)
         try expectEqual(status.engineVersion, "2026.7.2")
-        try expectNotNil(status.checkedAt, "checkedAt")
+        _ = try expectNotNil(status.checkedAt, "checkedAt")
     }
 
     await run.test("a refused connection reads as stopped, not as an error") {

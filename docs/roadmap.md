@@ -33,6 +33,10 @@
   with a log and a pid, and the health URL decides whether it is running. Shipped as 0.3.
 - **The Docker gate** — one probe for the whole deck, and cards that need containers say
   "Docker is not running" and offer to start it rather than a Start that cannot work.
+- **The card redesign** — one focal point per card: the state at 20 points, the pill and the
+  footer gone, chips wrapped into one block, quieter controls with icons, and a drawn mark per
+  project kind. Three directions were mocked up first; see
+  [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
 
 ## Next
 

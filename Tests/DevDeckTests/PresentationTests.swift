@@ -104,30 +104,78 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(DeckLayout.tidy(sizes: [], anchorTopLeft: .zero, screen: screen, gap: 12).isEmpty)
     }
 
-    run.section("Cards — Arc chip rows")
+    run.section("Cards — chips wrap, and the panel knows by how much")
 
-    await run.test("each row that has chips is paid for, and no more") {
+    await run.test("chips break onto a new line only when the line is full") {
+        // Widths chosen against the real content width of 292 points.
+        try expectEqual(CardChipFlow.lineCount(widths: [], available: 292), 0)
+        try expectEqual(CardChipFlow.lineCount(widths: [100, 100], available: 292), 1)
+        try expectEqual(CardChipFlow.lineCount(widths: [100, 100, 100], available: 292), 2,
+                        "300 plus two gaps does not fit on one line")
+        try expectEqual(CardChipFlow.lineCount(widths: [400], available: 292), 1,
+                        "a chip wider than the card still gets a line rather than none")
+    }
+
+    await run.test("every chip line is paid for, and no more") {
+        try expectEqual(CardChipFlow.height(lineCount: 0), 0, "no chips, no block")
+        try expectEqual(CardChipFlow.height(lineCount: 1), 12 + 20)
+        try expectEqual(CardChipFlow.height(lineCount: 2), 12 + 40 + 5, "one gap between two lines")
+    }
+
+    await run.test("a card grows by exactly one chip line when its chips wrap") {
         var project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let stopped = LocalStackStatus(state: .stopped)
 
         project.links = [ArcLink(label: "PageBuilder", urlTemplate: "https://example.com", isEnabled: true)]
-        let both = ArcProjectCard.size(for: project, status: stopped)
+        let oneLine = ArcProjectCard.size(for: project, status: stopped)
 
-        project.links = []
-        let localOnly = ArcProjectCard.size(for: project, status: stopped)
-        try expect(both.height > localOnly.height, "the tooling row costs a row")
-
-        // More links do not cost more: the rows are plain stacks and never wrap.
+        // Five tools plus the environments cannot share a 292-point line.
         project.links = ["PageBuilder", "Composer", "Deployer", "Site Service", "Delivery API"]
             .map { ArcLink(label: $0, urlTemplate: "https://example.com/\($0)", isEnabled: true) }
-        try expectEqual(ArcProjectCard.size(for: project, status: stopped).height, both.height)
+        let twoLines = ArcProjectCard.size(for: project, status: stopped)
+
+        try expectEqual(twoLines.height - oneLine.height, CardChip.height + CardChipFlow.lineSpacing)
+        try expectEqual(oneLine.width, CardMetrics.width, "the width never moves")
     }
 
     await run.test("the branch line adds its own height") {
         let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let without = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped))
         let with = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped, branch: "main"))
-        try expectEqual(with.height - without.height, 18)
+        try expectEqual(with.height - without.height, CardMetaBlock.branchHeight)
+    }
+
+    await run.test("the three project cards are built to the same measurements") {
+        // Same chips, same branch — the three cards must come out the same height, or one of
+        // them has quietly grown its own layout.
+        let arc = ProjectCardMetrics.height(
+            tools: ["Mailpit"], environments: ["Local site", "Prod"], hasBranch: true, hasMetaRow: true
+        )
+        try expectEqual(
+            arc,
+            12 + 14 + CardHeroRow.topPadding + CardHeroRow.height
+                + CardMetaBlock.height(hasBranch: true, hasRow: true)
+                + CardChipFlow.height(lineCount: 1)
+                + CardActionRow.height + 12
+        )
+        try expect(arc < 210, "the redesign has to stay shorter than the 249 it replaced")
+    }
+
+    run.section("Cards — the control row")
+
+    await run.test("the prominent action is half again as wide as the quiet ones") {
+        let actions = [
+            CardAction("Start", isProminent: true),
+            CardAction("Restart"),
+            CardAction("Folder"),
+            CardAction("Terminal"),
+        ]
+        let widths = CardActionRow.widths(for: actions)
+        try expectEqual(widths.count, 4)
+        try expectEqual((widths[0] / widths[1] * 100).rounded(), 150)
+        let total = widths.reduce(0, +) + CardActionRow.spacing * 3
+        try expectEqual(total.rounded(), CardChromeMetrics.contentWidth.rounded(),
+                        "the row fills the card exactly, so it lines up with everything above it")
     }
 
     run.section("Browsers")

@@ -2,15 +2,12 @@ import DevDeckCore
 import ProjectKit
 import SwiftUI
 
-/// One plain project: where to open it, whether it is up, and the command that starts it.
+/// One plain project: whether it is up, where to open it, and the command that starts it.
 ///
 /// The same shape as the Arc and DDEV cards and built from the same pieces. What differs is
 /// that nothing here can describe itself — there is no `ddev list` to ask — so the card shows
 /// exactly what was configured, and the health URL is the only thing that decides "running".
 public struct LocalProjectCard: View {
-    private nonisolated static let baseHeight: Double = 150
-    private nonisolated static let chipRowHeight: Double = 25
-
     private let project: LocalProject
     private let status: LocalProjectStatus
     private let docker: DockerStatus
@@ -41,97 +38,56 @@ public struct LocalProjectCard: View {
     }
 
     nonisolated public static func size(for project: LocalProject, status: LocalProjectStatus) -> CGSize {
-        var rows = 0
-        if !project.toolLinks().isEmpty { rows += 1 }
-        if !project.environmentLinks().isEmpty { rows += 1 }
-
-        return CGSize(
+        CGSize(
             width: CardMetrics.width,
-            height: baseHeight
-                + Double(rows) * chipRowHeight
-                + (status.branch != nil ? CardBranchRow.height : 0)
+            height: ProjectCardMetrics.height(
+                tools: project.toolLinks().map(\.label),
+                environments: project.environmentLinks().map(\.label),
+                hasBranch: status.branch != nil,
+                hasMetaRow: true
+            )
         )
     }
 
     public var body: some View {
-        CardChrome(title: "Project · \(project.displayTitle)", pill: pill) {
-            links
-            CardSeparator()
-            stateRow
-            branchRow
+        CardChrome(
+            title: "Project · \(project.displayTitle)",
+            glyph: glyph,
+            timestamp: ProjectCardMetrics.timestamp(status.checkedAt)
+        ) {
+            hero
+            CardMetaBlock(branch: status.branch, leading: metaLeading, trailing: project.startCommand)
+            chips
             controls
-            Spacer(minLength: 12)
-            CardFooter(leading: footerLeading, trailing: freshness, isStale: false)
-        }
-    }
-
-    /// Whether the card is currently about Docker rather than about the project.
-    private var isDockerBlocked: Bool {
-        DockerGate.blocks(docker, isRunning: status.isRunning, requiresDocker: project.requiresDocker)
-    }
-
-    private var pill: (text: String, color: Color)? {
-        if isDockerBlocked { return DockerGate.pill(docker) }
-        switch status.state {
-        case .running: return ("running", DeckTheme.green)
-        case .starting: return ("starting…", DeckTheme.amber)
-        case .stopped: return ("stopped", DeckTheme.label)
-        case .working: return (status.detail ?? "working…", DeckTheme.amber)
-        case .unavailable: return ("not configured", DeckTheme.label)
-        }
-    }
-
-    /// Two rows, as on the other project cards: tooling on top, the environments below.
-    private var links: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            row(project.toolLinks())
-            row(project.environmentLinks())
-        }
-        .padding(.top, 11)
-    }
-
-    private func row(_ links: [LocalProjectResolvedLink]) -> some View {
-        HStack(spacing: 6) {
-            ForEach(links) { link in
-                let isLocal = link.kind == .site && link.label == "Local site"
-                // A deployed environment is reachable whether or not anything is running here;
-                // only the local one goes nowhere, and a link into a stopped project lands on a
-                // connection error that reads as a broken app.
-                let isDimmed = isLocal && !status.isRunning
-                CardChip(
-                    link.label,
-                    color: colour(for: link, isLocal: isLocal),
-                    isDimmed: isDimmed,
-                    help: isDimmed
-                        ? "\(link.url.absoluteString) — the project is not running"
-                        : link.url.absoluteString
-                ) {
-                    guard !isDimmed else { return }
-                    onOpen(link.url)
-                }
-            }
             Spacer(minLength: 0)
         }
     }
 
-    private func colour(for link: LocalProjectResolvedLink, isLocal: Bool) -> Color {
-        guard link.kind == .site else { return DeckTheme.blue }
-        if isLocal { return DeckTheme.green }
-        // Production is the one worth a beat of hesitation, so it is the one that is not calm.
-        return link.label.lowercased().contains("prod") ? DeckTheme.amber : DeckTheme.violet
+    /// What this project is built on. Nothing declares it, so it is read from the command —
+    /// which is the one thing every plain project definitely has.
+    private var glyph: CardGlyph {
+        switch project.kind {
+        case .node: return .node
+        case .docker: return .docker
+        case .make: return .make
+        case .other: return .project
+        }
     }
 
-    private var stateRow: some View {
-        CardStateRow(
-            color: stateColor,
-            text: stateText,
-            isProminent: status.isRunning || isDockerBlocked,
-            trailing: status.pid.map { "pid \($0)" },
-            help: status.detail ?? stateText
+    private var isDockerBlocked: Bool {
+        DockerGate.blocks(docker, isRunning: status.isRunning, requiresDocker: project.requiresDocker)
+    }
+
+    private var hero: some View {
+        CardHeroRow(
+            color: heroColor,
+            text: heroText,
+            note: status.pid.map { "pid \($0)" },
+            help: status.detail ?? heroText
         )
     }
 
-    private var stateColor: Color {
+    private var heroColor: Color {
         if isDockerBlocked { return DockerGate.color(docker) }
         switch status.state {
         case .running: return DeckTheme.green
@@ -140,62 +96,76 @@ public struct LocalProjectCard: View {
         }
     }
 
-    private var stateText: String {
+    private var heroText: String {
         if isDockerBlocked { return DockerGate.text(docker) }
         switch status.state {
-        case .running: return status.detail ?? project.startCommand
-        case .starting, .working: return status.detail ?? "working…"
-        case .stopped: return status.detail ?? "not running"
-        case .unavailable: return status.detail ?? "not configured"
+        case .running: return "running"
+        case .starting: return "starting…"
+        case .working: return status.detail ?? "working…"
+        case .stopped: return "not running"
+        case .unavailable: return "not configured"
         }
     }
 
-    @ViewBuilder
-    private var branchRow: some View {
-        if let branch = status.branch {
-            CardBranchRow(branch)
-        }
+    private var metaLeading: String? {
+        let subtitle = project.subtitle.trimmingCharacters(in: .whitespaces)
+        let folder = project.folderURL?.lastPathComponent
+        let parts = [subtitle.isEmpty ? nil : subtitle, folder].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private var chips: some View {
+        ProjectChipRow(
+            tools: project.toolLinks().map { ProjectChip(label: $0.label, url: $0.url, kind: .tool) },
+            environments: project.environmentLinks().map {
+                ProjectChip(label: $0.label, url: $0.url, kind: $0.kind == .site ? .site : .tool)
+            },
+            isLocalReachable: status.isRunning,
+            onOpen: onOpen
+        )
     }
 
     /// Logs rather than Terminal, unlike the Arc and DDEV cards: a command started from here
     /// writes to a file nobody else knows about, and a card that can start something it cannot
     /// show the output of is a card that hides its own failures.
     private var controls: some View {
-        HStack(spacing: 6) {
-            if isDockerBlocked {
-                DockerGate.startButton(docker, onStart: onStartDocker)
-                CardActionButton("↻ Restart", isEnabled: false) {}
-            } else if status.isRunning || status.state == .starting {
-                CardActionButton("⏻ Stop", tint: DeckTheme.red) { onAction(.stop) }
-                CardActionButton("↻ Restart") { onAction(.restart) }
-            } else {
-                CardActionButton(
-                    "▶ Start",
-                    tint: DeckTheme.green,
-                    isEnabled: !status.isBusy && project.supportsCommands
-                ) {
-                    onAction(.start)
-                }
-                CardActionButton("↻ Restart", isEnabled: false) {}
-            }
-            CardActionButton("Logs", isEnabled: status.hasLog, action: onOpenLog)
-            CardActionButton("Folder", isEnabled: project.folderURL != nil, action: onRevealFolder)
+        CardActionRow(lifecycle + [
+            CardAction("Logs", systemImage: "doc.text", isEnabled: status.hasLog, action: onOpenLog),
+            CardAction(
+                "Folder",
+                systemImage: "folder",
+                isEnabled: project.folderURL != nil,
+                action: onRevealFolder
+            ),
+        ])
+    }
+
+    private var lifecycle: [CardAction] {
+        if isDockerBlocked {
+            return [
+                DockerGate.startAction(docker, onStart: onStartDocker),
+                CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+            ]
         }
-        .padding(.top, 12)
-    }
-
-    private var footerLeading: String {
-        let subtitle = project.subtitle.trimmingCharacters(in: .whitespaces)
-        let folder = project.folderURL?.lastPathComponent
-        let parts = [subtitle.isEmpty ? nil : subtitle, folder].compactMap { $0 }
-        return parts.isEmpty ? project.startCommand : parts.joined(separator: " · ")
-    }
-
-    private var freshness: String {
-        guard let checkedAt = status.checkedAt else { return "not checked" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter.string(from: checkedAt)
+        if status.isRunning || status.state == .starting {
+            return [
+                CardAction("Stop", systemImage: "power", tint: DeckTheme.red, isProminent: true) {
+                    onAction(.stop)
+                },
+                CardAction("Restart", systemImage: "arrow.clockwise") { onAction(.restart) },
+            ]
+        }
+        return [
+            CardAction(
+                "Start",
+                systemImage: "play.fill",
+                tint: DeckTheme.green,
+                isEnabled: !status.isBusy && project.supportsCommands,
+                isProminent: true
+            ) {
+                onAction(.start)
+            },
+            CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+        ]
     }
 }

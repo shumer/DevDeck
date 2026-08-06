@@ -61,9 +61,17 @@ cheap. A project mid-command is skipped by the poll so the card cannot flicker b
 ## Local project cards
 
 Arc, DDEV and plain project cards are the same shape and are built from the same pieces —
-`CardChip`, `CardActionButton`, `CardSeparator`, `CardStateRow`, `CardBranchRow` in `DevDeckUI`.
-Anything that looks like a card of a local project belongs there rather than in one card's file:
-two copies of the same layout drift, and this project has already watched that happen once.
+`CardHeroRow`, `CardMetaBlock`, `ProjectChipRow`, `CardActionRow` in `DevDeckUI`, framed by
+`CardChrome`. Anything that looks like a card of a local project belongs there rather than in
+one card's file: two copies of the same layout drift, and this project has already watched that
+happen once.
+
+The hierarchy — one hero, everything else quiet — is [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
+Two consequences show up in the code. `ProjectCardMetrics.height` is the only place a card's
+height is computed, for all three of them. And because the chips now wrap, that height depends
+on how many lines they take: `CardChipFlow` measures the labels in the real font and breaks
+lines by the same rule `CardChipLayout` uses when it draws them. The two agreeing is what stops
+a card clipping its own control row.
 
 `DDEVEnvironment` differs from `LocalStackService` in one structural way — it is shared rather
 than per project, because `ddev list -j` answers for every project at once. See

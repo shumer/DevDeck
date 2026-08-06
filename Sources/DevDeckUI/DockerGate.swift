@@ -42,21 +42,21 @@ public enum DockerGate {
         (pillText(status), color(status))
     }
 
-    /// The button that replaces Start while Docker is in the way.
+    /// The action that replaces Start while Docker is in the way.
     ///
     /// `onStart` is nil when there is no runtime to launch — a machine on Colima has a CLI and
     /// no app to open — and then there is nothing to offer but the disabled Start.
-    @ViewBuilder
-    public static func startButton(_ status: DockerStatus, onStart: (() -> Void)?) -> some View {
-        if let onStart {
-            CardActionButton(
-                "▶ Start Docker",
-                tint: DeckTheme.amber,
-                isEnabled: status.state == .notRunning,
-                action: onStart
-            )
-        } else {
-            CardActionButton("▶ Start", tint: DeckTheme.green, isEnabled: false) {}
+    public static func startAction(_ status: DockerStatus, onStart: (() -> Void)?) -> CardAction {
+        guard let onStart else {
+            return CardAction("Start", systemImage: "play.fill", tint: DeckTheme.green, isEnabled: false)
         }
+        return CardAction(
+            "Start Docker",
+            systemImage: "shippingbox.fill",
+            tint: DeckTheme.amber,
+            isEnabled: status.state == .notRunning,
+            isProminent: true,
+            action: onStart
+        )
     }
 }

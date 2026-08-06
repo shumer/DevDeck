@@ -71,9 +71,7 @@ func runCommandRunnerTests(_ run: TestRun) async {
     await run.test("work happens off the main thread") {
         // The original bug: the runner blocked whoever called it, and the caller was the main
         // actor, so the whole app froze for as long as the command ran.
-        let onMain = try await MainActor.run { () -> Bool in
-            Thread.isMainThread
-        }
+        let onMain = await MainActor.run { Thread.isMainThread }
         try expect(onMain, "sanity: the check itself runs on the main thread")
 
         let result = try await runner.run("sleep 0.2; echo done", in: temporary, timeout: 10)
