@@ -105,8 +105,14 @@ A card is three things:
 2. a branch in `CardHostView` — the SwiftUI view and the panel size;
 3. whatever data it needs, added to `DeckController`.
 
-`CardLayout` holds the user's preference: which cards are on and in what order. It is merged
-with the catalog on every read, so:
+`CardLayout` holds one thing: which cards are on. **The order belongs to the catalog** — the
+built-in cards, then Arc projects, then DDEV, then the plain ones, each group alphabetical, via
+`CardCatalog.projectOrder`. It used to come from the stored settings, where a card was appended
+the first time it was switched on; the deck therefore sat in the sequence the projects happened
+to be added in, and "Tidy panels" faithfully reproduced that sequence — which read as scrambling
+rather than tidying.
+
+The layout is merged with the catalog on every read, so:
 
 - a card added in a newer build appears with its default visibility instead of vanishing;
 - an identifier removed from the catalog is dropped from the user's list silently;

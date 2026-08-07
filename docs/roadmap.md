@@ -38,6 +38,8 @@
   logos parsed from their own SVGs, a card 352 points wide so `Terminal` fits, and glass that
   is glass again rather than grey paint. Three directions were mocked up first; see
   [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
+- **The deck has a canonical order** — Arc, DDEV, then plain projects, alphabetical within each
+  — so tidying lays cards out by a rule rather than by the order they were added in.
 - **Panel positions belong to a display**, so a deck kept on the laptop screen survives an
   external monitor coming and going.
 - **Pull requests waiting for your review** on the same card as your own, from a second search
