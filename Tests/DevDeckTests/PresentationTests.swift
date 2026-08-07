@@ -104,6 +104,56 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(DeckLayout.tidy(sizes: [], anchorTopLeft: .zero, screen: screen, gap: 12).isEmpty)
     }
 
+    run.section("Panels — a placement belongs to a display")
+
+    // A laptop and an external, arranged with the external as the main display: the laptop's
+    // screen sits below and to the left, which is where the numbers come from.
+    let laptop = DisplayFrame(id: "laptop", visibleFrame: CGRect(x: 0, y: -982, width: 1512, height: 957))
+    let external = DisplayFrame(id: "external", visibleFrame: CGRect(x: 0, y: 0, width: 2560, height: 1415))
+
+    await run.test("a position is remembered against the display it is on") {
+        let placement = try expectNotNil(
+            PanelPlacement.from(
+                topLeft: CGPoint(x: 24, y: -50),
+                size: CGSize(width: 352, height: 200),
+                displays: [external, laptop]
+            ),
+            "placement"
+        )
+        try expectEqual(placement.displayID, "laptop", "the card is on the laptop, not the external")
+        try expectEqual(placement.offset, CGPoint(x: 24, y: 25), "24 in from the left, 25 down from the top")
+        try expectEqual(placement.topLeft(on: [external, laptop]), CGPoint(x: 24, y: -50))
+    }
+
+    await run.test("the same offset survives the arrangement changing under it") {
+        // Unplug the external: macOS makes the laptop the main display at the origin, so the
+        // old global point (24, -50) now means somewhere off the bottom of it.
+        let placement = PanelPlacement(displayID: "laptop", offset: CGPoint(x: 24, y: 25))
+        let alone = DisplayFrame(id: "laptop", visibleFrame: CGRect(x: 0, y: 0, width: 1512, height: 957))
+        try expectEqual(placement.topLeft(on: [alone]), CGPoint(x: 24, y: 932),
+                        "the card is still 25 points below the top of the laptop screen")
+    }
+
+    await run.test("a card whose display is gone is parked, not moved house") {
+        let placement = PanelPlacement(displayID: "external", offset: CGPoint(x: 2200, y: 40))
+        try expectNil(placement.topLeft(on: [laptop]), "its display is not here")
+
+        let parked = placement.topLeft(borrowing: laptop, size: CGSize(width: 352, height: 200))
+        try expectEqual(parked.y, laptop.visibleFrame.maxY - 40, "the same distance from the top")
+        try expectEqual(parked.x, laptop.visibleFrame.maxX - 352,
+                        "and pulled back onto the screen rather than left off its right edge")
+        // The placement itself is untouched, which is what takes the card home again.
+        try expectEqual(placement.displayID, "external")
+    }
+
+    await run.test("a placement survives a round trip through the preferences string") {
+        let placement = PanelPlacement(displayID: "37D8832A-2D66-02CA-B9F7-8F30A301B230", offset: CGPoint(x: 24, y: 25.5))
+        let restored = try expectNotNil(PanelPlacement(storage: placement.storage), "restored")
+        try expectEqual(restored, placement)
+        try expectNil(PanelPlacement(storage: "{24, 932}"), "a global point from an older build is not a placement")
+        try expectNil(PanelPlacement(storage: "|1|2"), "and neither is a nameless display")
+    }
+
     run.section("Cards — chips wrap, and the panel knows by how much")
 
     await run.test("chips break onto a new line only when the line is full") {

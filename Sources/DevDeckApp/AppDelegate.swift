@@ -73,6 +73,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         .store(in: &cancellables)
 
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(screensChanged),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+
         syncPanels()
         updateStatusItem()
         controller.start()
@@ -198,28 +205,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         panels[card] = window
     }
 
-    /// Records where a panel's top-left corner is, which is the anchor positions are restored
-    /// from.
+    /// Records which display a panel is on and where on it, which is what positions are
+    /// restored from.
+    ///
+    /// A panel sitting on a display that is not currently connected keeps the placement it
+    /// already had: it is only parked somewhere visible, and parking is not a decision the user
+    /// made. Overwriting it is how a deck moves house permanently every time a monitor is
+    /// unplugged for an hour.
     private func persistPosition(of card: CardID) {
         guard let window = panels[card] else { return }
+        if let placement = preferences.placement(for: card),
+           placement.topLeft(on: Displays.current()) == nil {
+            return
+        }
         let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
-        preferences.setTopLeft(NSStringFromPoint(topLeft), for: card)
+        guard let placement = PanelPlacement.from(
+            topLeft: topLeft,
+            size: window.frame.size,
+            displays: Displays.current()
+        ) else { return }
+        preferences.setPlacement(placement, for: card)
     }
 
     /// Saved position when there is a usable one, otherwise the next slot in a column down
     /// the right edge.
     private func origin(for card: CardID, size: NSSize) -> NSPoint {
-        if let saved = preferences.topLeft(for: card), saved.contains("{") {
-            let top = NSPointFromString(saved)
-            let point = NSPoint(x: top.x, y: top.y - size.height)
-            let frame = NSRect(origin: point, size: size)
-            // NSPointFromString yields {0,0} for anything unparseable, and a panel restored
-            // 99% off-screen cannot be grabbed back, so require a real overlap.
-            let usable = NSScreen.screens.contains { screen in
-                let intersection = screen.visibleFrame.intersection(frame)
-                return intersection.width >= 80 && intersection.height >= 40
+        if let placement = preferences.placement(for: card) {
+            // Its own display, when that display is here.
+            if let top = placement.topLeft(on: Displays.current()) {
+                return NSPoint(x: top.x, y: top.y - size.height)
             }
-            if usable { return point }
+            // Otherwise borrow whichever display is main, keeping the placement itself intact
+            // so the card goes home when its own display comes back.
+            if let fallback = Displays.fallback() {
+                let top = placement.topLeft(borrowing: fallback, size: size)
+                return NSPoint(x: top.x, y: top.y - size.height)
+            }
         }
 
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
@@ -256,6 +277,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func windowDidMove(_ notification: Notification) {
         guard let window = notification.object as? PanelWindow else { return }
         persistPosition(of: window.card)
+    }
+
+    /// Puts every panel back where it belongs after a display comes or goes.
+    ///
+    /// macOS lays all the screens out in one coordinate space and re-lays it on every change,
+    /// so unplugging the external display that happens to be the main one shifts the laptop's
+    /// screen underneath the cards — and the deck scatters, sometimes off-screen entirely.
+    /// Because a placement names its display rather than a global point, putting things back is
+    /// just reading it again: home if that display is here, parked on the main one if it is
+    /// not, and home again the moment it returns.
+    @objc private func screensChanged() {
+        // The arrangement is still settling when the notification arrives — a display that has
+        // just woken reports its old frame for a moment — so this runs after a beat.
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(replaceAll), object: nil)
+        perform(#selector(replaceAll), with: nil, afterDelay: 0.6)
+    }
+
+    @objc private func replaceAll() {
+        for (card, window) in panels {
+            let size = window.frame.size
+            let point = origin(for: card, size: size)
+            guard abs(point.x - window.frame.minX) > 0.5 || abs(point.y - window.frame.minY) > 0.5
+            else { continue }
+            window.setFrameOrigin(point)
+            window.invalidateShadow()
+        }
     }
 
     // MARK: Menu bar

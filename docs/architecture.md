@@ -214,6 +214,24 @@ Two details keep a deck stable across launches, and both were bugs first:
   panel that shoved the column down as it filled; without the second, that shove was saved and
   the deck crept apart a little further each time.
 
+**A position names its display.** `PanelPlacement` is a display UUID plus an offset from that
+display's top-left corner, and `Displays` maps it onto the screens attached right now. macOS
+lays every screen out in one coordinate space and re-lays it whenever a display comes or goes,
+so a global point that meant "top left of the laptop screen" means somewhere else — often
+off every screen — the moment the external display that happens to be the main one is unplugged.
+
+A card whose display is absent is *parked*: the same offset applied to the main screen, clamped
+back inside it, with the stored placement left untouched so the card goes home when its display
+returns. `persistPosition` refuses to overwrite a placement while it is parked, because parking
+is not a decision the user made. `NSApplication.didChangeScreenParametersNotification` triggers
+a re-place of the whole deck, after a beat — a display that has just woken reports its old frame
+for a moment.
+
+The identity is `CGDisplayCreateUUIDFromDisplayID`, not the display id and not the screen index:
+ids are handed out per connection and change on a replug, and the index changes with the
+arrangement. The UUID belongs to the physical display, which is what "keep this on the laptop
+screen" means.
+
 A saved position is only used when the frame still overlaps a screen by at least 80×40 points,
 so a panel can never come back 99% off-screen.
 

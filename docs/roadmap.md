@@ -38,6 +38,8 @@
   logos parsed from their own SVGs, a card 352 points wide so `Terminal` fits, and glass that
   is glass again rather than grey paint. Three directions were mocked up first; see
   [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
+- **Panel positions belong to a display**, so a deck kept on the laptop screen survives an
+  external monitor coming and going.
 - **Pull requests waiting for your review** on the same card as your own, from a second search
   in the same request.
 - **The branch on a card is a link** to the repository it came from, read from the checkout's
