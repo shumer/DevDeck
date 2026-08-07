@@ -114,18 +114,38 @@ func runProjectTests(_ run: TestRun) async {
         try expectNil(await service.perform(.start), "a command must not run without a folder")
     }
 
-    await run.test("anything answering the health URL means running") {
+    await run.test("a server that serves means running, whatever else it says") {
+        for code in [200, 204, 302, 401, 403] {
+            let service = LocalProjectService(
+                project: makeProject(),
+                runner: StubCommandRunner([]),
+                httpClient: FakeHTTPClient([.success(.status(code))]),
+                files: makeRuntimeFiles()
+            )
+            // 401 and 403 are this project's own server asking you to sign in, which is a
+            // normal thing for a health path to do.
+            try expectEqual(await service.status().state, .running, "\(code)")
+        }
+    }
+
+    await run.test("somebody else's server on the same port is not this project") {
+        // The bug this rule exists for: a Docker container from another project held 8080 and
+        // answered the configured /health with a 404, and the card called a backend nobody had
+        // started "running". A 404 is a server saying it does not know this path.
         let service = LocalProjectService(
-            project: makeProject(),
+            project: makeProject(healthURL: "http://localhost:8080/health"),
             runner: StubCommandRunner([]),
             httpClient: FakeHTTPClient([.success(.status(404))]),
             files: makeRuntimeFiles()
         )
         let status = await service.status()
-        // A dev server that 404s on / is still serving; demanding a 2xx would call half of
-        // these projects stopped.
-        try expectEqual(status.state, .running)
-        try expectEqual(status.detail, "answered 404")
+        try expectEqual(status.state, .stopped)
+        try expectEqual(status.detail, "http://localhost:8080/health answered 404",
+                        "and the card says who answered what")
+
+        try expect(!LocalProjectService.isServing(404))
+        try expect(!LocalProjectService.isServing(500), "a crashed app is not something to open")
+        try expect(LocalProjectService.isServing(200))
     }
 
     await run.test("a refused connection with nothing of ours running is stopped") {

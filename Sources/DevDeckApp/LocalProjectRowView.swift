@@ -138,9 +138,10 @@ final class LocalProjectRowView: FlippedContainer {
             accessory: button("Check now", #selector(checkHealth))
         )
         form.endGroup()
-        form.footnote("Any answer counts as up, including a 404 — a dev server that serves "
-            + "nothing at / is still serving. With it empty only a process started from here "
-            + "can be reported on.")
+        form.footnote("Up means the URL answered 2xx, 3xx, 401 or 403. A 404 or a 500 does not "
+            + "count: a local port is shared, and somebody else's server answering it is how a "
+            + "project nobody started reads as running. With it empty only a process started "
+            + "from here can be reported on.")
 
         form.header("Links on the card")
         form.beginGroup()

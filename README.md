@@ -297,9 +297,11 @@ button does the same again later, and nothing is ever guessed over something you
 - **Stop kills the whole tree** when there is no stop command of your own. `npm run dev` is a
   wrapper, and killing it alone leaves the server it spawned holding the port — which then makes
   the next start fail for a reason nothing on screen would explain.
-- **The health URL decides whether it is running**, exactly as the Arc card asks the engine.
-  Any answer counts, including a 404: a dev server that serves nothing at `/` is still serving.
-  A stack you started yourself in a terminal therefore reads as running too.
+- **The health URL decides whether it is running**, exactly as the Arc card asks the engine — so
+  a stack you started yourself in a terminal reads as running too. Up means 2xx, 3xx, 401 or 403;
+  a 404 or a 500 does not count. A local port is a shared resource, and the first version of this
+  rule counted any answer at all: a Docker container from another project held 8080, answered the
+  configured `/health` with a 404, and the card reported a backend nobody had started as running.
 - **Live process, silent URL, is `starting…`** rather than stopped — that is a dev server
   compiling, and it resolves itself within seconds.
 - **Test, UAT and Prod ship empty**, next to the local site, the same as everywhere else. Extra
