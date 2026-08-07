@@ -53,13 +53,16 @@ final class PanelWindow: NSWindow {
         blur.layer?.masksToBounds = true
         blur.autoresizingMask = [.width, .height]
 
-        // A veil between the blur and the content, so near-white text keeps its contrast over a
-        // bright wallpaper. It used to be black at 42%, which is what made the cards read as
-        // grey slabs: at that strength it stops being glass and becomes paint. With the window
-        // pinned to dark, 22% is enough — the same figure the sibling widget arrived at.
+        // A veil between the blur and the content, and the one dial on this whole surface.
+        //
+        // Too much and the panel stops being glass and becomes grey paint — 42% did that. Too
+        // little and each panel takes the colour of whatever happens to be behind it, so a deck
+        // spread across a wallpaper looks like six different materials; 22% did that, on a
+        // wallpaper with dark trunks on one side and sunlight on the other. 30% is where the
+        // cards still show the desktop's colour but agree with each other about what they are.
         let scrim = NSView(frame: blur.bounds)
         scrim.wantsLayer = true
-        scrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.22).cgColor
+        scrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.30).cgColor
         scrim.layer?.cornerRadius = DeckTheme.cornerRadius
         scrim.layer?.cornerCurve = .continuous
         // A hairline of the light the glass is made of. Without it the panel has no edge of its
