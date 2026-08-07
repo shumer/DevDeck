@@ -372,7 +372,12 @@ projects apart, and the form stretches with the window. Add and remove are the `
 under the list. Everything applies as you change it; only a token waits for **Verify token**,
 because it is checked against the API before being stored.
 
-Drag a panel anywhere; the position is remembered per card. Click a row to open that pull
+Drag a panel anywhere; the position is remembered per card — **against the display it is on**,
+not as a point on the desktop. Unplug the external monitor and the cards that live on it are
+parked on whatever screen is left, keeping their distance from the top; plug it back in and they
+go home. Nothing is re-saved while a card is parked, because parking is not a decision you made.
+This is why a deck kept on the laptop screen no longer scatters when an external display that
+happens to be the main one comes and goes. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
 panel for the same menu.
 
@@ -437,7 +442,7 @@ Sources/
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (221 tests, offline)
+  DevDeckTests/    the suite (226 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

@@ -101,13 +101,14 @@ func runConfigurationTests(_ run: TestRun) async {
 
         preferences.displayMode = .floating
         preferences.isLocked = true
-        preferences.setTopLeft("{100, 200}", for: .githubPullRequests)
+        let placement = PanelPlacement(displayID: "laptop", offset: CGPoint(x: 24, y: 25))
+        preferences.setPlacement(placement, for: .githubPullRequests)
 
         try expectEqual(preferences.displayMode, .floating)
         try expect(preferences.isLocked)
-        try expectEqual(preferences.topLeft(for: .githubPullRequests), "{100, 200}",
-                        "positions anchor on the top edge, because cards change height")
-        try expectNil(preferences.topLeft(for: .githubInbox))
+        try expectEqual(preferences.placement(for: .githubPullRequests), placement,
+                        "a position names its display, and offsets from that display's top edge")
+        try expectNil(preferences.placement(for: .githubInbox))
     }
 
     await run.test("a panel's height is remembered so it opens at the right size") {

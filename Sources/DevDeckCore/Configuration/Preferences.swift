@@ -100,19 +100,25 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue, forKey: "panels.locked") }
     }
 
-    /// Saved panel position as an AppKit point string, or nil when the card has never been moved.
+    /// Where a panel lives: a display, and an offset on it.
     ///
-    /// The point is the **top-left** corner, not AppKit's bottom-left origin. Cards change
+    /// The offset is to the **top-left** corner, not AppKit's bottom-left origin. Cards change
     /// height as their data arrives, and anchoring on the bottom made every launch place the
     /// card lower than the user left it: the panel is created short, so its top starts below
     /// where it was, and then it grows downwards from there. The top edge is the edge a person
     /// lines panels up by, so that is what is stored.
-    public func topLeft(for card: CardID) -> String? {
-        backend.string(forKey: "panels.\(card.rawValue).top")
+    ///
+    /// Under its own key, and a value written by a build that only knew global coordinates is
+    /// ignored rather than migrated. There is nothing to migrate it *to*: the old point means
+    /// "somewhere in the arrangement as it stood then", and which display that was is exactly
+    /// the information it never recorded.
+    public func placement(for card: CardID) -> PanelPlacement? {
+        guard let raw = backend.string(forKey: "panels.\(card.rawValue).placement") else { return nil }
+        return PanelPlacement(storage: raw)
     }
 
-    public func setTopLeft(_ value: String?, for card: CardID) {
-        backend.set(value, forKey: "panels.\(card.rawValue).top")
+    public func setPlacement(_ placement: PanelPlacement?, for card: CardID) {
+        backend.set(placement?.storage, forKey: "panels.\(card.rawValue).placement")
     }
 
     /// The height a card last settled at.
