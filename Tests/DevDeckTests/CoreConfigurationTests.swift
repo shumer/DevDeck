@@ -17,18 +17,19 @@ func runConfigurationTests(_ run: TestRun) async {
         try expect(layout.isEnabled(.githubPullRequests), "the PR card ships enabled")
     }
 
-    await run.test("saved order is preserved and new cards are appended") {
+    await run.test("the catalog decides the order, the settings decide what is shown") {
+        // Stored in a different order on purpose: that order used to win, and it was whatever
+        // sequence the projects happened to be added in.
         let layout = CardLayout(settings: [
             CardSetting(id: .arcOrganizations, isEnabled: true),
-            CardSetting(id: .githubPullRequests, isEnabled: true),
+            CardSetting(id: .githubPullRequests, isEnabled: false),
         ])
         let resolved = layout.resolved(catalog: catalog)
-        try expectEqual(resolved.map(\.id.rawValue), [
-            CardID.arcOrganizations.rawValue,
-            CardID.githubPullRequests.rawValue,
-            CardID.githubInbox.rawValue,
-        ], "unknown-to-the-user cards land at the end")
-        try expect(resolved.last!.isEnabled, "an appended card uses its catalog default")
+        try expectEqual(resolved.map(\.id.rawValue), catalog.map(\.id.rawValue),
+                        "the deck is laid out by the catalog, whatever the settings remember")
+        try expect(!resolved[0].isEnabled, "and the stored preference still decides visibility")
+        try expect(resolved[1].isEnabled, "a card the settings never mentioned takes its default")
+        try expect(resolved[2].isEnabled)
     }
 
     await run.test("identifiers that are no longer in the catalog are dropped") {
@@ -39,6 +40,7 @@ func runConfigurationTests(_ run: TestRun) async {
         let resolved = layout.resolved(catalog: catalog)
         try expect(!resolved.contains { $0.id.rawValue == "removed.card" })
         try expect(!resolved.first!.isEnabled, "the stored preference still wins")
+        try expectEqual(resolved.count, catalog.count)
     }
 
     await run.test("duplicated identifiers are collapsed to the first one") {
@@ -61,7 +63,7 @@ func runConfigurationTests(_ run: TestRun) async {
                         "a card without an implementation must not render")
     }
 
-    await run.test("toggling and reordering mutate the stored list") {
+    await run.test("toggling mutates the stored list") {
         var layout = CardLayout(settings: [
             CardSetting(id: .githubPullRequests, isEnabled: true),
             CardSetting(id: .githubInbox, isEnabled: true),
@@ -71,10 +73,28 @@ func runConfigurationTests(_ run: TestRun) async {
 
         layout.setEnabled(true, for: .arcOrganizations)
         try expect(layout.isEnabled(.arcOrganizations, catalog: catalog),
-                   "a card missing from the list is appended when toggled")
+                   "a card missing from the list is added when toggled")
+    }
 
-        layout.move(.arcOrganizations, to: 0)
-        try expectEqual(layout.settings.first?.id, .arcOrganizations)
+    await run.test("the deck is ordered by kind, then by name") {
+        func card(_ id: String, _ title: String) -> CardDescriptor {
+            CardDescriptor(
+                id: CardID(rawValue: id), title: title, subtitle: "",
+                isImplemented: true, isEnabledByDefault: true
+            )
+        }
+
+        let ordered = CardCatalog.projectOrder(
+            arc: [card("arc.project.b", "Il Tempo"), card("arc.project.a", "Il Giornale")],
+            ddev: [card("ddev.project.b", "nasdaqir"), card("ddev.project.a", "Governance")],
+            plain: [card("project.b", "site10"), card("project.a", "site2")]
+        )
+
+        try expectEqual(ordered.map(\.title), [
+            "Il Giornale", "Il Tempo",      // Arc first, alphabetically
+            "Governance", "nasdaqir",       // then DDEV, and case does not decide it
+            "site2", "site10",              // then the plain ones, with numbers read as numbers
+        ])
     }
 
     run.section("Preferences")

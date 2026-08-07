@@ -89,4 +89,26 @@ public enum CardCatalog {
     public static func all(including dynamic: [CardDescriptor]) -> [CardDescriptor] {
         all.filter { descriptor in !dynamic.contains { $0.id == descriptor.id } } + dynamic
     }
+
+    /// Project cards in the order the deck lays them out: Arc, then DDEV, then the plain ones,
+    /// each group alphabetical.
+    ///
+    /// A rule rather than an accident. The order used to come from the stored settings, where a
+    /// card was appended the first time it was switched on — so the deck ended up in the
+    /// sequence the projects happened to be added in, and "Tidy panels" faithfully reproduced
+    /// it. Kinds first because that is how the menu groups them and how someone thinks about
+    /// them; alphabetical within a kind because any other rule needs remembering.
+    public static func projectOrder(
+        arc: [CardDescriptor],
+        ddev: [CardDescriptor],
+        plain: [CardDescriptor]
+    ) -> [CardDescriptor] {
+        byTitle(arc) + byTitle(ddev) + byTitle(plain)
+    }
+
+    /// Compared the way a person reads a list: case-insensitively, and with numbers as numbers
+    /// so `site2` comes before `site10`.
+    private static func byTitle(_ cards: [CardDescriptor]) -> [CardDescriptor] {
+        cards.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+    }
 }

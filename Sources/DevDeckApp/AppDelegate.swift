@@ -99,7 +99,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Panels
 
-    /// The built-in cards plus one per configured Arc project.
+    /// The built-in cards plus one per configured project, in the order the deck is laid out —
+    /// Arc, then DDEV, then the plain ones, each group alphabetical. See
+    /// `CardCatalog.projectOrder`.
     private var catalog: [CardDescriptor] {
         let arc = projectsStore.projects().map { project in
             CardDescriptor(
@@ -128,7 +130,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 isEnabledByDefault: true
             )
         }
-        return CardCatalog.all(including: arc + ddev + plain)
+        return CardCatalog.all(
+            including: CardCatalog.projectOrder(arc: arc, ddev: ddev, plain: plain)
+        )
     }
 
     private var visibleCards: [CardID] {

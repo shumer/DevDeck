@@ -359,10 +359,11 @@ Everything else lives in its menu:
   their own group below the built-in cards.
 - **Keep on desktop / Float above windows** — panels behind your windows, or above them.
 - **Lock position** — stop dragging once the layout is right.
-- **Tidy panels into columns** — close up gaps without resetting where you put them. It
-  anchors on the topmost panel and stacks downwards, starting a new column beside it whenever
-  the next card would hang below the screen, so a deck of six cannot push its last card under
-  the bottom edge where nothing can grab it.
+- **Tidy panels into columns** — close up gaps without resetting where you put them. It anchors
+  on the topmost panel and stacks downwards, starting a new column beside it whenever the next
+  card would hang below the screen, so a deck of six cannot push its last card under the bottom
+  edge where nothing can grab it. The order it lays out is the deck's own: the built-in cards,
+  then Arc projects, then DDEV, then the plain ones, each group alphabetical.
 - **Start at login**, **Refresh now**, **Settings…**
 
 The settings window is three columns: the sections — GitHub accounts, Arc projects, DDEV
@@ -442,7 +443,7 @@ Sources/
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (226 tests, offline)
+  DevDeckTests/    the suite (227 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

@@ -26,22 +26,24 @@ public struct CardLayout: Codable, Sendable, Equatable {
         CardLayout(settings: CardCatalog.all.map { CardSetting(id: $0.id, isEnabled: $0.isEnabledByDefault) })
     }
 
-    /// Known cards in display order, with unknown identifiers dropped and new cards appended.
+    /// Known cards in display order, which is the catalog's order.
+    ///
+    /// The stored settings say only whether a card is shown, never where it sits. They used to
+    /// carry the order as well, and that order was an accident: a card was appended the first
+    /// time it was switched on, so the deck ended up in the sequence the projects happened to be
+    /// added in, and "Tidy panels" laid them out that way — which is why tidying read as
+    /// scrambling. Order belongs to the catalog, where it can be a rule someone chose.
     public func resolved(catalog: [CardDescriptor] = CardCatalog.all) -> [ResolvedCard] {
-        var seen = Set<CardID>()
-        var result: [ResolvedCard] = []
-
-        for setting in settings {
-            guard let descriptor = catalog.first(where: { $0.id == setting.id }) else { continue }
-            guard seen.insert(setting.id).inserted else { continue }
-            result.append(ResolvedCard(descriptor: descriptor, isEnabled: setting.isEnabled))
+        let stored = Dictionary(
+            settings.map { ($0.id, $0.isEnabled) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return catalog.map { descriptor in
+            ResolvedCard(
+                descriptor: descriptor,
+                isEnabled: stored[descriptor.id] ?? descriptor.isEnabledByDefault
+            )
         }
-
-        for descriptor in catalog where !seen.contains(descriptor.id) {
-            result.append(ResolvedCard(descriptor: descriptor, isEnabled: descriptor.isEnabledByDefault))
-        }
-
-        return result
     }
 
     /// Cards that should actually be rendered and refreshed.
@@ -61,11 +63,6 @@ public struct CardLayout: Codable, Sendable, Equatable {
         }
     }
 
-    public mutating func move(_ id: CardID, to index: Int) {
-        guard let current = settings.firstIndex(where: { $0.id == id }) else { return }
-        let setting = settings.remove(at: current)
-        settings.insert(setting, at: min(max(index, 0), settings.count))
-    }
 }
 
 /// A catalog entry combined with the user's preference for it.
