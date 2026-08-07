@@ -94,11 +94,22 @@ public struct LocalProjectService: Sendable {
 
         do {
             let response = try await httpClient.send(HTTPRequest(url: healthURL))
-            // Any answer counts. A dev server that returns 404 on `/` is still serving, and
-            // demanding a 2xx would report half the projects here as down.
+            if Self.isServing(response.statusCode) {
+                return LocalProjectStatus(
+                    state: .running,
+                    detail: response.isSuccess ? nil : "answered \(response.statusCode)",
+                    checkedAt: clock.now,
+                    pid: isAlive ? pid : nil,
+                    branch: branch,
+                    repositoryURL: repositoryURL,
+                    hasLog: hasLog
+                )
+            }
+            // Something answered, and it was not this project. Treated exactly like silence,
+            // with the code kept so the card can say which.
             return LocalProjectStatus(
-                state: .running,
-                detail: response.isSuccess ? nil : "answered \(response.statusCode)",
+                state: isAlive ? .starting : .stopped,
+                detail: "\(healthURL.absoluteString) answered \(response.statusCode)",
                 checkedAt: clock.now,
                 pid: isAlive ? pid : nil,
                 branch: branch,
@@ -118,6 +129,21 @@ public struct LocalProjectService: Sendable {
                 hasLog: hasLog
             )
         }
+    }
+
+    /// Whether an answer means "this project is up".
+    ///
+    /// Not simply "anything answered", which is what this used to say. A local port is a shared
+    /// resource: a Docker container from another project held 8080, answered the configured
+    /// `/health` with a 404, and the card reported a backend nobody had started as running. A
+    /// 404 is a server saying it does not know this path, which is the answer of somebody else's
+    /// server — and a 500 is not something you can open either.
+    ///
+    /// Redirects count, and so do 401 and 403: those are this project's own server saying "yes,
+    /// and you need to sign in", which is a normal thing for a health path to do.
+    public static func isServing(_ statusCode: Int) -> Bool {
+        if (200..<400).contains(statusCode) { return true }
+        return statusCode == 401 || statusCode == 403
     }
 
     /// Waits for the site to answer after a start.

@@ -43,8 +43,16 @@ of it is the same.
    screen explains. A recursive `pgrep -P` walk kills the descendants first. A stop command of
    the user's own always wins over this.
 4. **The health URL decides "running"** — the same rule as Arc's engine probe and DDEV's `ddev
-   list`, and the reason a stack started by hand in a terminal still reads correctly. Any answer
-   counts, including a 404: a dev server that serves nothing at `/` is still serving.
+   list`, and the reason a stack started by hand in a terminal still reads correctly. Up means
+   2xx, 3xx, 401 or 403; a 404 or a 500 does not.
+
+   That last part was learned the hard way. The rule first said "any answer counts", on the
+   reasoning that a dev server which serves nothing at `/` is still serving. But a local port is
+   a shared resource: a Docker container belonging to another project held 8080, answered the
+   configured `/health` with a 404, and the card reported a backend nobody had started as
+   running. A 404 is a server saying it does not know this path — which is the answer of
+   somebody else's server. 401 and 403 still count, because those are this project's own server
+   asking you to sign in.
 5. **A live process and a silent URL is `starting`**, not `stopped`. That is a dev server
    compiling, and it resolves itself in seconds.
 6. **The folder is read for a suggestion once**, when the project is added — a compose file, a
