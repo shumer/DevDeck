@@ -156,13 +156,16 @@ Three things keep the surface honest, and they work together:
 
 - the window is pinned to `darkAqua`, so the `hudWindow` material stays dark whatever the system
   appearance is doing;
-- a veil of `black` at 22% sits between the blur and the content;
+- a veil of `black` at 30% sits between the blur and the content;
 - a 1-point white hairline at 16% gives the panel an edge over a busy wallpaper.
 
-The veil used to be 42% and nothing else. That is enough black to stop being glass and start
-being grey paint, which is exactly how the cards read next to the sibling widget on the same
-desktop. Contrast is a property of the surface, not something to chase by nudging text colours
-per card — but neither is it something to buy by draining the colour out of the surface.
+The veil is the only dial on this surface, and it has been set twice from opposite complaints.
+At 42% it is enough black to stop being glass and start being grey paint, which is how the cards
+read next to the sibling widget. At 22% each panel takes the colour of whatever is behind it, so
+on a wallpaper with dark trunks on one side and sunlight on the other, six panels looked like
+six different materials. 30% keeps the desktop's colour and keeps the panels agreeing with each
+other. Contrast is a property of the surface, not something to chase by nudging text colours per
+card — but neither is it something to buy by draining the colour out of it.
 
 `DeckTheme`'s three state colours are that widget's values to the digit. Two decks side by side
 with greens a shade apart look like a mistake rather than a decision.
