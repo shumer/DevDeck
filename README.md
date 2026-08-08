@@ -382,6 +382,10 @@ happens to be the main one comes and goes. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
 panel for the same menu.
 
+Buttons work on the first click even though the deck sits behind your windows and is never the
+frontmost app — which is not what AppKit does by default, and is why they used to need pressing
+twice.
+
 Anything clickable lights up under the pointer and turns the cursor into a hand. Because the
 panels sit behind other windows, that tracking starts once the deck itself has been clicked —
 so buttons and links also carry a resting fill rather than relying on hover to look pressable.
@@ -443,7 +447,7 @@ Sources/
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (227 tests, offline)
+  DevDeckTests/    the suite (229 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

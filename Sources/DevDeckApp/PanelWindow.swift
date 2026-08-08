@@ -17,6 +17,18 @@ extension DisplayMode {
     }
 }
 
+/// A hosting view that acts on the first click, even when the app is not frontmost.
+///
+/// AppKit's default is the opposite: a click on an inactive window activates the application and
+/// stops there, so the control under the pointer never sees it. For a normal window that is
+/// sensible — you do not want a stray click in a document you were only bringing forward. For
+/// this deck it is exactly wrong: the panels live *behind* other windows and are never
+/// frontmost, so every button needed pressing twice, and the first press looked like a button
+/// that did nothing.
+final class PanelHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// One borderless, frosted panel hosting a single card.
 final class PanelWindow: NSWindow {
     let card: CardID

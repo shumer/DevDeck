@@ -182,7 +182,12 @@ final class DeckController: ObservableObject {
                     checkedAt: Date()
                 )
                 self.stackStatuses[project.id] = await service.waitUntilRunning()
-            case .stop, .rebuild, .teardown:
+            case .stop, .teardown:
+                // Verified rather than assumed. `fusion stop` returns before the containers are
+                // down, and a stop that silently did nothing used to be repainted green by the
+                // next poll as though the button had never been pressed.
+                self.stackStatuses[project.id] = await service.waitUntilStopped()
+            case .rebuild:
                 self.stackStatuses[project.id] = await service.status()
             }
         }

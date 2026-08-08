@@ -91,6 +91,9 @@ public struct ArcProjectCard: View {
     private var heroState: (color: Color, tone: CardStateTone) {
         if isDockerBlocked { return (DockerGate.color(docker), .alert) }
         switch status.state {
+        // Running with something to say about it is not the same as running: a stop that did
+        // not take effect leaves the stack up, and the card has to look wrong about it.
+        case .running where status.detail != nil: return (DeckTheme.amber, .alert)
         case .running: return (DeckTheme.green, .good)
         case .working: return (DeckTheme.amber, .alert)
         case .stopped, .unavailable: return (DeckTheme.label, .neutral)
@@ -105,7 +108,7 @@ public struct ArcProjectCard: View {
         // "local stopped" here against "not running" there made two identical states look like
         // two different ones.
         switch status.state {
-        case .running: return "running"
+        case .running: return status.detail ?? "running"
         case .working: return status.detail ?? "working…"
         case .stopped: return "stopped"
         case .unavailable: return "not configured"

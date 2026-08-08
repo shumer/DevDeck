@@ -194,7 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if let remembered = preferences.height(for: card) {
             size.height = remembered
         }
-        let hosting = NSHostingView(rootView: CardHostView(controller: controller, card: card))
+        let hosting = PanelHostingView(rootView: CardHostView(controller: controller, card: card))
         let window = PanelWindow(card: card, size: size, origin: origin(for: card, size: size), content: hosting)
         window.level = displayMode.windowLevel
         window.isMovableByWindowBackground = !preferences.isLocked
