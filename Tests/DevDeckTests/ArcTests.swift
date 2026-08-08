@@ -348,6 +348,39 @@ func runArcTests(_ run: TestRun) async {
         try expectNil(LocalStackService.engineVersion(from: Data("{}".utf8)))
     }
 
+    await run.test("a stop that did not take effect says so instead of going quiet") {
+        // The failure this exists for: `fusion stop` returns, the containers stay up, and the
+        // next poll paints the card green again as though the button had never been pressed.
+        let clock = MutableDateProvider(now: Date(timeIntervalSince1970: 0))
+        let service = LocalStackService(
+            project: makeProject(),
+            runner: StubCommandRunner([]),
+            httpClient: FakeHTTPClient(routes: [("localhost", .success(.json("{}")))]),
+            clock: clock,
+            sleeper: AdvancingSleeper(clock: clock)
+        )
+        let status = await service.waitUntilStopped(timeout: 10, pollInterval: 2)
+        try expectEqual(status.state, .running, "it is still up, and the card must not pretend otherwise")
+        try expectEqual(status.detail, "stop did not take effect — still answering")
+    }
+
+    await run.test("a stop that worked resolves as soon as the engine goes quiet") {
+        let clock = MutableDateProvider(now: Date(timeIntervalSince1970: 0))
+        let service = LocalStackService(
+            project: makeProject(),
+            runner: StubCommandRunner([]),
+            httpClient: FakeHTTPClient([
+                .success(.json("{}")),
+                .failure(APIError.transport("connection refused")),
+            ]),
+            clock: clock,
+            sleeper: AdvancingSleeper(clock: clock)
+        )
+        let status = await service.waitUntilStopped(timeout: 10, pollInterval: 2)
+        try expectEqual(status.state, .stopped)
+        try expectNil(status.detail, "nothing to explain when it simply worked")
+    }
+
     run.section("Arc — local stack actions")
 
     await run.test("each action runs its own command") {

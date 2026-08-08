@@ -58,6 +58,12 @@ refresh: a stack that just came up should appear within seconds, and the probe i
 cheap. A project mid-command is skipped by the poll so the card cannot flicker back to
 "stopped" during a restart.
 
+**A command's outcome is verified, not assumed.** `fusion daemon` returns before the engine
+serves and `fusion stop` returns before the containers are down, so both are followed by a wait
+— `waitUntilRunning` and `waitUntilStopped`. The second one matters more than it looks: without
+it a stop that quietly did nothing was repainted green by the next poll, as though the button
+had never been pressed. Now the card stays on "running" and says why.
+
 ## Local project cards
 
 Arc, DDEV and plain project cards are the same shape and are built from the same pieces —
@@ -209,6 +215,11 @@ fixed and shifting the rest of the column out of the way.
 - `.floating` → `.floating`.
 
 Locking sets `isMovableByWindowBackground = false`.
+
+**The panels act on the first click.** `PanelHostingView` overrides `acceptsFirstMouse`, because
+AppKit's default — a click on an inactive window activates the app and goes no further — is
+exactly wrong here. These panels live *behind* other windows and are never frontmost, so without
+it every button needs pressing twice and the first press looks like a button that does nothing.
 
 Two details keep a deck stable across launches, and both were bugs first:
 

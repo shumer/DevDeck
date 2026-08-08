@@ -133,6 +133,39 @@ public struct LocalStackService: Sendable {
         )
     }
 
+    /// Waits for the engine to stop answering after a stop.
+    ///
+    /// Because a stop that quietly did nothing is the failure this cannot afford. The command
+    /// returns before the containers are down, so checking once says "still running" for a stop
+    /// that worked; not checking at all lets the next poll say "running" for one that did not,
+    /// with no hint that anything was even attempted.
+    public func waitUntilStopped(
+        timeout: TimeInterval = 30,
+        pollInterval: TimeInterval = 2
+    ) async -> LocalStackStatus {
+        let deadline = clock.now.addingTimeInterval(timeout)
+        var latest = await status()
+
+        while latest.isRunning, clock.now < deadline {
+            try? await sleeper.sleep(seconds: pollInterval)
+            latest = await status()
+        }
+
+        guard latest.isRunning else { return latest }
+        // Still serving. Said plainly on the card rather than letting the poll paint it green
+        // again as though the button had never been pressed.
+        return LocalStackStatus(
+            state: .running,
+            engineVersion: latest.engineVersion,
+            containers: latest.containers,
+            detail: "stop did not take effect — still answering",
+            checkedAt: clock.now,
+            siteURL: latest.siteURL,
+            branch: latest.branch,
+            repositoryURL: latest.repositoryURL
+        )
+    }
+
     /// Asks the engine directly rather than inspecting processes.
     ///
     /// The point is that the answer stays true when the stack was started by hand in a
