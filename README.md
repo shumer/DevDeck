@@ -148,6 +148,19 @@ scripts/seed-token.sh        # optional: copies a token from env.local into the 
 scripts/smoke-test.sh        # optional: one real API call, prints counts, never the token
 ```
 
+`seed-token.sh` takes an account and a variable name, because one token per account is the
+point — a fine-grained token is approved per organisation, so no single one covers every
+employer:
+
+```bash
+scripts/seed-token.sh --var SHUMER_GITHUB_TOKEN          # a differently named variable
+scripts/seed-token.sh --account work --var WORK_TOKEN    # the second account's own token
+```
+
+The account id is the one in **Settings → GitHub accounts**; `default` is the first account and
+keeps the un-suffixed Keychain key. The token is checked against the API before it is stored, so
+a rejected one never lands in the Keychain to fail invisibly later.
+
 Without a token the app opens its settings window on first launch; paste one there instead.
 It is verified against the API before it is stored, and it only ever lives in the login
 Keychain.
