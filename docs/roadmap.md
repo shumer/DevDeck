@@ -38,6 +38,8 @@
   logos parsed from their own SVGs, a card 352 points wide so `Terminal` fits, and glass that
   is glass again rather than grey paint. Three directions were mocked up first; see
   [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
+- **Commands find version-managed tools** — the `PATH` is resolved from an interactive shell
+  once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
 - **The deck has a canonical order** — Arc, DDEV, then plain projects, alphabetical within each

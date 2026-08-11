@@ -58,6 +58,16 @@ refresh: a stack that just came up should appear within seconds, and the probe i
 cheap. A project mid-command is skipped by the poll so the card cannot flicker back to
 "stopped" during a restart.
 
+**Commands run with the `PATH` a terminal has.** `zsh -lc` is a login shell but not an
+interactive one, so it reads `.zprofile` and never `.zshrc` — which is where nvm, rbenv and
+pyenv install themselves. The symptom is as confusing as symptoms get: `ddev` and `docker` work,
+because they are in `/usr/local/bin` and come from `/etc/paths`, while `npx` reports "command
+not found" from a machine that plainly has it. `ShellPath` asks an interactive login shell for
+its `PATH` once per launch, finds the answer by a printed marker — an interactive profile prints
+things, this one prints `exec zsh` — and every command afterwards runs non-interactively with
+that `PATH` in its environment. Running everything interactively would also work, and would put
+that banner in the middle of output something is parsing.
+
 **A command's outcome is verified, not assumed.** `fusion daemon` returns before the engine
 serves and `fusion stop` returns before the containers are down, so both are followed by a wait
 — `waitUntilRunning` and `waitUntilStopped`. The second one matters more than it looks: without
