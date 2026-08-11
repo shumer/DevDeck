@@ -52,7 +52,21 @@ public struct CommandResult: Sendable, Equatable {
 
 /// Runs a shell command in a directory.
 public protocol CommandRunning: Sendable {
-    func run(_ command: String, in directory: URL, timeout: TimeInterval) async throws -> CommandResult
+    /// `isInteractive` is for the one command that has to be: asking the shell what its `PATH`
+    /// is. Everything else runs non-interactively, because an interactive profile prints things
+    /// and those things land in output somebody is parsing.
+    func run(
+        _ command: String,
+        in directory: URL,
+        timeout: TimeInterval,
+        isInteractive: Bool
+    ) async throws -> CommandResult
+}
+
+public extension CommandRunning {
+    func run(_ command: String, in directory: URL, timeout: TimeInterval) async throws -> CommandResult {
+        try await run(command, in: directory, timeout: timeout, isInteractive: false)
+    }
 }
 
 public enum CommandError: Error, Sendable, Equatable {
@@ -61,12 +75,16 @@ public enum CommandError: Error, Sendable, Equatable {
     case launchFailed(String)
 }
 
-/// Runs commands through an interactive login shell.
+/// Runs commands through a login shell, with the `PATH` the user's terminal actually has.
 ///
-/// This is not decoration: an app launched from Finder inherits a bare `PATH` with no
-/// Homebrew and no nvm, so a plain `npx` cannot be found and the button appears to do
-/// nothing. `zsh -lc` sources the user's profile and gives the command the same environment
-/// their terminal has.
+/// Neither half is decoration. An app launched from Finder inherits a bare environment, so a
+/// plain `npx` cannot be found and the button appears to do nothing; `zsh -lc` sources the
+/// profile and fixes most of that. What it does not fix is anything installed by a version
+/// manager: a login shell that is not interactive never reads `.zshrc`, which is where nvm,
+/// rbenv and pyenv live. That produced the most confusing possible symptom — `ddev` and
+/// `docker` working, both being in `/usr/local/bin`, while `npx` reported "command not found"
+/// from a machine that plainly has it. `ShellPath` asks an interactive shell once and every
+/// command gets the answer.
 public struct ShellCommandRunner: CommandRunning {
     private let shell: String
 
@@ -77,7 +95,8 @@ public struct ShellCommandRunner: CommandRunning {
     public func run(
         _ command: String,
         in directory: URL,
-        timeout: TimeInterval = 120
+        timeout: TimeInterval = 120,
+        isInteractive: Bool = false
     ) async throws -> CommandResult {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory),
@@ -85,6 +104,10 @@ public struct ShellCommandRunner: CommandRunning {
         else {
             throw CommandError.missingDirectory(directory.path)
         }
+
+        // Resolved once per launch and reused. A command that needs nvm — `npx`, `pnpm` — is
+        // otherwise not found at all when the app was launched from Finder.
+        let path = isInteractive ? nil : await ShellPath.shared.value(runner: self)
 
         // Everything below blocks, and the caller is on the main actor: without hopping to a
         // background queue the app freezes for as long as the command runs, which for a stack
@@ -96,7 +119,9 @@ public struct ShellCommandRunner: CommandRunning {
                         shell: shell,
                         command: command,
                         directory: directory,
-                        timeout: timeout
+                        timeout: timeout,
+                        isInteractive: isInteractive,
+                        path: path
                     ))
                 } catch {
                     continuation.resume(throwing: error)
@@ -111,12 +136,21 @@ public struct ShellCommandRunner: CommandRunning {
         shell: String,
         command: String,
         directory: URL,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        isInteractive: Bool,
+        path: String?
     ) throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: shell)
-        process.arguments = ["-lc", command]
+        // `-i` only for the PATH probe: a login shell alone never reads `.zshrc`, which is where
+        // version managers install themselves.
+        process.arguments = [isInteractive ? "-ilc" : "-lc", command]
         process.currentDirectoryURL = directory
+        if let path {
+            var environment = ProcessInfo.processInfo.environment
+            environment["PATH"] = path
+            process.environment = environment
+        }
 
         let output = Pipe()
         let error = Pipe()
@@ -172,7 +206,12 @@ public actor StubCommandRunner: CommandRunning {
         self.responses = responses.map { (match: $0.0, result: $0.1) }
     }
 
-    public func run(_ command: String, in directory: URL, timeout: TimeInterval) async throws -> CommandResult {
+    public func run(
+        _ command: String,
+        in directory: URL,
+        timeout: TimeInterval,
+        isInteractive: Bool
+    ) async throws -> CommandResult {
         commands.append(command)
         guard let match = responses.first(where: { command.contains($0.match) }) else {
             return CommandResult(exitCode: 127, standardOutput: "", standardError: "command not found")

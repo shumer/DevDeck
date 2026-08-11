@@ -249,9 +249,12 @@ you use, the browser they open in, and control of its local Fusion stack.
 - **Folder** opens the checkout in Finder, **Terminal** opens it in iTerm, Warp or Terminal,
   whichever is installed.
 
-Commands run through a login shell (`zsh -lc`) on purpose. An app launched from Finder
-inherits a bare `PATH` with no Homebrew and no nvm, so a plain `npx` would not be found and
-the buttons would appear to do nothing.
+Commands run through a login shell (`zsh -lc`) **with the `PATH` your terminal actually has**.
+An app launched from Finder inherits a bare environment, and a login shell alone does not fix
+it: it reads `.zprofile` but never `.zshrc`, where nvm and friends live. So the app asks an
+interactive shell for its `PATH` once at launch and gives it to every command. Without that,
+`ddev` and `docker` work — they are in `/usr/local/bin` — and `npx` reports "command not found"
+from a machine that plainly has it.
 
 ## DDEV projects
 
@@ -447,7 +450,7 @@ Sources/
   DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (229 tests, offline)
+  DevDeckTests/    the suite (232 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

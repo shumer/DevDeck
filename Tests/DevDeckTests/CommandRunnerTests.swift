@@ -77,4 +77,41 @@ func runCommandRunnerTests(_ run: TestRun) async {
         let result = try await runner.run("sleep 0.2; echo done", in: temporary, timeout: 10)
         try expect(result.succeeded)
     }
+
+    run.section("Commands — the PATH a terminal actually has")
+
+    await run.test("the answer is found among whatever the profile prints on its way past") {
+        // A real `.zshrc` here prints `exec zsh` before anything else, which is why the value
+        // is marked rather than simply read off the last line.
+        let noisy = """
+        \u{1B}[32mexec zsh\u{1B}[39m
+        Welcome back!
+
+        \(ShellPath.marker)/Users/x/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin
+        """
+        try expectEqual(
+            ShellPath.parse(noisy),
+            "/Users/x/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin"
+        )
+    }
+
+    await run.test("a shell that says nothing useful falls back rather than breaking every command") {
+        try expectNil(ShellPath.parse(""))
+        try expectNil(ShellPath.parse("command not found"))
+        try expectNil(ShellPath.parse("\(ShellPath.marker)nonsense"), "a PATH has directories in it")
+        try expect(ShellPath.fallback.contains("/opt/homebrew/bin"), "both Homebrew prefixes")
+        try expect(ShellPath.fallback.contains("/usr/local/bin"))
+    }
+
+    await run.test("a command run through the real runner can find a version-managed tool") {
+        // The bug this exists for: `npx` lives under nvm, nvm installs itself in `.zshrc`, and a
+        // non-interactive login shell never reads it. This asserts the resolved PATH is at least
+        // as good as the one this suite is running with.
+        let runner = ShellCommandRunner()
+        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        let result = try await runner.run("echo $PATH", in: home, timeout: 30)
+        try expect(result.succeeded)
+        try expect(result.standardOutput.contains("/usr/local/bin") || result.standardOutput.contains("/opt/homebrew/bin"),
+                   "got: \(result.standardOutput)")
+    }
 }
