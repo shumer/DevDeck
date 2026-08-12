@@ -381,6 +381,54 @@ func runArcTests(_ run: TestRun) async {
         try expectNil(status.detail, "nothing to explain when it simply worked")
     }
 
+    await run.test("a start that printed a reason shows the reason, not the silence") {
+        // The real failure: ddev-router holds port 80, `fusion daemon` cannot bind, four of ten
+        // containers come up, and the command exits zero having said exactly what was wrong.
+        let clock = MutableDateProvider(now: Date(timeIntervalSince1970: 0))
+        let service = LocalStackService(
+            project: makeProject(),
+            runner: StubCommandRunner([]),
+            httpClient: FakeHTTPClient(routes: [("localhost", .failure(APIError.transport("refused")))]),
+            clock: clock,
+            sleeper: AdvancingSleeper(clock: clock)
+        )
+        let hint = "Error response from daemon: ports are not available: "
+            + "exposing port TCP 0.0.0.0:80 -> 127.0.0.1:0: listen tcp 0.0.0.0:80: bind: address already in use"
+        let status = await service.waitUntilRunning(timeout: 10, pollInterval: 2, hint: hint)
+        try expectEqual(status.state, .stopped)
+        try expectEqual(status.detail, hint, "what the command said beats the fact that it went quiet")
+    }
+
+    await run.test("with nothing said, the card still names the URL it tried") {
+        let clock = MutableDateProvider(now: Date(timeIntervalSince1970: 0))
+        let service = LocalStackService(
+            project: makeProject(),
+            runner: StubCommandRunner([]),
+            httpClient: FakeHTTPClient(routes: [("localhost", .failure(APIError.transport("refused")))]),
+            clock: clock,
+            sleeper: AdvancingSleeper(clock: clock)
+        )
+        let status = await service.waitUntilRunning(timeout: 10, pollInterval: 2)
+        try expectEqual(status.detail, "started, but http://localhost/release never answered")
+    }
+
+    await run.test("a running command hands over its lines as they arrive") {
+        let output = "Container fusion-engine Starting\nContainer fusion-engine Started\nbind: address already in use"
+        let runner = StubCommandRunner([
+            ("fusion", CommandResult(exitCode: 0, standardOutput: output, standardError: "")),
+        ])
+        let service = LocalStackService(
+            project: makeProject(),
+            runner: runner,
+            httpClient: FakeHTTPClient([])
+        )
+
+        let seen = Box<[String]>([])
+        _ = await service.perform(.start) { line in seen.mutate { $0.append(line) } }
+        try expectEqual(seen.value.count, 3, "one call per line, while the command is still going")
+        try expectEqual(seen.value.last, "bind: address already in use")
+    }
+
     run.section("Arc — local stack actions")
 
     await run.test("each action runs its own command") {

@@ -158,7 +158,12 @@ final class DeckController: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             let service = LocalStackService(project: project, runner: self.commandRunner)
-            let result = await service.perform(action)
+            // Every line the command prints lands on the card as it arrives. A Fusion start
+            // takes a minute and says plenty on the way; showing none of it is what made the
+            // card look asleep while it was working.
+            let result = await service.perform(action) { [weak self] line in
+                Task { @MainActor in self?.noteProgress(line, for: project) }
+            }
 
             if let result, !result.succeeded {
                 // Show why rather than silently flipping back to "stopped": a failed start is
@@ -179,9 +184,15 @@ final class DeckController: ObservableObject {
                 self.stackStatuses[project.id] = LocalStackStatus(
                     state: .working,
                     detail: "waiting for the engine…",
-                    checkedAt: Date()
+                    checkedAt: Date(),
+                    progressLine: self.stackStatuses[project.id]?.progressLine
                 )
-                self.stackStatuses[project.id] = await service.waitUntilRunning()
+                // `fusion daemon` reports "ports are not available … address already in use" and
+                // then exits zero, so the failure is in what it said rather than in how it
+                // ended. Carried here, that line is what the card shows instead of a shrug.
+                self.stackStatuses[project.id] = await service.waitUntilRunning(
+                    hint: result?.failureLine
+                )
             case .stop, .teardown:
                 // Verified rather than assumed. `fusion stop` returns before the containers are
                 // down, and a stop that silently did nothing used to be repainted green by the
@@ -191,6 +202,13 @@ final class DeckController: ObservableObject {
                 self.stackStatuses[project.id] = await service.status()
             }
         }
+    }
+
+    /// Puts the newest line from a running command on the card.
+    private func noteProgress(_ line: String, for project: ArcProject) {
+        guard var status = stackStatuses[project.id], status.isBusy else { return }
+        status.progressLine = line
+        stackStatuses[project.id] = status
     }
 
     // MARK: DDEV projects

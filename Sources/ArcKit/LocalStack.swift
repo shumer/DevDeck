@@ -27,6 +27,9 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
     public var branch: String?
     /// The repository this checkout came from, when it has an origin.
     public var repositoryURL: URL?
+    /// The last line the running command printed. A start takes a minute and says plenty on the
+    /// way; showing none of it is what made the card look asleep.
+    public var progressLine: String?
 
     public init(
         state: LocalStackState,
@@ -36,7 +39,8 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
         checkedAt: Date? = nil,
         siteURL: URL? = nil,
         branch: String? = nil,
-        repositoryURL: URL? = nil
+        repositoryURL: URL? = nil,
+        progressLine: String? = nil
     ) {
         self.state = state
         self.engineVersion = engineVersion
@@ -46,6 +50,7 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
         self.siteURL = siteURL
         self.branch = branch
         self.repositoryURL = repositoryURL
+        self.progressLine = progressLine
     }
 
     public static let unavailable = LocalStackStatus(state: .unavailable, detail: "No project folder set")
@@ -111,9 +116,14 @@ public struct LocalStackService: Sendable {
     /// `fusion daemon` returns as soon as the containers are up, but the engine needs a while
     /// longer before it serves anything. Checking once and giving up is how a stack that is
     /// still warming reads as "did not start".
+    /// `hint` is what the start command said. When the engine never answers, that line is the
+    /// answer — `fusion daemon` prints "ports are not available … address already in use" and
+    /// then exits zero, so without carrying it the card can only report the silence and not its
+    /// cause.
     public func waitUntilRunning(
-        timeout: TimeInterval = 90,
-        pollInterval: TimeInterval = 2
+        timeout: TimeInterval = 180,
+        pollInterval: TimeInterval = 3,
+        hint: String? = nil
     ) async -> LocalStackStatus {
         let deadline = clock.now.addingTimeInterval(timeout)
         var latest = await status()
@@ -124,12 +134,14 @@ public struct LocalStackService: Sendable {
         }
 
         guard !latest.isRunning else { return latest }
-        // The command succeeded but nothing answers: almost always the health URL points at
-        // the wrong port, so say which URL was tried rather than just "stopped".
+        // The command exited and nothing answers. What it printed on the way out is worth far
+        // more than the fact of the silence.
         return LocalStackStatus(
             state: .stopped,
-            detail: "started, but \(project.healthURL?.absoluteString ?? "the health URL") never answered",
-            checkedAt: clock.now
+            detail: hint ?? "started, but \(project.healthURL?.absoluteString ?? "the health URL") never answered",
+            checkedAt: clock.now,
+            branch: latest.branch,
+            repositoryURL: latest.repositoryURL
         )
     }
 
@@ -247,23 +259,38 @@ public struct LocalStackService: Sendable {
 
     // MARK: Actions
 
-    public func perform(_ action: LocalStackAction) async -> CommandResult? {
+    public func perform(
+        _ action: LocalStackAction,
+        onOutput: (@Sendable (String) -> Void)? = nil
+    ) async -> CommandResult? {
         guard let folder = project.folderURL else { return nil }
 
         switch action {
         case .start:
-            return try? await runner.run(project.startCommand, in: folder, timeout: 600)
+            return try? await runner.run(
+                project.startCommand, in: folder, timeout: 600, isInteractive: false, onOutput: onOutput
+            )
         case .stop:
-            return try? await runner.run(project.stopCommand, in: folder, timeout: 300)
+            return try? await runner.run(
+                project.stopCommand, in: folder, timeout: 300, isInteractive: false, onOutput: onOutput
+            )
         case .rebuild:
-            return try? await runner.run(project.rebuildCommand, in: folder, timeout: 900)
+            return try? await runner.run(
+                project.rebuildCommand, in: folder, timeout: 900, isInteractive: false, onOutput: onOutput
+            )
         case .teardown:
-            return try? await runner.run(project.teardownCommand, in: folder, timeout: 300)
+            return try? await runner.run(
+                project.teardownCommand, in: folder, timeout: 300, isInteractive: false, onOutput: onOutput
+            )
         case .restart:
             // Sequential on purpose: starting before the old containers release their ports
             // fails in a way that looks like the stack is broken.
-            _ = try? await runner.run(project.stopCommand, in: folder, timeout: 300)
-            return try? await runner.run(project.startCommand, in: folder, timeout: 600)
+            _ = try? await runner.run(
+                project.stopCommand, in: folder, timeout: 300, isInteractive: false, onOutput: onOutput
+            )
+            return try? await runner.run(
+                project.startCommand, in: folder, timeout: 600, isInteractive: false, onOutput: onOutput
+            )
         }
     }
 }

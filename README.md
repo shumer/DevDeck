@@ -402,6 +402,11 @@ Buttons work on the first click even though the deck sits behind your windows an
 frontmost app — which is not what AppKit does by default, and is why they used to need pressing
 twice.
 
+A long command narrates itself. Starting an Arc stack takes about a minute, and while it runs
+the card shows the line the command has just printed instead of nothing at all. If the stack
+never comes up, the card keeps the reason the command gave — a port already taken, most often —
+rather than reporting the silence that followed.
+
 Anything clickable lights up under the pointer and turns the cursor into a hand. Because the
 panels sit behind other windows, that tracking starts once the deck itself has been clicked —
 so buttons and links also carry a resting fill rather than relying on hover to look pressable.

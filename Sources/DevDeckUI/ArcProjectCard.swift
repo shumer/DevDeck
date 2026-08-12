@@ -58,8 +58,11 @@ public struct ArcProjectCard: View {
             CardMetaBlock(
                 branch: status.branch,
                 repositoryURL: status.repositoryURL,
-                leading: project.organization,
-                trailing: status.engineVersion,
+                // While a command runs, the line it just printed takes the meta slot: it is the
+                // only thing on the card that is changing, and it answers "is anything
+                // happening" without the card having to grow a log window.
+                leading: status.isBusy ? (status.progressLine ?? project.organization) : project.organization,
+                trailing: status.isBusy ? nil : status.engineVersion,
                 onOpenRepository: onOpen
             )
             chips
