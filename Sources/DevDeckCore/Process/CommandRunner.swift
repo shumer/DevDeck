@@ -55,17 +55,39 @@ public protocol CommandRunning: Sendable {
     /// `isInteractive` is for the one command that has to be: asking the shell what its `PATH`
     /// is. Everything else runs non-interactively, because an interactive profile prints things
     /// and those things land in output somebody is parsing.
+    /// `onOutput` receives each line as it arrives, which is the only way to say anything about
+    /// a command that takes a minute: waiting for it to exit and then reporting is exactly the
+    /// silence that makes a button look broken.
     func run(
         _ command: String,
         in directory: URL,
         timeout: TimeInterval,
-        isInteractive: Bool
+        isInteractive: Bool,
+        onOutput: (@Sendable (String) -> Void)?
     ) async throws -> CommandResult
 }
 
 public extension CommandRunning {
     func run(_ command: String, in directory: URL, timeout: TimeInterval) async throws -> CommandResult {
-        try await run(command, in: directory, timeout: timeout, isInteractive: false)
+        try await run(command, in: directory, timeout: timeout, isInteractive: false, onOutput: nil)
+    }
+
+    func run(
+        _ command: String,
+        in directory: URL,
+        timeout: TimeInterval,
+        onOutput: @escaping @Sendable (String) -> Void
+    ) async throws -> CommandResult {
+        try await run(command, in: directory, timeout: timeout, isInteractive: false, onOutput: onOutput)
+    }
+
+    func run(
+        _ command: String,
+        in directory: URL,
+        timeout: TimeInterval,
+        isInteractive: Bool
+    ) async throws -> CommandResult {
+        try await run(command, in: directory, timeout: timeout, isInteractive: isInteractive, onOutput: nil)
     }
 }
 
@@ -96,7 +118,8 @@ public struct ShellCommandRunner: CommandRunning {
         _ command: String,
         in directory: URL,
         timeout: TimeInterval = 120,
-        isInteractive: Bool = false
+        isInteractive: Bool = false,
+        onOutput: (@Sendable (String) -> Void)? = nil
     ) async throws -> CommandResult {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory),
@@ -121,7 +144,8 @@ public struct ShellCommandRunner: CommandRunning {
                         directory: directory,
                         timeout: timeout,
                         isInteractive: isInteractive,
-                        path: path
+                        path: path,
+                        onOutput: onOutput
                     ))
                 } catch {
                     continuation.resume(throwing: error)
@@ -132,13 +156,49 @@ public struct ShellCommandRunner: CommandRunning {
 
     private static let queue = DispatchQueue(label: "com.shumer.devdeck.commands", qos: .userInitiated)
 
+    /// Reads to the end, handing over whole lines as they arrive.
+    ///
+    /// Still one read loop per pipe, so the deadlock the two-reader design exists to avoid stays
+    /// avoided; the only difference is that the caller hears about a line before the process
+    /// exits. Tools that draw progress with carriage returns — compose does — are split on those
+    /// too, or the whole run arrives as one enormous line at the end.
+    private static func drain(
+        _ handle: FileHandle,
+        onOutput: (@Sendable (String) -> Void)?
+    ) -> Data {
+        var collected = Data()
+        var pending = Data()
+
+        while true {
+            let chunk = handle.availableData
+            if chunk.isEmpty { break }
+            collected.append(chunk)
+            guard let onOutput else { continue }
+
+            pending.append(chunk)
+            while let index = pending.firstIndex(where: { $0 == 0x0A || $0 == 0x0D }) {
+                let line = String(decoding: pending[pending.startIndex..<index], as: UTF8.self)
+                pending.removeSubrange(pending.startIndex...index)
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty { onOutput(trimmed) }
+            }
+        }
+
+        if let onOutput, !pending.isEmpty {
+            let line = String(decoding: pending, as: UTF8.self).trimmingCharacters(in: .whitespaces)
+            if !line.isEmpty { onOutput(line) }
+        }
+        return collected
+    }
+
     private static func execute(
         shell: String,
         command: String,
         directory: URL,
         timeout: TimeInterval,
         isInteractive: Bool,
-        path: String?
+        path: String?,
+        onOutput: (@Sendable (String) -> Void)?
     ) throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: shell)
@@ -179,10 +239,10 @@ public struct ShellCommandRunner: CommandRunning {
         nonisolated(unsafe) var errorData = Data()
         let group = DispatchGroup()
         DispatchQueue.global().async(group: group) {
-            outputData = output.fileHandleForReading.readDataToEndOfFile()
+            outputData = drain(output.fileHandleForReading, onOutput: onOutput)
         }
         DispatchQueue.global().async(group: group) {
-            errorData = error.fileHandleForReading.readDataToEndOfFile()
+            errorData = drain(error.fileHandleForReading, onOutput: onOutput)
         }
         group.wait()
 
@@ -210,11 +270,19 @@ public actor StubCommandRunner: CommandRunning {
         _ command: String,
         in directory: URL,
         timeout: TimeInterval,
-        isInteractive: Bool
+        isInteractive: Bool,
+        onOutput: (@Sendable (String) -> Void)?
     ) async throws -> CommandResult {
         commands.append(command)
         guard let match = responses.first(where: { command.contains($0.match) }) else {
             return CommandResult(exitCode: 127, standardOutput: "", standardError: "command not found")
+        }
+        // Replayed a line at a time, so a test can assert on what a card would have shown while
+        // the command was still running.
+        if let onOutput {
+            for line in match.result.standardOutput.split(separator: "\n") {
+                onOutput(String(line).trimmingCharacters(in: .whitespaces))
+            }
         }
         return match.result
     }

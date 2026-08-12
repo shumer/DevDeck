@@ -74,6 +74,17 @@ serves and `fusion stop` returns before the containers are down, so both are fol
 it a stop that quietly did nothing was repainted green by the next poll, as though the button
 had never been pressed. Now the card stays on "running" and says why.
 
+**A command speaks while it runs.** `CommandRunning.run` takes an `onOutput` closure and
+`ShellCommandRunner` drains both pipes a line at a time — splitting on carriage returns too,
+since compose draws its progress with them — so the newest line reaches the card before the
+process exits. A Fusion start takes a minute; with nothing shown in between, a card that says
+`starting…` and then `stopped` is indistinguishable from a button that did nothing. The line
+takes the meta slot on the card while the command runs, and the run's `failureLine` is passed
+into `waitUntilRunning` as a hint: `fusion daemon` prints "ports are not available … address
+already in use", brings up four of ten containers and then **exits zero**, so the failure lives
+in what it said and not in how it ended. Without carrying that line the card could only report
+the silence, never its cause.
+
 ## Local project cards
 
 Arc, DDEV and plain project cards are the same shape and are built from the same pieces —

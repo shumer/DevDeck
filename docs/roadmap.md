@@ -42,6 +42,8 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **A running command narrates itself** — its newest line sits on the card while it works, and a
+  start that failed keeps the reason it printed even when the command exited zero.
 - **The deck has a canonical order** — Arc, DDEV, then plain projects, alphabetical within each
   — so tidying lays cards out by a rule rather than by the order they were added in.
 - **Panel positions belong to a display**, so a deck kept on the laptop screen survives an
