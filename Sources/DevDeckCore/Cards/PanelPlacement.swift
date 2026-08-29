@@ -115,6 +115,28 @@ public struct PanelPlacement: Sendable, Equatable {
         return CGPoint(x: x, y: y)
     }
 
+    /// Whether the display this placement names is connected.
+    public func isHome(on displays: [DisplayFrame]) -> Bool {
+        displays.contains { $0.id == displayID }
+    }
+
+    /// Whether a panel's current position is worth writing down.
+    ///
+    /// The rule has two halves and both matter. A panel parked on a borrowed display keeps the
+    /// placement it already has, so unplugging a monitor for an hour does not make the deck move
+    /// house. But a panel the user has just dragged, or a deck they have just tidied, is a
+    /// decision, and a decision outranks the placement it replaces — otherwise the arrangement is
+    /// dropped on the floor and the next screen change hauls every card back to where it was
+    /// parked.
+    public static func shouldRecord(
+        existing: PanelPlacement?,
+        userMoved: Bool,
+        displays: [DisplayFrame]
+    ) -> Bool {
+        guard let existing, !userMoved else { return true }
+        return existing.isHome(on: displays)
+    }
+
     private static func area(of rect: CGRect) -> CGFloat {
         rect.isNull ? 0 : rect.width * rect.height
     }
