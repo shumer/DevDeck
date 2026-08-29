@@ -40,6 +40,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     private var panels: [CardID: PanelWindow] = [:]
+    /// True while the deck is putting panels where they already belong rather than someone
+    /// moving them. AppKit posts `windowDidMove` for programmatic moves too, so without this the
+    /// deck saves its own repositioning as though it were an arrangement a person chose.
+    private var isRepositioning = false
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
 
@@ -172,7 +176,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 width: size.width,
                 height: size.height
             )
-            window.setFrame(frame, display: true, animate: false)
+            reposition {
+                window.setFrame(frame, display: true, animate: false)
+            }
             window.invalidateShadow()
             persistPosition(of: card)
             preferences.setHeight(size.height, for: card)
@@ -205,7 +211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let contextMenu = NSMenu()
         contextMenu.delegate = self
         window.contentView?.menu = contextMenu
-        window.orderFrontRegardless()
+        reposition { window.orderFrontRegardless() }
         panels[card] = window
     }
 
@@ -216,12 +222,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// already had: it is only parked somewhere visible, and parking is not a decision the user
     /// made. Overwriting it is how a deck moves house permanently every time a monitor is
     /// unplugged for an hour.
-    private func persistPosition(of card: CardID) {
+    ///
+    /// `userMoved` is the exception, and it is the whole difference between the deck arranging
+    /// itself and someone arranging it. Dragging a parked card, or tidying the deck while the
+    /// monitor it belongs to is unplugged, is a decision, and it has to outrank the placement it
+    /// replaces — otherwise the arrangement is silently dropped and the next screen change
+    /// hauls every card back to where it was parked. Which is exactly what it did.
+    private func persistPosition(of card: CardID, userMoved: Bool = false) {
         guard let window = panels[card] else { return }
-        if let placement = preferences.placement(for: card),
-           placement.topLeft(on: Displays.current()) == nil {
-            return
-        }
+        guard PanelPlacement.shouldRecord(
+            existing: preferences.placement(for: card),
+            userMoved: userMoved,
+            displays: Displays.current()
+        ) else { return }
         let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
         guard let placement = PanelPlacement.from(
             topLeft: topLeft,
@@ -269,18 +282,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// card or tidying the column is, a card growing into its data is not.
     private func shiftColumn(below frame: NSRect, by dy: CGFloat, persist: Bool = true) {
         guard dy != 0 else { return }
-        for (card, window) in panels {
-            let current = window.frame
-            guard current.maxY <= frame.minY + 1 else { continue }
-            guard current.maxX > frame.minX, current.minX < frame.maxX else { continue }
-            window.setFrameOrigin(NSPoint(x: current.origin.x, y: current.origin.y + dy))
-            if persist { persistPosition(of: card) }
+        var moved: [CardID] = []
+        reposition {
+            for (card, window) in panels {
+                let current = window.frame
+                guard current.maxY <= frame.minY + 1 else { continue }
+                guard current.maxX > frame.minX, current.minX < frame.maxX else { continue }
+                window.setFrameOrigin(NSPoint(x: current.origin.x, y: current.origin.y + dy))
+                moved.append(card)
+            }
         }
+        guard persist else { return }
+        for card in moved { persistPosition(of: card) }
     }
 
     func windowDidMove(_ notification: Notification) {
-        guard let window = notification.object as? PanelWindow else { return }
-        persistPosition(of: window.card)
+        guard !isRepositioning, let window = notification.object as? PanelWindow else { return }
+        persistPosition(of: window.card, userMoved: true)
+    }
+
+    /// Runs a move the deck decided on rather than the user, so `windowDidMove` stays quiet.
+    private func reposition(_ body: () -> Void) {
+        isRepositioning = true
+        body()
+        isRepositioning = false
     }
 
     /// Puts every panel back where it belongs after a display comes or goes.
@@ -299,13 +324,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     @objc private func replaceAll() {
-        for (card, window) in panels {
-            let size = window.frame.size
-            let point = origin(for: card, size: size)
-            guard abs(point.x - window.frame.minX) > 0.5 || abs(point.y - window.frame.minY) > 0.5
-            else { continue }
-            window.setFrameOrigin(point)
-            window.invalidateShadow()
+        reposition {
+            for (card, window) in panels {
+                let size = window.frame.size
+                let point = origin(for: card, size: size)
+                guard abs(point.x - window.frame.minX) > 0.5 || abs(point.y - window.frame.minY) > 0.5
+                else { continue }
+                window.setFrameOrigin(point)
+                window.invalidateShadow()
+            }
         }
     }
 
@@ -488,11 +515,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             gap: DeckTheme.panelGap
         )
 
-        for (index, (card, window)) in ordered.enumerated() {
-            let topLeft = placements[index]
-            window.setFrameOrigin(NSPoint(x: topLeft.x, y: topLeft.y - window.frame.height))
-            persistPosition(of: card)
+        reposition {
+            for (index, (_, window)) in ordered.enumerated() {
+                let topLeft = placements[index]
+                window.setFrameOrigin(NSPoint(x: topLeft.x, y: topLeft.y - window.frame.height))
+            }
         }
+        // Tidying is an arrangement somebody asked for, so it is saved against the display the
+        // cards are actually on — even when that is a display they were only parked on.
+        for (card, _) in ordered { persistPosition(of: card, userMoved: true) }
     }
 
     @objc private func refreshNow() {

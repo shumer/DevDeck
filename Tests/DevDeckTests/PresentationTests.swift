@@ -146,6 +146,28 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(placement.displayID, "external")
     }
 
+    await run.test("parking is not saved, but arranging a parked card is") {
+        let parked = PanelPlacement(displayID: "external", offset: CGPoint(x: 2200, y: 40))
+        try expect(
+            !PanelPlacement.shouldRecord(existing: parked, userMoved: false, displays: [laptop]),
+            "the deck putting a card somewhere visible is not the user moving house"
+        )
+        try expect(
+            PanelPlacement.shouldRecord(existing: parked, userMoved: true, displays: [laptop]),
+            "but tidying or dragging it there is a decision, and the old placement gives way"
+        )
+        try expect(
+            PanelPlacement.shouldRecord(existing: parked, userMoved: false, displays: [laptop, external]),
+            "with its own display back, an ordinary move is recorded as usual"
+        )
+        try expect(
+            PanelPlacement.shouldRecord(existing: nil, userMoved: false, displays: [laptop]),
+            "a card that has never been placed records wherever it lands"
+        )
+        try expect(parked.isHome(on: [external]))
+        try expect(!parked.isHome(on: [laptop]))
+    }
+
     await run.test("a placement survives a round trip through the preferences string") {
         let placement = PanelPlacement(displayID: "37D8832A-2D66-02CA-B9F7-8F30A301B230", offset: CGPoint(x: 24, y: 25.5))
         let restored = try expectNotNil(PanelPlacement(storage: placement.storage), "restored")

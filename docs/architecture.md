@@ -237,6 +237,18 @@ fixed and shifting the rest of the column out of the way.
 
 Locking sets `isMovableByWindowBackground = false`.
 
+**A move the deck makes is not a move the user made.** AppKit posts `windowDidMove` for
+programmatic moves as well as dragged ones, so every time the deck repositioned itself — growing
+a card, closing a gap, putting panels back after a display change — it saved that as though
+somebody had arranged it. `isRepositioning` wraps those moves and keeps the notification quiet.
+The other half of the same rule is `PanelPlacement.shouldRecord`: a card parked on a borrowed
+display keeps the placement it already has, so unplugging a monitor for an hour does not make the
+deck move house, **unless the user moved it there themselves**. Dragging a parked card or tidying
+the deck while its own monitor is unplugged is a decision and outranks the placement it replaces.
+Without that exception the arrangement was dropped on the floor and the next screen change hauled
+every card back to where it had been parked — which, on a smaller screen, is the bottom edge,
+because offsets that do not fit are clamped there.
+
 **The panels act on the first click.** `PanelHostingView` overrides `acceptsFirstMouse`, because
 AppKit's default — a click on an inactive window activates the app and goes no further — is
 exactly wrong here. These panels live *behind* other windows and are never frontmost, so without

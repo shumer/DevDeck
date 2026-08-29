@@ -48,6 +48,9 @@
   — so tidying lays cards out by a rule rather than by the order they were added in.
 - **Panel positions belong to a display**, so a deck kept on the laptop screen survives an
   external monitor coming and going.
+- **Arranging the deck away from home sticks** — tidying or dragging while the display a card
+  belongs to is unplugged is saved against the screen it is actually on, instead of being undone
+  by the next screen change.
 - **Pull requests waiting for your review** on the same card as your own, from a second search
   in the same request.
 - **The branch on a card is a link** to the repository it came from, read from the checkout's
