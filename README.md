@@ -343,6 +343,31 @@ button does the same again later, and nothing is ever guessed over something you
 The commands run in the project folder through a login shell, so `npm`, `make` and `docker` are
 found the same way your terminal finds them.
 
+## Work in flight
+
+One card for every checkout the deck knows about, whatever kind of project it belongs to:
+what is uncommitted, what is unpushed, what has fallen behind, and what has no remote at all.
+It is the one card that shows something no other card can. A project card answers "is it
+running"; this answers "what did I leave in the middle of", which is the question that costs an
+hour on a Monday morning.
+
+```
+┌────────────────────────────────────────────┐
+│ WORK IN FLIGHT                    09:14:22 │
+│ 3 in flight                    2 UNPUSHED  │
+│ ● acme-portal   feat/PROJ-77  4 changed ·… │
+│ ● ledwall-feed  main          2 unpushed   │
+│ ○ giornale-web  main          1 changed    │
+│ 9 checkouts watched                        │
+└────────────────────────────────────────────┘
+```
+
+Unpushed work leads, because it is the only thing on the card that a dead disk takes with it.
+A clean checkout level with its remote is not a row: listing those is how a card becomes a wall
+of green nobody reads. It needs no token and no network, since `git status --porcelain=v2
+--branch` answers all four questions in one command per checkout, and clicking a row opens that
+folder in a terminal. Off by default; turn it on in the menu.
+
 ## Docker
 
 Every local project sits on a container runtime, and a Start pressed without one produces a wall

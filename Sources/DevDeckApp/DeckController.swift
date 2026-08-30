@@ -19,6 +19,8 @@ final class DeckController: ObservableObject {
     @Published private(set) var inbox = CardState<InboxSnapshot>()
     @Published private(set) var actions = CardState<ActionsSnapshot>()
     @Published private(set) var mergeRequests = CardState<MergeRequestsSnapshot>()
+    @Published private(set) var checkouts: [CheckoutState] = []
+    @Published private(set) var checkoutsCheckedAt: Date?
 
     /// Cards currently showing every row they have. Not persisted: expanding is a "let me look
     /// at this now" gesture, and a deck that comes back tall the next morning is a surprise.
@@ -473,6 +475,47 @@ final class DeckController: ObservableObject {
         }
     }
 
+    /// Every configured checkout, whatever kind of project it belongs to.
+    ///
+    /// One `git status` per folder, and one folder per project, deduplicated: two cards on the
+    /// same checkout is a real arrangement, and it should not cost two processes or produce two
+    /// rows.
+    private func refreshCheckouts() async {
+        guard activeCards.contains(.workInFlight) else { return }
+
+        var folders: [(id: String, title: String, url: URL)] = []
+        for project in projectsStore.projects() {
+            if let url = project.folderURL { folders.append((project.id, project.title, url)) }
+        }
+        for project in ddevProjectsStore.projects() {
+            if let url = project.folderURL { folders.append((project.id, project.displayTitle, url)) }
+        }
+        for project in localProjectsStore.projects() {
+            if let url = project.folderURL { folders.append((project.id, project.displayTitle, url)) }
+        }
+
+        var seen = Set<String>()
+        var states: [CheckoutState] = []
+        for folder in folders where seen.insert(folder.url.standardizedFileURL.path).inserted {
+            guard let result = try? await commandRunner.run(WorkInFlight.command, in: folder.url, timeout: 20),
+                  result.succeeded,
+                  let state = WorkInFlight.parse(result.standardOutput, id: folder.id, title: folder.title)
+            else { continue }
+            states.append(state)
+        }
+
+        checkouts = states
+        checkoutsCheckedAt = Date()
+    }
+
+    /// The folder a checkout row came from, whichever kind of project owns it. A row that opens
+    /// nothing would be a row that lies about being clickable.
+    func folder(forCheckout state: CheckoutState) -> URL? {
+        projectsStore.projects().first { $0.id == state.id }?.folderURL
+            ?? ddevProjectsStore.projects().first { $0.id == state.id }?.folderURL
+            ?? localProjectsStore.projects().first { $0.id == state.id }?.folderURL
+    }
+
     /// This machine's address on the wifi, for the phone button.
     ///
     /// Read once per refresh rather than per redraw: it is a syscall, it changes when a network
@@ -634,6 +677,7 @@ final class DeckController: ObservableObject {
         if card == .githubInbox { return inbox.value != nil }
         if card == .githubActions { return actions.value != nil }
         if card == .gitlabMergeRequests { return mergeRequests.value != nil }
+        if card == .workInFlight { return checkoutsCheckedAt != nil }
         if let project = project(forCard: card) { return stackStatuses[project.id] != nil }
         if let project = ddevProject(forCard: card) { return ddevStatuses[project.id] != nil }
         if let project = localProject(forCard: card) { return localStatuses[project.id] != nil }
@@ -807,6 +851,7 @@ final class DeckController: ObservableObject {
 
         // After the projects, because a tray reads what the state it just reported came from.
         await refreshOpenLogs()
+        await refreshCheckouts()
 
         // A laptop moves between networks more often than it moves between refreshes.
         let address = LocalAddress.current()

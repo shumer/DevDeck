@@ -42,6 +42,9 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **The phone and the work in flight** - the running site as a QR code addressed to this Mac on
+  the wifi, offered only while the project is up; and one card for every checkout at once, showing
+  what is uncommitted, unpushed or behind.
 - **The deck's own housekeeping** - the refresh interval and the Actions repository list are
   controls rather than model fields, a right-click on a panel is about that card, project kinds
   are submenus, powering off every DDEV project asks first, the four settings forms all open the
@@ -99,11 +102,10 @@
    token and the Developer Center endpoints pinned down against a real organisation.
 2. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
-3. **The phone** - the local site as a QR code on the card, `ddev share` for DDEV, and a real
-   tunnel for the rest. Nothing here is hard; the decision is which of the three.
-4. **Work in flight** - one card for every checkout at once: what is uncommitted, what is behind,
-   what is unpushed. The only idea left that shows something the deck cannot show today.
-5. **A code identity that survives a rebuild** - a self-signed certificate would let the Keychain
+3. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
+   Tailscale for the rest. The QR code covers the same network; this covers the customer on a
+   call.
+4. **A code identity that survives a rebuild** - a self-signed certificate would let the Keychain
    items go back to naming this app rather than none, and a Developer ID would also end
    Gatekeeper for anybody downloading a release.
 

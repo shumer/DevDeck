@@ -49,6 +49,15 @@ struct CardHostView: View {
                     onToggleExpand: { controller.toggleExpanded(card) },
                     onOpenDashboard: { openDashboard(for: card) }
                 )
+            } else if card == .workInFlight {
+                WorkInFlightCard(
+                    states: controller.checkouts,
+                    checkedAt: controller.checkoutsCheckedAt,
+                    isExpanded: controller.isExpanded(card),
+                    isCollapsed: controller.isCollapsed(card),
+                    onOpen: { LocalFolder.openTerminal(controller.folder(forCheckout: $0)) },
+                    onToggleExpand: { controller.toggleExpanded(card) }
+                )
             } else if card == .githubActions {
                 ActionsCard(
                     state: controller.actions,
@@ -194,6 +203,12 @@ struct CardHostView: View {
             )
         case .githubActions:
             return ActionsCard.size(isCollapsed: controller.isCollapsed(card))
+        case .workInFlight:
+            return WorkInFlightCard.size(
+                for: controller.checkouts,
+                isExpanded: controller.isExpanded(card),
+                isCollapsed: controller.isCollapsed(card)
+            )
         case .gitlabMergeRequests:
             return MergeRequestsCard.size(
                 for: controller.mergeRequests,

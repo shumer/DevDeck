@@ -414,6 +414,73 @@ func runProjectTests(_ run: TestRun) async {
         try expectNil(LogTail.tail(of: missing))
     }
 
+    run.section("Work in flight")
+
+    await run.test("one git status answers all four questions") {
+        let output = """
+        # branch.oid 8f2c1a
+        # branch.head feature/ledwall
+        # branch.upstream origin/feature/ledwall
+        # branch.ab +2 -3
+        1 .M N... 100644 100644 100644 8f2c 8f2c Sources/App.swift
+        1 M. N... 100644 100644 100644 8f2c 8f2c README.md
+        ? notes.txt
+        """
+        let state = try expectNotNil(WorkInFlight.parse(output, id: "p", title: "Ledwall"), "state")
+        try expectEqual(state.branch, "feature/ledwall")
+        try expectEqual(state.dirtyFiles, 3, "staged, unstaged and untracked all count as not committed")
+        try expectEqual(state.ahead, 2)
+        try expectEqual(state.behind, 3)
+        try expect(state.hasUpstream)
+        try expectEqual(state.summary, "3 changed · 2 unpushed", "two facts, worst first")
+        try expect(state.isUrgent, "unpushed work is the only thing here a dead disk takes with it")
+    }
+
+    await run.test("a branch nobody has ever pushed is in flight, not clean") {
+        let output = """
+        # branch.oid 8f2c1a
+        # branch.head spike/new-importer
+        """
+        let state = try expectNotNil(WorkInFlight.parse(output, id: "p", title: "Tools"), "state")
+        try expect(!state.hasUpstream)
+        try expectEqual(state.dirtyFiles, 0)
+        try expect(state.isInFlight, "nothing is committed anywhere but this disk")
+        try expectEqual(state.summary, "no remote")
+    }
+
+    await run.test("a clean checkout level with its remote says nothing at all") {
+        let output = """
+        # branch.oid 8f2c1a
+        # branch.head main
+        # branch.upstream origin/main
+        # branch.ab +0 -0
+        """
+        let state = try expectNotNil(WorkInFlight.parse(output, id: "p", title: "Quiet"), "state")
+        try expect(!state.isInFlight, "listing these is how a card becomes a wall of green")
+        try expect(WorkInFlight.rows(from: [state]).isEmpty)
+    }
+
+    await run.test("a detached head is a state, not a branch name") {
+        let output = """
+        # branch.oid 8f2c1a
+        # branch.head (detached)
+        1 .M N... 100644 100644 100644 8f2c 8f2c a.swift
+        """
+        let state = try expectNotNil(WorkInFlight.parse(output, id: "p", title: "Bisect"), "state")
+        try expectEqual(state.branch, "detached")
+        try expect(state.isInFlight)
+    }
+
+    await run.test("rows are ordered by what can be lost, then by size") {
+        let unpushed = CheckoutState(id: "a", title: "Alpha", branch: "main", dirtyFiles: 1, ahead: 1, behind: 0, hasUpstream: true)
+        let messy = CheckoutState(id: "b", title: "Beta", branch: "main", dirtyFiles: 9, ahead: 0, behind: 0, hasUpstream: true)
+        let small = CheckoutState(id: "c", title: "Gamma", branch: "main", dirtyFiles: 2, ahead: 0, behind: 0, hasUpstream: true)
+        let clean = CheckoutState(id: "d", title: "Delta", branch: "main", dirtyFiles: 0, ahead: 0, behind: 0, hasUpstream: true)
+
+        try expectEqual(WorkInFlight.rows(from: [clean, small, messy, unpushed]).map(\.id), ["a", "b", "c"],
+                        "unpushed first, then the biggest mess, and the clean one is not a row")
+    }
+
     run.section("The phone")
 
     await run.test("only this machine by another name is rewritten") {
