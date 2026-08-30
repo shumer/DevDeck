@@ -260,6 +260,15 @@ on-screen order, anchored at the top card, never moving a card to another column
 sorting, which is what separates it from `tidy`. Why all of this, with the measurements:
 [adr/0012-automatic-movement.md](adr/0012-automatic-movement.md).
 
+**The icons are code.** No asset catalog exists here and no Xcode to build one, so `AppIcon`
+draws the application icon on a 1024 grid and `Tools/AppIconExport` renders the ten sizes an
+`.icns` holds, each one from the drawing rather than resampled from the largest. `DeckIcon` draws
+the menu-bar glyph and its three states. Two of those are real template images so the menu bar
+tints them; the one carrying red cannot be, so it draws itself in `labelColor`, which resolves
+against the appearance drawing it - a menu-bar icon painted in plain black is invisible on a dark
+bar. Which state is showing comes from `DeckStatusSummary`, which keeps "your own queue is
+blocked" apart from "a person is waiting on you" and hands the menu a sentence to open with.
+
 **Summoning is a window level, not a mode.** The cards were never the problem; being underneath
 everything was. So the shortcut raises the same panels, with the same frames and the same
 rendering, from level -1 to `.floating`, and puts them back on key up. There is no second layout,

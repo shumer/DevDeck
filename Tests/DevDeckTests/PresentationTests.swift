@@ -276,6 +276,53 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(arc < 210, "the redesign has to stay shorter than the 249 it replaced")
     }
 
+    run.section("The menu-bar icon")
+
+    await run.test("somebody waiting on you outranks your own queue being stuck") {
+        // The old icon went red for either, plus a third thing, and said which only in a
+        // tooltip. One of the two costs another person time; that is the one worth colour.
+        let waiting = DeckStatusSummary(tooltip: "", blockedCount: 3, waitingCount: 1)
+        try expectEqual(waiting.state, .waiting, "a person is waiting, whatever else is true")
+        try expectEqual(DeckStatusSummary(tooltip: "", blockedCount: 2, waitingCount: 0).state, .blocked)
+        try expectEqual(DeckStatusSummary(tooltip: "", blockedCount: 0, waitingCount: 0).state, .calm)
+    }
+
+    await run.test("the reason is a sentence, so the menu can answer why") {
+        try expectEqual(
+            DeckStatusSummary(tooltip: "", blockedCount: 2, waitingCount: 1).reason,
+            "1 waiting on you, 2 of yours blocked",
+            "the person first, since that is what the colour is about"
+        )
+        try expectEqual(DeckStatusSummary(tooltip: "", blockedCount: 2, waitingCount: 0).reason,
+                        "2 of yours blocked")
+        try expectNil(DeckStatusSummary(tooltip: "", blockedCount: 0, waitingCount: 0).reason,
+                      "and nothing to say when nothing wants you")
+    }
+
+    await run.test("only the state that carries red opts out of being a template") {
+        try expect(DeckIcon.statusItemImage(.calm).isTemplate)
+        try expect(DeckIcon.statusItemImage(.blocked).isTemplate,
+                   "blocked is the bar's own ink, so the bar keeps tinting it")
+        try expect(!DeckIcon.statusItemImage(.waiting).isTemplate, "a template image has no colour")
+        try expectEqual(DeckIcon.statusItemImage(.calm).size, DeckIcon.size,
+                        "every state occupies the same slot, so the tray does not reshuffle")
+        try expectEqual(DeckIcon.statusItemImage(.waiting).size, DeckIcon.size)
+    }
+
+    await run.test("the app icon is drawn at every size rather than resampled from one") {
+        for size in [16.0, 32.0, 128.0, 1024.0] {
+            let image = AppIcon.image(size: size)
+            try expectEqual(image.size.width, size)
+            try expectEqual(image.size.height, size)
+        }
+        // The squircle is a superellipse, not a rounded rectangle: at the halfway point of a
+        // side it is still flat, which a circular corner is not.
+        let path = AppIcon.squirclePath(center: CGPoint(x: 512, y: 512), radius: 412)
+        try expectEqual(path.elementCount, 243, "241 sampled points and a close")
+        try expect(path.bounds.width <= 824.5 && path.bounds.width >= 823.5,
+                   "824 of 1024, the modern macOS inset")
+    }
+
     run.section("Cards - two sizes")
 
     await run.test("a collapsed card is one fixed row, whatever it used to hold") {

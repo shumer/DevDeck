@@ -37,12 +37,22 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$SHORT_VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
+  <key>CFBundleIconFile</key><string>DevDeck</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <!-- Agent app: no Dock icon, no application menu. -->
   <key>LSUIElement</key><true/>
 </dict>
 </plist>
 PLIST
+
+# The icon is drawn in code, so it is rendered here rather than checked in: every size comes
+# from the drawing instead of being resampled from the largest one, and it cannot go stale
+# against the source the way an exported PNG does.
+swift build --package-path "$HERE" -c release --product AppIconExport >/dev/null
+ICONSET="$(mktemp -d)/DevDeck.iconset"
+"$(swift build --package-path "$HERE" -c release --show-bin-path)/AppIconExport" "$ICONSET" >/dev/null
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/DevDeck.icns"
+rm -rf "$(dirname "$ICONSET")"
 
 cp "$(swift build --package-path "$HERE" -c release --show-bin-path)/DevDeck" "$MACOS/DevDeck"
 chmod +x "$MACOS/DevDeck"

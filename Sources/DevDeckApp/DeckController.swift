@@ -2,6 +2,7 @@ import ArcKit
 import Combine
 import DDEVKit
 import DevDeckCore
+import DevDeckUI
 import Foundation
 import GitHubKit
 import ProjectKit
@@ -700,20 +701,24 @@ final class DeckController: ObservableObject {
     /// The icon carries the identity and one bit of state - is anything wrong. The numbers
     /// live in the tooltip: a bare count in the menu bar says nothing about which app it
     /// belongs to, which is exactly the complaint it earned.
-    var statusSummary: (tooltip: String, isAlert: Bool) {
+    var statusSummary: DeckStatusSummary {
         var lines: [String] = []
-        var isAlert = false
+        // Kept apart on purpose. The icon used to go red for any of these three, which made it
+        // say "something" and nothing about what, so the reason lived in a tooltip nobody hovers
+        // long enough to read.
+        var blockedCount = 0
+        var waitingCount = 0
 
         if activeCards.contains(.githubPullRequests) {
             if let snapshot = pullRequests.value {
                 var line = "\(snapshot.totalCount) open pull request\(snapshot.totalCount == 1 ? "" : "s")"
                 if snapshot.blockedCount > 0 {
                     line += ", \(snapshot.blockedCount) blocked"
-                    isAlert = true
+                    blockedCount += snapshot.blockedCount
                 }
                 if snapshot.reviewRequestCount > 0 {
                     line += ", \(snapshot.reviewRequestCount) waiting for your review"
-                    isAlert = true
+                    waitingCount += snapshot.reviewRequestCount
                 }
                 lines.append(line)
             } else {
@@ -726,7 +731,7 @@ final class DeckController: ObservableObject {
                 var line = "\(snapshot.unreadCount) unread"
                 if snapshot.actionableCount > 0 {
                     line += ", \(snapshot.actionableCount) waiting on you"
-                    isAlert = true
+                    waitingCount += snapshot.actionableCount
                 }
                 lines.append(line)
             }
@@ -749,6 +754,11 @@ final class DeckController: ObservableObject {
         }
 
         if lines.isEmpty { lines.append("No cards on screen") }
-        return (("DevDeck\n" + lines.joined(separator: "\n")), isAlert)
+        return DeckStatusSummary(
+            tooltip: "DevDeck\n" + lines.joined(separator: "\n"),
+            blockedCount: blockedCount,
+            waitingCount: waitingCount
+        )
     }
 }
+
