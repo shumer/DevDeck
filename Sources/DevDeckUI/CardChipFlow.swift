@@ -69,7 +69,11 @@ public struct CardChipLayout: Layout {
     public init() {}
 
     public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let available = proposal.width ?? CardChromeMetrics.contentWidth
+        // Typed rather than inferred: `proposal.width` is a `CGFloat?` and the fallback is a
+        // `Double`, and the compiler bridging the two through `??` is a courtesy that Swift 6.1
+        // does not extend, so the whole expression stayed optional there and the build only
+        // failed on CI.
+        let available: CGFloat = proposal.width ?? CGFloat(CardChromeMetrics.contentWidth)
         let lines = arrange(subviews: subviews, available: available)
         let height = lines.isEmpty
             ? 0
