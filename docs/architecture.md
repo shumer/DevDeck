@@ -269,6 +269,16 @@ against the appearance drawing it - a menu-bar icon painted in plain black is in
 bar. Which state is showing comes from `DeckStatusSummary`, which keeps "your own queue is
 blocked" apart from "a person is waiting on you" and hands the menu a sentence to open with.
 
+**Deciding whether to interrupt somebody is the feature; posting the banner is four lines.**
+`NotificationDigest` in `DevDeckCore` holds the rules and is where the tests are: the first
+answer after a launch is never announced, nothing is announced twice, what was *seen* is
+remembered rather than only what was said, and three at once become one summary. The Kits turn a
+snapshot into `DeckAlert`s, so what counts as worth interrupting for lives beside the model it is
+derived from, and a blocked item carries its state in its identity - broken, fixed and broken
+again is news twice. `Notifier` in the app is the only part that talks to
+`UNUserNotificationCenter`, asks for permission at the moment the switch is turned on rather than
+at launch, and opens a clicked banner in the browser profile of the account that owns it.
+
 **Summoning is a window level, not a mode.** The cards were never the problem; being underneath
 everything was. So the shortcut raises the same panels, with the same frames and the same
 rendering, from level -1 to `.floating`, and puts them back on key up. There is no second layout,

@@ -15,6 +15,7 @@ final class AccountRowView: FlippedContainer {
     private let tokenField = NSSecureTextField()
     private let statusLabel = NSTextField(labelWithString: "")
     private let enabledButton = NSButton()
+    private let notifiesButton = NSButton()
     private let browserPopUp = NSPopUpButton()
     private let profilePopUp = NSPopUpButton()
 
@@ -45,6 +46,13 @@ final class AccountRowView: FlippedContainer {
         enabledButton.target = self
         enabledButton.action = #selector(controlChanged)
         form.row("", [(enabledButton, nil)], height: 20)
+
+        notifiesButton.setButtonType(.switch)
+        notifiesButton.title = "Let this account notify me"
+        notifiesButton.state = account.notifies ? .on : .off
+        notifiesButton.target = self
+        notifiesButton.action = #selector(controlChanged)
+        form.row("", [(notifiesButton, nil)], height: 20)
 
         organizationsField.stringValue = account.organizations.joined(separator: ", ")
         organizationsField.placeholderString = "comma separated, empty = everything the token sees"
@@ -101,6 +109,7 @@ final class AccountRowView: FlippedContainer {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         edited.isEnabled = enabledButton.state == .on
+        edited.notifies = notifiesButton.state == .on
         edited.browser = selectedBrowserChoice
         return edited
     }

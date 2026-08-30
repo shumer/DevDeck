@@ -19,6 +19,10 @@ public struct GitLabAccount: Sendable, Equatable, Codable, Identifiable {
     /// used for the request.
     public var host: URL
     public var isEnabled: Bool
+    /// Whether this account may interrupt you. Per account rather than per app: one token is
+    /// your own work and another is a customer's, and being told about both at nine in the
+    /// evening is not the same request.
+    public var notifies: Bool
     /// Where this account's links open. A customer's GitLab and your own are usually two
     /// different browser profiles, for the same reason two GitHub accounts are.
     public var browser: BrowserChoice
@@ -28,12 +32,14 @@ public struct GitLabAccount: Sendable, Equatable, Codable, Identifiable {
         label: String,
         host: URL = GitLabAccount.gitlabDotCom,
         isEnabled: Bool = true,
+        notifies: Bool = true,
         browser: BrowserChoice = .systemDefault
     ) {
         self.id = id
         self.label = label
         self.host = host
         self.isEnabled = isEnabled
+        self.notifies = notifies
         self.browser = browser
     }
 
@@ -44,6 +50,7 @@ public struct GitLabAccount: Sendable, Equatable, Codable, Identifiable {
         label = try container.decode(String.self, forKey: .label)
         host = try container.decodeIfPresent(URL.self, forKey: .host) ?? Self.gitlabDotCom
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        notifies = try container.decodeIfPresent(Bool.self, forKey: .notifies) ?? true
         browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
     }
 

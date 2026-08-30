@@ -45,6 +45,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let ddevEnvironment = DDEVEnvironment()
     private let preferences: Preferences
     private let onChanged: () -> Void
+    /// Asks the app delegate to put the permission question to macOS.
+    var onRequestNotifications: (@escaping (Bool) -> Void) -> Void = { $0(false) }
+    /// Posts one banner now, so the chain can be checked without waiting for a review request.
+    var onTestNotification: () -> Void = {}
 
     private var window: NSWindow?
     private var sidebar: NSView?
@@ -564,6 +568,27 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             + "application on the machine, so pressing it in an editor would raise the deck "
             + "instead of typing.")
 
+        form.header("Notifications")
+        form.beginGroup()
+        form.toggleRow(
+            deckSwitch(preferences.notifiesReviewRequests, action: #selector(reviewNotificationsChanged(_:))),
+            title: "When somebody asks for my review",
+            subtitle: "A banner for a new review request, on GitHub and GitLab alike."
+        )
+        form.toggleRow(
+            deckSwitch(preferences.notifiesBlocked, action: #selector(blockedNotificationsChanged(_:))),
+            title: "When something of mine gets blocked",
+            subtitle: "Checks failed, changes requested, a branch that will not merge."
+        )
+        let test = NSButton(title: "Send a test", target: self, action: #selector(sendTestNotification))
+        test.bezelStyle = .rounded
+        test.controlSize = .small
+        form.row("Check it", [(test, 96)], height: 24)
+        form.endGroup()
+        form.footnote("Switching either on is what asks macOS for permission. Nothing is "
+            + "announced on the first answer after a launch, since that is the state you left "
+            + "things in, and each account can be silenced on its own in its own form.")
+
         form.header("System")
         form.beginGroup()
         form.toggleRow(
@@ -612,6 +637,44 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     @objc private func summonDimChanged(_ sender: NSButton) {
         preferences.summonDims = sender.state == .on
         onChanged()
+    }
+
+    @objc private func sendTestNotification() {
+        onTestNotification()
+    }
+
+    @objc private func reviewNotificationsChanged(_ sender: NSButton) {
+        setNotifications(enabled: sender.state == .on, sender: sender) {
+            self.preferences.notifiesReviewRequests = $0
+        }
+    }
+
+    @objc private func blockedNotificationsChanged(_ sender: NSButton) {
+        setNotifications(enabled: sender.state == .on, sender: sender) {
+            self.preferences.notifiesBlocked = $0
+        }
+    }
+
+    /// Turning a notification switch on asks macOS for permission, and the switch goes back if
+    /// the answer is no: a switch that says "on" while nothing can be delivered is a setting
+    /// that lies.
+    private func setNotifications(enabled: Bool, sender: NSButton, write: @escaping (Bool) -> Void) {
+        guard enabled else {
+            write(false)
+            return
+        }
+        onRequestNotifications { granted in
+            write(granted)
+            sender.state = granted ? .on : .off
+            if !granted {
+                let alert = NSAlert()
+                alert.messageText = "macOS is not allowing DevDeck to notify you"
+                alert.informativeText = "Turn it on under System Settings, Notifications, DevDeck."
+                alert.addButton(withTitle: "OK")
+                NSApp.activate(ignoringOtherApps: true)
+                alert.runModal()
+            }
+        }
     }
 
     @objc private func loginItemChanged(_ sender: NSButton) {
