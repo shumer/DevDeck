@@ -74,7 +74,9 @@ jobs:
           # the delimiter, and an indented delimiter does not end a heredoc. Single quotes keep
           # the backticks of the code fence literal.
           {
-            printf '<!-- devdeck-install -->\n\n---\n\n## Installing\n\n'
+            # A leading blank line, because `gh` hands the body back without a trailing one and
+            # a horizontal rule glued to the last paragraph is a heading, not a rule.
+            printf '\n<!-- devdeck-install -->\n\n---\n\n## Installing\n\n'
             printf 'The build is ad-hoc signed and not notarised, so macOS quarantines it on '
             printf 'download and refuses to open it. One line does the lot: unpacks it into '
             printf 'Applications, clears the quarantine flag and starts it.\n\n'
