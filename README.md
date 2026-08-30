@@ -443,6 +443,11 @@ question on all of them:
 6. **The controls.** The one action that matters now is half again as wide, tinted, bolder and
    the only one with an outline; the rest recede to a plain fill. All four carry an icon.
 
+Right-click a panel and **Collapse to one row** folds the card down to 44 points: the mark, the
+state dot, the name, one note and the single action that state implies. It is remembered per card,
+so the projects you are not working on today take a row each while the one you are stays whole.
+Six collapsed cards come to 324 points against 1218 whole.
+
 The small button beside the clock opens the **log tray**: the last six lines the project is
 writing, in place, on any of the three project cards. Arc reads the containers carrying the
 project's compose label, DDEV reads `ddev logs -s web`, and a plain project reads the log its

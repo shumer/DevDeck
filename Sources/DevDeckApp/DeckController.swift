@@ -24,6 +24,9 @@ final class DeckController: ObservableObject {
     /// runs no commands, which is the difference between a card that reads a log and a card
     /// that tails one.
     @Published private(set) var logTails: [CardID: LogLines] = [:]
+    /// Cards folded down to one row. Read from preferences whenever the deck's card list
+    /// changes, so a collapsed card comes back collapsed.
+    @Published private(set) var collapsedCards: Set<CardID> = []
 
     /// Local stack state per Arc project id.
     @Published private(set) var stackStatuses: [String: LocalStackStatus] = [:]
@@ -84,6 +87,7 @@ final class DeckController: ObservableObject {
 
     func setActiveCards(_ cards: Set<CardID>) {
         activeCards = cards
+        collapsedCards = cards.filter { preferences.isCollapsed($0) }
         restart()
         restartStackLoop()
     }
@@ -480,6 +484,24 @@ final class DeckController: ObservableObject {
         } else if let project = localProject(forCard: card) {
             logTails[card] = await LocalProjectService(project: project, runner: commandRunner).logs()
         }
+    }
+
+    func isCollapsed(_ card: CardID) -> Bool {
+        collapsedCards.contains(card)
+    }
+
+    /// Folds a card down, or opens it back up. A collapsed card keeps no tray: six lines of log
+    /// under a one-line card is not a card, it is a log window with a hat on.
+    func toggleCollapsed(_ card: CardID) {
+        let collapsed = !isCollapsed(card)
+        if collapsed {
+            collapsedCards.insert(card)
+            expandedCards.remove(card)
+            logTails[card] = nil
+        } else {
+            collapsedCards.remove(card)
+        }
+        preferences.setCollapsed(collapsed, for: card)
     }
 
     func toggleExpanded(_ card: CardID) {

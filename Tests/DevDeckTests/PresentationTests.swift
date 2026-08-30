@@ -235,6 +235,42 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(arc < 210, "the redesign has to stay shorter than the 249 it replaced")
     }
 
+    run.section("Cards - two sizes")
+
+    await run.test("a collapsed card is one fixed row, whatever it used to hold") {
+        let busy = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
+        let quiet = ArcProject(id: "q", title: "Q", organization: "o", folder: "/tmp")
+        let status = LocalStackStatus(state: .running, branch: "main")
+
+        let one = ArcProjectCard.size(for: busy, status: status, isCollapsed: true)
+        let two = ArcProjectCard.size(for: quiet, status: LocalStackStatus(state: .stopped), isCollapsed: true)
+        try expectEqual(one.height, CollapsedCardMetrics.height, "44 points, and nothing to measure")
+        try expectEqual(one.height, two.height, "the same for every card, however much it was holding")
+        try expectEqual(one.width, CardMetrics.width, "the width does not change; the deck is still a column")
+
+        let whole = ArcProjectCard.size(for: busy, status: status)
+        try expect(whole.height > one.height * 3, "the saving is the point: 209 against 44")
+    }
+
+    await run.test("an open tray is not carried into a collapsed card") {
+        let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
+        let status = LocalStackStatus(state: .running)
+        let logs = LogLines(lines: ["one", "two"], source: "docker logs x")
+        try expectEqual(
+            ArcProjectCard.size(for: project, status: status, logs: logs, isCollapsed: true).height,
+            CollapsedCardMetrics.height,
+            "six lines of log under a one-line card is not a card"
+        )
+    }
+
+    await run.test("the collapsed panel is a different shape, not just a shorter one") {
+        try expect(CollapsedCardMetrics.cornerRadius < DeckTheme.cornerRadius)
+        try expect(
+            CollapsedCardMetrics.cornerRadius * 2 < CollapsedCardMetrics.height,
+            "a radius that meets itself in the middle draws a pill"
+        )
+    }
+
     run.section("Cards - the log tray")
 
     await run.test("a tray keeps the last lines and drops the noise between them") {

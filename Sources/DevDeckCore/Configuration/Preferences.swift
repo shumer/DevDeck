@@ -121,6 +121,18 @@ public final class Preferences: @unchecked Sendable {
         backend.set(placement?.storage, forKey: "panels.\(card.rawValue).placement")
     }
 
+    /// Whether this card is folded down to one row.
+    ///
+    /// Per card rather than per deck: the point of collapsing is that the two projects you are
+    /// not working on today take one row each while the one you are stays whole.
+    public func isCollapsed(_ card: CardID) -> Bool {
+        backend.bool(forKey: "panels.\(card.rawValue).collapsed")
+    }
+
+    public func setCollapsed(_ value: Bool, for card: CardID) {
+        backend.set(value, forKey: "panels.\(card.rawValue).collapsed")
+    }
+
     /// The height a card last settled at.
     ///
     /// Panels open before their data arrives, so a card would come up at its empty height and

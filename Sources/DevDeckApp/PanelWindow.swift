@@ -32,8 +32,11 @@ final class PanelHostingView<Content: View>: NSHostingView<Content> {
 /// One borderless, frosted panel hosting a single card.
 final class PanelWindow: NSWindow {
     let card: CardID
+    /// The rounded layers, kept because a card folded down to one row needs a smaller radius
+    /// than the same panel had a moment ago.
+    private var roundedLayers: [CALayer] = []
 
-    init(card: CardID, size: NSSize, origin: NSPoint, content: NSView) {
+    init(card: CardID, size: NSSize, origin: NSPoint, cornerRadius: CGFloat, content: NSView) {
         self.card = card
         super.init(
             contentRect: NSRect(origin: origin, size: size),
@@ -60,7 +63,7 @@ final class PanelWindow: NSWindow {
         blur.blendingMode = .behindWindow
         blur.state = .active
         blur.wantsLayer = true
-        blur.layer?.cornerRadius = DeckTheme.cornerRadius
+        blur.layer?.cornerRadius = cornerRadius
         blur.layer?.cornerCurve = .continuous
         blur.layer?.masksToBounds = true
         blur.autoresizingMask = [.width, .height]
@@ -75,7 +78,7 @@ final class PanelWindow: NSWindow {
         let scrim = NSView(frame: blur.bounds)
         scrim.wantsLayer = true
         scrim.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.30).cgColor
-        scrim.layer?.cornerRadius = DeckTheme.cornerRadius
+        scrim.layer?.cornerRadius = cornerRadius
         scrim.layer?.cornerCurve = .continuous
         // A hairline of the light the glass is made of. Without it the panel has no edge of its
         // own and dissolves into a busy wallpaper.
@@ -88,9 +91,19 @@ final class PanelWindow: NSWindow {
         content.autoresizingMask = [.width, .height]
         blur.addSubview(content)
 
+        roundedLayers = [blur.layer, scrim.layer].compactMap { $0 }
         contentView = blur
         // The shadow is cached from the content shape, and the rounded corners come from a
         // layer mask applied afterwards, so it has to be recomputed.
+        invalidateShadow()
+    }
+
+    /// Follows the card between its two sizes. At 44 points tall the full 20-point radius eats
+    /// most of the panel and the card reads as a pill rather than as a card.
+    func apply(cornerRadius: CGFloat) {
+        for layer in roundedLayers where layer.cornerRadius != cornerRadius {
+            layer.cornerRadius = cornerRadius
+        }
         invalidateShadow()
     }
 
