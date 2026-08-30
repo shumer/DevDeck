@@ -133,6 +133,21 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue ? "1" : "0", forKey: "panels.summon") }
     }
 
+    /// Repositories the Actions card watches, as `owner/name`.
+    ///
+    /// Empty means "follow my open pull requests", which is the right default for one person's
+    /// deck and costs no configuration. It lives here rather than in `GitHubSettings` because
+    /// that type is the services' knobs and has to stay testable without a preferences backend.
+    public var actionsRepositories: [String] {
+        get {
+            guard let data = backend.data(forKey: "github.actions.repositories"),
+                  let decoded = try? JSONDecoder().decode([String].self, from: data)
+            else { return [] }
+            return decoded
+        }
+        set { backend.set(try? JSONEncoder().encode(newValue), forKey: "github.actions.repositories") }
+    }
+
     /// Whether the stored tokens have been rewritten with an access control list that survives
     /// a rebuild. One pass, once, and then never again.
     public var hasRepairedKeychain: Bool {

@@ -638,19 +638,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        // A right-click on a panel is a question about *that* card. It used to answer with the
+        // whole deck's menu, card list and all, which is the same as not answering.
         if let card = menuOwners[ObjectIdentifier(menu)] {
-            let isCollapsed = controller.isCollapsed(card)
-            let item = NSMenuItem(
-                title: isCollapsed ? "Show the whole card" : "Collapse to one row",
-                action: #selector(toggleCollapsed(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = card.rawValue
-            menu.addItem(item)
-            menu.addItem(.separator())
+            populateCard(menu, card: card)
+            return
         }
         populate(menu)
+    }
+
+    /// The short menu: this card, then the two things you might want next.
+    private func populateCard(_ menu: NSMenu, card: CardID) {
+        menu.autoenablesItems = false
+
+        let header = NSMenuItem(title: CardCatalog.descriptor(for: card)?.title ?? card.rawValue, action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+
+        let collapse = NSMenuItem(
+            title: controller.isCollapsed(card) ? "Show the whole card" : "Collapse to one row",
+            action: #selector(toggleCollapsed(_:)),
+            keyEquivalent: ""
+        )
+        collapse.target = self
+        collapse.representedObject = card.rawValue
+        menu.addItem(collapse)
+
+        if controller.hasLogSource(card) {
+            let logs = NSMenuItem(
+                title: controller.isExpanded(card) ? "Hide the log" : "Show the log",
+                action: #selector(toggleLogs(_:)),
+                keyEquivalent: ""
+            )
+            logs.target = self
+            logs.representedObject = card.rawValue
+            logs.isEnabled = !controller.isCollapsed(card)
+            menu.addItem(logs)
+        }
+
+        let hide = NSMenuItem(title: "Hide this card", action: #selector(toggleCard(_:)), keyEquivalent: "")
+        hide.target = self
+        hide.representedObject = card.rawValue
+        menu.addItem(hide)
+
+        menu.addItem(.separator())
+        for (title, selector) in [
+            ("Tidy panels into columns", #selector(restack)),
+            ("Refresh now", #selector(refreshNow)),
+            ("All cards and settings…", #selector(openSettings)),
+        ] {
+            let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
+    }
+
+    @objc private func toggleLogs(_ item: NSMenuItem) {
+        guard let raw = item.representedObject as? String else { return }
+        controller.toggleLogs(for: CardID(rawValue: raw))
     }
 
     @objc private func toggleCollapsed(_ item: NSMenuItem) {
@@ -738,24 +783,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Actions
 
+    /// A submenu rather than a run of items with a heading above them.
+    ///
+    /// Ten projects made thirteen lines of a menu whose other five are the things you actually
+    /// opened it for. The count in the title says how many are on the deck without opening it.
     private func addGroup(_ title: String, cards: [ResolvedCard], to menu: NSMenu) {
         guard !cards.isEmpty else { return }
-        menu.addItem(.separator())
-        let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-        header.isEnabled = false
-        menu.addItem(header)
+        let shown = cards.filter(\.isEnabled).count
+        let item = NSMenuItem(title: "\(title)  (\(shown)/\(cards.count))", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        submenu.autoenablesItems = false
         for card in cards {
-            menu.addItem(cardItem(card))
+            submenu.addItem(cardItem(card, indented: false))
         }
+        item.submenu = submenu
+        menu.addItem(item)
     }
 
     @objc private func powerOffDDEV() {
+        // The one item in this menu that stops everything at once, and it sits a line away from
+        // Refresh now.
+        let alert = NSAlert()
+        alert.messageText = "Power off every DDEV project?"
+        alert.informativeText = "ddev poweroff stops every project on this machine and the router "
+            + "with them, whether or not it is on the deck."
+        alert.addButton(withTitle: "Power off")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        performPowerOffDDEV()
+    }
+
+    private func performPowerOffDDEV() {
         controller.powerOffDDEV()
     }
 
-    private func cardItem(_ card: ResolvedCard) -> NSMenuItem {
+    private func cardItem(_ card: ResolvedCard, indented: Bool = true) -> NSMenuItem {
         let item = NSMenuItem(
-            title: "   " + card.descriptor.title,
+            title: (indented ? "   " : "") + card.descriptor.title,
             action: #selector(toggleCard(_:)),
             keyEquivalent: ""
         )

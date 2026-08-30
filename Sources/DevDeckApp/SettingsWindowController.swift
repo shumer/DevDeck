@@ -482,6 +482,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     /// Kept so the Default button can put the field back without rebuilding the page.
     private weak var summonRecorder: HotKeyRecorderView?
+    private let actionsField = NSTextField()
+
+    /// The intervals worth offering. Below a minute is polling, and above ten the deck stops
+    /// being something you glance at.
+    private static let refreshChoices: [(title: String, seconds: Int)] = [
+        ("1 minute", 60),
+        ("2 minutes", 120),
+        ("5 minutes", 300),
+        ("10 minutes", 600),
+    ]
 
     private func buildGeneralForm(in container: FlippedContainer, width: CGFloat) {
         let form = FormLayout(in: container)
@@ -498,10 +508,31 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         location.textColor = NSColor.secondaryLabelColor
         form.row("Running from", [(location, nil)], height: 18)
 
-        let interval = NSTextField(labelWithString: "\(Int(preferences.refreshIntervalSeconds)) seconds")
-        interval.font = NSFont.systemFont(ofSize: 13)
-        form.row("Refresh", [(interval, nil)], height: 18)
         form.endGroup()
+
+        form.header("Fetching")
+        form.beginGroup()
+
+        let interval = NSPopUpButton()
+        for choice in Self.refreshChoices {
+            interval.addItem(withTitle: choice.title)
+            interval.lastItem?.representedObject = choice.seconds
+        }
+        interval.selectItem(at: Self.refreshChoices.firstIndex { $0.seconds == Int(preferences.refreshIntervalSeconds) } ?? 1)
+        interval.target = self
+        interval.action = #selector(refreshIntervalChanged(_:))
+        form.row("Refresh every", [(interval, 160)], height: 24)
+
+        actionsField.stringValue = preferences.actionsRepositories.joined(separator: ", ")
+        actionsField.placeholderString = "owner/name, owner/name"
+        actionsField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        actionsField.delegate = self
+        form.row("Actions watches", [(actionsField, nil)])
+        form.endGroup()
+        form.footnote("An empty Actions list follows the repositories your open pull requests are "
+            + "in, up to five per account, which is the right default for one person's deck. The "
+            + "refresh interval is a floor: GitHub says how often it wants to be polled for "
+            + "notifications, and that is honoured when it asks for less.")
         form.footnote("The build number is the commit count, so it moves on every rebuild, the "
             + "quickest way to tell whether the copy in front of you is the change you just made.")
 
@@ -605,6 +636,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         button.target = self
         button.action = action
         return button
+    }
+
+    @objc private func refreshIntervalChanged(_ sender: NSPopUpButton) {
+        guard let seconds = sender.selectedItem?.representedObject as? Int else { return }
+        preferences.refreshIntervalSeconds = TimeInterval(seconds)
+        onChanged()
     }
 
     @objc private func placementChanged(_ sender: NSPopUpButton) {
@@ -1213,5 +1250,18 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         alert.addButton(withTitle: "Remove")
         alert.addButton(withTitle: "Cancel")
         return alert.runModal() == .alertFirstButtonReturn
+    }
+}
+
+
+extension SettingsWindowController: NSTextFieldDelegate {
+    /// Text commits when the field is left, the same as everywhere else in this window.
+    func controlTextDidEndEditing(_ notification: Notification) {
+        guard (notification.object as? NSTextField) === actionsField else { return }
+        preferences.actionsRepositories = actionsField.stringValue
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        onChanged()
     }
 }
