@@ -53,7 +53,7 @@ final class DeckController: ObservableObject {
     private let ddevEnvironment: DDEVEnvironment
     private let dockerEnvironment: DockerEnvironment
     private let commandRunner: any CommandRunning
-    private var settings: GitHubSettings
+    private var baseSettings: GitHubSettings
     private var loop: Task<Void, Never>?
     /// A separate, faster loop: a stack that has just come up should show up in seconds, not
     /// on the API refresh cadence.
@@ -84,7 +84,7 @@ final class DeckController: ObservableObject {
         self.ddevEnvironment = DDEVEnvironment(runner: commandRunner)
         self.dockerEnvironment = DockerEnvironment(runner: commandRunner)
         self.commandRunner = commandRunner
-        self.settings = settings
+        self.baseSettings = settings
     }
 
     var refreshPolicy: RefreshPolicy {
@@ -658,6 +658,14 @@ final class DeckController: ObservableObject {
                 }
             }
         }
+    }
+
+    /// The services' knobs, with the parts a person can change laid over them. Read fresh every
+    /// pass so a repository added in settings is watched on the next refresh.
+    private var settings: GitHubSettings {
+        var settings = baseSettings
+        settings.actionsRepositories = preferences.actionsRepositories
+        return settings
     }
 
     /// Rebuilt every pass, the same as the GitHub one, so an instance added in settings is
