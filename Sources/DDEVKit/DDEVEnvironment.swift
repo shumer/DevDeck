@@ -138,6 +138,28 @@ public struct DDEVEnvironment: Sendable {
         return try? await runner.run(action.command, in: folder, timeout: 900)
     }
 
+    /// What the web container is saying.
+    ///
+    /// `ddev logs` reads the web service by default, which is the one that serves the site and
+    /// the one whose errors people are looking for. A stopped project has no logs at all, and
+    /// the CLI says so rather than failing, so the message it gives is what the card shows.
+    public func logs(for project: DDEVProject) async -> LogLines {
+        guard let folder = project.folderURL else {
+            return LogLines(detail: "no project folder", fetchedAt: clock.now)
+        }
+        let command = "ddev logs -s web --tail \(LogTail.lineLimit * 4) 2>&1"
+        guard let result = try? await runner.run(command, in: folder, timeout: 30) else {
+            return LogLines(source: "ddev logs", detail: "ddev did not answer", fetchedAt: clock.now)
+        }
+        let lines = LogTail.lines(from: result.standardOutput + result.standardError)
+        return LogLines(
+            lines: lines,
+            source: "ddev logs -s web",
+            detail: lines.isEmpty ? "nothing logged yet" : nil,
+            fetchedAt: clock.now
+        )
+    }
+
     /// Stops every project and the router - the "give me my memory back" button.
     public func powerOff() async -> CommandResult? {
         try? await runner.run("ddev poweroff", in: workingDirectory, timeout: 300)

@@ -40,33 +40,42 @@ struct CardHostView: View {
                     project: project,
                     status: controller.ddevStatus(for: project),
                     docker: controller.docker,
+                    logs: controller.logs(for: card),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
                     onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
-                    onStartDocker: startDocker
+                    onStartDocker: startDocker,
+                    onToggleLogs: { controller.toggleLogs(for: card) },
+                    onOpenLogFile: { LocalFolder.open($0) }
                 )
             } else if let project = controller.project(forCard: card) {
                 ArcProjectCard(
                     project: project,
                     status: controller.stackStatus(for: project),
                     docker: controller.docker,
+                    logs: controller.logs(for: card),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
                     onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
-                    onStartDocker: startDocker
+                    onStartDocker: startDocker,
+                    onToggleLogs: { controller.toggleLogs(for: card) },
+                    onOpenLogFile: { LocalFolder.open($0) }
                 )
             } else if let project = controller.localProject(forCard: card) {
                 LocalProjectCard(
                     project: project,
                     status: controller.localStatus(for: project),
                     docker: controller.docker,
+                    logs: controller.logs(for: card),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
-                    onOpenLog: { LocalFolder.open(controller.logURL(for: project)) },
+                    onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
-                    onStartDocker: startDocker
+                    onStartDocker: startDocker,
+                    onToggleLogs: { controller.toggleLogs(for: card) },
+                    onOpenLogFile: { LocalFolder.open($0) }
                 )
             } else {
                 unimplemented
@@ -116,15 +125,27 @@ struct CardHostView: View {
             return ActionsCard.size
         default:
             if let project = controller.ddevProject(forCard: card) {
-                return DDEVProjectCard.size(for: project, status: controller.ddevStatus(for: project))
+                return DDEVProjectCard.size(
+                    for: project,
+                    status: controller.ddevStatus(for: project),
+                    logs: controller.logs(for: card)
+                )
             }
             if let project = controller.localProject(forCard: card) {
-                return LocalProjectCard.size(for: project, status: controller.localStatus(for: project))
+                return LocalProjectCard.size(
+                    for: project,
+                    status: controller.localStatus(for: project),
+                    logs: controller.logs(for: card)
+                )
             }
             guard let project = controller.project(forCard: card) else {
                 return NSSize(width: CardMetrics.width, height: 150)
             }
-            return ArcProjectCard.size(for: project, status: controller.stackStatus(for: project))
+            return ArcProjectCard.size(
+                for: project,
+                status: controller.stackStatus(for: project),
+                logs: controller.logs(for: card)
+            )
         }
     }
 

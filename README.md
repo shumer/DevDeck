@@ -443,6 +443,13 @@ question on all of them:
 6. **The controls.** The one action that matters now is half again as wide, tinted, bolder and
    the only one with an outline; the rest recede to a plain fill. All four carry an icon.
 
+The small button beside the clock opens the **log tray**: the last six lines the project is
+writing, in place, on any of the three project cards. Arc reads the containers carrying the
+project's compose label, DDEV reads `ddev logs -s web`, and a plain project reads the log its
+detached start already writes. It refreshes only while it is open, and the arrow inside it opens
+the whole file when six lines are not enough. It is not a terminal: no following, no scrolling,
+no colour beyond stripping the escapes the tools paint with.
+
 The state pill, the horizontal rule and the footer are gone: the pill said what the state line
 says, and the timestamp took a whole row to be the least important thing on the card. Cards
 came down from 249 to about 200 points and hold more than they did.

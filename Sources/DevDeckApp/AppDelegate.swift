@@ -68,7 +68,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             controller.$expandedCards.map { _ in () }.eraseToAnyPublisher(),
             controller.$stackStatuses.map { _ in () }.eraseToAnyPublisher(),
             controller.$ddevStatuses.map { _ in () }.eraseToAnyPublisher(),
-            controller.$localStatuses.map { _ in () }.eraseToAnyPublisher()
+            controller.$localStatuses.map { _ in () }.eraseToAnyPublisher(),
+            // A tray opening or filling changes the card's height, so the panel has to follow.
+            controller.$logTails.map { _ in () }.eraseToAnyPublisher()
         )
         .receive(on: RunLoop.main)
         .sink { [weak self] _ in

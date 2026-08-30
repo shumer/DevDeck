@@ -74,6 +74,17 @@ serves and `fusion stop` returns before the containers are down, so both are fol
 it a stop that quietly did nothing was repainted green by the next poll, as though the button
 had never been pressed. Now the card stays on "running" and says why.
 
+**A tray reads, it does not tail.** `LogTail` in `DevDeckCore` turns whatever a project prints
+into the six lines a card can hold: escapes stripped, blanks dropped, carriage returns treated as
+line breaks so progress output is not one ribbon, and a file read from its last 64KB rather than
+from the start. Each kit says where its lines come from - `LocalStackService.logs()` through
+`docker logs` on the containers carrying the compose label, `DDEVEnvironment.logs(for:)` through
+the CLI, `LocalProjectService.logs()` straight off the file a detached start writes - and all
+three return the same `LogLines`. The controller reads only the trays that are open, on the
+regular pass and once more when an action settles; a closed tray runs no commands at all. The
+switch lives in the card header rather than the control row because four buttons already need
+more width than the row has.
+
 **A command speaks while it runs.** `CommandRunning.run` takes an `onOutput` closure and
 `ShellCommandRunner` drains both pipes a line at a time - splitting on carriage returns too,
 since compose draws its progress with them - so the newest line reaches the card before the

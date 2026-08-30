@@ -7,43 +7,53 @@ public struct ArcProjectCard: View {
     private let project: ArcProject
     private let status: LocalStackStatus
     private let docker: DockerStatus
+    private let logs: LogLines?
     private let now: Date
     private let onOpen: (URL) -> Void
     private let onAction: (LocalStackAction) -> Void
     private let onRevealFolder: () -> Void
     private let onOpenTerminal: () -> Void
     private let onStartDocker: (() -> Void)?
+    private let onToggleLogs: (() -> Void)?
+    private let onOpenLogFile: ((URL) -> Void)?
 
     public init(
         project: ArcProject,
         status: LocalStackStatus,
         docker: DockerStatus = DockerStatus(state: .unknown),
+        logs: LogLines? = nil,
         now: Date = Date(),
         onOpen: @escaping (URL) -> Void = { _ in },
         onAction: @escaping (LocalStackAction) -> Void = { _ in },
         onRevealFolder: @escaping () -> Void = {},
         onOpenTerminal: @escaping () -> Void = {},
-        onStartDocker: (() -> Void)? = nil
+        onStartDocker: (() -> Void)? = nil,
+        onToggleLogs: (() -> Void)? = nil,
+        onOpenLogFile: ((URL) -> Void)? = nil
     ) {
         self.project = project
         self.status = status
         self.docker = docker
+        self.logs = logs
         self.now = now
         self.onOpen = onOpen
         self.onAction = onAction
         self.onRevealFolder = onRevealFolder
         self.onOpenTerminal = onOpenTerminal
         self.onStartDocker = onStartDocker
+        self.onToggleLogs = onToggleLogs
+        self.onOpenLogFile = onOpenLogFile
     }
 
-    nonisolated public static func size(for project: ArcProject, status: LocalStackStatus) -> CGSize {
+    nonisolated public static func size(for project: ArcProject, status: LocalStackStatus, logs: LogLines? = nil) -> CGSize {
         CGSize(
             width: CardMetrics.width,
             height: ProjectCardMetrics.height(
                 tools: project.adminLinks.map(\.label),
                 environments: environmentChips(project: project, status: status).map(\.label),
                 hasBranch: status.branch != nil,
-                hasMetaRow: true
+                hasMetaRow: true,
+                logs: logs
             )
         )
     }
@@ -52,7 +62,8 @@ public struct ArcProjectCard: View {
         CardChrome(
             title: "Arc · \(project.title)",
             glyph: .arc,
-            timestamp: ProjectCardMetrics.timestamp(status.checkedAt)
+            timestamp: ProjectCardMetrics.timestamp(status.checkedAt),
+            toggle: logToggle
         ) {
             hero
             CardMetaBlock(
@@ -66,6 +77,9 @@ public struct ArcProjectCard: View {
                 onOpenRepository: onOpen
             )
             chips
+            if let logs {
+                CardLogTray(logs: logs, onOpenFile: onOpenLogFile)
+            }
             controls
             Spacer(minLength: 0)
         }
@@ -199,5 +213,15 @@ public struct ArcProjectCard: View {
             },
             CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
         ]
+    }
+
+    /// The switch that opens the tray. Absent when nothing can be shown, because a control that
+    /// opens an empty box is worse than no control.
+    private var logToggle: CardHeaderToggle? {
+        guard let onToggleLogs else { return nil }
+        return CardHeaderToggle(
+            isOn: logs != nil,
+            help: logs == nil ? "show the last log lines" : "hide the log"
+        ) { onToggleLogs() }
     }
 }

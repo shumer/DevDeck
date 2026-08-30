@@ -235,6 +235,50 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(arc < 210, "the redesign has to stay shorter than the 249 it replaced")
     }
 
+    run.section("Cards - the log tray")
+
+    await run.test("a tray keeps the last lines and drops the noise between them") {
+        let output = "starting\n\n\u{1B}[32mready\u{1B}[0m in 612 ms\r  \rGET / 200\nGET /admin 302\n"
+        let lines = LogTail.lines(from: output, limit: 3)
+        try expectEqual(lines, ["ready in 612 ms", "GET / 200", "GET /admin 302"],
+                        "newest three, no colour escapes, no blanks")
+        try expectEqual(LogTail.lines(from: "   \n\n"), [], "nothing but whitespace is nothing")
+    }
+
+    await run.test("progress drawn with carriage returns is not one enormous line") {
+        // What `docker compose` and every npm progress bar do. Split on \r as well as \n or the
+        // whole run arrives as a single unreadable ribbon.
+        let output = "Pulling 10%\rPulling 60%\rPulling 100%\ndone"
+        try expectEqual(LogTail.lines(from: output, limit: 2), ["Pulling 100%", "done"])
+    }
+
+    await run.test("escape stripping leaves ordinary brackets alone") {
+        try expectEqual(LogTail.strippingEscapes("[web] \u{1B}[1;31merror\u{1B}[0m: no port"),
+                        "[web] error: no port")
+        try expectEqual(LogTail.strippingEscapes("plain"), "plain")
+    }
+
+    await run.test("the tray costs the card an honest number of points") {
+        let empty = LogLines(detail: "nothing logged yet")
+        try expectEqual(CardLogTray.height(for: nil), 0, "a closed tray costs nothing")
+        try expectEqual(CardLogTray.height(for: empty), CardLogTray.height(lineCount: 1),
+                        "an empty tray still says so on one line")
+        try expect(CardLogTray.height(lineCount: 6) > CardLogTray.height(lineCount: 3))
+        try expectEqual(CardLogTray.height(lineCount: 20), CardLogTray.height(lineCount: LogTail.lineLimit),
+                        "and it never grows past what it draws")
+    }
+
+    await run.test("a card grows by exactly its tray") {
+        let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
+        let status = LocalStackStatus(state: .running, branch: "main")
+        let logs = LogLines(lines: ["one", "two", "three"], source: "docker logs x")
+
+        let closed = ArcProjectCard.size(for: project, status: status)
+        let open = ArcProjectCard.size(for: project, status: status, logs: logs)
+        try expectEqual(open.height - closed.height, CardLogTray.height(lineCount: 3),
+                        "the panel and the card have to agree on this exactly")
+    }
+
     run.section("Cards - the palette")
 
     await run.test("a chip wears its hue mixed back towards the text colour") {

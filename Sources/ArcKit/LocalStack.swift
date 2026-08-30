@@ -244,17 +244,61 @@ public struct LocalStackService: Sendable {
     /// counted without knowing anything about the stack's internals. A different naming
     /// scheme simply reports nothing rather than a wrong number.
     private func containerCount() async -> Int? {
+        let names = await containerNames()
+        guard let names, !names.isEmpty else { return nil }
+        return names.count
+    }
+
+    /// The containers this project's compose stack is running, by name.
+    private func containerNames() async -> [String]? {
         guard let folder = project.folderURL else { return nil }
-        let name = folder.lastPathComponent.lowercased().replacingOccurrences(of: "[^a-z0-9]", with: "", options: .regularExpression)
+        let name = Self.composeProjectName(for: folder)
         let command = "docker ps --filter label=com.docker.compose.project=\(name) --format '{{.Names}}'"
         guard let result = try? await runner.run(command, in: folder, timeout: 10), result.succeeded else {
             return nil
         }
-        let count = result.standardOutput
+        return result.standardOutput
             .split(separator: "\n")
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            .count
-        return count > 0 ? count : nil
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    /// What Compose calls a stack started in this folder: the folder's name, lowercased, with
+    /// everything that is not a letter or a digit taken out.
+    public static func composeProjectName(for folder: URL) -> String {
+        folder.lastPathComponent
+            .lowercased()
+            .replacingOccurrences(of: "[^a-z0-9]", with: "", options: .regularExpression)
+    }
+
+    /// The last lines the stack's containers printed.
+    ///
+    /// Read through Docker rather than through Fusion: the CLI has no `logs` command, and the
+    /// compose file it generates is not at a path this app should be guessing at. The containers
+    /// carry the compose project label already, which is how the card counts them.
+    public func logs() async -> LogLines {
+        guard let folder = project.folderURL else {
+            return LogLines(detail: "no project folder", fetchedAt: clock.now)
+        }
+        guard let names = await containerNames(), !names.isEmpty else {
+            return LogLines(
+                source: "docker logs",
+                detail: "no containers for this project",
+                fetchedAt: clock.now
+            )
+        }
+        // One container, because six of them interleaved in six lines is noise. The engine is
+        // the one that serves the site, so it is the one worth reading.
+        let name = names.first { $0.contains("engine") } ?? names[0]
+        let command = "docker logs --tail \(LogTail.lineLimit * 4) \(name) 2>&1"
+        guard let result = try? await runner.run(command, in: folder, timeout: 20) else {
+            return LogLines(source: "docker logs \(name)", detail: "docker did not answer", fetchedAt: clock.now)
+        }
+        return LogLines(
+            lines: LogTail.lines(from: result.standardOutput + result.standardError),
+            source: "docker logs \(name)",
+            fetchedAt: clock.now
+        )
     }
 
     // MARK: Actions

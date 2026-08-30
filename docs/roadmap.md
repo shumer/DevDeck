@@ -42,6 +42,8 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **The log tray** - the last six lines a project is writing, on the card itself, for Arc, DDEV
+  and plain projects alike, read only while the tray is open.
 - **A running command narrates itself** - its newest line sits on the card while it works, and a
   start that failed keeps the reason it printed even when the command exited zero.
 - **The deck has a canonical order** - Arc, DDEV, then plain projects, alphabetical within each
@@ -77,8 +79,6 @@
 6. **The same treatment for the Arc, DDEV and account forms** - the plain-project form has the
    header, command rows, toggle rows and coloured tags; the other three still have the label
    gutter and the footnotes.
-7. **Tailing a plain project's log in place** - the Logs button opens the file in Console,
-   which is fine for reading a failure and poor for watching a build.
 
 ## Not planned
 
