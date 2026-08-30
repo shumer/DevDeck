@@ -604,6 +604,10 @@ download into Applications, clears the flag and starts it:
 pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-0.8-80.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app
 ```
 
+That block is written by the workflow rather than typed into the notes, so it always names the
+file that was actually built: a version number typed by hand is one release away from being
+wrong, and wrong here means somebody's download does not open and they do not know why.
+
 `ditto` rather than `unzip`, to match how it was packed and keep the bundle's extended
 attributes; the `pkill` matters when it is an update rather than a first install, since a running
 copy would otherwise be overwritten underneath itself. Notarising properly needs a paid Apple

@@ -55,3 +55,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: gh release upload "$TAG" "${{ steps.package.outputs.name }}" --clobber
+
+      # Written by the workflow rather than by hand, because it names the file it has just built.
+      # Typed into the notes by a person, it is one release away from being wrong, and wrong here
+      # means somebody's download will not open and they will not know why.
+      - name: Say how to install it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          ASSET: ${{ steps.package.outputs.name }}
+        run: |
+          # Everything from the marker down is ours, so re-running on the same tag replaces the
+          # section rather than stacking a second copy under the first.
+          gh release view "$TAG" --json body -q .body \
+            | sed '/<!-- devdeck-install -->/,$d' > notes.md
+
+          # printf rather than a heredoc: inside a YAML block every line is indented, including
+          # the delimiter, and an indented delimiter does not end a heredoc. Single quotes keep
+          # the backticks of the code fence literal.
+          {
+            printf '<!-- devdeck-install -->\n\n---\n\n## Installing\n\n'
+            printf 'The build is ad-hoc signed and not notarised, so macOS quarantines it on '
+            printf 'download and refuses to open it. One line does the lot: unpacks it into '
+            printf 'Applications, clears the quarantine flag and starts it.\n\n'
+            printf '```\n'
+            printf 'pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/%s /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app\n' "$ASSET"
+            printf '```\n\n'
+            printf 'The first command quits a copy that is already running, which matters when '
+            printf 'this is an update rather than a first install. If Applications refuses to be '
+            printf 'written to, put `~/Applications` in both places instead.\n'
+          } >> notes.md
+
+          gh release edit "$TAG" --notes-file notes.md
