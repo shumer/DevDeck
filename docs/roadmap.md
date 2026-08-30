@@ -42,6 +42,9 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **Both icons, drawn in code** - an application icon at last, one card carrying the hero row,
+  rendered at all ten sizes by `AppIconExport` and packed by `build.sh`; and a menu-bar icon with
+  three states instead of a red glyph that meant three different things at once.
 - **The menu is for doing, Settings is for deciding** - placement, locking, packing, summoning
   and start-at-login moved out of the menu-bar menu into Settings under General. Shipped as 0.4,
   together with the log tray, the collapsed card, summoning and the placement fixes.

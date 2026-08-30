@@ -55,35 +55,43 @@ func tinted(_ image: NSImage, color: NSColor) -> NSImage {
 }
 
 let icon = DeckIcon.statusItemImage()
-let alert = DeckIcon.alertImage()
+let blocked = DeckIcon.statusItemImage(.blocked)
+let alert = DeckIcon.statusItemImage(.waiting)
 
 // Light bar.
 NSColor(white: 0.95, alpha: 1).setFill()
 NSRect(x: 20, y: 90, width: 220, height: 40).fill()
-tinted(icon, color: .black).draw(at: NSPoint(x: 40, y: 102), from: .zero, operation: .sourceOver, fraction: 1)
+tinted(icon, color: .black).draw(at: NSPoint(x: 40, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
 label("светлая полоса", at: NSPoint(x: 70, y: 105))
 
 // Dark bar.
 NSColor(white: 0.15, alpha: 1).setFill()
 NSRect(x: 270, y: 90, width: 230, height: 40).fill()
-tinted(icon, color: .white).draw(at: NSPoint(x: 290, y: 102), from: .zero, operation: .sourceOver, fraction: 1)
+tinted(icon, color: .white).draw(at: NSPoint(x: 290, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
 ("тёмная полоса" as NSString).draw(at: NSPoint(x: 320, y: 105), withAttributes: [
     .font: NSFont.systemFont(ofSize: 10, weight: .medium),
     .foregroundColor: NSColor.white.withAlphaComponent(0.6),
 ])
-alert.draw(at: NSPoint(x: 440, y: 102), from: .zero, operation: .sourceOver, fraction: 1)
+tinted(blocked, color: .white).draw(at: NSPoint(x: 410, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
+// The waiting icon draws itself in `labelColor`, so the preview has to ask for the appearance
+// it will actually be drawn in rather than the tool's own.
+NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
+    alert.draw(at: NSPoint(x: 450, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
+}
 
 // Magnified, to judge the drawing itself.
 label("крупно ×6", at: NSPoint(x: 20, y: 60))
 let large = NSRect(x: 20, y: 10, width: DeckIcon.size.width * 6, height: DeckIcon.size.height * 6)
 NSColor(white: 0.15, alpha: 1).setFill()
 NSRect(x: 10, y: 4, width: large.width + 20, height: large.height + 12).fill()
-tinted(icon, color: .white).draw(in: large, from: .zero, operation: .sourceOver, fraction: 1)
+tinted(icon, color: .white).draw(in: large, from: NSRect.zero, operation: .sourceOver, fraction: 1)
 
 let alertLarge = NSRect(x: 180, y: 10, width: DeckIcon.size.width * 6, height: DeckIcon.size.height * 6)
 NSColor(white: 0.15, alpha: 1).setFill()
 NSRect(x: 170, y: 4, width: alertLarge.width + 20, height: alertLarge.height + 12).fill()
-alert.draw(in: alertLarge, from: .zero, operation: .sourceOver, fraction: 1)
+NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
+    alert.draw(in: alertLarge, from: NSRect.zero, operation: .sourceOver, fraction: 1)
+}
 
 NSGraphicsContext.restoreGraphicsState()
 

@@ -366,11 +366,22 @@ is done.
 
 ## Using it
 
-The menu-bar item is a stack of cards with the app's initials cut out of the front one, and it
-turns red when something needs you - the numbers are in its tooltip rather than in the menu
-bar, where a bare count belongs to no app in particular. It is drawn in code
-(`DeckIcon`), and `swift run IconPreview out.png` renders it at menu-bar size, on a light and
-a dark bar, for when it needs adjusting.
+The menu-bar item is a stack of cards with the app's initials cut out of the front one. It has
+three states, and the difference between the last two is the point: nothing, a badge in the bar's
+own ink when a pull request of yours is blocked, and a red badge when a **person** is waiting on
+you - a review request, or something actionable in the inbox. Red is kept for the one thing that
+costs somebody else time, and it is 4.5 points of badge rather than the whole glyph, which used
+to go red for any of the three and so meant "something" and nothing about what. The first line of
+the menu says which it is in words, and the numbers are in the tooltip rather than in the menu
+bar, where a bare count belongs to no app in particular.
+
+Both icons are drawn in code rather than shipped as images, because there is no asset catalog and
+no Xcode to build one, and because an icon that is drawn can be judged at 32 points by rendering
+it at 32 points. `swift run IconPreview out.png` renders the menu-bar icon at menu-bar size on a
+light and a dark bar; `build.sh` renders the application icon at all ten sizes through
+`AppIconExport` and packs them with `iconutil`. The application icon is one card showing what a
+card is for: the state dot with its halo, the state word beside it, and the quiet rows under it.
+Being an agent app, it appears in Finder and in Login Items rather than in the Dock.
 
 Its menu holds what you do:
 

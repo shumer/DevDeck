@@ -56,6 +56,14 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
+        // Renders the application icon into an .iconset for `iconutil`, called by build.sh.
+        .executableTarget(
+            name: "AppIconExport",
+            dependencies: ["DevDeckUI"],
+            path: "Tools/AppIconExport",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+
         // Live check against the real API, run by scripts/smoke-test.sh.
         .executableTarget(
             name: "DevDeckSmoke",

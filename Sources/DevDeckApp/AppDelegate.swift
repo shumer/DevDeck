@@ -535,9 +535,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard let button = statusItem?.button else { return }
         let summary = controller.statusSummary
 
-        // The normal icon is a template so it follows the menu bar's own light and dark
-        // appearance; the alert one opts out of that deliberately, because red is the message.
-        button.image = summary.isAlert ? DeckIcon.alertImage() : DeckIcon.statusItemImage()
+        // Calm and blocked are templates, so they follow the menu bar's own light and dark
+        // appearance; only the one that means a person is waiting on you opts out, because there
+        // red is the message.
+        button.image = DeckIcon.statusItemImage(summary.state)
         button.contentTintColor = nil
         button.imagePosition = .imageOnly
         button.attributedTitle = NSAttributedString(string: "")
@@ -577,6 +578,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // AppKit re-enables any item whose target responds to the action unless automatic
         // enabling is off - without this the not-built-yet cards become clickable again.
         menu.autoenablesItems = false
+
+        // Why the badge is lit, in words, before anything else. The icon can carry two states
+        // and no more; the sentence is what makes them mean something.
+        if let reason = controller.statusSummary.reason {
+            let item = NSMenuItem(title: reason, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            menu.addItem(.separator())
+        }
 
         let header = NSMenuItem(title: "Cards", action: nil, keyEquivalent: "")
         header.isEnabled = false
