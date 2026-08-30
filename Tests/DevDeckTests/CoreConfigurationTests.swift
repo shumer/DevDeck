@@ -9,6 +9,44 @@ private let catalog: [CardDescriptor] = [
 ]
 
 func runConfigurationTests(_ run: TestRun) async {
+    run.section("The summon shortcut")
+
+    await run.test("a shortcut reads back the way it was written down") {
+        let combo = HotKeyCombo(keyCode: 49, modifiers: [.option, .command])
+        let restored = try expectNotNil(HotKeyCombo(storage: combo.storage), "restored")
+        try expectEqual(restored, combo)
+        try expectNil(HotKeyCombo(storage: "49"), "half a shortcut is not one")
+        try expectNil(HotKeyCombo(storage: "space|option"), "and neither are words")
+    }
+
+    await run.test("it is written the way a menu writes it") {
+        try expectEqual(HotKeyCombo.optionSpace.display, "⌥Space")
+        try expectEqual(HotKeyCombo(keyCode: 49, modifiers: [.command, .option, .shift, .control]).display,
+                        "⌃⌥⇧⌘Space", "modifiers in Apple's order, whatever order they arrived in")
+        try expectEqual(HotKeyCombo(keyCode: 40, modifiers: .control).display, "⌃K")
+    }
+
+    await run.test("a shortcut with no modifier is refused") {
+        // It would be taken from every application on the machine: pressing K in an editor
+        // would raise the deck instead of typing one.
+        try expect(!HotKeyCombo(keyCode: 40, modifiers: []).isValid)
+        try expect(HotKeyCombo(keyCode: 40, modifiers: .option).isValid)
+        try expect(!HotKeyCombo(keyCode: 999, modifiers: .option).isValid, "and so is a key we cannot name")
+    }
+
+    await run.test("preferences fall back to the default rather than to no shortcut at all") {
+        let preferences = Preferences(backend: InMemoryPreferences())
+        try expectEqual(preferences.summonHotKey, .optionSpace, "nothing stored means the default")
+        try expect(preferences.summonEnabled, "and it is on until it is turned off")
+        try expect(preferences.summonDims)
+
+        preferences.summonHotKey = HotKeyCombo(keyCode: 105, modifiers: .control)
+        try expectEqual(preferences.summonHotKey.display, "⌃F13")
+
+        preferences.summonEnabled = false
+        try expect(!preferences.summonEnabled, "and off survives being written down")
+    }
+
     run.section("Cards - layout")
 
     await run.test("defaults come from the catalog") {

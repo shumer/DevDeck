@@ -436,6 +436,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// Kept so the Default button can put the field back without rebuilding the page.
+    private weak var summonRecorder: HotKeyRecorderView?
+
     private func buildGeneralForm(in container: FlippedContainer, width: CGFloat) {
         let form = FormLayout(in: container)
         form.header("About")
@@ -458,7 +461,39 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         form.footnote("The build number is the commit count, so it moves on every rebuild, the "
             + "quickest way to tell whether the copy in front of you is the change you just made.")
 
-        form.footnote("Placement, locking and start-at-login live in the menu-bar menu.")
+        form.header("The deck")
+        form.beginGroup()
+
+        let recorder = HotKeyRecorderView(combo: preferences.summonHotKey)
+        recorder.onChange = { [weak self] combo in
+            guard let self else { return }
+            self.preferences.summonHotKey = combo
+            // The app delegate re-registers on this: a shortcut saved but not registered is a
+            // setting that lies until the next launch.
+            self.onChanged()
+        }
+
+        let reset = NSButton(title: "Default", target: nil, action: nil)
+        reset.bezelStyle = .rounded
+        reset.controlSize = .small
+        reset.target = self
+        reset.action = #selector(resetSummonHotKey(_:))
+        summonRecorder = recorder
+
+        form.row("Summon", [(recorder, 120), (reset, 74)], height: 26)
+        form.endGroup()
+        form.footnote("Hold it to raise the deck over your windows, let go and it drops back. A "
+            + "tap keeps it up until the next press. At least one modifier is required, since a "
+            + "bare key would be taken from every application on the machine.")
+
+        form.footnote("Whether the deck is summoned at all, whether the screen dims while it is "
+            + "up, placement, locking and start-at-login all live in the menu-bar menu.")
+    }
+
+    @objc private func resetSummonHotKey(_ sender: NSButton) {
+        preferences.summonHotKey = .optionSpace
+        summonRecorder?.set(.optionSpace)
+        onChanged()
     }
 
     // MARK: Adding and removing

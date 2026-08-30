@@ -443,6 +443,14 @@ question on all of them:
 6. **The controls.** The one action that matters now is half again as wide, tinted, bolder and
    the only one with an outline; the rest recede to a plain fill. All four carry an icon.
 
+**Hold ⌥Space** and the deck comes up over your windows; let go and it drops back. A tap keeps it
+up until the next press. Nothing moves and nothing is redrawn: they are the same panels at a
+different window level, which is why this costs almost nothing. The screen dims 45% while they are
+up, because dark glass over a white editor is unreadable otherwise. Both of those are switches in
+the menu-bar menu, and the combination itself is in Settings under General. It needs no
+permission: the shortcut is a Carbon hot key, not a global key monitor, so macOS has nothing to
+ask you about.
+
 Right-click a panel and **Collapse to one row** folds the card down to 44 points: the mark, the
 state dot, the name, one note and the single action that state implies. It is remembered per card,
 so the projects you are not working on today take a row each while the one you are stays whole.
