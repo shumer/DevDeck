@@ -209,7 +209,7 @@ public struct PullRequestsCard: View {
         .contentShape(Rectangle())
         .clickable()
         .onTapGesture { onOpen(pullRequest.url, pullRequest.accountID) }
-        .help("\(pullRequest.shortLabel) — \(pullRequest.statusLine)")
+        .help("\(pullRequest.shortLabel): \(pullRequest.statusLine)")
     }
 
     private func footerLeading(_ snapshot: PullRequestsSnapshot) -> String {

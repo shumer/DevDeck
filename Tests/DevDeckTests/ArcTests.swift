@@ -361,7 +361,7 @@ func runArcTests(_ run: TestRun) async {
         )
         let status = await service.waitUntilStopped(timeout: 10, pollInterval: 2)
         try expectEqual(status.state, .running, "it is still up, and the card must not pretend otherwise")
-        try expectEqual(status.detail, "stop did not take effect — still answering")
+        try expectEqual(status.detail, "stop did not take effect, still answering")
     }
 
     await run.test("a stop that worked resolves as soon as the engine goes quiet") {

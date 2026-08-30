@@ -170,7 +170,7 @@ public struct LocalStackService: Sendable {
             state: .running,
             engineVersion: latest.engineVersion,
             containers: latest.containers,
-            detail: "stop did not take effect — still answering",
+            detail: "stop did not take effect, still answering",
             checkedAt: clock.now,
             siteURL: latest.siteURL,
             branch: latest.branch,

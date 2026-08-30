@@ -31,7 +31,7 @@ public enum APIError: Error, Sendable, Equatable {
         case .unauthorized:
             return "Token rejected"
         case .forbidden(let detail):
-            return detail.map { "Forbidden — \($0)" } ?? "Forbidden"
+            return detail.map { "Forbidden: \($0)" } ?? "Forbidden"
         case .rateLimited(let resetAt):
             guard let resetAt else { return "Rate limited" }
             let formatter = DateFormatter()

@@ -150,6 +150,8 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     static func splitTicket(from title: String) -> (key: String?, subject: String) {
         // Uppercase project key, a number, then a separator with spaces around it. The spaces
         // matter: `IR-6257-fix` is a branch name, not a prefix someone wrote as a label.
+        // The typographic dashes in the character class are the one place they are allowed:
+        // this reads titles other people wrote, and plenty of them are typed with an em dash.
         let pattern = #"^([A-Z][A-Z0-9]{1,9}-\d+)\s*[-–—:]\s+(.+)$"#
         guard
             let expression = try? NSRegularExpression(pattern: pattern),

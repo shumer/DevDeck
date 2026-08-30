@@ -28,9 +28,9 @@ public enum DockerGate {
     /// What goes on the state line.
     public static func text(_ status: DockerStatus) -> String {
         switch status.state {
-        case .notInstalled: return "Docker is not installed — nothing here can run"
+        case .notInstalled: return "Docker is not installed, nothing here can run"
         case .starting: return "starting Docker…"
-        default: return "Docker is not running — start it first"
+        default: return "Docker is not running, start it first"
         }
     }
 

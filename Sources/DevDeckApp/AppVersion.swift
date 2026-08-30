@@ -13,7 +13,7 @@ enum AppVersion {
 
         guard let short, let build else {
             // `swift run` has no bundle to read, and neither does an unpackaged binary.
-            return "DevDeck — development build"
+            return "DevDeck, development build"
         }
         return "DevDeck \(short) (build \(build))"
     }

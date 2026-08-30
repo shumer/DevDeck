@@ -70,7 +70,7 @@ final class LocalProjectRowView: FlippedContainer {
         form.row("Folder", [(folderField, nil), (button("Choose…", #selector(chooseFolder)), 84)])
 
         subtitleField.stringValue = project.subtitle
-        subtitleField.placeholderString = "what it is — vite, docker compose"
+        subtitleField.placeholderString = "what it is: vite, docker compose"
         subtitleField.delegate = self
         form.row("Card footer", [(subtitleField, nil)])
         form.endGroup()
@@ -90,7 +90,7 @@ final class LocalProjectRowView: FlippedContainer {
 
         stopField.stringValue = project.stopCommand
         stopField.font = NSFont.monospacedSystemFont(ofSize: 11.5, weight: .regular)
-        stopField.placeholderString = "optional — DevDeck kills what it started"
+        stopField.placeholderString = "optional, DevDeck kills what it started"
         stopField.delegate = self
         form.commandRow("Stop command", field: stopField)
 
@@ -127,7 +127,7 @@ final class LocalProjectRowView: FlippedContainer {
 
         siteField.stringValue = project.localSiteURL
         siteField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        siteField.placeholderString = "empty — same as the health URL"
+        siteField.placeholderString = "empty means the same as the health URL"
         siteField.delegate = self
         form.row("Local site", [(siteField, nil)])
 
@@ -191,7 +191,7 @@ final class LocalProjectRowView: FlippedContainer {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not used — this view is built in code")
+        fatalError("init(coder:) is not used, this view is built in code")
     }
 
     private func button(_ title: String, _ action: Selector, tooltip: String? = nil) -> NSButton {
@@ -326,7 +326,7 @@ final class LocalProjectRowView: FlippedContainer {
         profilePopUp.removeAllItems()
         guard let browser = selectedBrowser, browser.supportsProfiles else {
             profiles = []
-            profilePopUp.addItem(withTitle: selectedBrowser == nil ? "—" : "not supported")
+            profilePopUp.addItem(withTitle: selectedBrowser == nil ? "none" : "not supported")
             profilePopUp.isEnabled = false
             return
         }

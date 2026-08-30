@@ -54,7 +54,7 @@ final class AccountRowView: FlippedContainer {
 
         form.header("Token")
         form.beginGroup()
-        tokenField.placeholderString = hasToken ? "stored — type to replace it" : "github_pat_… or ghp_…"
+        tokenField.placeholderString = hasToken ? "stored, type to replace it" : "github_pat_… or ghp_…"
         tokenField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         let verifyButton = NSButton(title: "Verify token", target: self, action: #selector(save))
         verifyButton.bezelStyle = .rounded
@@ -88,7 +88,7 @@ final class AccountRowView: FlippedContainer {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not used — this view is built in code")
+        fatalError("init(coder:) is not used, this view is built in code")
     }
 
     /// The account as edited, without touching the identifier the token is filed under.
@@ -152,7 +152,7 @@ final class AccountRowView: FlippedContainer {
             profiles = []
             // Safari and Firefox cannot be told which profile to use from outside, so the
             // picker says so rather than offering a control that would do nothing.
-            profilePopUp.addItem(withTitle: selectedBrowser == nil ? "—" : "not supported")
+            profilePopUp.addItem(withTitle: selectedBrowser == nil ? "none" : "not supported")
             profilePopUp.isEnabled = false
             return
         }

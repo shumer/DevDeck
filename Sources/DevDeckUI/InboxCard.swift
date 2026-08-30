@@ -129,6 +129,6 @@ public struct InboxCard: View {
         .contentShape(Rectangle())
         .clickable(isEnabled: item.url != nil)
         .onTapGesture { if let url = item.url { onOpen(url, item.accountID) } }
-        .help("\(item.shortRepository) — \(item.title)")
+        .help("\(item.shortRepository): \(item.title)")
     }
 }
