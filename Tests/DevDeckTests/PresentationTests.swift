@@ -106,6 +106,47 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(DeckLayout.tidy(sizes: [], anchorTopLeft: .zero, screen: screen, gap: 12).isEmpty)
     }
 
+    run.section("Cards - packing a column")
+
+    await run.test("cards share a column when they overlap, not when they are merely near") {
+        let card = CGRect(x: 100, y: 0, width: 352, height: 200)
+        try expect(DeckLayout.isSameColumn(card, CGRect(x: 100, y: 400, width: 352, height: 180)),
+                   "the same x is the same column")
+        try expect(DeckLayout.isSameColumn(card, CGRect(x: 108, y: 400, width: 352, height: 180)),
+                   "and so is one dragged into place by eye, a few points out")
+        try expect(!DeckLayout.isSameColumn(card, CGRect(x: 300, y: 400, width: 352, height: 180)),
+                   "half a card apart is two columns, not one")
+        try expect(!DeckLayout.isSameColumn(card, CGRect(x: 460, y: 0, width: 352, height: 200)),
+                   "and a card beside it is certainly not in it")
+    }
+
+    await run.test("packing closes the gaps and keeps the order it was given") {
+        let screen = CGRect(x: 0, y: 0, width: 1512, height: 950)
+        let sizes = [CGSize(width: 352, height: 200), CGSize(width: 352, height: 44), CGSize(width: 352, height: 180)]
+        let points = DeckLayout.pack(
+            sizes: sizes,
+            anchorTopLeft: CGPoint(x: 24, y: 900),
+            screen: screen,
+            gap: 12
+        )
+        try expectEqual(points[0], CGPoint(x: 24, y: 900), "the anchor does not move")
+        try expectEqual(points[1].y, 900 - 200 - 12, "the next one closes up under it")
+        try expectEqual(points[2].y, 900 - 200 - 12 - 44 - 12)
+        try expect(points.allSatisfy { $0.x == 24 }, "and the column stays a column")
+    }
+
+    await run.test("packing never sends a card to another column, however full this one is") {
+        // Six full cards do not fit a laptop screen. Tidy would start a second column; packing
+        // runs by itself, and a card that jumps sideways because its neighbour grew a line is
+        // worse than the overlap it was avoiding.
+        let screen = CGRect(x: 0, y: 0, width: 1512, height: 400)
+        let sizes = Array(repeating: CGSize(width: 352, height: 200), count: 4)
+        let points = DeckLayout.pack(sizes: sizes, anchorTopLeft: CGPoint(x: 24, y: 390), screen: screen, gap: 12)
+        try expect(points.allSatisfy { $0.x == 24 }, "one column, whatever it costs")
+        try expect(points.allSatisfy { $0.y - 200 >= screen.minY - 0.5 },
+                   "and nothing is pushed off the bottom, where it could not be grabbed")
+    }
+
     run.section("Panels - a placement belongs to a display")
 
     // A laptop and an external, arranged with the external as the main display: the laptop's

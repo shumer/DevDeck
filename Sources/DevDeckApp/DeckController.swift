@@ -455,6 +455,7 @@ final class DeckController: ObservableObject {
     }
 
     func toggleLogs(for card: CardID) {
+        noteUserResize(card)
         toggleExpanded(card)
         guard isExpanded(card) else {
             logTails[card] = nil
@@ -486,6 +487,38 @@ final class DeckController: ObservableObject {
         }
     }
 
+    /// Cards whose size the user has just changed, waiting for the deck to make room for them.
+    ///
+    /// The difference this records is the one the deck kept getting wrong: a card growing because
+    /// its data arrived is the deck settling, and nothing should move for it, while a card
+    /// growing because somebody pressed something is a request to make room.
+    private var userResized: Set<CardID> = []
+
+    private func noteUserResize(_ card: CardID) {
+        userResized.insert(card)
+    }
+
+    /// The pending set, cleared as it is handed over. Called once per layout pass.
+    func takeUserResizes() -> Set<CardID> {
+        defer { userResized = [] }
+        return userResized
+    }
+
+    /// Whether this card has ever had real data.
+    ///
+    /// A card that has not yet heard back computes the height of an empty card, which is up to
+    /// 106 points shorter than the one on screen. Resizing to that and back is what used to walk
+    /// the whole column up the screen and then down again, leaving it somewhere else.
+    func hasLoaded(_ card: CardID) -> Bool {
+        if card == .githubPullRequests { return pullRequests.value != nil }
+        if card == .githubInbox { return inbox.value != nil }
+        if card == .githubActions { return actions.value != nil }
+        if let project = project(forCard: card) { return stackStatuses[project.id] != nil }
+        if let project = ddevProject(forCard: card) { return ddevStatuses[project.id] != nil }
+        if let project = localProject(forCard: card) { return localStatuses[project.id] != nil }
+        return true
+    }
+
     func isCollapsed(_ card: CardID) -> Bool {
         collapsedCards.contains(card)
     }
@@ -493,6 +526,7 @@ final class DeckController: ObservableObject {
     /// Folds a card down, or opens it back up. A collapsed card keeps no tray: six lines of log
     /// under a one-line card is not a card, it is a log window with a hat on.
     func toggleCollapsed(_ card: CardID) {
+        noteUserResize(card)
         let collapsed = !isCollapsed(card)
         if collapsed {
             collapsedCards.insert(card)
@@ -505,6 +539,7 @@ final class DeckController: ObservableObject {
     }
 
     func toggleExpanded(_ card: CardID) {
+        noteUserResize(card)
         if expandedCards.contains(card) {
             expandedCards.remove(card)
         } else {

@@ -169,17 +169,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             shiftColumn(below: vacated, by: vacated.height + DeckTheme.panelGap)
         }
 
+        // Before the panels, not after. This is where the controller reads which cards are
+        // collapsed, and a panel built while that is still unknown opens at the wrong size and
+        // then corrects itself, which moves everything under it twice.
+        controller.setActiveCards(Set(wanted))
+
         for card in wanted where panels[card] == nil {
             showPanel(card)
         }
-
-        controller.setActiveCards(Set(wanted))
     }
 
     /// Grows and shrinks panels as their contents change, keeping the top edge where it is and
     /// pushing the rest of the column out of the way.
     private func syncPanelSizes() {
+        // Once per pass, because it is a hand-over and not a query.
+        let userChanged = controller.takeUserResizes()
+
         for (card, window) in panels {
+            // A card that has never had data computes the height of an empty card. Letting that
+            // through resized the panel to a shape nothing was ever in, and then back, and the
+            // column walked up the screen and down again with a different set of neighbours each
+            // way. It opens at the height it last settled at and waits.
+            guard controller.hasLoaded(card) || preferences.height(for: card) == nil else { continue }
+
             let size = CardHostView.size(for: card, controller: controller)
             let old = window.frame
             guard abs(old.height - size.height) > 0.5 || abs(old.width - size.width) > 0.5 else { continue }
@@ -196,16 +208,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             // Collapsing changes the shape as well as the height.
             window.apply(cornerRadius: cornerRadius(for: card))
             window.invalidateShadow()
-            persistPosition(of: card)
             preferences.setHeight(size.height, for: card)
-            // Selection uses the old frame: those are the panels that were below before the
-            // resize, and they are the ones that have to make room.
-            //
-            // Nothing here is saved: this is the deck tidying itself, not the user arranging
-            // it. Saving it made every launch remember a layout one growth-spurt further
-            // apart than the one before.
-            shiftColumn(below: old, by: old.height - size.height, persist: false)
+            // The position is deliberately not saved here. A resize keeps the top edge, so there
+            // is nothing new to record, and the one thing that call did record was the case it
+            // should not have: a card that a neighbour's resize had displaced a moment earlier,
+            // written down at the displaced position and then loaded from there at the next
+            // launch.
+
+            if preferences.packsColumns {
+                packColumn(containing: card)
+            } else if userChanged.contains(card) {
+                // Only for a change somebody asked for. Selection uses the old frame: those are
+                // the panels that were below before the resize, and they are the ones that have
+                // to make room.
+                shiftColumn(below: old, by: old.height - size.height)
+            }
         }
+    }
+
+    /// Closes up the column this card is in, keeping the order that is on screen.
+    ///
+    /// Runs by itself, so it is deliberately the timid version of tidying: same column, same
+    /// order, anchored on whichever card is already at the top. Cards are never moved to another
+    /// column and never re-sorted, because a card that jumps sideways or swaps places on its own
+    /// is worse than the gap it was closing. The menu's Tidy is still the one that does both.
+    private func packColumn(containing card: CardID) {
+        guard let anchor = panels[card] else { return }
+        let members = panels
+            .filter { DeckLayout.isSameColumn($0.value.frame, anchor.frame) }
+            .sorted { $0.value.frame.maxY > $1.value.frame.maxY }
+        guard members.count > 1, let top = members.first?.value.frame else { return }
+
+        let screen = NSScreen.screens.first { $0.visibleFrame.intersects(top) }?.visibleFrame
+            ?? NSScreen.main?.visibleFrame
+        guard let screen else { return }
+
+        let placements = DeckLayout.pack(
+            sizes: members.map(\.value.frame.size),
+            anchorTopLeft: CGPoint(x: top.minX, y: top.maxY),
+            screen: screen,
+            gap: DeckTheme.panelGap
+        )
+
+        reposition {
+            for (index, member) in members.enumerated() {
+                let point = placements[index]
+                member.value.setFrameOrigin(NSPoint(x: point.x, y: point.y - member.value.frame.height))
+            }
+        }
+        // Saved, because this is where the cards now live. Not as a user move: a panel parked on
+        // a display that is unplugged keeps the placement it belongs to.
+        for member in members { persistPosition(of: member.key) }
     }
 
     private func showPanel(_ card: CardID) {
@@ -303,9 +356,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// This is what stops a hidden card leaving a card-shaped hole, and what makes room when a
     /// card is expanded. Only panels that overlap horizontally are touched, so a deliberately
     /// scattered layout is left alone.
-    /// `persist` says whether the move is part of the layout the user is keeping: hiding a
-    /// card or tidying the column is, a card growing into its data is not.
-    private func shiftColumn(below frame: NSRect, by dy: CGFloat, persist: Bool = true) {
+    /// Every move it makes is part of the layout: it runs when a card is hidden, or when the
+    /// user changed a card's height themselves. The deck settling into its data does not come
+    /// through here any more, which is what it used to do and then save.
+    private func shiftColumn(below frame: NSRect, by dy: CGFloat) {
         guard dy != 0 else { return }
         var moved: [CardID] = []
         reposition {
@@ -317,7 +371,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 moved.append(card)
             }
         }
-        guard persist else { return }
         for card in moved { persistPosition(of: card) }
     }
 
@@ -445,6 +498,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func hideVeils() {
         for veil in veils { veil.hide() }
         veils = []
+    }
+
+    @objc private func togglePacking() {
+        preferences.packsColumns.toggle()
+        guard preferences.packsColumns else { return }
+        // Turning it on is a decision, so it takes effect now rather than at the next time a
+        // card happens to change height.
+        for card in panels.keys { packColumn(containing: card) }
     }
 
     @objc private func toggleSummon() {
@@ -578,6 +639,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         summon.toolTip = "Hold to look, tap to keep it up until the next press"
         summon.target = self
         menu.addItem(summon)
+
+        let pack = NSMenuItem(
+            title: "Keep the column packed",
+            action: #selector(togglePacking),
+            keyEquivalent: ""
+        )
+        pack.state = preferences.packsColumns ? .on : .off
+        pack.toolTip = "Closes gaps in a column when a card changes height, so a gap you left "
+            + "on purpose will not survive. Locking the deck does not stop it."
+        pack.target = self
+        menu.addItem(pack)
 
         let dim = NSMenuItem(title: "Dim the screen while it is up", action: #selector(toggleSummonDim), keyEquivalent: "")
         dim.state = preferences.summonDims ? .on : .off

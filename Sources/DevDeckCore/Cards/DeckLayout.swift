@@ -21,6 +21,44 @@ public enum DeckLayout {
     ///     to a corner.
     ///   - screen: the visible frame to stay inside.
     ///   - gap: space between panels, and between columns.
+    /// Whether two panels are in the same column.
+    ///
+    /// Horizontal overlap of more than half the narrower one. Two cards a hand's width apart are
+    /// not a column whatever their tops line up with, and two that are a few points out of
+    /// alignment are one, which is what stops a deck that was dragged into place by eye being
+    /// treated as scattered.
+    public static func isSameColumn(_ first: CGRect, _ second: CGRect, minimumOverlap: Double = 0.5) -> Bool {
+        let overlap = min(first.maxX, second.maxX) - max(first.minX, second.minX)
+        guard overlap > 0 else { return false }
+        return overlap >= min(first.width, second.width) * minimumOverlap
+    }
+
+    /// Closes the gaps in one column, in the order it is given, from the anchor it is given.
+    ///
+    /// Deliberately not `tidy`. This is what runs by itself when a card changes height, so it
+    /// does the two things automatic movement is allowed to do and nothing else: it keeps the
+    /// order that is already on screen, and it stays in its own column. A card that would hang
+    /// off the bottom is clamped there rather than teleported sideways, because a card moving to
+    /// another column on its own, because its neighbour grew a line, is not something anybody
+    /// asked for.
+    public static func pack(
+        sizes: [CGSize],
+        anchorTopLeft: CGPoint,
+        screen: CGRect,
+        gap: CGFloat
+    ) -> [CGPoint] {
+        var placements: [CGPoint] = []
+        var y = anchorTopLeft.y
+
+        for size in sizes {
+            // Never above the top of the screen, and never so low that the bottom edge is off it.
+            let top = min(max(y, screen.minY + size.height), screen.maxY)
+            placements.append(CGPoint(x: anchorTopLeft.x, y: top))
+            y = top - size.height - gap
+        }
+        return placements
+    }
+
     public static func tidy(
         sizes: [CGSize],
         anchorTopLeft: CGPoint,

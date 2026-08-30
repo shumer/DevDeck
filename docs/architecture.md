@@ -248,6 +248,18 @@ fixed and shifting the rest of the column out of the way.
 
 Locking sets `isMovableByWindowBackground = false`.
 
+**The deck moves a card only when it was asked to.** A card growing because its data arrived is
+the deck settling, and nothing moves for it; a card growing because somebody collapsed it, opened
+its log or expanded its list is a request to make room, and `shiftColumn` runs. `DeckController`
+records which of the two happened and hands the set over once per pass. Two rules keep the
+settling quiet: a card that has never had data keeps the height it last settled at rather than
+computing the height of an empty one, and the collapsed set is read before any panel is built so a
+panel is created at the size it will be. A resize never writes a position, since it keeps the top
+edge. `Preferences.packsColumns`, off by default, adds `DeckLayout.pack`: same column, same
+on-screen order, anchored at the top card, never moving a card to another column and never
+sorting, which is what separates it from `tidy`. Why all of this, with the measurements:
+[adr/0012-automatic-movement.md](adr/0012-automatic-movement.md).
+
 **Summoning is a window level, not a mode.** The cards were never the problem; being underneath
 everything was. So the shortcut raises the same panels, with the same frames and the same
 rendering, from level -1 to `.floating`, and puts them back on key up. There is no second layout,

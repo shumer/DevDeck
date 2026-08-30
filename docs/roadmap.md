@@ -42,6 +42,9 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **The deck stops moving cards nobody asked it to move** - restarting reproduces a layout
+  exactly, and closing up a column is a switch rather than a habit. See
+  [adr/0012-automatic-movement.md](adr/0012-automatic-movement.md).
 - **Summoning** - hold the shortcut and the panels rise over everything, let go and they drop
   back, with the screen dimmed while they are up and the combination set in Settings.
 - **A card has two sizes** - whole, or one 44-point row with the mark, the state dot, the name
