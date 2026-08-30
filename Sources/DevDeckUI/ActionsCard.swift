@@ -4,8 +4,8 @@ import SwiftUI
 
 /// "GitHub Actions": is the pipeline healthy, and what is broken right now.
 public struct ActionsCard: View {
-    public static let visibleRows = 2
-    public static let size = CGSize(width: CardMetrics.width, height: 190)
+    public nonisolated static let visibleRows = 2
+    public nonisolated static let size = CGSize(width: CardMetrics.width, height: 190)
 
     private let state: CardState<ActionsSnapshot>
     private let now: Date
