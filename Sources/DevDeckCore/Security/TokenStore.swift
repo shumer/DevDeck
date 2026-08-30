@@ -1,4 +1,5 @@
 import Foundation
+import KeychainACL
 import Security
 
 public struct TokenKey: Sendable, Hashable {
@@ -65,17 +66,39 @@ public struct KeychainTokenStore: TokenStore {
 
         guard let data = token.data(using: .utf8) else { throw TokenStoreError.invalidEncoding }
 
-        let update = [kSecValueData as String: data]
-        let updateStatus = SecItemUpdate(query as CFDictionary, update as CFDictionary)
-        if updateStatus == errSecSuccess { return }
-        guard updateStatus == errSecItemNotFound else { throw TokenStoreError.keychain(updateStatus) }
+        // Deleted and re-added rather than updated, because an update leaves the old access
+        // control list in place and the access control list is the whole point here.
+        SecItemDelete(query as CFDictionary)
 
         var insert = query
         insert[kSecValueData as String] = data
         // Tokens are only needed while the user is logged in and the machine is unlocked.
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
+        if let access = Self.openAccess() {
+            insert[kSecAttrAccess as String] = access
+        }
         let addStatus = SecItemAdd(insert as CFDictionary, nil)
         guard addStatus == errSecSuccess else { throw TokenStoreError.keychain(addStatus) }
+    }
+
+    /// An access control list that does not name a single application.
+    ///
+    /// Without this, a Keychain item is bound to the exact binary that wrote it, and this app is
+    /// ad-hoc signed: every build has a different code identity, so the next launch is a
+    /// different application as far as macOS is concerned and it asks for the Keychain password
+    /// once per stored token. Three tokens, three password prompts, on every update.
+    ///
+    /// The trade is real and worth stating: any process running as this user can read these
+    /// tokens without a prompt. It is the same trade `scripts/seed-token.sh` has always made with
+    /// `security -A`, and the alternative is not "safer by default" but "a Developer ID, or a
+    /// self-signed certificate the user has to make by hand", which is a different decision with
+    /// a bill attached. A token nobody stores because the prompt drove them off is not safer.
+    ///
+    /// The three calls it needs were deprecated with `SecKeychain` in 10.10 and have no modern
+    /// equivalent, because on iOS the question does not arise, so they live in `KeychainACL` in C
+    /// where a pragma can say they are deliberate.
+    private static func openAccess() -> SecAccess? {
+        devdeck_open_access("DevDeck" as CFString)?.takeRetainedValue()
     }
 
     private static func baseQuery(_ key: TokenKey) -> [String: Any] {

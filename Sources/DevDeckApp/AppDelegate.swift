@@ -113,6 +113,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         controller.onAlerts = { [weak self] alerts in self?.notifier.post(alerts) }
         notifier.refreshAuthorization()
 
+        repairKeychainOnce()
+
         syncPanels()
         updateStatusItem()
         controller.start()
@@ -134,6 +136,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {
             LoginItem.set(true)
         }
+    }
+
+    /// Rewrites every stored token once, with an access list that a rebuild does not invalidate.
+    ///
+    /// A token written by an earlier build is bound to that build's code identity, and this app
+    /// is ad-hoc signed, so every update makes macOS ask for the Keychain password once per
+    /// token. Reading them here costs one last round of those prompts and ends them: after this
+    /// pass the items are readable by this user's processes without one.
+    private func repairKeychainOnce() {
+        guard !preferences.hasRepairedKeychain else { return }
+
+        let keys = accountsStore.accounts().map(\.tokenKey)
+            + gitlabAccountsStore.accounts().map(\.tokenKey)
+        var repaired = 0
+        for key in keys {
+            guard let token = (try? tokenStore.token(for: key)) ?? nil else { continue }
+            try? tokenStore.setToken(token, for: key)
+            repaired += 1
+        }
+        preferences.hasRepairedKeychain = true
+        Log.app.info("Rewrote \(repaired, privacy: .public) Keychain item(s) so a rebuild stops asking")
     }
 
     // MARK: Panels
