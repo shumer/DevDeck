@@ -121,6 +121,36 @@ public final class Preferences: @unchecked Sendable {
         backend.set(placement?.storage, forKey: "panels.\(card.rawValue).placement")
     }
 
+    /// Whether ⌥Space raises the deck while it is held.
+    ///
+    /// On by default, and a plain switch rather than a configurable combination: one key that
+    /// needs no permission is the whole feature, and a key picker is a settings screen for
+    /// something most people press twice a day.
+    public var summonEnabled: Bool {
+        // Stored as a string because the backend's `bool` cannot tell "off" from "never asked",
+        // and this one defaults to on.
+        get { backend.string(forKey: "panels.summon") != "0" }
+        set { backend.set(newValue ? "1" : "0", forKey: "panels.summon") }
+    }
+
+    /// The combination that raises the deck. Anything unreadable in storage falls back to the
+    /// default rather than leaving the app with no shortcut at all.
+    public var summonHotKey: HotKeyCombo {
+        get {
+            guard let raw = backend.string(forKey: "panels.summon.key"),
+                  let combo = HotKeyCombo(storage: raw), combo.isValid
+            else { return .optionSpace }
+            return combo
+        }
+        set { backend.set(newValue.storage, forKey: "panels.summon.key") }
+    }
+
+    /// Whether the screen dims while the deck is up.
+    public var summonDims: Bool {
+        get { backend.string(forKey: "panels.summon.dim") != "0" }
+        set { backend.set(newValue ? "1" : "0", forKey: "panels.summon.dim") }
+    }
+
     /// Whether this card is folded down to one row.
     ///
     /// Per card rather than per deck: the point of collapsing is that the two projects you are

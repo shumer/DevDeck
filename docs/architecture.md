@@ -248,6 +248,17 @@ fixed and shifting the rest of the column out of the way.
 
 Locking sets `isMovableByWindowBackground = false`.
 
+**Summoning is a window level, not a mode.** The cards were never the problem; being underneath
+everything was. So the shortcut raises the same panels, with the same frames and the same
+rendering, from level -1 to `.floating`, and puts them back on key up. There is no second layout,
+no centred overlay and no second copy of a card, because a summon that rearranges the deck has to
+put it back afterwards and that is where this kind of feature goes wrong. The one thing it does
+add is `VeilWindow`, one borderless window per display at level 2 holding black at 45%: dark glass
+takes the colour of what is behind it, and over a white editor the cards wash out. `GlobalHotKey`
+is Carbon's `RegisterEventHotKey` rather than `NSEvent.addGlobalMonitorForEvents`, for two
+reasons: a global key monitor needs the Input Monitoring permission, and only Carbon reports the
+key going up, which is what makes holding possible at all.
+
 **A move the deck makes is not a move the user made.** AppKit posts `windowDidMove` for
 programmatic moves as well as dragged ones, so every time the deck repositioned itself - growing
 a card, closing a gap, putting panels back after a display change - it saved that as though

@@ -37,6 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // A project added or removed in settings changes the card list, not just the data.
         self?.syncPanels()
         self?.controller.refreshNow()
+        // And the summon shortcut may have changed, which only counts once it is registered.
+        self?.installHotKey()
     }
 
     private var panels: [CardID: PanelWindow] = [:]
@@ -45,6 +47,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// deck saves its own repositioning as though it were an arrangement a person chose.
     private var isRepositioning = false
     private var menuOwners: [ObjectIdentifier: CardID] = [:]
+    private var hotKey: GlobalHotKey?
+    private var veils: [VeilWindow] = []
+    /// Raised right now, whether by a held key or a latched tap.
+    private var isSummoned = false
+    /// Latched by a tap, so it stays up until the next press.
+    private var isLatched = false
+    private var summonedAt: Date?
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
 
@@ -91,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         syncPanels()
         updateStatusItem()
         controller.start()
+        installHotKey()
 
         // No token on any account means nothing can load; open the one window that fixes that.
         let hasAnyToken = accountsStore.accounts().contains { account in
@@ -351,6 +361,107 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
     }
 
+    // MARK: Summoning
+
+    /// ⌥Space, held.
+    ///
+    /// The deck's problem was never how the cards look, it is that they are underneath
+    /// everything: at level -1 you see a sliver of them between windows. Summoning is therefore
+    /// not a mode and not a second rendering - it is the same panels, the same frames and the
+    /// same pixels at a different window level, which is the switch the menu's "Float above
+    /// windows" already throws. Holding makes it spring-loaded, and a tap latches it for the
+    /// times when both hands are needed.
+    private func installHotKey() {
+        hotKey = nil
+        guard preferences.summonEnabled else { return }
+        let combo = preferences.summonHotKey
+        hotKey = GlobalHotKey(
+            combo: combo,
+            onPress: { [weak self] in self?.hotKeyPressed() },
+            onRelease: { [weak self] in self?.hotKeyReleased() }
+        )
+        // Registration fails when something else already owns the combination, and a summon
+        // that silently does nothing is indistinguishable from a broken app. The settings screen
+        // says so where somebody will read it; this is for the log.
+        if hotKey == nil {
+            Log.app.error("\(combo.display, privacy: .public) is already taken by another application")
+        } else {
+            Log.app.info("Summon armed on \(combo.display, privacy: .public)")
+        }
+    }
+
+    /// Anything shorter than this was a tap, not a hold.
+    private static let latchThreshold: TimeInterval = 0.25
+
+    private func hotKeyPressed() {
+        // A press while latched puts the deck back down. Otherwise it raises it, and the
+        // release decides whether that was a hold or a tap.
+        if isLatched {
+            isLatched = false
+            summonedAt = nil
+            setSummoned(false)
+            return
+        }
+        summonedAt = Date()
+        setSummoned(true)
+    }
+
+    private func hotKeyReleased() {
+        guard let pressedAt = summonedAt else { return }
+        summonedAt = nil
+        if Date().timeIntervalSince(pressedAt) < Self.latchThreshold {
+            isLatched = true
+            return
+        }
+        setSummoned(false)
+    }
+
+    private func setSummoned(_ summoned: Bool) {
+        guard summoned != isSummoned else { return }
+        isSummoned = summoned
+
+        if summoned, preferences.summonDims {
+            showVeils()
+        } else {
+            hideVeils()
+        }
+        // Raised panels go above ordinary windows; at rest they go back to whatever the display
+        // mode says, which may already be floating.
+        let level = summoned ? NSWindow.Level.floating : displayMode.windowLevel
+        for window in panels.values {
+            window.level = level
+            if summoned { window.orderFrontRegardless() }
+        }
+    }
+
+    private func showVeils() {
+        // Rebuilt each time rather than kept: a display can come and go between two summons,
+        // and a veil on a screen that is no longer there is a window nobody can find.
+        hideVeils()
+        veils = NSScreen.screens.map(VeilWindow.init(screen:))
+        for veil in veils { veil.show() }
+    }
+
+    private func hideVeils() {
+        for veil in veils { veil.hide() }
+        veils = []
+    }
+
+    @objc private func toggleSummon() {
+        preferences.summonEnabled.toggle()
+        if !preferences.summonEnabled, isSummoned {
+            isLatched = false
+            setSummoned(false)
+        }
+        installHotKey()
+    }
+
+    @objc private func toggleSummonDim() {
+        preferences.summonDims.toggle()
+        guard isSummoned else { return }
+        if preferences.summonDims { showVeils() } else { hideVeils() }
+    }
+
     // MARK: Menu bar
 
     /// A stack of cards with the app's initials cut out of the front one - the shape says
@@ -457,6 +568,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         lock.state = preferences.isLocked ? .on : .off
         lock.target = self
         menu.addItem(lock)
+
+        let summon = NSMenuItem(
+            title: "Raise the deck while \(preferences.summonHotKey.display) is held",
+            action: #selector(toggleSummon),
+            keyEquivalent: ""
+        )
+        summon.state = preferences.summonEnabled ? .on : .off
+        summon.toolTip = "Hold to look, tap to keep it up until the next press"
+        summon.target = self
+        menu.addItem(summon)
+
+        let dim = NSMenuItem(title: "Dim the screen while it is up", action: #selector(toggleSummonDim), keyEquivalent: "")
+        dim.state = preferences.summonDims ? .on : .off
+        dim.isEnabled = preferences.summonEnabled
+        dim.toolTip = "Dark glass over a white editor is unreadable without this"
+        dim.target = self
+        menu.addItem(dim)
 
         menu.addItem(.separator())
         for (title, selector) in [
