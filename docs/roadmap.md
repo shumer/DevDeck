@@ -42,6 +42,9 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **Notifications** - a banner when somebody asks for your review, and optionally when something
+  of yours is blocked, on both services, with a switch per account and nothing announced twice or
+  on the first pass after a launch.
 - **GitLab merge requests** - a card of its own, yours and the ones waiting on your review, from
   one GraphQL request per instance, with the host on the account because GitLab is routinely
   self-hosted. See [adr/0013-gitlab.md](adr/0013-gitlab.md).

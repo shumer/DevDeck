@@ -17,6 +17,10 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
     /// token can see.
     public var organizations: [String]
     public var isEnabled: Bool
+    /// Whether this account may interrupt you. Per account rather than per app: one token is
+    /// your own work and another is a customer's, and being told about both at nine in the
+    /// evening is not the same request.
+    public var notifies: Bool
     /// Where this account's links open. One signed-in GitHub identity per browser profile is
     /// the whole reason accounts need their own browser.
     public var browser: BrowserChoice
@@ -27,6 +31,7 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         apiBaseURL: URL = URL(string: "https://api.github.com")!,
         organizations: [String] = [],
         isEnabled: Bool = true,
+        notifies: Bool = true,
         browser: BrowserChoice = .systemDefault
     ) {
         self.id = id
@@ -34,6 +39,7 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         self.apiBaseURL = apiBaseURL
         self.organizations = organizations
         self.isEnabled = isEnabled
+        self.notifies = notifies
         self.browser = browser
     }
 
@@ -46,6 +52,7 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
             ?? URL(string: "https://api.github.com")!
         organizations = try container.decodeIfPresent([String].self, forKey: .organizations) ?? []
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        notifies = try container.decodeIfPresent(Bool.self, forKey: .notifies) ?? true
         browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
     }
 

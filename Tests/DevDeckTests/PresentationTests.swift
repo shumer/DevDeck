@@ -360,6 +360,84 @@ func runPresentationTests(_ run: TestRun) async {
                    "824 of 1024, the modern macOS inset")
     }
 
+    run.section("Being told")
+
+    let review = DeckAlert(
+        id: "review:1", kind: .reviewRequest, title: "Review requested",
+        body: "acme/web!41 Drop the poller",
+        url: URL(string: "https://git.acme.io/acme/web/-/merge_requests/41")!, accountID: "work"
+    )
+    let blocked = DeckAlert(
+        id: "blocked:2:CI", kind: .blocked, title: "Pipeline failed",
+        body: "acme/web!42 Rebase", url: URL(string: "https://git.acme.io")!, accountID: "work"
+    )
+
+    await run.test("the first answer after a launch is never announced") {
+        // It is the state of the world as you left it. Announcing it means every restart tells
+        // you about eight things you already knew, which is how notifications get turned off.
+        try expect(NotificationDigest.newAlerts(from: [review, blocked], seen: [], isFirstPass: true).isEmpty)
+        try expectEqual(
+            NotificationDigest.newAlerts(from: [review, blocked], seen: [], isFirstPass: false).count,
+            2
+        )
+    }
+
+    await run.test("nothing is announced twice") {
+        let fresh = NotificationDigest.newAlerts(
+            from: [review, blocked],
+            seen: ["review:1"],
+            isFirstPass: false
+        )
+        try expectEqual(fresh.map(\.id), ["blocked:2:CI"])
+    }
+
+    await run.test("what was seen is remembered, and the memory has a floor and a ceiling") {
+        let after = NotificationDigest.remembering(["a", "b"], in: ["b", "c"])
+        try expectEqual(after, ["c", "a", "b"], "moved to the end rather than duplicated")
+
+        let many = (1...NotificationDigest.memory + 50).map(String.init)
+        let trimmed = NotificationDigest.remembering(many, in: [])
+        try expectEqual(trimmed.count, NotificationDigest.memory)
+        try expectEqual(trimmed.last, String(NotificationDigest.memory + 50), "the newest survive")
+    }
+
+    await run.test("a handful becomes one line rather than a wall of banners") {
+        try expectNil(NotificationDigest.summary(for: [review, blocked]), "two are just two banners")
+        let summary = try expectNotNil(
+            NotificationDigest.summary(for: [review, review, blocked]),
+            "summary"
+        )
+        try expectEqual(summary.body, "2 waiting for your review, 1 of yours blocked")
+    }
+
+    await run.test("only the two things worth interrupting somebody for become alerts") {
+        let snapshot = MergeRequestsSnapshot(totalCount: 3, mergeRequests: [
+            sampleRequest(id: "1", isReviewRequest: true, pipeline: .success),
+            sampleRequest(id: "2", isReviewRequest: false, pipeline: .failed),
+            sampleRequest(id: "3", isReviewRequest: false, pipeline: .success),
+        ])
+        try expectEqual(snapshot.alerts(includeBlocked: false).map(\.id), ["review:1"],
+                        "a review request is somebody waiting on you")
+        try expectEqual(snapshot.alerts(includeBlocked: true).map(\.kind), [.reviewRequest, .blocked],
+                        "and a red pipeline of your own, when you asked for it")
+        try expect(!snapshot.alerts(includeBlocked: true).contains { $0.id.contains(":3") },
+                   "a merge request that is simply fine is not news")
+    }
+
+    await run.test("something broken, fixed and broken again is said twice") {
+        let first = sampleRequest(id: "9", isReviewRequest: false, pipeline: .failed)
+        let later = MergeRequestSummary(
+            id: "9", iid: 9, title: "One", project: "acme/web",
+            url: URL(string: "https://git.acme.io")!, isDraft: false, hasConflicts: true,
+            updatedAt: Date(timeIntervalSince1970: 0), pipeline: .success,
+            approvalsLeft: 0, unresolvedThreads: 0
+        )
+        let before = MergeRequestsSnapshot(totalCount: 1, mergeRequests: [first]).alerts(includeBlocked: true)
+        let after = MergeRequestsSnapshot(totalCount: 1, mergeRequests: [later]).alerts(includeBlocked: true)
+        try expect(before.first?.id != after.first?.id,
+                   "the state is part of the identity, so the second failure is news again")
+    }
+
     run.section("Cards - two sizes")
 
     await run.test("a collapsed card is one fixed row, whatever it used to hold") {
@@ -593,4 +671,22 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(restored.first?.browser.bundleIdentifier, "com.google.chrome")
         try expectEqual(restored.first?.browser.profileDirectory, "Profile 2")
     }
+}
+
+
+private func sampleRequest(id: String, isReviewRequest: Bool, pipeline: PipelineState) -> MergeRequestSummary {
+    MergeRequestSummary(
+        id: id,
+        iid: Int(id) ?? 1,
+        title: "One",
+        project: "acme/web",
+        url: URL(string: "https://git.acme.io/acme/web/-/merge_requests/\(id)")!,
+        isDraft: false,
+        hasConflicts: false,
+        updatedAt: Date(timeIntervalSince1970: 0),
+        pipeline: pipeline,
+        approvalsLeft: 0,
+        unresolvedThreads: 0,
+        isReviewRequest: isReviewRequest
+    )
 }

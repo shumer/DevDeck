@@ -52,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var isRepositioning = false
     private var menuOwners: [ObjectIdentifier: CardID] = [:]
     private var hotKey: GlobalHotKey?
+    private let notifier = Notifier()
     private var veils: [VeilWindow] = []
     /// Raised right now, whether by a held key or a latched tap.
     private var isSummoned = false
@@ -100,6 +101,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             object: nil
         )
 
+        // A banner opens what it is about, in the browser profile of the account that owns it.
+        notifier.onOpen = { [weak self] url, accountID in
+            guard let self else { return }
+            let isGitLab = self.controller.gitlabAccountLabels[accountID] != nil
+            LinkOpener.open(
+                url,
+                using: isGitLab ? self.controller.gitlabBrowser(for: accountID) : self.controller.browser(for: accountID)
+            )
+        }
+        controller.onAlerts = { [weak self] alerts in self?.notifier.post(alerts) }
+        notifier.refreshAuthorization()
+
         syncPanels()
         updateStatusItem()
         controller.start()
@@ -109,6 +122,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         let hasAnyToken = accountsStore.accounts().contains { account in
             ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
         }
+        settingsController.onRequestNotifications = { [weak self] completion in
+            self?.requestNotificationAuthorization(completion) ?? completion(false)
+        }
+        settingsController.onTestNotification = { [weak self] in self?.notifier.postTest() }
+
         if !hasAnyToken {
             settingsController.show()
         }
@@ -541,6 +559,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private func hideVeils() {
         for veil in veils { veil.hide() }
         veils = []
+    }
+
+    /// Asks macOS for permission the moment notifications are switched on, and reports back
+    /// through the settings screen rather than failing silently.
+    func requestNotificationAuthorization(_ completion: @escaping (Bool) -> Void) {
+        notifier.requestAuthorization(completion)
     }
 
     /// Puts every deck preference into effect at once.

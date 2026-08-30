@@ -435,6 +435,55 @@ final class DeckController: ObservableObject {
         }
     }
 
+    // MARK: Being told
+
+    /// Set by the app delegate, because posting a banner is AppKit's business rather than the
+    /// controller's. Nil means notifications are off and nothing is even assembled.
+    var onAlerts: (([DeckAlert]) -> Void)?
+
+    /// Whether a card has answered at least once in this run. The first answer is not news: it
+    /// is the state of the world as you left it, and announcing it means every restart tells you
+    /// about eight things you already knew.
+    private var hasAnnouncedOnce: Set<CardID> = []
+
+    /// Works out what is new since the last pass, hands it over, and writes down everything it
+    /// saw so the next pass and the next launch stay quiet about it.
+    private func announce(_ candidates: [DeckAlert], for card: CardID) {
+        guard preferences.notifiesReviewRequests || preferences.notifiesBlocked else { return }
+
+        let isFirstPass = hasAnnouncedOnce.insert(card).inserted
+        let seen = preferences.announcedAlerts
+        let fresh = NotificationDigest.newAlerts(
+            from: candidates,
+            seen: Set(seen),
+            isFirstPass: isFirstPass
+        )
+        // Everything on the card is remembered, not only what was announced: a first pass says
+        // nothing and must still record what it saw, or the second pass announces all of it. The
+        // same goes for an account whose notifications are off, which is why the filtering
+        // happens before this and the remembering happens after.
+        preferences.announcedAlerts = NotificationDigest.remembering(candidates.map(\.id), in: seen)
+        guard !fresh.isEmpty else { return }
+        onAlerts?(fresh)
+    }
+
+    /// The alerts from one GitHub snapshot, minus the accounts that asked not to interrupt.
+    private func alerts(from snapshot: PullRequestsSnapshot) -> [DeckAlert] {
+        let quiet = Set(accountsStore.accounts().filter { !$0.notifies }.map(\.id))
+        return snapshot
+            .alerts(includeBlocked: preferences.notifiesBlocked)
+            .filter { preferences.notifiesReviewRequests || $0.kind != .reviewRequest }
+            .filter { !quiet.contains($0.accountID) }
+    }
+
+    private func alerts(from snapshot: MergeRequestsSnapshot) -> [DeckAlert] {
+        let quiet = Set(gitlabAccountsStore.accounts().filter { !$0.notifies }.map(\.id))
+        return snapshot
+            .alerts(includeBlocked: preferences.notifiesBlocked)
+            .filter { preferences.notifiesReviewRequests || $0.kind != .reviewRequest }
+            .filter { !quiet.contains($0.accountID) }
+    }
+
     /// Cancels the pending wait and refetches immediately.
     func refreshNow() {
         restart()
@@ -631,7 +680,9 @@ final class DeckController: ObservableObject {
         if activeCards.contains(.githubPullRequests) {
             pullRequests.beginRefresh()
             do {
-                pullRequests.succeed(try await workspace.pullRequests(), at: Date())
+                let snapshot = try await workspace.pullRequests()
+                pullRequests.succeed(snapshot, at: Date())
+                announce(alerts(from: snapshot), for: .githubPullRequests)
             } catch {
                 let apiError = Self.apiError(from: error)
                 pullRequests.fail(apiError)
@@ -657,7 +708,9 @@ final class DeckController: ObservableObject {
         if activeCards.contains(.gitlabMergeRequests) {
             mergeRequests.beginRefresh()
             do {
-                mergeRequests.succeed(try await gitlab.mergeRequests(), at: Date())
+                let snapshot = try await gitlab.mergeRequests()
+                mergeRequests.succeed(snapshot, at: Date())
+                announce(alerts(from: snapshot), for: .gitlabMergeRequests)
             } catch {
                 let apiError = Self.apiError(from: error)
                 mergeRequests.fail(apiError)

@@ -133,6 +133,34 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue ? "1" : "0", forKey: "panels.summon") }
     }
 
+    /// Whether a banner appears when somebody asks for your review.
+    ///
+    /// Off until it is switched on, and switching it on is what asks macOS for permission.
+    /// Requesting notification permission at first launch, before the app has done anything for
+    /// anybody, is what people uninstall an app over.
+    public var notifiesReviewRequests: Bool {
+        get { backend.bool(forKey: "notify.reviews") }
+        set { backend.set(newValue, forKey: "notify.reviews") }
+    }
+
+    /// Whether a banner appears when something of yours becomes blocked. Separate, because a red
+    /// build on a branch you are actively pushing to is not news.
+    public var notifiesBlocked: Bool {
+        get { backend.bool(forKey: "notify.blocked") }
+        set { backend.set(newValue, forKey: "notify.blocked") }
+    }
+
+    /// What has already been announced, so a restart does not repeat it. Ids, newest last.
+    public var announcedAlerts: [String] {
+        get {
+            guard let data = backend.data(forKey: "notify.seen"),
+                  let decoded = try? JSONDecoder().decode([String].self, from: data)
+            else { return [] }
+            return decoded
+        }
+        set { backend.set(try? JSONEncoder().encode(newValue), forKey: "notify.seen") }
+    }
+
     /// Whether the deck keeps its columns closed up by itself.
     ///
     /// Off by default, and it has to be: it is the one setting that moves cards the user placed.

@@ -71,6 +71,37 @@ public struct MergeRequestsSnapshot: Sendable, Equatable, Codable {
         mergeRequests.filter(\.isReviewRequest).count
     }
 
+    /// The rows worth interrupting somebody for.
+    ///
+    /// A review request is somebody waiting on you, which is the whole reason to be told at all.
+    /// A blocked one of yours is the other, and it is optional because a red build on a branch
+    /// you are actively pushing to is not news.
+    public func alerts(includeBlocked: Bool) -> [DeckAlert] {
+        mergeRequests.compactMap { request in
+            if request.isReviewRequest {
+                return DeckAlert(
+                    id: "review:\(request.id)",
+                    kind: .reviewRequest,
+                    title: "Review requested",
+                    body: "\(request.shortLabel) \(request.ticket.subject)",
+                    url: request.url,
+                    accountID: request.accountID
+                )
+            }
+            guard includeBlocked, request.health == .blocked else { return nil }
+            return DeckAlert(
+                // The state is part of the identity: something announced as blocked, fixed, and
+                // broken again is worth saying twice.
+                id: "blocked:\(request.id):\(request.statusCode)",
+                kind: .blocked,
+                title: request.statusLine.prefix(1).uppercased() + request.statusLine.dropFirst(),
+                body: "\(request.shortLabel) \(request.ticket.subject)",
+                url: request.url,
+                accountID: request.accountID
+            )
+        }
+    }
+
     /// Rows for the card body: worst first, then most recently touched. The same order as the
     /// GitHub card, for the same reason - the merge request worth finding is the stuck one, and
     /// it is rarely the newest.
