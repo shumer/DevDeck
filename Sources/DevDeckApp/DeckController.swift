@@ -20,6 +20,10 @@ final class DeckController: ObservableObject {
     /// Cards currently showing every row they have. Not persisted: expanding is a "let me look
     /// at this now" gesture, and a deck that comes back tall the next morning is a surprise.
     @Published private(set) var expandedCards: Set<CardID> = []
+    /// The last lines each open tray is showing. Only open trays have an entry: a closed tray
+    /// runs no commands, which is the difference between a card that reads a log and a card
+    /// that tails one.
+    @Published private(set) var logTails: [CardID: LogLines] = [:]
 
     /// Local stack state per Arc project id.
     @Published private(set) var stackStatuses: [String: LocalStackStatus] = [:]
@@ -201,6 +205,9 @@ final class DeckController: ObservableObject {
             case .rebuild:
                 self.stackStatuses[project.id] = await service.status()
             }
+            // A start that failed is exactly when the lines matter, and the next scheduled pass
+            // is two minutes away.
+            await self.refreshLogsIfOpen(project.cardID)
         }
     }
 
@@ -277,10 +284,12 @@ final class DeckController: ObservableObject {
                     detail: result.failureLine ?? "\(action.title.lowercased()) failed",
                     checkedAt: Date()
                 )
+                await self.refreshLogsIfOpen(project.cardID)
                 return
             }
 
             await self.refreshDDEV(finished: [project.id])
+            await self.refreshLogsIfOpen(project.cardID)
         }
     }
 
@@ -349,9 +358,6 @@ final class DeckController: ObservableObject {
             : .unavailable)
     }
 
-    func logURL(for project: LocalProject) -> URL {
-        LocalProjectService(project: project, runner: commandRunner).logURL
-    }
 
     private func refreshLocalProjects(finished: Set<String> = []) async {
         for project in activeLocalProjects {
@@ -415,6 +421,7 @@ final class DeckController: ObservableObject {
             case .stop:
                 self.localStatuses[project.id] = await service.status()
             }
+            await self.refreshLogsIfOpen(project.cardID)
         }
     }
 
@@ -427,6 +434,52 @@ final class DeckController: ObservableObject {
 
     func isExpanded(_ card: CardID) -> Bool {
         expandedCards.contains(card)
+    }
+
+    /// What a card's tray shows, or nil when it is closed.
+    ///
+    /// An open tray with nothing in it yet says so rather than showing an empty box: the first
+    /// read takes a moment, and `docker logs` on a stopped project takes longer.
+    func logs(for card: CardID) -> LogLines? {
+        guard isExpanded(card), hasLogSource(card) else { return nil }
+        return logTails[card] ?? LogLines(detail: "reading…")
+    }
+
+    /// Whether this card has anything to read at all.
+    func hasLogSource(_ card: CardID) -> Bool {
+        project(forCard: card) != nil || ddevProject(forCard: card) != nil || localProject(forCard: card) != nil
+    }
+
+    func toggleLogs(for card: CardID) {
+        toggleExpanded(card)
+        guard isExpanded(card) else {
+            logTails[card] = nil
+            return
+        }
+        Task { await refreshLogs(for: card) }
+    }
+
+    /// Reads the trays that are open, and only those.
+    private func refreshOpenLogs() async {
+        for card in expandedCards where hasLogSource(card) {
+            await refreshLogs(for: card)
+        }
+    }
+
+    /// Re-reads a tray straight after an action, when it is open.
+    private func refreshLogsIfOpen(_ card: CardID) async {
+        guard isExpanded(card) else { return }
+        await refreshLogs(for: card)
+    }
+
+    private func refreshLogs(for card: CardID) async {
+        if let project = project(forCard: card) {
+            logTails[card] = await LocalStackService(project: project, runner: commandRunner).logs()
+        } else if let project = ddevProject(forCard: card) {
+            logTails[card] = await ddevEnvironment.logs(for: project)
+        } else if let project = localProject(forCard: card) {
+            logTails[card] = await LocalProjectService(project: project, runner: commandRunner).logs()
+        }
     }
 
     func toggleExpanded(_ card: CardID) {
@@ -530,6 +583,9 @@ final class DeckController: ObservableObject {
                 errors.append(apiError)
             }
         }
+
+        // After the projects, because a tray reads what the state it just reported came from.
+        await refreshOpenLogs()
 
         guard let firstError = errors.first else {
             consecutiveFailures = 0

@@ -114,6 +114,7 @@ public struct CardChrome<Content: View>: View {
     private let glyph: CardGlyph?
     private let pill: (text: String, color: Color)?
     private let timestamp: String?
+    private let toggle: CardHeaderToggle?
     private let content: Content
 
     public init(
@@ -121,12 +122,14 @@ public struct CardChrome<Content: View>: View {
         glyph: CardGlyph? = nil,
         pill: (text: String, color: Color)? = nil,
         timestamp: String? = nil,
+        toggle: CardHeaderToggle? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.glyph = glyph
         self.pill = pill
         self.timestamp = timestamp
+        self.toggle = toggle
         self.content = content()
     }
 
@@ -140,6 +143,20 @@ public struct CardChrome<Content: View>: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer(minLength: 8)
+                if let toggle {
+                    Image(systemName: toggle.systemImage)
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(DeckTheme.value.opacity(toggle.isOn ? 0.8 : 0.45))
+                        .frame(width: CardHeaderToggle.width, height: 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5)
+                                .fill(Color.white.opacity(toggle.isOn ? 0.12 : 0.06))
+                        )
+                        .contentShape(Rectangle())
+                        .clickable(cornerRadius: 5)
+                        .onTapGesture(perform: toggle.action)
+                        .help(toggle.help)
+                }
                 if let pill {
                     StatusPill(pill.text, color: pill.color)
                 } else if let timestamp {

@@ -98,13 +98,15 @@ public enum ProjectCardMetrics {
         tools: [String],
         environments: [String],
         hasBranch: Bool,
-        hasMetaRow: Bool
+        hasMetaRow: Bool,
+        logs: LogLines? = nil
     ) -> Double {
         CardChromeMetrics.topPadding
             + CardChromeMetrics.headerHeight
             + CardHeroRow.topPadding + CardHeroRow.height
             + CardMetaBlock.height(hasBranch: hasBranch, hasRow: hasMetaRow)
             + CardChipFlow.height(tools: tools, environments: environments)
+            + CardLogTray.height(for: logs)
             + CardActionRow.height
             + CardChromeMetrics.bottomPadding
     }

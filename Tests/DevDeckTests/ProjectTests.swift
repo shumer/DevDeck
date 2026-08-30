@@ -385,6 +385,35 @@ func runProjectTests(_ run: TestRun) async {
         try expectNil(ProjectProbe.suggestion(for: makeFolder(["README.md": "hi"])), "suggestion")
     }
 
+    run.section("Projects - reading the log back")
+
+    await run.test("only the tail of a log is read, and not from the middle of a line") {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("devdeck-tail-\(UUID().uuidString).log")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        // Bigger than the window on purpose: a log left running all day is megabytes, and
+        // reading all of it to show six lines is what makes a card stutter.
+        let filler = (1...500).map { "line \($0) padded out to make this file worth truncating" }
+        try (filler + ["second to last", "the last line"]).joined(separator: "\n")
+            .write(to: url, atomically: true, encoding: .utf8)
+
+        let tail = try expectNotNil(LogTail.tail(of: url, bytes: 200), "tail")
+        try expect(tail.count <= 200, "only the window was read")
+        try expect(tail.hasSuffix("the last line"), "and it is the end of the file")
+        let first = try expectNotNil(tail.split(separator: "\n").first.map(String.init), "first line")
+        try expect(first.hasSuffix("worth truncating"),
+                   "the half line the window started in is dropped, so the first one is whole")
+
+        let lines = LogTail.lines(from: tail, limit: 2)
+        try expectEqual(lines, ["second to last", "the last line"])
+    }
+
+    await run.test("a log that was never written reads as nothing rather than as a failure") {
+        let missing = URL(fileURLWithPath: "/nowhere/devdeck-does-not-exist.log")
+        try expectNil(LogTail.tail(of: missing))
+    }
+
     run.section("Docker - one answer for the whole deck")
 
     let now = Date(timeIntervalSince1970: 1_000)

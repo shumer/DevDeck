@@ -10,40 +10,50 @@ public struct DDEVProjectCard: View {
     private let project: DDEVProject
     private let status: DDEVStatus
     private let docker: DockerStatus
+    private let logs: LogLines?
     private let onOpen: (URL) -> Void
     private let onAction: (DDEVAction) -> Void
     private let onRevealFolder: () -> Void
     private let onOpenTerminal: () -> Void
     private let onStartDocker: (() -> Void)?
+    private let onToggleLogs: (() -> Void)?
+    private let onOpenLogFile: ((URL) -> Void)?
 
     public init(
         project: DDEVProject,
         status: DDEVStatus,
         docker: DockerStatus = DockerStatus(state: .unknown),
+        logs: LogLines? = nil,
         onOpen: @escaping (URL) -> Void = { _ in },
         onAction: @escaping (DDEVAction) -> Void = { _ in },
         onRevealFolder: @escaping () -> Void = {},
         onOpenTerminal: @escaping () -> Void = {},
-        onStartDocker: (() -> Void)? = nil
+        onStartDocker: (() -> Void)? = nil,
+        onToggleLogs: (() -> Void)? = nil,
+        onOpenLogFile: ((URL) -> Void)? = nil
     ) {
         self.project = project
         self.status = status
         self.docker = docker
+        self.logs = logs
         self.onOpen = onOpen
         self.onAction = onAction
         self.onRevealFolder = onRevealFolder
         self.onOpenTerminal = onOpenTerminal
         self.onStartDocker = onStartDocker
+        self.onToggleLogs = onToggleLogs
+        self.onOpenLogFile = onOpenLogFile
     }
 
-    nonisolated public static func size(for project: DDEVProject, status: DDEVStatus) -> CGSize {
+    nonisolated public static func size(for project: DDEVProject, status: DDEVStatus, logs: LogLines? = nil) -> CGSize {
         CGSize(
             width: CardMetrics.width,
             height: ProjectCardMetrics.height(
                 tools: project.toolLinks(status: status).map(\.label),
                 environments: project.environmentLinks(status: status).map(\.label),
                 hasBranch: status.branch != nil,
-                hasMetaRow: true
+                hasMetaRow: true,
+                logs: logs
             )
         )
     }
@@ -52,7 +62,8 @@ public struct DDEVProjectCard: View {
         CardChrome(
             title: "DDEV · \(project.displayTitle)",
             glyph: .ddev,
-            timestamp: ProjectCardMetrics.timestamp(status.checkedAt)
+            timestamp: ProjectCardMetrics.timestamp(status.checkedAt),
+            toggle: logToggle
         ) {
             hero
             CardMetaBlock(
@@ -63,6 +74,9 @@ public struct DDEVProjectCard: View {
                 onOpenRepository: onOpen
             )
             chips
+            if let logs {
+                CardLogTray(logs: logs, onOpenFile: onOpenLogFile)
+            }
             controls
             Spacer(minLength: 0)
         }
@@ -180,5 +194,15 @@ public struct DDEVProjectCard: View {
             },
             CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
         ]
+    }
+
+    /// The switch that opens the tray. Absent when nothing can be shown, because a control that
+    /// opens an empty box is worse than no control.
+    private var logToggle: CardHeaderToggle? {
+        guard let onToggleLogs else { return nil }
+        return CardHeaderToggle(
+            isOn: logs != nil,
+            help: logs == nil ? "show the last log lines" : "hide the log"
+        ) { onToggleLogs() }
     }
 }

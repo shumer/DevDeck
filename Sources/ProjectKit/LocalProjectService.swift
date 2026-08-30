@@ -60,6 +60,31 @@ public struct LocalProjectService: Sendable {
     }
 
     public var logURL: URL { files.log(project.id) }
+
+    /// The tail of the log the detached start writes.
+    ///
+    /// Read straight off disk rather than through `tail`, because there is no reason to spawn a
+    /// shell for something Foundation does, and because this runs on every refresh while the
+    /// tray is open.
+    public func logs() async -> LogLines {
+        let name = logURL.lastPathComponent
+        guard let text = LogTail.tail(of: logURL) else {
+            return LogLines(
+                source: "tail \(name)",
+                detail: "nothing has been started from here yet",
+                fetchedAt: clock.now,
+                fileURL: nil
+            )
+        }
+        let lines = LogTail.lines(from: text)
+        return LogLines(
+            lines: lines,
+            source: "tail \(name)",
+            detail: lines.isEmpty ? "the log is empty" : nil,
+            fetchedAt: clock.now,
+            fileURL: logURL
+        )
+    }
     public var pidURL: URL { files.pid(project.id) }
 
     // MARK: Status

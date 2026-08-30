@@ -11,40 +11,50 @@ public struct LocalProjectCard: View {
     private let project: LocalProject
     private let status: LocalProjectStatus
     private let docker: DockerStatus
+    private let logs: LogLines?
     private let onOpen: (URL) -> Void
     private let onAction: (LocalProjectAction) -> Void
-    private let onOpenLog: () -> Void
+    private let onOpenTerminal: () -> Void
     private let onRevealFolder: () -> Void
     private let onStartDocker: (() -> Void)?
+    private let onToggleLogs: (() -> Void)?
+    private let onOpenLogFile: ((URL) -> Void)?
 
     public init(
         project: LocalProject,
         status: LocalProjectStatus,
         docker: DockerStatus = DockerStatus(state: .unknown),
+        logs: LogLines? = nil,
         onOpen: @escaping (URL) -> Void = { _ in },
         onAction: @escaping (LocalProjectAction) -> Void = { _ in },
-        onOpenLog: @escaping () -> Void = {},
+        onOpenTerminal: @escaping () -> Void = {},
         onRevealFolder: @escaping () -> Void = {},
-        onStartDocker: (() -> Void)? = nil
+        onStartDocker: (() -> Void)? = nil,
+        onToggleLogs: (() -> Void)? = nil,
+        onOpenLogFile: ((URL) -> Void)? = nil
     ) {
         self.project = project
         self.status = status
         self.docker = docker
+        self.logs = logs
         self.onOpen = onOpen
         self.onAction = onAction
-        self.onOpenLog = onOpenLog
+        self.onOpenTerminal = onOpenTerminal
         self.onRevealFolder = onRevealFolder
         self.onStartDocker = onStartDocker
+        self.onToggleLogs = onToggleLogs
+        self.onOpenLogFile = onOpenLogFile
     }
 
-    nonisolated public static func size(for project: LocalProject, status: LocalProjectStatus) -> CGSize {
+    nonisolated public static func size(for project: LocalProject, status: LocalProjectStatus, logs: LogLines? = nil) -> CGSize {
         CGSize(
             width: CardMetrics.width,
             height: ProjectCardMetrics.height(
                 tools: project.toolLinks().map(\.label),
                 environments: project.environmentLinks().map(\.label),
                 hasBranch: status.branch != nil,
-                hasMetaRow: true
+                hasMetaRow: true,
+                logs: logs
             )
         )
     }
@@ -53,7 +63,8 @@ public struct LocalProjectCard: View {
         CardChrome(
             title: "Project · \(project.displayTitle)",
             glyph: glyph,
-            timestamp: ProjectCardMetrics.timestamp(status.checkedAt)
+            timestamp: ProjectCardMetrics.timestamp(status.checkedAt),
+            toggle: logToggle
         ) {
             hero
             CardMetaBlock(
@@ -64,6 +75,9 @@ public struct LocalProjectCard: View {
                 onOpenRepository: onOpen
             )
             chips
+            if let logs {
+                CardLogTray(logs: logs, onOpenFile: onOpenLogFile)
+            }
             controls
             Spacer(minLength: 0)
         }
@@ -132,12 +146,12 @@ public struct LocalProjectCard: View {
         )
     }
 
-    /// Logs rather than Terminal, unlike the Arc and DDEV cards: a command started from here
-    /// writes to a file nobody else knows about, and a card that can start something it cannot
-    /// show the output of is a card that hides its own failures.
+    /// The same four as the Arc and DDEV cards now. Logs used to have a button here, back when
+    /// reading them meant opening a file in Console; the tray shows them in place, and the whole
+    /// file is one click away inside it.
     private var controls: some View {
         CardActionRow(lifecycle + [
-            CardAction("Logs", systemImage: "doc.text", isEnabled: status.hasLog, action: onOpenLog),
+            CardAction("Terminal", systemImage: "terminal", action: onOpenTerminal),
             CardAction(
                 "Folder",
                 systemImage: "folder",
@@ -174,5 +188,15 @@ public struct LocalProjectCard: View {
             },
             CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
         ]
+    }
+
+    /// The switch that opens the tray. Absent when nothing can be shown, because a control that
+    /// opens an empty box is worse than no control.
+    private var logToggle: CardHeaderToggle? {
+        guard let onToggleLogs else { return nil }
+        return CardHeaderToggle(
+            isOn: logs != nil,
+            help: logs == nil ? "show the last log lines" : "hide the log"
+        ) { onToggleLogs() }
     }
 }
