@@ -6,16 +6,31 @@ import SwiftUI
 /// In the header rather than in the control row on purpose. Four buttons already need 311
 /// points and the row has 303, so a fifth would shrink every one of them and undo the reason
 /// the card is 352 points wide in the first place.
-public struct CardHeaderToggle {
+public struct CardHeaderToggle: Identifiable {
+    public let id: String
     public let isOn: Bool
+    public let isEnabled: Bool
     public let systemImage: String
     public let help: String
     public let action: () -> Void
+    /// Shown hanging off the button while it is on. The log tray has none: it lives in the card.
+    public let popover: AnyView?
 
-    public init(isOn: Bool, systemImage: String = "text.alignleft", help: String, action: @escaping () -> Void) {
+    public init(
+        id: String = "log",
+        isOn: Bool,
+        isEnabled: Bool = true,
+        systemImage: String = "text.alignleft",
+        help: String,
+        popover: AnyView? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.id = id
         self.isOn = isOn
+        self.isEnabled = isEnabled
         self.systemImage = systemImage
         self.help = help
+        self.popover = popover
         self.action = action
     }
 

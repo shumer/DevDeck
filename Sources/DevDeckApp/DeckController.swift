@@ -473,6 +473,21 @@ final class DeckController: ObservableObject {
         }
     }
 
+    /// This machine's address on the wifi, for the phone button.
+    ///
+    /// Read once per refresh rather than per redraw: it is a syscall, it changes when a network
+    /// does, and a card redraws far more often than that.
+    @Published private(set) var localAddress: String? = LocalAddress.current()
+
+    /// The site a phone on the same network can ask for, or nil when there is nothing to offer.
+    ///
+    /// Nil unless the project is up, which is the rule the button hangs on: a QR code pointing
+    /// at a port nothing is listening on is a worse answer than no button at all.
+    func phoneURL(for site: URL?, isRunning: Bool) -> URL? {
+        guard isRunning, let site, let localAddress else { return nil }
+        return LocalAddress.rewrite(site, to: localAddress)
+    }
+
     /// The menu bar carries the unread count, so it has to hear about a row leaving.
     var updateStatusItem: (() -> Void)?
 
@@ -792,6 +807,10 @@ final class DeckController: ObservableObject {
 
         // After the projects, because a tray reads what the state it just reported came from.
         await refreshOpenLogs()
+
+        // A laptop moves between networks more often than it moves between refreshes.
+        let address = LocalAddress.current()
+        if address != localAddress { localAddress = address }
 
         guard let firstError = errors.first else {
             consecutiveFailures = 0

@@ -63,6 +63,7 @@ struct CardHostView: View {
                     docker: controller.docker,
                     logs: controller.logs(for: card),
                     isCollapsed: controller.isCollapsed(card),
+                    phoneURL: phoneURL(for: project),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
@@ -78,6 +79,7 @@ struct CardHostView: View {
                     docker: controller.docker,
                     logs: controller.logs(for: card),
                     isCollapsed: controller.isCollapsed(card),
+                    phoneURL: phoneURL(for: project),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
@@ -93,6 +95,7 @@ struct CardHostView: View {
                     docker: controller.docker,
                     logs: controller.logs(for: card),
                     isCollapsed: controller.isCollapsed(card),
+                    phoneURL: phoneURL(for: project),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
@@ -135,6 +138,26 @@ struct CardHostView: View {
     /// GitHub rows do: one signed-in identity per browser profile.
     private func openGitLab(_ url: URL, _ accountID: String) {
         LinkOpener.open(url, using: controller.gitlabBrowser(for: accountID))
+    }
+
+    /// The site as another device on this network would ask for it, per kind of project.
+    ///
+    /// Three overloads rather than one, because "where does this project serve" is answered from
+    /// a different place for each: DDEV knows, Arc reads the checkout's `.env`, and a plain
+    /// project was told.
+    private func phoneURL(for project: DDEVProject) -> URL? {
+        let status = controller.ddevStatus(for: project)
+        return controller.phoneURL(for: status.entry?.primaryURL, isRunning: status.isRunning)
+    }
+
+    private func phoneURL(for project: ArcProject) -> URL? {
+        let status = controller.stackStatus(for: project)
+        return controller.phoneURL(for: status.siteURL ?? project.localSiteURL, isRunning: status.isRunning)
+    }
+
+    private func phoneURL(for project: LocalProject) -> URL? {
+        let status = controller.localStatus(for: project)
+        return controller.phoneURL(for: project.siteURL ?? project.healthCheckURL, isRunning: status.isRunning)
     }
 
     /// The same place a double-click on the panel goes. A collapsed list card has no lifecycle

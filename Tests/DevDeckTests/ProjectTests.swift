@@ -414,6 +414,37 @@ func runProjectTests(_ run: TestRun) async {
         try expectNil(LogTail.tail(of: missing))
     }
 
+    run.section("The phone")
+
+    await run.test("only this machine by another name is rewritten") {
+        let address = "192.168.1.24"
+        try expectEqual(
+            LocalAddress.rewrite(URL(string: "http://localhost:8080/admin")!, to: address)?.absoluteString,
+            "http://192.168.1.24:8080/admin",
+            "the port and the path are the site's, only the name was wrong"
+        )
+        try expectEqual(
+            LocalAddress.rewrite(URL(string: "http://127.0.0.1")!, to: address)?.absoluteString,
+            "http://192.168.1.24"
+        )
+        try expectNil(
+            LocalAddress.rewrite(URL(string: "https://staging.acme.io")!, to: address),
+            "a link to somewhere else does not need rewriting, and rewriting it would send the phone wrong"
+        )
+        try expectNil(LocalAddress.rewrite(URL(string: "https://acme.ddev.site")!, to: address),
+                      "and neither does a name that already resolves off this machine")
+    }
+
+    await run.test("the address offered is one a phone could reach") {
+        // Nothing is asserted about the value: a build machine may have no network at all. What
+        // matters is that anything returned is a real address on a real interface, never a
+        // loopback, because a QR code pointing at 127.0.0.1 sends the phone to itself.
+        for address in LocalAddress.addresses() {
+            try expect(!address.hasPrefix("127."), "loopback is the one answer that cannot work")
+            try expect(address.contains("."), "IPv4, which is what a phone camera will accept")
+        }
+    }
+
     run.section("Docker - one answer for the whole deck")
 
     let now = Date(timeIntervalSince1970: 1_000)
