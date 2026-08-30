@@ -55,6 +55,9 @@
   in the same request.
 - **The branch on a card is a link** to the repository it came from, read from the checkout's
   own `.git/config`.
+- **The deck is quieter** - colour left the chips, the palette came down about 20%, the dim text
+  came up and the bright text came down, and every outline that was not the offered action came
+  off. Two directions were drawn at true scale first; see [adr/0010-card-palette.md](adr/0010-card-palette.md).
 - **The plain-project settings form**, in the same language: a header with the name and the
   card switch, commands with their captions above them, switches that explain themselves in one
   line instead of four footnotes, the live health answer in the group that asks about it, and

@@ -29,18 +29,25 @@ public struct CardChip: View {
         self.action = action
     }
 
-    public nonisolated static let height: Double = 20
+    public nonisolated static let height: Double = 22
+    private nonisolated static let cornerRadius: Double = 7
 
     public var body: some View {
         Text(label)
+            // One neutral fill for every chip, and the hue kept only in the lettering. Five
+            // pills each carrying their own tinted background is the loudest thing on a card
+            // that is otherwise trying to be read at a glance.
             .font(.system(size: 10.5, weight: .medium))
-            .foregroundStyle(isDimmed ? color.opacity(0.45) : color)
+            .foregroundStyle(isDimmed ? color.opacity(0.3) : DeckTheme.chipInk(color))
             .lineLimit(1)
             .padding(.horizontal, 8)
             .frame(height: Self.height)
-            .background(color.opacity(isDimmed ? 0.07 : 0.14), in: RoundedRectangle(cornerRadius: 6))
+            .background(
+                Color.white.opacity(isDimmed ? 0.03 : 0.06),
+                in: RoundedRectangle(cornerRadius: Self.cornerRadius)
+            )
             .contentShape(Rectangle())
-            .clickable(cornerRadius: 6, isEnabled: !isDimmed)
+            .clickable(cornerRadius: Self.cornerRadius, isEnabled: !isDimmed)
             .onTapGesture(perform: action)
             .help(help)
     }
@@ -55,17 +62,18 @@ public struct CardChipDivider: View {
 
     public var body: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.14))
-            .frame(width: 1, height: 12)
+            .fill(Color.white.opacity(0.12))
+            .frame(width: 1, height: 14)
             .padding(.horizontal, 3)
     }
 }
 
 /// One of the controls along the bottom of a project card.
 ///
-/// Not four equal slabs any more: the action that matters right now is wider, tinted and
-/// bolder, and the rest recede to a hairline. They keep a resting fill regardless, because the
-/// panels sit behind other windows where hover cannot be relied on to say "pressable".
+/// Not four equal slabs any more: the action that matters right now is wider, tinted, bolder
+/// and the only one with an outline, and the rest recede to a fill. They keep that resting fill
+/// regardless, because the panels sit behind other windows where hover cannot be relied on to
+/// say "pressable".
 public struct CardActionButton: View {
     private let title: String
     private let systemImage: String?
@@ -90,7 +98,15 @@ public struct CardActionButton: View {
         self.action = action
     }
 
-    public nonisolated static let height: Double = 26
+    public nonisolated static let height: Double = 28
+    private nonisolated static let cornerRadius: Double = 9
+    /// The label size, which the row's width arithmetic has to use as well.
+    ///
+    /// The quiet label stays at 10.5 rather than going to 11 with the rest of this pass. Four
+    /// labels at 11 need 307 points and the row has 303, so every button would shrink in
+    /// proportion and lose the uniform padding the width of the card was chosen to give them.
+    /// Half a point of type is not worth `Terminal` touching its own edge again.
+    public nonisolated static func labelSize(isProminent: Bool) -> Double { isProminent ? 11.5 : 10.5 }
 
     private var isTinted: Bool { isProminent && tint != DeckTheme.value }
 
@@ -101,32 +117,31 @@ public struct CardActionButton: View {
                     .font(.system(size: isProminent ? 10 : 9.5, weight: .semibold))
             }
             Text(title)
-                .font(.system(size: isProminent ? 11.5 : 10.5, weight: isProminent ? .semibold : .medium))
+                .font(.system(
+                    size: Self.labelSize(isProminent: isProminent),
+                    weight: isProminent ? .semibold : .medium
+                ))
                 .lineLimit(1)
         }
-        .foregroundStyle(isEnabled ? tint : tint.opacity(0.3))
+        .foregroundStyle(isEnabled ? tint.opacity(isProminent ? 1 : 0.82) : tint.opacity(0.28))
         .frame(maxWidth: .infinity)
         .frame(height: Self.height)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: Self.cornerRadius)
                 .fill(isTinted
-                    ? tint.opacity(isEnabled ? 0.16 : 0.04)
-                    : Color.white.opacity(isEnabled ? 0.1 : 0.03))
+                    ? tint.opacity(isEnabled ? 0.14 : 0.05)
+                    : Color.white.opacity(isEnabled ? 0.07 : 0.03))
         )
+        // Only the action the card is offering keeps an outline. Four bordered buttons under
+        // four bordered chips is eight hairlines on a panel 352 points wide, and the eye reads
+        // that as a form rather than as a card.
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(borderColor, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Self.cornerRadius)
+                .strokeBorder(isTinted && isEnabled ? tint.opacity(0.36) : .clear, lineWidth: 1)
         )
         .contentShape(Rectangle())
-        .clickable(cornerRadius: 8, isEnabled: isEnabled)
+        .clickable(cornerRadius: Self.cornerRadius, isEnabled: isEnabled)
         .onTapGesture { if isEnabled { action() } }
-    }
-
-    private var borderColor: Color {
-        guard isEnabled else { return Color.white.opacity(0.08) }
-        // The bright border belongs to the one action the card is offering; everything else
-        // steps back so it stops competing.
-        return isTinted ? tint.opacity(0.45) : Color.white.opacity(0.22)
     }
 }
 
@@ -169,8 +184,10 @@ public struct CardActionRow: View {
         self.actions = actions
     }
 
-    public nonisolated static let spacing: Double = 6
-    public nonisolated static let topPadding: Double = 10
+    public nonisolated static let spacing: Double = 7
+    /// Wider than the gap above the chips, so the card reads as two blocks rather than as five
+    /// evenly spaced stripes.
+    public nonisolated static let topPadding: Double = 13
     public nonisolated static var height: Double { CardActionButton.height + topPadding }
     /// How much wider the prominent action is than a quiet one.
     public nonisolated static let prominentShare: Double = 1.5
@@ -231,7 +248,7 @@ public struct CardActionRow: View {
 
     private nonisolated static func intrinsicWidth(of action: CardAction) -> Double {
         let font = NSFont.systemFont(
-            ofSize: action.isProminent ? 11.5 : 10.5,
+            ofSize: CardActionButton.labelSize(isProminent: action.isProminent),
             weight: action.isProminent ? .semibold : .medium
         )
         let label = ceil(NSAttributedString(string: action.title, attributes: [.font: font]).size().width)
@@ -279,7 +296,7 @@ public struct CardHeroRow: View {
     }
 
     public nonisolated static let height: Double = 22
-    public nonisolated static let topPadding: Double = 9
+    public nonisolated static let topPadding: Double = 10
 
     public var body: some View {
         HStack(spacing: 9) {
@@ -287,16 +304,16 @@ public struct CardHeroRow: View {
             Text(text)
                 // Colour returns to the word only when something wants attention. That is the
                 // whole asymmetry: five calm cards read as texture, the sixth reads as a state.
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 17, weight: .medium))
                 .kerning(-0.3)
-                .foregroundStyle(tone == .alert ? color : DeckTheme.value.opacity(0.8))
+                .foregroundStyle(tone == .alert ? color : DeckTheme.value.opacity(0.76))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
             if let note {
                 Text(note)
                     .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundStyle(DeckTheme.value.opacity(0.55))
+                    .foregroundStyle(DeckTheme.value.opacity(0.66))
                     .lineLimit(1)
                     .fixedSize()
             }
@@ -322,7 +339,7 @@ public struct CardHeroRow: View {
                 .frame(width: 10, height: 10)
                 .background(
                     Circle()
-                        .fill(color.opacity(tone == .alert ? 0.3 : 0.2))
+                        .fill(color.opacity(tone == .alert ? 0.20 : 0.14))
                         .frame(width: 16, height: 16)
                 )
                 .frame(width: 12, height: 12)
@@ -357,7 +374,7 @@ public struct CardMetaBlock: View {
 
     public nonisolated static let branchHeight: Double = 15
     public nonisolated static let rowHeight: Double = 16
-    public nonisolated static let topPadding: Double = 6
+    public nonisolated static let topPadding: Double = 7
 
     /// How tall the block is for what it was given, so the panel and the card cannot disagree.
     public nonisolated static func height(hasBranch: Bool, hasRow: Bool) -> Double {
@@ -383,7 +400,7 @@ public struct CardMetaBlock: View {
                     if let trailing {
                         Text(trailing)
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(DeckTheme.value.opacity(0.55))
+                            .foregroundStyle(DeckTheme.value.opacity(0.66))
                             .lineLimit(1)
                             .fixedSize()
                     }

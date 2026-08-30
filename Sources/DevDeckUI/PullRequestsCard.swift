@@ -92,13 +92,15 @@ public struct PullRequestsCard: View {
 
     @ViewBuilder
     private func content(_ snapshot: PullRequestsSnapshot) -> some View {
-        // The count is the hero, but 28 rather than the 42 it used to be: it was the largest
-        // thing on the deck and it is not the most important one.
+        // The count is the hero, but 26 rather than the 42 it used to be: it was the largest
+        // thing on the deck and it is not the most important one. It is also plain now. A number
+        // that turns red when something is blocked says the same thing twice, since the words
+        // beside it already say which and how many.
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("\(snapshot.totalCount)")
-                .font(.system(size: 28, weight: .semibold))
+                .font(.system(size: 26, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(snapshot.blockedCount > 0 ? DeckTheme.red : DeckTheme.green)
+                .foregroundStyle(DeckTheme.value.opacity(0.85))
             Text("open")
                 .font(.system(size: 12))
                 .foregroundStyle(DeckTheme.label)
@@ -143,7 +145,7 @@ public struct PullRequestsCard: View {
 
     /// How the open pull requests are spread across blocked, needs-attention and ready.
     ///
-    /// Four points of height for the shape of the whole list, which the three visible rows
+    /// Three points of height for the shape of the whole list, which the three visible rows
     /// cannot give: two blocked out of eight reads differently from two out of two.
     @ViewBuilder
     private func healthBar(_ snapshot: PullRequestsSnapshot) -> some View {
@@ -155,13 +157,13 @@ public struct PullRequestsCard: View {
                 ForEach(Array(counts.enumerated()), id: \.offset) { index, count in
                     if count > 0 {
                         Capsule()
-                            .fill([DeckTheme.red, DeckTheme.amber, DeckTheme.green][index].opacity(0.8))
+                            .fill([DeckTheme.red, DeckTheme.amber, DeckTheme.green][index].opacity(0.62))
                             .frame(maxWidth: .infinity)
                             .layoutPriority(Double(count))
                     }
                 }
             }
-            .frame(height: 4)
+            .frame(height: 3)
             .padding(.top, 8)
         }
     }
@@ -189,18 +191,18 @@ public struct PullRequestsCard: View {
             if let key = ticket.key {
                 Text(key)
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .foregroundStyle(DeckTheme.value.opacity(0.62))
+                    .foregroundStyle(DeckTheme.value.opacity(0.55))
                     .fixedSize()
             }
             Text(ticket.subject)
                 .font(.system(size: 11.5))
-                .foregroundStyle(DeckTheme.value)
+                .foregroundStyle(DeckTheme.value.opacity(0.9))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
             Text(pullRequest.statusCode)
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(DeckTheme.label)
+                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                .foregroundStyle(DeckTheme.value.opacity(0.58))
                 .lineLimit(1)
                 .fixedSize()
         }

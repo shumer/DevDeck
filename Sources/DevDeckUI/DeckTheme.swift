@@ -1,3 +1,4 @@
+import AppKit
 import DevDeckCore
 import SwiftUI
 
@@ -25,20 +26,50 @@ public enum DeckTheme {
     public static let value = Color(red: 0.949, green: 0.961, blue: 0.969)
     /// Secondary text. Kept well above the "tasteful grey" that disappears the moment the
     /// panel sits over a bright wallpaper.
-    public static let label = Color(red: 0.922, green: 0.941, blue: 0.961).opacity(0.68)
-    /// Card titles. They name the card, so they read first, not last.
-    public static let title = Color(red: 0.949, green: 0.961, blue: 0.969).opacity(0.9)
-    public static let faint = Color.white.opacity(0.1)
+    public static let label = Color(red: 0.922, green: 0.941, blue: 0.961).opacity(0.78)
+    /// Card titles. Quiet on purpose: the title is the line you already know by heart, and in
+    /// bold caps at 90% white it was the loudest thing on a card whose point is the state.
+    public static let title = Color(red: 0.949, green: 0.961, blue: 0.969).opacity(0.62)
+    /// Row rules. A separator only has to be found, not seen: at 10% it drew a ladder down
+    /// every list card.
+    public static let faint = Color.white.opacity(0.06)
 
-    /// The three state colours are the sibling widget's, to the digit: the two decks sit on the
-    /// same desktop, and two greens a shade apart look like a mistake rather than a decision.
-    /// They are also more saturated than what was here, which is most of what made these cards
-    /// read as grey next to it.
-    public static let green = Color(red: 0.36, green: 0.86, blue: 0.60)
-    public static let red = Color(red: 1.00, green: 0.38, blue: 0.38)
-    public static let amber = Color(red: 1.00, green: 0.80, blue: 0.28)
-    public static let violet = Color(red: 0.72, green: 0.62, blue: 1.0)
-    public static let blue = Color(red: 0.42, green: 0.72, blue: 1.0)
+    /// The state colours, pulled down about 20% in saturation from the fully saturated set they
+    /// started as. Six cards of pure hue on dark glass is what made the deck tiring to sit next
+    /// to for a working day: nothing was wrong with any one card, and the wall of them hummed.
+    /// Muted, they still separate at a glance and stop competing with the wallpaper.
+    public static let green = Color(red: 0.439, green: 0.780, blue: 0.600)
+    public static let red = Color(red: 0.910, green: 0.518, blue: 0.518)
+    public static let amber = Color(red: 0.941, green: 0.761, blue: 0.420)
+    public static let violet = Color(red: 0.663, green: 0.608, blue: 0.878)
+    public static let blue = Color(red: 0.498, green: 0.682, blue: 0.867)
+
+    /// A hue as a chip wears it: mostly the hue, mixed back towards the text colour.
+    ///
+    /// Chips used to be filled with their own colour and lettered in it at full strength, which
+    /// put five saturated pills in one row on every card. The fill is neutral now and only the
+    /// lettering keeps the hue, so the row still says what kind of link each one is without the
+    /// card reading as a paint chart.
+    public static func chipInk(_ color: Color) -> Color {
+        blend(color, with: value, amount: 0.55)
+    }
+
+    /// Two colours mixed in sRGB. `SwiftUI.Color.mix(with:by:)` needs macOS 15, and this app
+    /// runs further back than that.
+    public static func blend(_ first: Color, with second: Color, amount: Double) -> Color {
+        guard
+            let one = NSColor(first).usingColorSpace(.sRGB),
+            let two = NSColor(second).usingColorSpace(.sRGB)
+        else { return first }
+        let mix = { (a: CGFloat, b: CGFloat) in Double(a) * amount + Double(b) * (1 - amount) }
+        return Color(
+            .sRGB,
+            red: mix(one.redComponent, two.redComponent),
+            green: mix(one.greenComponent, two.greenComponent),
+            blue: mix(one.blueComponent, two.blueComponent),
+            opacity: 1
+        )
+    }
 
     public static let cornerRadius: CGFloat = 20
     /// Vertical spacing between stacked panels.
@@ -46,13 +77,16 @@ public enum DeckTheme {
 
     public static func sectionLabel(_ text: String) -> some View {
         Text(text.uppercased())
-            .font(.system(size: 11, weight: .bold))
-            .kerning(1.2)
+            .font(.system(size: 10.5, weight: .semibold))
+            .kerning(0.8)
             .foregroundStyle(title)
     }
 }
 
-/// A pill in the top-right corner of a card: the one-word verdict.
+/// The one-word verdict beside a card's headline number.
+///
+/// It was a bordered capsule in small caps, which is three pieces of decoration for two words.
+/// Plain tinted text says the same thing and leaves the card one outline quieter.
 public struct StatusPill: View {
     private let text: String
     private let color: Color
@@ -63,15 +97,10 @@ public struct StatusPill: View {
     }
 
     public var body: some View {
-        Text(text.uppercased())
-            .font(.system(size: 9.5, weight: .semibold))
-            .kerning(0.9)
+        Text(text)
+            .font(.system(size: 10.5, weight: .semibold))
+            .kerning(0.2)
             .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .overlay(
-                Capsule().strokeBorder(color.opacity(0.7), lineWidth: 1)
-            )
     }
 }
 
@@ -116,7 +145,7 @@ public struct CardChrome<Content: View>: View {
                 } else if let timestamp {
                     Text(timestamp)
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(Color.white.opacity(0.38))
+                        .foregroundStyle(Color.white.opacity(0.50))
                         .fixedSize()
                 }
             }
