@@ -431,16 +431,19 @@ you asked it to: collapsing one, opening a log, expanding a list. Data arriving 
 anything. **Keep the column packed**, in Settings and off by default, closes the gaps in a column whenever
 a card changes height, at the price of any gap you left in it on purpose.
 
-**Being told.** Off until you switch it on, under Settings → General → Notifications, because
-asking for notification permission before an app has done anything for you is what people say no
-to and never revisit. Two switches: a banner when somebody asks for your review, and one when
-something of yours becomes blocked. They cover GitHub and GitLab alike, and each account has its
-own switch in its own form, so a customer's instance can be silent while your own is not. Nothing
-is announced on the first answer after a launch, since that is the state you left things in, and
-nothing is announced twice, even across restarts. Three at once become one line rather than three
-banners. A click opens the pull or merge request in the browser profile of the account that owns
-it, and **Send a test** posts one immediately so the whole chain can be checked without waiting
-for somebody to ask for a review.
+**Being told.** One master switch under Settings → General → Notifications, off until you turn it
+on, because asking for notification permission before an app has done anything for you is what
+people say no to and never revisit. *What* you are told about belongs to each account, in its own
+form under GitHub accounts and GitLab instances: a banner when somebody asks for your review, and
+one when something of yours there is blocked. So a customer's instance can stay quiet while your
+own does not, per token, per kind.
+
+The banner carries the service's own mark rather than the app's icon, so who is asking is
+answered before the words are read. Nothing is announced on the first answer after a launch,
+since that is the state you left things in, and nothing is announced twice, even across restarts.
+Three at once become one line rather than three banners. A click opens the pull or merge request
+in the browser profile of the account that owns it, and **Send a test** posts one immediately so
+the whole chain can be checked without waiting for somebody to ask for a review.
 
 The menu-bar menu holds what you *do*: which cards are on the deck, Tidy, Refresh now, Power off
 all DDEV, Settings and Quit. What the deck *is* lives in Settings under General: where the panels

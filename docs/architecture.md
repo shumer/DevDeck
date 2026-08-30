@@ -277,7 +277,12 @@ snapshot into `DeckAlert`s, so what counts as worth interrupting for lives besid
 derived from, and a blocked item carries its state in its identity - broken, fixed and broken
 again is news twice. `Notifier` in the app is the only part that talks to
 `UNUserNotificationCenter`, asks for permission at the moment the switch is turned on rather than
-at launch, and opens a clicked banner in the browser profile of the account that owns it.
+at launch, and opens a clicked banner in the browser profile of the account that owns it. Whether
+a given alert is wanted is a property of the account it came from, per kind, because one token is
+your own work and another is a customer's. The mark on the banner comes from
+`NotificationArtwork`, which draws the service's logo onto a dark tile in the caches directory:
+macOS puts the application icon on every notification and will not be talked out of it, and an
+attachment is the only place left to say who is asking.
 
 **Summoning is a window level, not a mode.** The cards were never the problem; being underneath
 everything was. So the shortcut raises the same panels, with the same frames and the same

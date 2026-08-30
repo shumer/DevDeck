@@ -133,21 +133,17 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue ? "1" : "0", forKey: "panels.summon") }
     }
 
-    /// Whether a banner appears when somebody asks for your review.
+    /// Whether DevDeck may notify you at all.
     ///
-    /// Off until it is switched on, and switching it on is what asks macOS for permission.
-    /// Requesting notification permission at first launch, before the app has done anything for
-    /// anybody, is what people uninstall an app over.
-    public var notifiesReviewRequests: Bool {
-        get { backend.bool(forKey: "notify.reviews") }
-        set { backend.set(newValue, forKey: "notify.reviews") }
-    }
-
-    /// Whether a banner appears when something of yours becomes blocked. Separate, because a red
-    /// build on a branch you are actively pushing to is not news.
-    public var notifiesBlocked: Bool {
-        get { backend.bool(forKey: "notify.blocked") }
-        set { backend.set(newValue, forKey: "notify.blocked") }
+    /// The master switch, and nothing more: *what* you are told about is a property of each
+    /// account, because one token is your own work and another is a customer's. This one exists
+    /// because turning it on is what asks macOS for permission, and asking at first launch,
+    /// before the app has done anything for anybody, is what people uninstall an app over.
+    public var notificationsEnabled: Bool {
+        // Falls back to the switch this replaced, so a deck that already had review-request
+        // banners on keeps them.
+        get { backend.string(forKey: "notify.enabled").map { $0 == "1" } ?? backend.bool(forKey: "notify.reviews") }
+        set { backend.set(newValue ? "1" : "0", forKey: "notify.enabled") }
     }
 
     /// What has already been announced, so a restart does not repeat it. Ids, newest last.

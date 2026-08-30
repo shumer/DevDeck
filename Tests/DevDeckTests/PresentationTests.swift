@@ -363,12 +363,12 @@ func runPresentationTests(_ run: TestRun) async {
     run.section("Being told")
 
     let review = DeckAlert(
-        id: "review:1", kind: .reviewRequest, title: "Review requested",
+        id: "review:1", kind: .reviewRequest, source: .gitlab, title: "Review requested",
         body: "acme/web!41 Drop the poller",
         url: URL(string: "https://git.acme.io/acme/web/-/merge_requests/41")!, accountID: "work"
     )
     let blocked = DeckAlert(
-        id: "blocked:2:CI", kind: .blocked, title: "Pipeline failed",
+        id: "blocked:2:CI", kind: .blocked, source: .gitlab, title: "Pipeline failed",
         body: "acme/web!42 Rebase", url: URL(string: "https://git.acme.io")!, accountID: "work"
     )
 
@@ -436,6 +436,19 @@ func runPresentationTests(_ run: TestRun) async {
         let after = MergeRequestsSnapshot(totalCount: 1, mergeRequests: [later]).alerts(includeBlocked: true)
         try expect(before.first?.id != after.first?.id,
                    "the state is part of the identity, so the second failure is news again")
+    }
+
+    await run.test("a banner carries the service's own mark, not the app's") {
+        // macOS puts the application icon on every notification and will not be talked out of
+        // it. The attachment is the only place "who is asking" can be answered.
+        for source in [DeckAlert.Source.github, .gitlab] {
+            let url = try expectNotNil(NotificationArtwork.fileURL(for: source), "artwork")
+            let data = try expectNotNil(try? Data(contentsOf: url), "png")
+            try expect(data.count > 500, "a real drawing rather than an empty tile")
+            try expectEqual(Array(data.prefix(4)), [0x89, 0x50, 0x4E, 0x47], "and a PNG")
+            let image = try expectNotNil(NSImage(contentsOf: url), "image")
+            try expectEqual(image.size.width, 128)
+        }
     }
 
     run.section("Cards - two sizes")
