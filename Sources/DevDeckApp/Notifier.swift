@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckUI
 import UserNotifications
 
 /// Posts the banners, and opens what they are about when one is clicked.
@@ -55,7 +56,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             title: "DevDeck",
             body: "Notifications are working. This is what a review request will look like.",
             url: nil,
-            accountID: nil
+            accountID: nil,
+            source: .github
         )
     }
 
@@ -71,7 +73,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 title: summary.title,
                 body: summary.body,
                 url: alerts.first?.url,
-                accountID: alerts.first?.accountID
+                accountID: alerts.first?.accountID,
+                // A summary that spans both services shows the one it has most of; a mark is
+                // better than no mark, and a summary is already saying "several things".
+                source: alerts.filter { $0.source == .gitlab }.count > alerts.count / 2 ? .gitlab : .github
             )
             return
         }
@@ -82,18 +87,33 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 title: alert.title,
                 body: alert.body,
                 url: alert.url,
-                accountID: alert.accountID
+                accountID: alert.accountID,
+                source: alert.source
             )
         }
     }
 
-    private func deliver(identifier: String, title: String, body: String, url: URL?, accountID: String?) {
+    private func deliver(
+        identifier: String,
+        title: String,
+        body: String,
+        url: URL?,
+        accountID: String?,
+        source: DeckAlert.Source
+    ) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
         if let url, let accountID {
             content.userInfo = ["url": url.absoluteString, "account": accountID]
+        }
+        // macOS puts the application icon on every banner and will not be talked out of it, but
+        // an attachment is drawn beside the text: that is where the service's own mark goes, so
+        // "who is asking" is answered before the words are read.
+        if let artwork = NotificationArtwork.fileURL(for: source),
+           let attachment = try? UNNotificationAttachment(identifier: source.rawValue, url: artwork) {
+            content.attachments = [attachment]
         }
 
         center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil)) { error in

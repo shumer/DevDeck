@@ -17,10 +17,14 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
     /// token can see.
     public var organizations: [String]
     public var isEnabled: Bool
-    /// Whether this account may interrupt you. Per account rather than per app: one token is
-    /// your own work and another is a customer's, and being told about both at nine in the
+    /// Whether this account may interrupt you when somebody asks for your review.
+    ///
+    /// Per account rather than per app, and per kind rather than one switch, because one token
+    /// is your own work and another is a customer's: being told about both at nine in the
     /// evening is not the same request.
-    public var notifies: Bool
+    public var notifiesReviewRequests: Bool
+    /// Whether this account may interrupt you when something of yours is blocked.
+    public var notifiesBlocked: Bool
     /// Where this account's links open. One signed-in GitHub identity per browser profile is
     /// the whole reason accounts need their own browser.
     public var browser: BrowserChoice
@@ -31,7 +35,8 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         apiBaseURL: URL = URL(string: "https://api.github.com")!,
         organizations: [String] = [],
         isEnabled: Bool = true,
-        notifies: Bool = true,
+        notifiesReviewRequests: Bool = true,
+        notifiesBlocked: Bool = false,
         browser: BrowserChoice = .systemDefault
     ) {
         self.id = id
@@ -39,8 +44,40 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         self.apiBaseURL = apiBaseURL
         self.organizations = organizations
         self.isEnabled = isEnabled
-        self.notifies = notifies
+        self.notifiesReviewRequests = notifiesReviewRequests
+        self.notifiesBlocked = notifiesBlocked
         self.browser = browser
+    }
+
+
+    /// Spelled out rather than synthesised, because one key is no longer a property: `notifies`
+    /// was a single switch before it was two, and an account stored with it still has to decode.
+    enum CodingKeys: String, CodingKey {
+        case id
+        case label
+        case apiBaseURL
+        case organizations
+        case isEnabled
+        case notifiesReviewRequests
+        case notifiesBlocked
+        case browser
+        case notifies
+    }
+
+
+    /// Written out because the synthesised one would also have to write `notifies`, which is no
+    /// longer a property: it was a single switch before it was two, and only decoding still
+    /// cares about it.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(label, forKey: .label)
+        try container.encode(apiBaseURL, forKey: .apiBaseURL)
+        try container.encode(organizations, forKey: .organizations)
+        try container.encode(isEnabled, forKey: .isEnabled)
+        try container.encode(notifiesReviewRequests, forKey: .notifiesReviewRequests)
+        try container.encode(notifiesBlocked, forKey: .notifiesBlocked)
+        try container.encode(browser, forKey: .browser)
     }
 
     /// Accounts stored before browsers were configurable decode without the field.
@@ -52,7 +89,12 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
             ?? URL(string: "https://api.github.com")!
         organizations = try container.decodeIfPresent([String].self, forKey: .organizations) ?? []
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
-        notifies = try container.decodeIfPresent(Bool.self, forKey: .notifies) ?? true
+        // `notifies` was one switch before it was two; an account stored with it keeps what it
+        // meant for review requests and starts quiet about blocked ones.
+        let wasNotifying = try container.decodeIfPresent(Bool.self, forKey: .notifies) ?? true
+        notifiesReviewRequests = try container.decodeIfPresent(Bool.self, forKey: .notifiesReviewRequests)
+            ?? wasNotifying
+        notifiesBlocked = try container.decodeIfPresent(Bool.self, forKey: .notifiesBlocked) ?? false
         browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
     }
 

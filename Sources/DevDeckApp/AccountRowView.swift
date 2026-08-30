@@ -15,7 +15,8 @@ final class AccountRowView: FlippedContainer {
     private let tokenField = NSSecureTextField()
     private let statusLabel = NSTextField(labelWithString: "")
     private let enabledButton = NSButton()
-    private let notifiesButton = NSButton()
+    private let reviewNotifyButton = NSButton()
+    private let blockedNotifyButton = NSButton()
     private let browserPopUp = NSPopUpButton()
     private let profilePopUp = NSPopUpButton()
 
@@ -47,12 +48,6 @@ final class AccountRowView: FlippedContainer {
         enabledButton.action = #selector(controlChanged)
         form.row("", [(enabledButton, nil)], height: 20)
 
-        notifiesButton.setButtonType(.switch)
-        notifiesButton.title = "Let this account notify me"
-        notifiesButton.state = account.notifies ? .on : .off
-        notifiesButton.target = self
-        notifiesButton.action = #selector(controlChanged)
-        form.row("", [(notifiesButton, nil)], height: 20)
 
         organizationsField.stringValue = account.organizations.joined(separator: ", ")
         organizationsField.placeholderString = "comma separated, empty = everything the token sees"
@@ -90,6 +85,33 @@ final class AccountRowView: FlippedContainer {
         form.footnote("github.com allows one signed-in identity per browser profile, so an "
             + "account opens its links in the profile signed in as it.")
 
+        form.header("Notify me")
+        form.beginGroup()
+        reviewNotifyButton.setButtonType(.switch)
+        reviewNotifyButton.title = ""
+        reviewNotifyButton.state = account.notifiesReviewRequests ? .on : .off
+        reviewNotifyButton.target = self
+        reviewNotifyButton.action = #selector(controlChanged)
+        form.toggleRow(
+            reviewNotifyButton,
+            title: "When somebody asks for my review",
+            subtitle: "A banner carrying GitHub's own mark, so it is clear who is asking."
+        )
+
+        blockedNotifyButton.setButtonType(.switch)
+        blockedNotifyButton.title = ""
+        blockedNotifyButton.state = account.notifiesBlocked ? .on : .off
+        blockedNotifyButton.target = self
+        blockedNotifyButton.action = #selector(controlChanged)
+        form.toggleRow(
+            blockedNotifyButton,
+            title: "When something of mine here is blocked",
+            subtitle: "Off by default: a red build on a branch you are pushing to is not news."
+        )
+        form.endGroup()
+        form.footnote("Per account, so a customer's work can stay quiet while your own does not. "
+            + "Notifications have to be switched on for the app as a whole first, under General.")
+
         frame.size.height = form.usedHeight
         loadBrowsers()
     }
@@ -109,7 +131,8 @@ final class AccountRowView: FlippedContainer {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         edited.isEnabled = enabledButton.state == .on
-        edited.notifies = notifiesButton.state == .on
+        edited.notifiesReviewRequests = reviewNotifyButton.state == .on
+        edited.notifiesBlocked = blockedNotifyButton.state == .on
         edited.browser = selectedBrowserChoice
         return edited
     }

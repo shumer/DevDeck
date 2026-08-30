@@ -571,23 +571,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         form.header("Notifications")
         form.beginGroup()
         form.toggleRow(
-            deckSwitch(preferences.notifiesReviewRequests, action: #selector(reviewNotificationsChanged(_:))),
-            title: "When somebody asks for my review",
-            subtitle: "A banner for a new review request, on GitHub and GitLab alike."
-        )
-        form.toggleRow(
-            deckSwitch(preferences.notifiesBlocked, action: #selector(blockedNotificationsChanged(_:))),
-            title: "When something of mine gets blocked",
-            subtitle: "Checks failed, changes requested, a branch that will not merge."
+            deckSwitch(preferences.notificationsEnabled, action: #selector(notificationsChanged(_:))),
+            title: "Let DevDeck notify me",
+            subtitle: "The master switch. What you are told about is set per account."
         )
         let test = NSButton(title: "Send a test", target: self, action: #selector(sendTestNotification))
         test.bezelStyle = .rounded
         test.controlSize = .small
         form.row("Check it", [(test, 96)], height: 24)
         form.endGroup()
-        form.footnote("Switching either on is what asks macOS for permission. Nothing is "
-            + "announced on the first answer after a launch, since that is the state you left "
-            + "things in, and each account can be silenced on its own in its own form.")
+        form.footnote("Switching it on is what asks macOS for permission. Which accounts may "
+            + "interrupt you, and about what, lives in each account's own form under GitHub "
+            + "accounts and GitLab instances. Nothing is announced on the first answer after a "
+            + "launch, since that is the state you left things in.")
 
         form.header("System")
         form.beginGroup()
@@ -643,28 +639,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         onTestNotification()
     }
 
-    @objc private func reviewNotificationsChanged(_ sender: NSButton) {
-        setNotifications(enabled: sender.state == .on, sender: sender) {
-            self.preferences.notifiesReviewRequests = $0
-        }
-    }
-
-    @objc private func blockedNotificationsChanged(_ sender: NSButton) {
-        setNotifications(enabled: sender.state == .on, sender: sender) {
-            self.preferences.notifiesBlocked = $0
-        }
-    }
-
-    /// Turning a notification switch on asks macOS for permission, and the switch goes back if
-    /// the answer is no: a switch that says "on" while nothing can be delivered is a setting
-    /// that lies.
-    private func setNotifications(enabled: Bool, sender: NSButton, write: @escaping (Bool) -> Void) {
-        guard enabled else {
-            write(false)
+    /// Turning it on asks macOS for permission, and the switch goes back if the answer is no: a
+    /// switch that says "on" while nothing can be delivered is a setting that lies.
+    @objc private func notificationsChanged(_ sender: NSButton) {
+        guard sender.state == .on else {
+            preferences.notificationsEnabled = false
             return
         }
-        onRequestNotifications { granted in
-            write(granted)
+        onRequestNotifications { [weak self] granted in
+            self?.preferences.notificationsEnabled = granted
             sender.state = granted ? .on : .off
             if !granted {
                 let alert = NSAlert()

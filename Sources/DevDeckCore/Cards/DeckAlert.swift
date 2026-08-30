@@ -2,6 +2,13 @@ import Foundation
 
 /// Something worth interrupting somebody for.
 public struct DeckAlert: Sendable, Equatable, Identifiable {
+    /// Who is asking. The banner carries the service's own mark rather than the app's, because
+    /// "somebody wants a review" is a different thought from "which of the two is it".
+    public enum Source: String, Sendable, Equatable {
+        case github
+        case gitlab
+    }
+
     public enum Kind: String, Sendable, Equatable {
         /// A person has asked you to review something.
         case reviewRequest
@@ -15,6 +22,7 @@ public struct DeckAlert: Sendable, Equatable, Identifiable {
     /// twice, and the same request seen twice is not.
     public let id: String
     public let kind: Kind
+    public let source: Source
     /// The line the banner leads with.
     public let title: String
     /// The line under it.
@@ -23,9 +31,18 @@ public struct DeckAlert: Sendable, Equatable, Identifiable {
     /// Which account it belongs to, so a click opens it in the right browser profile.
     public let accountID: String
 
-    public init(id: String, kind: Kind, title: String, body: String, url: URL, accountID: String) {
+    public init(
+        id: String,
+        kind: Kind,
+        source: Source,
+        title: String,
+        body: String,
+        url: URL,
+        accountID: String
+    ) {
         self.id = id
         self.kind = kind
+        self.source = source
         self.title = title
         self.body = body
         self.url = url

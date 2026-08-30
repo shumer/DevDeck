@@ -449,7 +449,7 @@ final class DeckController: ObservableObject {
     /// Works out what is new since the last pass, hands it over, and writes down everything it
     /// saw so the next pass and the next launch stay quiet about it.
     private func announce(_ candidates: [DeckAlert], for card: CardID) {
-        guard preferences.notifiesReviewRequests || preferences.notifiesBlocked else { return }
+        guard preferences.notificationsEnabled else { return }
 
         let isFirstPass = hasAnnouncedOnce.insert(card).inserted
         let seen = preferences.announcedAlerts
@@ -467,21 +467,30 @@ final class DeckController: ObservableObject {
         onAlerts?(fresh)
     }
 
-    /// The alerts from one GitHub snapshot, minus the accounts that asked not to interrupt.
+    /// The alerts from one GitHub snapshot, kept to what each account asked to be told about.
+    ///
+    /// Per account rather than per app, and per kind rather than one switch: which of your
+    /// tokens is allowed to interrupt you, and about what, is not one question.
     private func alerts(from snapshot: PullRequestsSnapshot) -> [DeckAlert] {
-        let quiet = Set(accountsStore.accounts().filter { !$0.notifies }.map(\.id))
-        return snapshot
-            .alerts(includeBlocked: preferences.notifiesBlocked)
-            .filter { preferences.notifiesReviewRequests || $0.kind != .reviewRequest }
-            .filter { !quiet.contains($0.accountID) }
+        let wants = Dictionary(
+            accountsStore.accounts().map { ($0.id, (review: $0.notifiesReviewRequests, blocked: $0.notifiesBlocked)) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return snapshot.alerts(includeBlocked: true).filter { alert in
+            guard let want = wants[alert.accountID] else { return false }
+            return alert.kind == .reviewRequest ? want.review : want.blocked
+        }
     }
 
     private func alerts(from snapshot: MergeRequestsSnapshot) -> [DeckAlert] {
-        let quiet = Set(gitlabAccountsStore.accounts().filter { !$0.notifies }.map(\.id))
-        return snapshot
-            .alerts(includeBlocked: preferences.notifiesBlocked)
-            .filter { preferences.notifiesReviewRequests || $0.kind != .reviewRequest }
-            .filter { !quiet.contains($0.accountID) }
+        let wants = Dictionary(
+            gitlabAccountsStore.accounts().map { ($0.id, (review: $0.notifiesReviewRequests, blocked: $0.notifiesBlocked)) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return snapshot.alerts(includeBlocked: true).filter { alert in
+            guard let want = wants[alert.accountID] else { return false }
+            return alert.kind == .reviewRequest ? want.review : want.blocked
+        }
     }
 
     /// Cancels the pending wait and refetches immediately.

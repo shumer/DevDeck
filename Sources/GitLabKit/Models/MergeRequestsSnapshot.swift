@@ -82,6 +82,7 @@ public struct MergeRequestsSnapshot: Sendable, Equatable, Codable {
                 return DeckAlert(
                     id: "review:\(request.id)",
                     kind: .reviewRequest,
+                    source: .gitlab,
                     title: "Review requested",
                     body: "\(request.shortLabel) \(request.ticket.subject)",
                     url: request.url,
@@ -94,6 +95,7 @@ public struct MergeRequestsSnapshot: Sendable, Equatable, Codable {
                 // broken again is worth saying twice.
                 id: "blocked:\(request.id):\(request.statusCode)",
                 kind: .blocked,
+                source: .gitlab,
                 title: request.statusLine.prefix(1).uppercased() + request.statusLine.dropFirst(),
                 body: "\(request.shortLabel) \(request.ticket.subject)",
                 url: request.url,
