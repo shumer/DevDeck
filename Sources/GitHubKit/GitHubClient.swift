@@ -127,6 +127,24 @@ public struct GitHubClient: Sendable {
         }
     }
 
+    /// A REST call that changes something and answers with nothing worth decoding.
+    ///
+    /// Marking a notification read is the first of these: the endpoint answers 205, and a 404
+    /// means the thread is already gone, which is the same outcome from where the card sits.
+    public func send(method: HTTPMethod, path: String) async throws {
+        let request = HTTPRequest(
+            method: method,
+            url: settings.apiBaseURL.appendingPathComponent(path),
+            headers: [
+                "Authorization": "bearer \(try resolveToken())",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": userAgent,
+            ]
+        )
+        _ = try await transport.perform(request)
+    }
+
     private func resolveToken() throws -> String {
         do {
             guard let token = try tokenStore.token(for: tokenKey), !token.isEmpty else {

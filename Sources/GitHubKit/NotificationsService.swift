@@ -40,6 +40,15 @@ public struct NotificationsService: Sendable {
         )
     }
 
+    /// Marks one thread read, which is what the notification's own id addresses.
+    ///
+    /// The card drops the row itself rather than waiting for the next poll: the endpoint
+    /// supports conditional requests and answers 304 for a while after a change, so waiting
+    /// would leave a row on screen that is already dealt with.
+    public func markRead(_ id: String) async throws {
+        try await client.send(method: .patch, path: "notifications/threads/\(id)")
+    }
+
     static func item(
         from payload: NotificationPayload,
         accountID: String = GitHubAccount.defaultID

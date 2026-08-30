@@ -111,6 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             )
         }
         controller.onAlerts = { [weak self] alerts in self?.notifier.post(alerts) }
+        controller.updateStatusItem = { [weak self] in self?.updateStatusItem() }
         notifier.refreshAuthorization()
 
         repairKeychainOnce()
@@ -498,6 +499,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
     }
 
+    // MARK: Arrangements
+
+    /// The deck as it is right now, in the form an arrangement is stored in.
+    private func currentArrangement() -> [DeckArrangement.Placed] {
+        catalog.map { descriptor in
+            DeckArrangement.Placed(
+                card: descriptor.id.rawValue,
+                isVisible: panels[descriptor.id] != nil,
+                isCollapsed: controller.isCollapsed(descriptor.id),
+                placement: preferences.placement(for: descriptor.id)?.storage
+            )
+        }
+    }
+
+    @objc private func saveArrangement() {
+        let alert = NSAlert()
+        alert.messageText = "Save this arrangement"
+        alert.informativeText = "Which cards are on the deck, which are folded to a row, and where "
+            + "each one sits. Saving over a name replaces it."
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.placeholderString = "Il Tempo day"
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.window.initialFirstResponder = field
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let name = field.stringValue.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+
+        preferences.arrangements = DeckArrangements.adding(
+            DeckArrangement(name: name, cards: currentArrangement()),
+            to: preferences.arrangements
+        )
+    }
+
+    /// Puts a saved arrangement back: the card list first, then the sizes, then the positions.
+    ///
+    /// In that order on purpose. A card has to exist before it can be folded, and it has to be
+    /// the right size before it is put anywhere, or the panel lands somewhere and then changes
+    /// shape under itself.
+    @objc private func applyArrangement(_ item: NSMenuItem) {
+        guard let name = item.representedObject as? String,
+              let arrangement = preferences.arrangements.first(where: { $0.name == name })
+        else { return }
+
+        var layout = preferences.cardLayout
+        for placed in arrangement.cards {
+            let card = CardID(rawValue: placed.card)
+            layout.setEnabled(placed.isVisible, for: card)
+            if let storage = placed.placement, let placement = PanelPlacement(storage: storage) {
+                preferences.setPlacement(placement, for: card)
+            }
+            if controller.isCollapsed(card) != placed.isCollapsed {
+                controller.toggleCollapsed(card)
+            }
+        }
+        preferences.cardLayout = layout
+
+        syncPanels()
+        replaceAll()
+    }
+
+    @objc private func forgetArrangement(_ item: NSMenuItem) {
+        guard let name = item.representedObject as? String else { return }
+        preferences.arrangements = DeckArrangements.removing(name, from: preferences.arrangements)
+    }
+
     // MARK: Summoning
 
     /// ⌥Space, held.
@@ -765,6 +835,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // lives in Settings. A menu that mixes the two grows until the thing you actually came
         // for is somewhere in the middle of it.
         menu.addItem(.separator())
+        let arrangements = NSMenuItem(title: "Arrangements", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        submenu.autoenablesItems = false
+        let current = currentArrangement()
+        for saved in preferences.arrangements {
+            let item = NSMenuItem(title: saved.name, action: #selector(applyArrangement(_:)), keyEquivalent: "")
+            item.state = saved.matches(current) ? .on : .off
+            item.representedObject = saved.name
+            item.target = self
+            // Alt-click forgets it, which is where macOS puts the destructive twin of a menu
+            // item and saves the submenu from being twice as long.
+            let forget = NSMenuItem(title: "Forget \(saved.name)", action: #selector(forgetArrangement(_:)), keyEquivalent: "")
+            forget.representedObject = saved.name
+            forget.target = self
+            forget.isAlternate = true
+            forget.keyEquivalentModifierMask = .option
+            submenu.addItem(item)
+            submenu.addItem(forget)
+        }
+        if !preferences.arrangements.isEmpty { submenu.addItem(.separator()) }
+        let save = NSMenuItem(title: "Save this one…", action: #selector(saveArrangement), keyEquivalent: "")
+        save.target = self
+        submenu.addItem(save)
+        arrangements.submenu = submenu
+        menu.addItem(arrangements)
+
         for (title, selector) in [
             ("Tidy panels into columns", #selector(restack)),
             ("Refresh now", #selector(refreshNow)),

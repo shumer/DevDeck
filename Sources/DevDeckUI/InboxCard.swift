@@ -14,6 +14,7 @@ public struct InboxCard: View {
     private let onOpen: (URL, String) -> Void
     private let onToggleExpand: () -> Void
     private let onOpenDashboard: () -> Void
+    private let onMarkRead: (InboxItem) -> Void
 
     public init(
         state: CardState<InboxSnapshot>,
@@ -23,7 +24,8 @@ public struct InboxCard: View {
         isCollapsed: Bool = false,
         onOpen: @escaping (URL, String) -> Void = { _, _ in },
         onToggleExpand: @escaping () -> Void = {},
-        onOpenDashboard: @escaping () -> Void = {}
+        onOpenDashboard: @escaping () -> Void = {},
+        onMarkRead: @escaping (InboxItem) -> Void = { _ in }
     ) {
         self.state = state
         self.now = now
@@ -33,6 +35,7 @@ public struct InboxCard: View {
         self.onOpen = onOpen
         self.onToggleExpand = onToggleExpand
         self.onOpenDashboard = onOpenDashboard
+        self.onMarkRead = onMarkRead
     }
 
     public nonisolated static func size(for state: CardState<InboxSnapshot>, isExpanded: Bool, isCollapsed: Bool = false) -> CGSize {
@@ -174,6 +177,15 @@ public struct InboxCard: View {
         .contentShape(Rectangle())
         .clickable(isEnabled: item.url != nil)
         .onTapGesture { if let url = item.url { onOpen(url, item.accountID) } }
+        // Right-click rather than a button on the row: the row is 28 points tall and already
+        // carries a chip, a repository and a title, and this is not something you do to every
+        // one of them.
+        .contextMenu {
+            Button("Mark as read") { onMarkRead(item) }
+            if let url = item.url {
+                Button("Open on github.com") { onOpen(url, item.accountID) }
+            }
+        }
         .help("\(item.shortRepository): \(item.title)")
     }
 }

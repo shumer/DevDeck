@@ -360,6 +360,45 @@ func runPresentationTests(_ run: TestRun) async {
                    "824 of 1024, the modern macOS inset")
     }
 
+    run.section("Arrangements")
+
+    func placed(_ card: String, visible: Bool = true, collapsed: Bool = false, at spot: String? = "d|0|0") -> DeckArrangement.Placed {
+        DeckArrangement.Placed(card: card, isVisible: visible, isCollapsed: collapsed, placement: spot)
+    }
+
+    await run.test("an arrangement is what is on the deck, folded how, and where") {
+        let saved = DeckArrangement(name: "Il Tempo day", cards: [
+            placed("arc.project.tempo"),
+            placed("arc.project.giornale", collapsed: true),
+        ])
+        try expect(saved.matches([placed("arc.project.tempo"), placed("arc.project.giornale", collapsed: true)]))
+        try expect(!saved.matches([placed("arc.project.tempo"), placed("arc.project.giornale")]),
+                   "unfolding a card is a different arrangement")
+        try expect(!saved.matches([placed("arc.project.tempo")]), "and so is hiding one")
+        try expect(!saved.matches([
+            placed("arc.project.tempo", at: "d|400|0"),
+            placed("arc.project.giornale", collapsed: true),
+        ]), "and so is dragging one somewhere else")
+    }
+
+    await run.test("saving over a name replaces it rather than growing a twin") {
+        let first = DeckArrangement(name: "Morning", cards: [placed("github.pullRequests")])
+        let second = DeckArrangement(name: "Morning", cards: [placed("github.inbox")])
+        let list = DeckArrangements.adding(second, to: DeckArrangements.adding(first, to: []))
+        try expectEqual(list.count, 1)
+        try expectEqual(list[0].cards.map(\.card), ["github.inbox"])
+    }
+
+    await run.test("the list has a ceiling, and forgetting one is by name") {
+        var list: [DeckArrangement] = []
+        for index in 1...(DeckArrangements.limit + 3) {
+            list = DeckArrangements.adding(DeckArrangement(name: "L\(index)", cards: []), to: list)
+        }
+        try expectEqual(list.count, DeckArrangements.limit, "few enough that the menu stays a menu")
+        try expectEqual(list.first?.name, "L4", "the oldest go")
+        try expectEqual(DeckArrangements.removing("L5", from: list).count, DeckArrangements.limit - 1)
+    }
+
     run.section("Being told")
 
     let review = DeckAlert(
