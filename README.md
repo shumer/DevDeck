@@ -528,6 +528,25 @@ both ends than it was: dim text came up, the title came down, and the only outli
 belongs to the action being offered. One card looks better loud. Six of them on a desktop all day
 do not. See [docs/adr/0010-card-palette.md](docs/adr/0010-card-palette.md).
 
+## The Keychain and the password prompt
+
+Tokens live in the login Keychain and nowhere else. A Keychain item is normally bound to the
+exact binary that wrote it, and this app is ad-hoc signed, so every build has a different code
+identity: to macOS the new build is a different application, and it asks for the Keychain password
+once per stored token. Three tokens, three prompts, on every update. The items are therefore
+written with an access list that names no application, which is the same thing
+`scripts/seed-token.sh` has always done with `security -A`.
+
+The trade is worth stating plainly: any process running as you can then read those tokens without
+a prompt. The alternative is not "safer by default", it is a Developer ID certificate (a paid
+Apple Developer account, 99 USD a year) or a self-signed certificate made by hand in Keychain
+Access, either of which gives the app a code identity that survives a rebuild. That is a decision
+with a bill attached rather than a missing line of code, and a token nobody stores because the
+prompt drove them off is not safer than one stored this way.
+
+Tokens saved by an earlier build are rewritten once, at the first launch after this change. That
+last round of prompts is the end of them.
+
 ## Releases
 
 Publishing a release on GitHub builds the app and attaches it: `.github/workflows/release.yml`

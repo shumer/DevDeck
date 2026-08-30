@@ -42,6 +42,8 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **The Keychain stops asking** - tokens are stored with an access list that a rebuild does not
+  invalidate, so an update no longer costs one password prompt per token.
 - **A release builds itself** - publishing a release on GitHub runs the suite, builds the bundle
   and attaches it to the tag, and every push runs the tests. Shipped as 0.6.
 - **Notifications** - a banner when somebody asks for your review, and optionally when something

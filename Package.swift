@@ -20,7 +20,11 @@ let package = Package(
     targets: [
         // Pure logic: configuration, networking, secrets. No AppKit, so the test
         // runner can exercise all of it head-less.
-        .target(name: "DevDeckCore"),
+        // Three deprecated Keychain calls live in C, where a pragma can say they are
+        // deliberate; Swift cannot silence a deprecation at a call site and this project's CI
+        // fails on warnings.
+        .target(name: "KeychainACL"),
+        .target(name: "DevDeckCore", dependencies: ["KeychainACL"]),
 
         // GitHub integration: GraphQL queries, models, card snapshots.
         .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),

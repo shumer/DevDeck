@@ -133,6 +133,13 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue ? "1" : "0", forKey: "panels.summon") }
     }
 
+    /// Whether the stored tokens have been rewritten with an access control list that survives
+    /// a rebuild. One pass, once, and then never again.
+    public var hasRepairedKeychain: Bool {
+        get { backend.bool(forKey: "keychain.repaired") }
+        set { backend.set(newValue, forKey: "keychain.repaired") }
+    }
+
     /// Whether DevDeck may notify you at all.
     ///
     /// The master switch, and nothing more: *what* you are told about is a property of each
