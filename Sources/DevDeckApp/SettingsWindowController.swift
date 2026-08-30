@@ -97,7 +97,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "DevDeck — Settings"
+        window.title = "DevDeck Settings"
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 720, height: 440)
         window.delegate = self
@@ -348,7 +348,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         guard let id = selection[.github],
               let account = accountsStore.accounts().first(where: { $0.id == id })
         else {
-            emptyState("No accounts yet — press + below the list.", in: container, width: width)
+            emptyState("No accounts yet. Press + below the list.", in: container, width: width)
             return
         }
 
@@ -365,7 +365,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         guard let id = selection[.arc],
               let project = projectsStore.projects().first(where: { $0.id == id })
         else {
-            emptyState("No Arc projects yet — press + below the list.", in: container, width: width)
+            emptyState("No Arc projects yet. Press + below the list.", in: container, width: width)
             return
         }
 
@@ -382,7 +382,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
               let project = ddevProjectsStore.projects().first(where: { $0.id == id })
         else {
             emptyState(
-                "No DDEV projects yet — press + below the list and pick one ddev already knows.",
+                "No DDEV projects yet. Press + below the list and pick one ddev already knows.",
                 in: container,
                 width: width
             )
@@ -402,7 +402,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
               let project = localProjectsStore.projects().first(where: { $0.id == id })
         else {
             emptyState(
-                "No projects yet — press + below the list and pick a folder. Anything with a "
+                "No projects yet. Press + below the list and pick a folder. Anything with a "
                     + "folder and a command belongs here: docker compose, a dev server, a Makefile.",
                 in: container,
                 width: width
@@ -455,7 +455,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         interval.font = NSFont.systemFont(ofSize: 13)
         form.row("Refresh", [(interval, nil)], height: 18)
         form.endGroup()
-        form.footnote("The build number is the commit count, so it moves on every rebuild — the "
+        form.footnote("The build number is the commit count, so it moves on every rebuild, the "
             + "quickest way to tell whether the copy in front of you is the change you just made.")
 
         form.footnote("Placement, locking and start-at-login live in the menu-bar menu.")
@@ -596,20 +596,20 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 self.persist(edited)
                 row.apply(edited)
                 row.clearTokenField()
-                row.setStatus("Saved — \(snapshot.totalCount) open pull requests.")
+                row.setStatus("Saved. \(snapshot.totalCount) open pull requests.")
                 self.reloadList()
                 self.onChanged()
             } catch let error as APIError {
-                row.setStatus("Rejected — \(error.displayMessage)", isError: true)
+                row.setStatus("Rejected: \(error.displayMessage)", isError: true)
             } catch {
-                row.setStatus("Rejected — \(error.localizedDescription)", isError: true)
+                row.setStatus("Rejected: \(error.localizedDescription)", isError: true)
             }
         }
     }
 
     private func verifyStoredToken(for account: GitHubAccount, row: AccountRowView) {
         guard ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil else {
-            row.setStatus("No token yet — paste one above.", isError: true)
+            row.setStatus("No token yet. Paste one above.", isError: true)
             return
         }
         row.setStatus("Checking the stored token…")
@@ -625,11 +625,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     settings: account.settings(basedOn: .default),
                     accountID: account.id
                 ).fetch()
-                row.setStatus("Token works — \(snapshot.totalCount) open pull requests.")
+                row.setStatus("Token works. \(snapshot.totalCount) open pull requests.")
             } catch let error as APIError {
-                row.setStatus("Stored token — \(error.displayMessage)", isError: true)
+                row.setStatus("Stored token: \(error.displayMessage)", isError: true)
             } catch {
-                row.setStatus("Stored token — \(error.localizedDescription)", isError: true)
+                row.setStatus("Stored token: \(error.localizedDescription)", isError: true)
             }
         }
     }
@@ -673,7 +673,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func chooseFolder(_ row: ProjectRowView) {
-        guard let url = chooseDirectory(message: "Pick the project checkout — the folder the fusion commands run in.")
+        guard let url = chooseDirectory(message: "Pick the project checkout: the folder the fusion commands run in.")
         else { return }
         row.setFolder(url.path)
     }
@@ -710,7 +710,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             alert.informativeText = "Found by ddev list."
             let popUp = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 320, height: 25))
             for candidate in candidates {
-                popUp.addItem(withTitle: "\(candidate.name) — \(candidate.state.rawValue)")
+                popUp.addItem(withTitle: "\(candidate.name) (\(candidate.state.rawValue))")
             }
             alert.accessoryView = popUp
             alert.addButton(withTitle: "Add")
@@ -772,7 +772,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func chooseDDEVFolder(_ row: DDEVProjectRowView) {
-        guard let url = chooseDirectory(message: "Pick the project checkout — the folder holding .ddev.")
+        guard let url = chooseDirectory(message: "Pick the project checkout: the folder holding .ddev.")
         else { return }
         // Said plainly rather than refused: the folder may be right and the project not set up
         // yet, and that is the user's business.
@@ -787,7 +787,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     /// Adds a project from a folder, filling in what the folder already says about itself.
     private func addLocalProject() {
         guard let url = chooseDirectory(
-            message: "Pick the project folder — the one its start command runs in."
+            message: "Pick the project folder: the one its start command runs in."
         ) else { return }
 
         var projects = localProjectsStore.projects()
@@ -834,7 +834,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         applyLocalProjectEdits(row)
         let project = row.editedProject
         guard let link = project.environmentLinks().first ?? project.toolLinks().first else {
-            row.setStatus("No link to test — set a health URL or an environment.", isError: true)
+            row.setStatus("No link to test. Set a health URL or an environment.", isError: true)
             return
         }
         row.setStatus("Opening \(link.url.absoluteString)")
@@ -843,7 +843,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func chooseLocalProjectFolder(_ row: LocalProjectRowView) {
         guard let url = chooseDirectory(
-            message: "Pick the project folder — the one its start command runs in."
+            message: "Pick the project folder: the one its start command runs in."
         ) else { return }
         row.setFolder(url.path)
     }
@@ -868,13 +868,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         guard let suggestion = ProjectProbe.suggestion(for: folder) else {
             row.setStatus(
-                "Nothing recognisable in that folder — no compose file, package.json script or Makefile target.",
+                "Nothing recognisable in that folder: no compose file, package.json script or Makefile target.",
                 isError: true
             )
             return
         }
         row.applySuggestion(suggestion)
-        row.setStatus("Filled in from the folder — \(suggestion.startCommand)")
+        row.setStatus("Filled in from the folder: \(suggestion.startCommand)")
     }
 
     // MARK: Shared

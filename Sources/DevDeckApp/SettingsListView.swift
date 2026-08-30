@@ -67,7 +67,7 @@ final class SettingsListView: NSView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not used — this view is built in code")
+        fatalError("init(coder:) is not used, this view is built in code")
     }
 
     func show(_ items: [SettingsListItem], selecting id: String?) {
@@ -156,7 +156,7 @@ final class SettingsListRow: NSView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not used — this view is built in code")
+        fatalError("init(coder:) is not used, this view is built in code")
     }
 
     override func mouseDown(with event: NSEvent) {

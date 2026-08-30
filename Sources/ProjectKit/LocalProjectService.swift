@@ -83,7 +83,7 @@ public struct LocalProjectService: Sendable {
             // Nothing to ask, so the process we started is the whole answer.
             return LocalProjectStatus(
                 state: isAlive ? .running : .stopped,
-                detail: isAlive ? nil : "no health URL — nothing running from here",
+                detail: isAlive ? nil : "no health URL, nothing running from here",
                 checkedAt: clock.now,
                 pid: isAlive ? pid : nil,
                 branch: branch,

@@ -54,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.toolTip = "DevDeck — open pull requests"
+        statusItem.button?.toolTip = "DevDeck, open pull requests"
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -393,7 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 keyEquivalent: ""
             )
             powerOff.target = self
-            powerOff.toolTip = "ddev poweroff — stops every project and the router"
+            powerOff.toolTip = "ddev poweroff: stops every project and the router"
             menu.addItem(powerOff)
         }
 

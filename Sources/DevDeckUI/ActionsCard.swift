@@ -85,7 +85,7 @@ public struct ActionsCard: View {
     }
 
     private func headline(_ snapshot: ActionsSnapshot) -> String {
-        guard let rate = snapshot.successRate else { return "–" }
+        guard let rate = snapshot.successRate else { return "n/a" }
         return "\(Int((rate * 100).rounded()))"
     }
 

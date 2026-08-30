@@ -427,6 +427,6 @@ public struct CardMetaBlock: View {
             guard let repositoryURL, let onOpenRepository else { return }
             onOpenRepository(repositoryURL)
         }
-        .help(repositoryURL.map { "\($0.absoluteString) — the branch is \(branch)" } ?? "checked out branch")
+        .help(repositoryURL.map { "\($0.absoluteString), the branch is \(branch)" } ?? "checked out branch")
     }
 }

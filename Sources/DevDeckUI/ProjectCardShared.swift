@@ -73,7 +73,7 @@ public struct ProjectChipRow: View {
             color: Self.colour(for: chip, isLocal: isLocal),
             isDimmed: isDimmed,
             help: isDimmed
-                ? "\(chip.url.absoluteString) — the project is not running"
+                ? "\(chip.url.absoluteString), the project is not running"
                 : chip.url.absoluteString
         ) {
             guard !isDimmed else { return }
@@ -111,7 +111,7 @@ public enum ProjectCardMetrics {
 
     /// The time of the last check, as the card header shows it.
     public nonisolated static func timestamp(_ date: Date?) -> String {
-        guard let date else { return "—" }
+        guard let date else { return "n/a" }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "HH:mm:ss"

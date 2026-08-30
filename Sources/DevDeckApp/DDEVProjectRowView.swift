@@ -112,7 +112,7 @@ final class DDEVProjectRowView: FlippedContainer {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not used — this view is built in code")
+        fatalError("init(coder:) is not used, this view is built in code")
     }
 
     var editedProject: DDEVProject {
@@ -179,7 +179,7 @@ final class DDEVProjectRowView: FlippedContainer {
         profilePopUp.removeAllItems()
         guard let browser = selectedBrowser, browser.supportsProfiles else {
             profiles = []
-            profilePopUp.addItem(withTitle: selectedBrowser == nil ? "—" : "not supported")
+            profilePopUp.addItem(withTitle: selectedBrowser == nil ? "none" : "not supported")
             profilePopUp.isEnabled = false
             return
         }
