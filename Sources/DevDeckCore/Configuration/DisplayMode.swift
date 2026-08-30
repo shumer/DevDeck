@@ -10,6 +10,14 @@ public enum DisplayMode: String, Codable, Sendable, CaseIterable {
     /// Above normal windows, for keeping an eye on a deploy while working.
     case floating
 
+    /// How the setting reads in a pop-up, where the label beside it already says "Panels".
+    public var settingsTitle: String {
+        switch self {
+        case .desktop: return "Behind windows, on the desktop"
+        case .floating: return "Above windows"
+        }
+    }
+
     public var menuTitle: String {
         switch self {
         case .desktop: return "Keep on desktop (behind windows)"
