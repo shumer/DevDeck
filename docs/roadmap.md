@@ -44,7 +44,7 @@
   being repainted green by the next poll.
 - **Both icons, drawn in code** - an application icon at last, one card carrying the hero row,
   rendered at all ten sizes by `AppIconExport` and packed by `build.sh`; and a menu-bar icon with
-  three states instead of a red glyph that meant three different things at once.
+  three states instead of a red glyph that meant three different things at once. Shipped as 0.5.
 - **The menu is for doing, Settings is for deciding** - placement, locking, packing, summoning
   and start-at-login moved out of the menu-bar menu into Settings under General. Shipped as 0.4,
   together with the log tray, the collapsed card, summoning and the placement fixes.
