@@ -5,6 +5,7 @@ import DevDeckUI
 import SwiftUI
 import Foundation
 import GitHubKit
+import GitLabKit
 import TestHarness
 
 func runPresentationTests(_ run: TestRun) async {
@@ -118,6 +119,42 @@ func runPresentationTests(_ run: TestRun) async {
                    "half a card apart is two columns, not one")
         try expect(!DeckLayout.isSameColumn(card, CGRect(x: 460, y: 0, width: 352, height: 200)),
                    "and a card beside it is certainly not in it")
+    }
+
+    await run.test("a new card joins the deck under the shortest column") {
+        let screen = CGRect(x: 0, y: 0, width: 1512, height: 950)
+        let size = CGSize(width: 352, height: 110)
+        // Two columns, the right one shorter. A new card belongs at the bottom of that one, not
+        // on top of it, which is what "under the lowest panel of the deck" used to mean.
+        let left = [CGRect(x: 24, y: 700, width: 352, height: 216), CGRect(x: 24, y: 400, width: 352, height: 280)]
+        let right = [CGRect(x: 388, y: 700, width: 352, height: 216)]
+
+        let spot = try expectNotNil(
+            DeckLayout.nextSpot(size: size, among: left + right, screen: screen, gap: 12),
+            "spot"
+        )
+        try expectEqual(spot.x, 388, "the shorter column")
+        try expectEqual(spot.y, 700 - 12 - 110, "directly under its lowest card")
+    }
+
+    await run.test("a deck with no room starts a column beside itself") {
+        let screen = CGRect(x: 0, y: 0, width: 1512, height: 400)
+        let full = [CGRect(x: 24, y: 20, width: 352, height: 360)]
+        let spot = try expectNotNil(
+            DeckLayout.nextSpot(size: CGSize(width: 352, height: 110), among: full, screen: screen, gap: 12),
+            "spot"
+        )
+        try expectEqual(spot.x, 24 + 352 + 12, "beside it, on the side with room")
+        try expectEqual(spot.y, 380 - 110, "and from the top of the deck")
+    }
+
+    await run.test("the first card of all has no deck to join") {
+        try expectNil(DeckLayout.nextSpot(
+            size: CGSize(width: 352, height: 110),
+            among: [],
+            screen: CGRect(x: 0, y: 0, width: 1512, height: 950),
+            gap: 12
+        ))
     }
 
     await run.test("packing closes the gaps and keeps the order it was given") {
@@ -338,6 +375,26 @@ func runPresentationTests(_ run: TestRun) async {
 
         let whole = ArcProjectCard.size(for: busy, status: status)
         try expect(whole.height > one.height * 3, "the saving is the point: 209 against 44")
+    }
+
+    await run.test("a list card collapses to the same row as a project card") {
+        // It used to be the project cards only, so the menu item was there on a GitHub card and
+        // did nothing at all - which is worse than not offering it.
+        let empty = CardState<PullRequestsSnapshot>()
+        try expectEqual(
+            PullRequestsCard.size(for: empty, isExpanded: false, isCollapsed: true).height,
+            CollapsedCardMetrics.height
+        )
+        try expectEqual(
+            InboxCard.size(for: CardState<InboxSnapshot>(), isExpanded: false, isCollapsed: true).height,
+            CollapsedCardMetrics.height
+        )
+        try expectEqual(ActionsCard.size(isCollapsed: true).height, CollapsedCardMetrics.height)
+        try expectEqual(
+            MergeRequestsCard.size(for: CardState<MergeRequestsSnapshot>(), isExpanded: false, isCollapsed: true).height,
+            CollapsedCardMetrics.height
+        )
+        try expect(ActionsCard.size(isCollapsed: false).height > CollapsedCardMetrics.height)
     }
 
     await run.test("an open tray is not carried into a collapsed card") {

@@ -10,18 +10,64 @@ public struct ActionsCard: View {
     private let state: CardState<ActionsSnapshot>
     private let now: Date
     private let onOpen: (URL, String) -> Void
+    private let isCollapsed: Bool
+    private let onOpenDashboard: () -> Void
 
     public init(
         state: CardState<ActionsSnapshot>,
         now: Date = Date(),
-        onOpen: @escaping (URL, String) -> Void = { _, _ in }
+        isCollapsed: Bool = false,
+        onOpen: @escaping (URL, String) -> Void = { _, _ in },
+        onOpenDashboard: @escaping () -> Void = {}
     ) {
         self.state = state
         self.now = now
+        self.isCollapsed = isCollapsed
         self.onOpen = onOpen
+        self.onOpenDashboard = onOpenDashboard
+    }
+
+    /// A fixed height, unlike the other list cards: this one always draws two rows.
+    public nonisolated static func size(isCollapsed: Bool) -> CGSize {
+        isCollapsed ? CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height) : size
     }
 
     public var body: some View {
+        if isCollapsed {
+            collapsed
+        } else {
+            full
+        }
+    }
+
+    /// One row. The success rate is the whole card in a number, and the one action a list card
+    /// can offer is opening the same thing on the web.
+    private var collapsed: some View {
+        CardCollapsedRow(
+            glyph: CardGlyph.github,
+            title: "GitHub Actions",
+            note: collapsedNote,
+            tone: collapsedTone.tone,
+            color: collapsedTone.color,
+            action: CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard),
+            help: collapsedNote ?? "GitHub Actions"
+        )
+    }
+
+    private var collapsedNote: String? {
+        guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
+        if snapshot.failedCount > 0 { return "\(snapshot.failedCount) failing" }
+        guard let rate = snapshot.successRate else { return "idle" }
+        return "\(Int((rate * 100).rounded()))% green"
+    }
+
+    private var collapsedTone: (tone: CardStateTone, color: Color) {
+        guard let snapshot = state.value else { return (.neutral, DeckTheme.label) }
+        if snapshot.failedCount > 0 { return (.alert, DeckTheme.red) }
+        return snapshot.successRate == nil ? (.neutral, DeckTheme.label) : (.good, DeckTheme.green)
+    }
+
+    private var full: some View {
         CardChrome(title: "GitHub · actions", pill: pill) {
             if let snapshot = state.value {
                 content(snapshot)

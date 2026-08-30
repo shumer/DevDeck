@@ -33,6 +33,47 @@ public enum DeckLayout {
         return overlap >= min(first.width, second.width) * minimumOverlap
     }
 
+    /// Where a panel with no position of its own goes: into the deck, under the shortest column
+    /// that still has room for it.
+    ///
+    /// The deck is read as columns rather than as one list, because by the time a card is added
+    /// there usually are two, and "under the lowest panel" then means "on top of the second
+    /// column". When every column is full, a new one starts beside the deck, on whichever side
+    /// the screen has room.
+    ///
+    /// Returns nil when there is no deck yet: the first card has nothing to join.
+    public static func nextSpot(
+        size: CGSize,
+        among frames: [CGRect],
+        screen: CGRect,
+        gap: CGFloat
+    ) -> CGPoint? {
+        guard !frames.isEmpty else { return nil }
+
+        var columns: [[CGRect]] = []
+        for frame in frames.sorted(by: { $0.minX < $1.minX }) {
+            if let index = columns.firstIndex(where: { isSameColumn($0[0], frame) }) {
+                columns[index].append(frame)
+            } else {
+                columns.append([frame])
+            }
+        }
+
+        // The highest free spot, which is the bottom of the shortest column.
+        let spots = columns.compactMap { column -> CGPoint? in
+            guard let lowest = column.min(by: { $0.minY < $1.minY }) else { return nil }
+            let y = lowest.minY - gap - size.height
+            return y >= screen.minY ? CGPoint(x: lowest.minX, y: y) : nil
+        }
+        if let spot = spots.max(by: { $0.y < $1.y }) { return spot }
+
+        let top = frames.max(by: { $0.maxY < $1.maxY }) ?? frames[0]
+        let right = (frames.map(\.maxX).max() ?? top.maxX) + gap
+        let left = (frames.map(\.minX).min() ?? top.minX) - size.width - gap
+        let x = (screen.maxX - right >= size.width) ? right : max(left, screen.minX)
+        return CGPoint(x: x, y: top.maxY - size.height)
+    }
+
     /// Closes the gaps in one column, in the order it is given, from the anchor it is given.
     ///
     /// Deliberately not `tidy`. This is what runs by itself when a card changes height, so it

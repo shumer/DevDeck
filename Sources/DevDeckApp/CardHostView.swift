@@ -23,27 +23,38 @@ struct CardHostView: View {
                     state: controller.pullRequests,
                     accountLabels: controller.accountLabels,
                     isExpanded: controller.isExpanded(card),
+                    isCollapsed: controller.isCollapsed(card),
                     onOpen: open,
-                    onToggleExpand: { controller.toggleExpanded(card) }
+                    onToggleExpand: { controller.toggleExpanded(card) },
+                    onOpenDashboard: { openDashboard(for: card) }
                 )
             } else if card == .githubInbox {
                 InboxCard(
                     state: controller.inbox,
                     accountLabels: controller.accountLabels,
                     isExpanded: controller.isExpanded(card),
+                    isCollapsed: controller.isCollapsed(card),
                     onOpen: open,
-                    onToggleExpand: { controller.toggleExpanded(card) }
+                    onToggleExpand: { controller.toggleExpanded(card) },
+                    onOpenDashboard: { openDashboard(for: card) }
                 )
             } else if card == .gitlabMergeRequests {
                 MergeRequestsCard(
                     state: controller.mergeRequests,
                     accountLabels: controller.gitlabAccountLabels,
                     isExpanded: controller.isExpanded(card),
+                    isCollapsed: controller.isCollapsed(card),
                     onOpen: openGitLab,
-                    onToggleExpand: { controller.toggleExpanded(card) }
+                    onToggleExpand: { controller.toggleExpanded(card) },
+                    onOpenDashboard: { openDashboard(for: card) }
                 )
             } else if card == .githubActions {
-                ActionsCard(state: controller.actions, onOpen: open)
+                ActionsCard(
+                    state: controller.actions,
+                    isCollapsed: controller.isCollapsed(card),
+                    onOpen: open,
+                    onOpenDashboard: { openDashboard(for: card) }
+                )
             } else if let project = controller.ddevProject(forCard: card) {
                 DDEVProjectCard(
                     project: project,
@@ -125,6 +136,19 @@ struct CardHostView: View {
         LinkOpener.open(url, using: controller.gitlabBrowser(for: accountID))
     }
 
+    /// The same place a double-click on the panel goes. A collapsed list card has no lifecycle
+    /// to offer, so this is its one action.
+    private func openDashboard(for card: CardID) {
+        guard let url = CardHostView.dashboardURL(for: card) else { return }
+        let account = card == .gitlabMergeRequests
+            ? controller.gitlabAccountLabels.keys.sorted().first ?? ""
+            : controller.accountLabels.keys.sorted().first ?? ""
+        let browser = card == .gitlabMergeRequests
+            ? controller.gitlabBrowser(for: account)
+            : controller.browser(for: account)
+        LinkOpener.open(url, using: browser)
+    }
+
     private func open(_ url: URL, _ accountID: String) {
         LinkOpener.open(url, using: controller.browser(for: accountID))
     }
@@ -135,16 +159,22 @@ struct CardHostView: View {
         case .githubPullRequests:
             return PullRequestsCard.size(
                 for: controller.pullRequests,
-                isExpanded: controller.isExpanded(card)
+                isExpanded: controller.isExpanded(card),
+                isCollapsed: controller.isCollapsed(card)
             )
         case .githubInbox:
-            return InboxCard.size(for: controller.inbox, isExpanded: controller.isExpanded(card))
+            return InboxCard.size(
+                for: controller.inbox,
+                isExpanded: controller.isExpanded(card),
+                isCollapsed: controller.isCollapsed(card)
+            )
         case .githubActions:
-            return ActionsCard.size
+            return ActionsCard.size(isCollapsed: controller.isCollapsed(card))
         case .gitlabMergeRequests:
             return MergeRequestsCard.size(
                 for: controller.mergeRequests,
-                isExpanded: controller.isExpanded(card)
+                isExpanded: controller.isExpanded(card),
+                isCollapsed: controller.isCollapsed(card)
             )
         default:
             if let project = controller.ddevProject(forCard: card) {

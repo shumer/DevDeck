@@ -53,5 +53,9 @@ A card is either whole or one row of 44 points. There is no third size.
 - Named layouts are now a small feature rather than a large one: a layout is a set of cards that
   are collapsed plus the positions the deck already remembers. It is deliberately not built yet,
   because the deck may already fit the screen without it.
-- The GitHub cards are not collapsible yet. Their one row would say something different, a count
-  rather than a state, and nothing in this decision tells us what their single action should be.
+- The list cards collapse too, and the two open questions turned out to have obvious answers once
+  a GitLab card made the gap impossible to ignore: the note is the pill's own words, which are
+  already the shortest true sentence about the card, and the single action is the one thing a card
+  with no lifecycle can do, which is open the same list on the web. Leaving them out meant the
+  menu offered "Collapse to one row" on a GitHub card and then did nothing, which is worse than
+  not offering it.

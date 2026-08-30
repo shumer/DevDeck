@@ -10,26 +10,35 @@ public struct InboxCard: View {
     private let now: Date
     private let accountLabels: [String: String]
     private let isExpanded: Bool
+    private let isCollapsed: Bool
     private let onOpen: (URL, String) -> Void
     private let onToggleExpand: () -> Void
+    private let onOpenDashboard: () -> Void
 
     public init(
         state: CardState<InboxSnapshot>,
         now: Date = Date(),
         accountLabels: [String: String] = [:],
         isExpanded: Bool = false,
+        isCollapsed: Bool = false,
         onOpen: @escaping (URL, String) -> Void = { _, _ in },
-        onToggleExpand: @escaping () -> Void = {}
+        onToggleExpand: @escaping () -> Void = {},
+        onOpenDashboard: @escaping () -> Void = {}
     ) {
         self.state = state
         self.now = now
         self.accountLabels = accountLabels
         self.isExpanded = isExpanded
+        self.isCollapsed = isCollapsed
         self.onOpen = onOpen
         self.onToggleExpand = onToggleExpand
+        self.onOpenDashboard = onOpenDashboard
     }
 
-    public static func size(for state: CardState<InboxSnapshot>, isExpanded: Bool) -> CGSize {
+    public nonisolated static func size(for state: CardState<InboxSnapshot>, isExpanded: Bool, isCollapsed: Bool = false) -> CGSize {
+        guard !isCollapsed else {
+            return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
+        }
         let total = state.value?.items.count ?? 0
         return CGSize(
             width: CardMetrics.width,
@@ -38,6 +47,42 @@ public struct InboxCard: View {
     }
 
     public var body: some View {
+        if isCollapsed {
+            collapsed
+        } else {
+            full
+        }
+    }
+
+    /// One row: the mark, a dot for how loud the card is, its name and the count. A list card
+    /// has no lifecycle to offer, so its single action is the one thing it can do - open the
+    /// same list on the web.
+    private var collapsed: some View {
+        CardCollapsedRow(
+            glyph: CardGlyph.github,
+            title: "GitHub inbox",
+            note: collapsedNote,
+            tone: collapsedTone.tone,
+            color: collapsedTone.color,
+            action: CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard),
+            help: collapsedNote ?? "GitHub inbox"
+        )
+    }
+
+    /// Unread is the number, and what is waiting on you is the part worth colour.
+    private var collapsedNote: String? {
+        guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
+        if snapshot.actionableCount > 0 { return "\(snapshot.actionableCount) on you · \(snapshot.unreadCount) unread" }
+        return snapshot.unreadCount == 0 ? "clear" : "\(snapshot.unreadCount) unread"
+    }
+
+    private var collapsedTone: (tone: CardStateTone, color: Color) {
+        guard let snapshot = state.value else { return (.neutral, DeckTheme.label) }
+        if snapshot.actionableCount > 0 { return (.alert, DeckTheme.amber) }
+        return snapshot.unreadCount == 0 ? (.good, DeckTheme.green) : (.neutral, DeckTheme.label)
+    }
+
+    private var full: some View {
         CardChrome(title: "GitHub · inbox", pill: pill) {
             if let snapshot = state.value {
                 content(snapshot)
