@@ -37,8 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // A project added or removed in settings changes the card list, not just the data.
         self?.syncPanels()
         self?.controller.refreshNow()
-        // And the summon shortcut may have changed, which only counts once it is registered.
-        self?.installHotKey()
+        // And any deck preference may have changed, which only counts once it is applied.
+        self?.applyDeckPreferences()
     }
 
     private var panels: [CardID: PanelWindow] = [:]
@@ -57,10 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
 
-    private var displayMode: DisplayMode {
-        get { preferences.displayMode }
-        set { preferences.displayMode = newValue }
-    }
+    /// Where the panels sit, from settings. Read-only here: the switch that changes it lives in
+    /// the settings screen, and the deck finds out through `applyDeckPreferences`.
+    private var displayMode: DisplayMode { preferences.displayMode }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -110,8 +109,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             settingsController.show()
         }
 
-        if CommandLine.arguments.contains("--enable-login-item"), !startsAtLogin {
-            toggleLoginItem()
+        if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {
+            LoginItem.set(true)
         }
     }
 
@@ -500,27 +499,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         veils = []
     }
 
-    @objc private func togglePacking() {
-        preferences.packsColumns.toggle()
-        guard preferences.packsColumns else { return }
-        // Turning it on is a decision, so it takes effect now rather than at the next time a
-        // card happens to change height.
-        for card in panels.keys { packColumn(containing: card) }
-    }
+    /// Puts every deck preference into effect at once.
+    ///
+    /// One function rather than a handler per switch, because the settings screen writes the
+    /// preference and then says only "something changed": which one it was is not worth a
+    /// protocol, and applying all of them is cheap and cannot get out of step.
+    private func applyDeckPreferences() {
+        let level = isSummoned ? NSWindow.Level.floating : displayMode.windowLevel
+        for window in panels.values {
+            window.level = level
+            window.isMovableByWindowBackground = !preferences.isLocked
+        }
 
-    @objc private func toggleSummon() {
-        preferences.summonEnabled.toggle()
+        installHotKey()
         if !preferences.summonEnabled, isSummoned {
             isLatched = false
             setSummoned(false)
         }
-        installHotKey()
-    }
-
-    @objc private func toggleSummonDim() {
-        preferences.summonDims.toggle()
-        guard isSummoned else { return }
-        if preferences.summonDims { showVeils() } else { hideVeils() }
+        if isSummoned {
+            preferences.summonDims ? showVeils() : hideVeils()
+        }
+        // Turning packing on is a decision, so it takes effect now rather than the next time a
+        // card happens to change height.
+        if preferences.packsColumns {
+            for card in panels.keys { packColumn(containing: card) }
+        }
     }
 
     // MARK: Menu bar
@@ -611,53 +614,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         open.target = self
         menu.addItem(open)
 
-        menu.addItem(.separator())
-        let login = NSMenuItem(title: "Start at login", action: #selector(toggleLoginItem), keyEquivalent: "")
-        login.state = startsAtLogin ? .on : .off
-        login.target = self
-        menu.addItem(login)
-
-        menu.addItem(.separator())
-        for mode in DisplayMode.allCases {
-            let item = NSMenuItem(title: mode.menuTitle, action: #selector(setMode(_:)), keyEquivalent: "")
-            item.state = displayMode == mode ? .on : .off
-            item.representedObject = mode.rawValue
-            item.target = self
-            menu.addItem(item)
-        }
-        let lock = NSMenuItem(title: "Lock position (no dragging)", action: #selector(toggleLock), keyEquivalent: "")
-        lock.state = preferences.isLocked ? .on : .off
-        lock.target = self
-        menu.addItem(lock)
-
-        let summon = NSMenuItem(
-            title: "Raise the deck while \(preferences.summonHotKey.display) is held",
-            action: #selector(toggleSummon),
-            keyEquivalent: ""
-        )
-        summon.state = preferences.summonEnabled ? .on : .off
-        summon.toolTip = "Hold to look, tap to keep it up until the next press"
-        summon.target = self
-        menu.addItem(summon)
-
-        let pack = NSMenuItem(
-            title: "Keep the column packed",
-            action: #selector(togglePacking),
-            keyEquivalent: ""
-        )
-        pack.state = preferences.packsColumns ? .on : .off
-        pack.toolTip = "Closes gaps in a column when a card changes height, so a gap you left "
-            + "on purpose will not survive. Locking the deck does not stop it."
-        pack.target = self
-        menu.addItem(pack)
-
-        let dim = NSMenuItem(title: "Dim the screen while it is up", action: #selector(toggleSummonDim), keyEquivalent: "")
-        dim.state = preferences.summonDims ? .on : .off
-        dim.isEnabled = preferences.summonEnabled
-        dim.toolTip = "Dark glass over a white editor is unreadable without this"
-        dim.target = self
-        menu.addItem(dim)
-
+        // Everything below is something you *do*. What the deck *is* - where the panels sit,
+        // whether they are locked, whether ⌥Space raises them, whether the app starts at login -
+        // lives in Settings. A menu that mixes the two grows until the thing you actually came
+        // for is somewhere in the middle of it.
         menu.addItem(.separator())
         for (title, selector) in [
             ("Tidy panels into columns", #selector(restack)),
@@ -717,18 +677,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         syncPanels()
     }
 
-    @objc private func setMode(_ item: NSMenuItem) {
-        guard let raw = item.representedObject as? String, let mode = DisplayMode(rawValue: raw) else { return }
-        displayMode = mode
-        for window in panels.values { window.level = mode.windowLevel }
-    }
 
-    @objc private func toggleLock() {
-        preferences.isLocked.toggle()
-        for window in panels.values {
-            window.isMovableByWindowBackground = !preferences.isLocked
-        }
-    }
 
     /// Closes up the deck while keeping it where the user put it: anchor on the topmost panel
     /// and stack the rest beneath it, starting a new column whenever the next card would hang
@@ -783,32 +732,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Login item
 
-    /// Read from the system rather than a preference, so the menu cannot drift from reality
-    /// when the user turns it off in System Settings.
-    private var startsAtLogin: Bool {
-        SMAppService.mainApp.status == .enabled
-    }
-
-    @objc private func toggleLoginItem() {
-        do {
-            if startsAtLogin {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "Could not change the login item"
-            alert.informativeText = """
-                \(error.localizedDescription)
-
-                macOS registers the app by its location, so this usually means the app is \
-                somewhere it does not consider stable. Move DevDeck.app to /Applications and \
-                try again, or add it under System Settings → General → Login Items.
-                """
-            alert.addButton(withTitle: "OK")
-            NSApp.activate(ignoringOtherApps: true)
-            alert.runModal()
-        }
-    }
 }

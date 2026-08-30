@@ -461,8 +461,46 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         form.footnote("The build number is the commit count, so it moves on every rebuild, the "
             + "quickest way to tell whether the copy in front of you is the change you just made.")
 
-        form.header("The deck")
+        form.header("Where the panels sit")
         form.beginGroup()
+
+        let placement = NSPopUpButton()
+        for mode in DisplayMode.allCases {
+            placement.addItem(withTitle: mode.settingsTitle)
+            placement.lastItem?.representedObject = mode.rawValue
+        }
+        placement.selectItem(at: DisplayMode.allCases.firstIndex(of: preferences.displayMode) ?? 0)
+        placement.target = self
+        placement.action = #selector(placementChanged(_:))
+        form.row("Panels", [(placement, 240)], height: 24)
+
+        form.toggleRow(
+            deckSwitch(preferences.isLocked, action: #selector(lockChanged(_:))),
+            title: "Lock position",
+            subtitle: "Stops a stray drag moving a panel. It does not stop the deck packing a column."
+        )
+        form.toggleRow(
+            deckSwitch(preferences.packsColumns, action: #selector(packingChanged(_:))),
+            title: "Keep the column packed",
+            subtitle: "Closes the gaps when a card changes height, so a gap left on purpose will not survive."
+        )
+        form.endGroup()
+        form.footnote("Tidy, which sorts the deck and wraps it into columns, stays in the menu-bar "
+            + "menu: it is something you do rather than something you set.")
+
+        form.header("Summoning")
+        form.beginGroup()
+
+        form.toggleRow(
+            deckSwitch(preferences.summonEnabled, action: #selector(summonChanged(_:))),
+            title: "Raise the deck while the shortcut is held",
+            subtitle: "Let go and it drops back. A tap keeps it up until the next press."
+        )
+        form.toggleRow(
+            deckSwitch(preferences.summonDims, action: #selector(summonDimChanged(_:))),
+            title: "Dim the screen while it is up",
+            subtitle: "Dark glass over a white editor is close to unreadable without it."
+        )
 
         let recorder = HotKeyRecorderView(combo: preferences.summonHotKey)
         recorder.onChange = { [weak self] combo in
@@ -480,14 +518,67 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         reset.action = #selector(resetSummonHotKey(_:))
         summonRecorder = recorder
 
-        form.row("Summon", [(recorder, 120), (reset, 74)], height: 26)
+        form.row("Shortcut", [(recorder, 120), (reset, 74)], height: 26)
         form.endGroup()
-        form.footnote("Hold it to raise the deck over your windows, let go and it drops back. A "
-            + "tap keeps it up until the next press. At least one modifier is required, since a "
-            + "bare key would be taken from every application on the machine.")
+        form.footnote("At least one modifier is required: a bare key would be taken from every "
+            + "application on the machine, so pressing it in an editor would raise the deck "
+            + "instead of typing.")
 
-        form.footnote("Whether the deck is summoned at all, whether the screen dims while it is "
-            + "up, placement, locking and start-at-login all live in the menu-bar menu.")
+        form.header("System")
+        form.beginGroup()
+        form.toggleRow(
+            deckSwitch(LoginItem.isEnabled, action: #selector(loginItemChanged(_:))),
+            title: "Start at login",
+            subtitle: "Read from macOS itself, so removing it in System Settings shows here too."
+        )
+        form.endGroup()
+    }
+
+    /// The switches in this section all look the same and all do the same two things: write one
+    /// preference, then let the deck act on it.
+    private func deckSwitch(_ isOn: Bool, action: Selector) -> NSButton {
+        let button = NSButton()
+        button.setButtonType(.switch)
+        button.title = ""
+        button.state = isOn ? .on : .off
+        button.target = self
+        button.action = action
+        return button
+    }
+
+    @objc private func placementChanged(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let mode = DisplayMode(rawValue: raw)
+        else { return }
+        preferences.displayMode = mode
+        onChanged()
+    }
+
+    @objc private func lockChanged(_ sender: NSButton) {
+        preferences.isLocked = sender.state == .on
+        onChanged()
+    }
+
+    @objc private func packingChanged(_ sender: NSButton) {
+        preferences.packsColumns = sender.state == .on
+        onChanged()
+    }
+
+    @objc private func summonChanged(_ sender: NSButton) {
+        preferences.summonEnabled = sender.state == .on
+        onChanged()
+    }
+
+    @objc private func summonDimChanged(_ sender: NSButton) {
+        preferences.summonDims = sender.state == .on
+        onChanged()
+    }
+
+    @objc private func loginItemChanged(_ sender: NSButton) {
+        // Put back to whatever macOS ended up doing rather than to what was asked for: the
+        // registration can fail, and a switch that stays on while the login item is not is a
+        // setting that lies.
+        sender.state = LoginItem.set(sender.state == .on) ? .on : .off
     }
 
     @objc private func resetSummonHotKey(_ sender: NSButton) {

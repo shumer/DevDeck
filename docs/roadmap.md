@@ -42,6 +42,8 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **The menu is for doing, Settings is for deciding** - placement, locking, packing, summoning
+  and start-at-login moved out of the menu-bar menu into Settings under General.
 - **The deck stops moving cards nobody asked it to move** - restarting reproduces a layout
   exactly, and closing up a column is a switch rather than a habit. See
   [adr/0012-automatic-movement.md](adr/0012-automatic-movement.md).

@@ -397,8 +397,13 @@ This is why a deck kept on the laptop screen no longer scatters when an external
 happens to be the main one comes and goes, and why quitting and reopening puts every panel back
 exactly where it was rather than a little further down each time. The deck moves a card only when
 you asked it to: collapsing one, opening a log, expanding a list. Data arriving never moves
-anything. **Keep the column packed**, in the menu and off by default, closes the gaps in a column
-whenever a card changes height, at the price of any gap you left in it on purpose. While the display a card belongs to is unplugged the
+anything. **Keep the column packed**, in Settings and off by default, closes the gaps in a column whenever
+a card changes height, at the price of any gap you left in it on purpose.
+
+The menu-bar menu holds what you *do*: which cards are on the deck, Tidy, Refresh now, Power off
+all DDEV, Settings and Quit. What the deck *is* lives in Settings under General: where the panels
+sit, whether they are locked, whether the column packs itself, the summon shortcut and its
+dimming, and start-at-login. While the display a card belongs to is unplugged the
 card is parked somewhere visible and still remembers where it lives - but if you tidy or drag it
 while it is parked, that is where it now lives, and it stays there. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
