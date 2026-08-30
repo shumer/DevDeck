@@ -44,7 +44,7 @@ private func makeFolder(_ files: [String: String]) -> URL {
 }
 
 func runProjectTests(_ run: TestRun) async {
-    run.section("Projects — the model")
+    run.section("Projects - the model")
 
     await run.test("identifiers are slugged and never collide") {
         try expectEqual(LocalProject.makeID(from: "WR Proofing!", existing: []), "wr-proofing")
@@ -100,7 +100,7 @@ func runProjectTests(_ run: TestRun) async {
         try expect(makeProject().supportsCommands)
     }
 
-    run.section("Projects — status")
+    run.section("Projects - status")
 
     await run.test("no folder means nothing to run or check") {
         let files = makeRuntimeFiles()
@@ -207,7 +207,7 @@ func runProjectTests(_ run: TestRun) async {
         try expect(!ProcessLiveness.isAlive(0))
     }
 
-    run.section("Projects — the commands")
+    run.section("Projects - the commands")
 
     await run.test("a command that holds its process is detached, logged and recorded") {
         let files = makeRuntimeFiles()
@@ -239,7 +239,7 @@ func runProjectTests(_ run: TestRun) async {
         _ = await service.perform(.start)
 
         let command = try expectNotNil(await runner.commands.first, "command")
-        try expect(!command.contains("nohup"), "nothing to detach — it returns on its own")
+        try expect(!command.contains("nohup"), "nothing to detach - it returns on its own")
         try expect(command.contains("{ docker compose up -d ; }"))
         try expect(command.contains(files.log("ledwall").path), "the output is still readable afterwards")
     }
@@ -323,11 +323,11 @@ func runProjectTests(_ run: TestRun) async {
         try expectEqual(
             status.detail,
             "started, but http://localhost:5173 never answered",
-            "the URL that was tried is named — it is almost always the wrong port"
+            "the URL that was tried is named - it is almost always the wrong port"
         )
     }
 
-    run.section("Projects — reading a folder")
+    run.section("Projects - reading a folder")
 
     await run.test("a compose file is a detached start with a matching stop") {
         let folder = makeFolder(["docker-compose.yml": "services:\n  web:\n"])
@@ -385,7 +385,7 @@ func runProjectTests(_ run: TestRun) async {
         try expectNil(ProjectProbe.suggestion(for: makeFolder(["README.md": "hi"])), "suggestion")
     }
 
-    run.section("Docker — one answer for the whole deck")
+    run.section("Docker - one answer for the whole deck")
 
     let now = Date(timeIntervalSince1970: 1_000)
 

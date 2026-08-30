@@ -67,7 +67,7 @@ LOGIN="$(curl -sf -H "Authorization: bearer $TOKEN" https://api.github.com/user 
   | /usr/bin/python3 -c 'import sys,json;print(json.load(sys.stdin).get("login",""))' 2>/dev/null || true)"
 
 if [ -z "$LOGIN" ]; then
-  echo "GitHub rejected that token — nothing was stored." >&2
+  echo "GitHub rejected that token - nothing was stored." >&2
   exit 1
 fi
 

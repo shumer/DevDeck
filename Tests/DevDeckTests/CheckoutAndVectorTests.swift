@@ -36,7 +36,7 @@ private let gitConfig = """
 """
 
 func runVectorTests(_ run: TestRun) async {
-    run.section("Git — the branch line links to the repository")
+    run.section("Git - the branch line links to the repository")
 
     await run.test("origin is read from its own section, not from the first url in the file") {
         // A repository with an upstream has several `url =` lines and origin's is not first.
@@ -82,11 +82,11 @@ func runVectorTests(_ run: TestRun) async {
         try expectEqual(
             GitCheckout.originWebURL(in: folder)?.absoluteString,
             "https://github.com/editoria/ledwall",
-            "the repository, whatever branch is checked out — the one page that always exists"
+            "the repository, whatever branch is checked out - the one page that always exists"
         )
     }
 
-    run.section("SVG paths — the logos are real, so the parser has to be")
+    run.section("SVG paths - the logos are real, so the parser has to be")
 
     await run.test("absolute and relative moves and lines") {
         // (10,10) → (20,10) → (20,20) → (5,20) → (5,15), closed.
@@ -136,7 +136,7 @@ func runVectorTests(_ run: TestRun) async {
         try expect(!SVGPath.parse("M0,0 L10,10 QQQ").isEmpty, "what parsed is kept")
     }
 
-    run.section("SVG paths — the marks themselves")
+    run.section("SVG paths - the marks themselves")
 
     await run.test("every brand mark parses and fills its box") {
         let box = CGRect(x: 0, y: 0, width: 15, height: 15)

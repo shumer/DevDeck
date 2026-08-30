@@ -5,13 +5,13 @@ import Foundation
 /// An app launched from Finder inherits a bare environment, and `zsh -lc` does not fix it: a
 /// login shell that is not interactive reads `.zprofile` but never `.zshrc`, which is where
 /// nvm, rbenv, pyenv and every other version manager put themselves. The symptom is precise and
-/// baffling — `ddev` and `docker` work, because they live in `/usr/local/bin` and come from
+/// baffling - `ddev` and `docker` work, because they live in `/usr/local/bin` and come from
 /// `/etc/paths`, while `npx` and `pnpm` report "command not found" from a machine where they
 /// obviously exist.
 ///
 /// The fix is to ask an interactive login shell what its `PATH` is, once, and hand that to every
 /// command afterwards. Running the commands themselves interactively would work too and is what
-/// most apps do, but an interactive `.zshrc` prints things — this one prints `exec zsh` — and
+/// most apps do, but an interactive `.zshrc` prints things - this one prints `exec zsh` - and
 /// that lands in the middle of output something is trying to parse.
 public actor ShellPath {
     public static let shared = ShellPath()

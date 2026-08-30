@@ -4,7 +4,7 @@ import GitHubKit
 import TestHarness
 
 func runInboxTests(_ run: TestRun) async {
-    run.section("GitHub — inbox")
+    run.section("GitHub - inbox")
 
     let http = FakeHTTPClient([
         .success(.json(Fixtures.notifications, headers: ["X-Poll-Interval": "90", "ETag": "\"n1\""])),
@@ -53,7 +53,7 @@ func runInboxTests(_ run: TestRun) async {
         try expectEqual(snapshot.prioritized(limit: 2).map(\.id), ["1", "3"])
     }
 
-    run.section("GitHub — notification links")
+    run.section("GitHub - notification links")
 
     await run.test("a pull request subject becomes a page a human can open") {
         let url = InboxItem.webURL(fromSubject: URL(string: "https://api.github.com/repos/editoria/ledwall/pulls/412"))
@@ -74,7 +74,7 @@ func runInboxTests(_ run: TestRun) async {
         try expectEqual(InboxItem.webURL(fromSubject: original), original)
     }
 
-    run.section("GitHub — inbox failures")
+    run.section("GitHub - inbox failures")
 
     await run.test("a 304 replays the previous payload") {
         let http = FakeHTTPClient([

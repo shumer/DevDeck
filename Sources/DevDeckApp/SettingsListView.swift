@@ -4,7 +4,7 @@ import AppKit
 struct SettingsListItem: Equatable {
     let id: String
     let title: String
-    /// The folder, the organisation — whatever tells two similarly named things apart.
+    /// The folder, the organisation - whatever tells two similarly named things apart.
     let subtitle: String
     /// Green when it is up, grey when it is not, nil when the item has no such state.
     let state: NSColor?

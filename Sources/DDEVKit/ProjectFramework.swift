@@ -2,7 +2,7 @@ import Foundation
 
 /// What a project is actually built on, read from `composer.lock`.
 ///
-/// `.ddev/config.yaml` has a `type:` — but it configures DDEV's own behaviour and nobody
+/// `.ddev/config.yaml` has a `type:` - but it configures DDEV's own behaviour and nobody
 /// updates it after a major upgrade: two projects here still said `drupal9` while running
 /// Drupal 11.4.4 and 10.6.11. The lock file cannot be stale in the same way, because it is
 /// what the code is installed from.

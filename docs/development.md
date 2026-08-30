@@ -9,7 +9,7 @@ That single fact shapes the project:
 - `XCTest` and `swift-testing` both live in Xcode, so `swift test` cannot run here. The suite
   is an executable target with a tiny framework in `Tests/TestHarness`.
 - There is no `.xcodeproj`, no widget extension and no WidgetKit. Panels are borderless
-  `NSWindow`s hosting SwiftUI views — see [adr/0002-spm-only-toolchain.md](adr/0002-spm-only-toolchain.md).
+  `NSWindow`s hosting SwiftUI views - see [adr/0002-spm-only-toolchain.md](adr/0002-spm-only-toolchain.md).
 - `build.sh` assembles `DevDeck.app` by hand and ad-hoc signs it.
 
 ## Commands
@@ -51,8 +51,8 @@ Rules:
 - **No real waiting.** Inject `RecordingSleeper`, `AdvancingSleeper` and `MutableDateProvider`
   instead of sleeping or reading the clock.
 - Live API behaviour belongs in `Tools/Smoke`, not in the suite.
-- **One deliberate exception:** `CommandRunnerTests` runs real processes — `echo`, `cat`,
-  `sleep` — and writes temporary files. Every bug it covers was invisible to a stub: a blocked
+- **One deliberate exception:** `CommandRunnerTests` runs real processes - `echo`, `cat`,
+  `sleep` - and writes temporary files. Every bug it covers was invisible to a stub: a blocked
   main thread, a command waiting on stdin, a timeout that never fired, a deadlocked pipe. It
   stays local, takes about a second, and touches nothing outside `NSTemporaryDirectory()`.
   Tests that read `.env`, `.git/HEAD`, `.ddev/config.yaml` or `composer.lock` write those
@@ -63,7 +63,7 @@ Rules:
 The app is ad-hoc signed, so its code signature changes on every build and macOS asks for the
 login keychain before letting the new binary read a token it stored earlier.
 
-**"Always Allow" holds until the next `./build.sh`, and no longer** — the rebuilt binary is a
+**"Always Allow" holds until the next `./build.sh`, and no longer** - the rebuilt binary is a
 different identity as far as the keychain is concerned. In day-to-day use, where the app is
 not being rebuilt, the prompt appears once and then stays quiet.
 
@@ -73,7 +73,7 @@ prompting gets in the way during a stretch of rebuilding, re-seed the token with
 
 The permanent fix, if it is ever worth the one-time setup, is a self-signed code-signing
 certificate in the login keychain and `codesign -s "<name>"` in `build.sh` instead of `-`:
-a stable identity means one "Always Allow" forever. Deliberately not done — the prompt is
+a stable identity means one "Always Allow" forever. Deliberately not done - the prompt is
 tolerable and the certificate is a manual Keychain Access step.
 
 ## Definition of done
@@ -83,7 +83,7 @@ like. Then all four of these are true, or the change is not done:
 
 1. **Code** builds clean: `swift build` with no warnings introduced.
 2. **Tests** cover the new behaviour, and a fixed bug has a test that fails without the fix.
-3. **Docs** updated — `README.md` if user-visible behaviour changed, the relevant file in
+3. **Docs** updated - `README.md` if user-visible behaviour changed, the relevant file in
    `docs/`, and a new ADR when a decision was made rather than a detail implemented.
 4. **Roadmap** updated if the change moves or adds work.
 

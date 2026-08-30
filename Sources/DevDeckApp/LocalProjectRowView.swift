@@ -6,8 +6,8 @@ import ProjectKit
 ///
 /// The longest of the project forms, and unavoidably so: an Arc or DDEV project is described by
 /// its own tooling, while this one is described only by what is typed here. What the redesign
-/// changed is where the words are. The three questions — where is it, how does it start, how do
-/// we know it worked — are now group headers, the paragraphs that used to explain the switches
+/// changed is where the words are. The three questions - where is it, how does it start, how do
+/// we know it worked - are now group headers, the paragraphs that used to explain the switches
 /// sit under those switches one line each, and the answer to the third question is a live row
 /// showing what the health check just returned rather than a description of how it would.
 @MainActor

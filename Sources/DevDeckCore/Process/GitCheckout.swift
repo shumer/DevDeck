@@ -27,7 +27,7 @@ public enum GitCheckout {
 
     /// Where this checkout came from, as a page a browser can open.
     ///
-    /// The card already reads the branch, so the repository is one more line of the same file —
+    /// The card already reads the branch, so the repository is one more line of the same file -
     /// and it turns the branch into the link it always looked like.
     ///
     /// Always the repository, never the branch. Linking the branch meant deciding whether the
@@ -93,7 +93,7 @@ public enum GitCheckout {
 
         if text.hasSuffix(".git") { text.removeLast(4) }
         text = text.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        // A host with no path is not a repository — it is somebody's server.
+        // A host with no path is not a repository - it is somebody's server.
         guard text.contains("/") else { return nil }
         return URL(string: "https://\(text)")
     }
@@ -122,7 +122,7 @@ public enum GitCheckout {
             ? URL(fileURLWithPath: path)
             : directory.appendingPathComponent(path).standardizedFileURL
         // A worktree's own directory has HEAD but shares everything else with the main checkout,
-        // which `commondir` points at — refs and config both live there.
+        // which `commondir` points at - refs and config both live there.
         if name != "HEAD",
            let common = try? String(contentsOf: resolved.appendingPathComponent("commondir"), encoding: .utf8) {
             let trimmed = common.trimmingCharacters(in: .whitespacesAndNewlines)

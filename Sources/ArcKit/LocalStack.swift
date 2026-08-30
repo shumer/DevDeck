@@ -23,7 +23,7 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
     /// The URL actually used, resolved from `.env`. The card shows the real port from here
     /// rather than from the setting, which is usually empty.
     public var siteURL: URL?
-    /// Branch the checkout is on — what the local stack is actually serving.
+    /// Branch the checkout is on - what the local stack is actually serving.
     public var branch: String?
     /// The repository this checkout came from, when it has an origin.
     public var repositoryURL: URL?
@@ -117,7 +117,7 @@ public struct LocalStackService: Sendable {
     /// longer before it serves anything. Checking once and giving up is how a stack that is
     /// still warming reads as "did not start".
     /// `hint` is what the start command said. When the engine never answers, that line is the
-    /// answer — `fusion daemon` prints "ports are not available … address already in use" and
+    /// answer - `fusion daemon` prints "ports are not available … address already in use" and
     /// then exits zero, so without carrying it the card can only report the silence and not its
     /// cause.
     public func waitUntilRunning(

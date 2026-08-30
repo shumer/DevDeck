@@ -4,7 +4,7 @@ import DevDeckCore
 
 /// The form for one Arc project.
 ///
-/// Everything applies as it is edited — a control that waits for a button nobody presses is
+/// Everything applies as it is edited - a control that waits for a button nobody presses is
 /// how the browser choice failed to take effect the first time.
 @MainActor
 final class ProjectRowView: FlippedContainer {

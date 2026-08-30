@@ -73,7 +73,7 @@ public struct GitHubWorkspace: Sendable {
         return InboxSnapshot.merging(gathered.values, failures: gathered.failures)
     }
 
-    /// Actions are per repository, and a repository belongs to exactly one account — asking
+    /// Actions are per repository, and a repository belongs to exactly one account - asking
     /// every account for every repository would spend most requests on 404s.
     public func actions(repositoriesByAccount: [String: [String]]) async throws -> ActionsSnapshot {
         let wanted = accounts.filter { !(repositoriesByAccount[$0.id] ?? []).isEmpty }
@@ -131,7 +131,7 @@ public struct GitHubWorkspace: Sendable {
         }
 
         // Every account failed: this is a real card failure, not a partial one. The first
-        // account's error is representative — they are almost always the same cause.
+        // account's error is representative - they are almost always the same cause.
         if values.isEmpty, let first = failures.first {
             throw APIError.forbidden(accounts.count == 1 ? first.message : "\(failures.count) accounts failed: \(first.message)")
         }

@@ -3,7 +3,7 @@ import Foundation
 /// Why GitHub put a notification in the inbox.
 ///
 /// The set is closed on GitHub's side but grows over time, so anything unrecognised becomes
-/// `.other` rather than being dropped — a notification nobody can explain is still a
+/// `.other` rather than being dropped - a notification nobody can explain is still a
 /// notification worth showing.
 public enum NotificationReason: String, Sendable, Equatable, Codable {
     case reviewRequested

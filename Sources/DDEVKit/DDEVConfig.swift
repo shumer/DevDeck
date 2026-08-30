@@ -3,7 +3,7 @@ import Foundation
 /// The bits of `.ddev/config.yaml` a card shows.
 ///
 /// PHP and database versions are the usual answer to "it works on mine", and `ddev list`
-/// does not carry them — only `ddev describe`, one process per project. The file is right
+/// does not carry them - only `ddev describe`, one process per project. The file is right
 /// there in the checkout, so it is read directly, the same way the git branch and Arc's
 /// `PORT` are.
 public struct DDEVConfig: Sendable, Equatable {

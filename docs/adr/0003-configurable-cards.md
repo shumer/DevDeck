@@ -1,4 +1,4 @@
-# 0003 — Cards are data, and every card can be switched off
+# 0003 - Cards are data, and every card can be switched off
 
 Status: accepted, 2026-08-02
 
@@ -8,7 +8,7 @@ The deck will grow to five or six cards across GitHub, Arc XP and the local stac
 wants all of them at once: what matters differs by day and by person, and a panel that is
 always on screen but never read is worse than no panel.
 
-Hiding also has to be cheap in the other direction — a hidden card must not keep polling an
+Hiding also has to be cheap in the other direction - a hidden card must not keep polling an
 API against a shared rate-limit budget.
 
 ## Decision
@@ -31,5 +31,5 @@ API against a shared rate-limit budget.
 - Card identifiers are persisted strings and can never be renamed. Removing a card is safe.
 - A corrupt or unreadable layout falls back to the catalog defaults rather than leaving the
   user with an empty desktop.
-- Ordering is stored but not yet editable from the UI — the menu toggles visibility only.
+- Ordering is stored but not yet editable from the UI - the menu toggles visibility only.
   Reordering is a settings-window feature when there are enough cards to need it.

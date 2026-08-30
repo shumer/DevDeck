@@ -21,7 +21,7 @@ enum LinkOpener {
         if let profile = choice.profileDirectory, !profile.isEmpty {
             // Chromium only honours `--profile-directory` on launch, and it routes the request
             // to the already-running process itself. A new instance has to be requested for
-            // the arguments to be read at all — this is what `open -na … --args` does.
+            // the arguments to be read at all - this is what `open -na … --args` does.
             configuration.createsNewApplicationInstance = true
             configuration.arguments = ["--profile-directory=\(profile)", url.absoluteString]
             NSWorkspace.shared.openApplication(at: browser.url, configuration: configuration) { _, error in

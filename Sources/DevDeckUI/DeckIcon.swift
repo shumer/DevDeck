@@ -3,7 +3,7 @@ import AppKit
 /// The menu-bar icon: a stack of panels with the app's initials cut out of the front one.
 ///
 /// Drawn rather than picked from SF Symbols because no symbol carries lettering, and the
-/// lettering is the point — a glyph alone left the question "which app is this?" open.
+/// lettering is the point - a glyph alone left the question "which app is this?" open.
 /// Template images are tinted by the menu bar, so everything is drawn in black and the
 /// letters are knocked out to transparency.
 public enum DeckIcon {

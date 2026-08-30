@@ -10,14 +10,14 @@ public enum DeckLayout {
     /// Top-left corners for a run of panels, stacked down from the anchor and wrapping into a
     /// new column whenever the next one would hang below the screen.
     ///
-    /// Coordinates are AppKit's — y grows upward — and the points are top-left corners, which
+    /// Coordinates are AppKit's - y grows upward - and the points are top-left corners, which
     /// is the same anchor positions are remembered by. Panels keep the order they are given:
     /// tidying is closing up gaps, not sorting the deck.
     ///
     /// - Parameters:
     ///   - sizes: each panel's size, in display order.
     ///   - anchorTopLeft: the top-left corner of the panel the deck hangs from, usually the
-    ///     topmost one — tidying keeps the deck where the user put it rather than resetting it
+    ///     topmost one - tidying keeps the deck where the user put it rather than resetting it
     ///     to a corner.
     ///   - screen: the visible frame to stay inside.
     ///   - gap: space between panels, and between columns.

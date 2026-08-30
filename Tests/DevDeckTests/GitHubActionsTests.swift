@@ -15,7 +15,7 @@ private func makeActionsClient(
 }
 
 func runActionsTests(_ run: TestRun) async {
-    run.section("GitHub — actions")
+    run.section("GitHub - actions")
 
     let settings = GitHubSettings(actionsRepositories: ["editoria/ledwall", "shumer/tools"])
     let (client, http) = makeActionsClient(routes: [
@@ -84,11 +84,11 @@ func runActionsTests(_ run: TestRun) async {
 
     await run.test("average duration is measured over finished runs only") {
         let snapshot = try expectNotNil(snapshot, "snapshot")
-        // 360s, 600s, 60s, 240s — the in-progress run contributes nothing.
+        // 360s, 600s, 60s, 240s - the in-progress run contributes nothing.
         try expectEqual(snapshot.averageDurationSeconds, 315)
     }
 
-    run.section("GitHub — actions failure handling")
+    run.section("GitHub - actions failure handling")
 
     await run.test("one unreachable repository does not blank the card") {
         let (client, _) = makeActionsClient(routes: [

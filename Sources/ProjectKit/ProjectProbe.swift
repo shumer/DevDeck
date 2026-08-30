@@ -30,7 +30,7 @@ public struct ProjectSuggestion: Sendable, Equatable {
 ///
 /// A guess, offered once when the project is added, and never applied again behind the user's
 /// back. It exists because the alternative is an empty form and a trip to the terminal to
-/// remember what the command was — and because the answer is written down in the folder in
+/// remember what the command was - and because the answer is written down in the folder in
 /// almost every case.
 public enum ProjectProbe {
     private static let composeFiles = [
@@ -100,7 +100,7 @@ public enum ProjectProbe {
             subtitle: manager,
             startCommand: command,
             stopCommand: "",
-            // A dev server holds its terminal — that is the whole point of it.
+            // A dev server holds its terminal - that is the whole point of it.
             holdsProcess: true,
             requiresDocker: false,
             healthURL: port.map { "http://localhost:\($0)" } ?? ""

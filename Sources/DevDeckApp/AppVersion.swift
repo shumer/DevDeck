@@ -3,7 +3,7 @@ import Foundation
 /// Which build is running.
 ///
 /// The build number is the commit count, written into the bundle by `build.sh`, so it moves
-/// on every rebuild — which makes it the quickest way to answer "am I looking at the change
+/// on every rebuild - which makes it the quickest way to answer "am I looking at the change
 /// I just made, or at the copy that was already running?".
 enum AppVersion {
     static var summary: String {
@@ -18,8 +18,8 @@ enum AppVersion {
         return "DevDeck \(short) (build \(build))"
     }
 
-    /// The bundle actually running. There are usually two copies — the one in the repository
-    /// and the installed one — and knowing which is in front saves a puzzled minute.
+    /// The bundle actually running. There are usually two copies - the one in the repository
+    /// and the installed one - and knowing which is in front saves a puzzled minute.
     static var location: String {
         let path = Bundle.main.bundleURL.path
         return path.hasSuffix(".app") ? path : "not running from a bundle"

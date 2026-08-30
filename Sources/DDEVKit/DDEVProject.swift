@@ -3,7 +3,7 @@ import Foundation
 
 /// An extra link on a DDEV card.
 ///
-/// The useful ones — the site, Mailpit, xhgui — come from DDEV itself and need no
+/// The useful ones - the site, Mailpit, xhgui - come from DDEV itself and need no
 /// configuring; this is for whatever else a project wants, such as an admin login page.
 public struct DDEVCustomLink: Sendable, Equatable, Codable, Identifiable {
     public var label: String
@@ -34,7 +34,7 @@ public struct DDEVCustomLink: Sendable, Equatable, Codable, Identifiable {
         kind = try container.decodeIfPresent(DDEVLinkKind.self, forKey: .kind) ?? .tool
     }
 
-    /// The deployed environments. Nothing can derive them — each lives on its own domain — so
+    /// The deployed environments. Nothing can derive them - each lives on its own domain - so
     /// they ship empty for the user to paste in, beside the local one DDEV already knows.
     public static func defaultEnvironments() -> [DDEVCustomLink] {
         ["Test", "UAT", "Prod"].map {

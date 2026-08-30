@@ -11,7 +11,7 @@ public enum DDEVState: String, Sendable, Equatable, Codable {
     case stopped
     /// A command issued from the card is still going.
     case working
-    /// DDEV does not know this project — usually the folder moved.
+    /// DDEV does not know this project - usually the folder moved.
     case unknown
 
     public init(apiValue: String) {
@@ -72,7 +72,7 @@ public struct DDEVStatus: Sendable, Equatable {
     public var branch: String?
     /// The repository this checkout came from, when it has an origin.
     public var repositoryURL: URL?
-    /// What the project is built on, from composer.lock — `drupal 11.4.4`.
+    /// What the project is built on, from composer.lock - `drupal 11.4.4`.
     public var framework: String?
     /// What is happening, or why the last command failed.
     public var detail: String?
@@ -109,7 +109,7 @@ public struct DDEVStatus: Sendable, Equatable {
     public var isRunning: Bool { state == .running }
     public var isBusy: Bool { state == .working }
 
-    /// `php 8.4 · mysql 8.0` — the line that answers most "works on mine" questions.
+    /// `php 8.4 · mysql 8.0` - the line that answers most "works on mine" questions.
     public var versionsLine: String? {
         let parts = [config.phpVersion.map { "php \($0)" }, config.databaseLabel].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

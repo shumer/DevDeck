@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Three inputs decide it: the user's interval, whatever the server asked for through
 /// `X-Poll-Interval`, and how many attempts in a row have failed. The server always wins
-/// upwards — an interval shorter than the one GitHub asked for is how a token gets throttled.
+/// upwards - an interval shorter than the one GitHub asked for is how a token gets throttled.
 public struct RefreshPolicy: Sendable, Equatable {
     public var interval: TimeInterval
     public var minimumInterval: TimeInterval

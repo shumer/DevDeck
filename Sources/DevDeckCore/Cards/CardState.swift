@@ -3,7 +3,7 @@ import Foundation
 /// What a card knows right now: the last good value, when it arrived, and whether the
 /// most recent refresh failed.
 ///
-/// The last good value is kept across failures on purpose — a panel showing yesterday's
+/// The last good value is kept across failures on purpose - a panel showing yesterday's
 /// number with a visible "stale" marker is more useful than one that blanks itself the
 /// moment the network hiccups.
 public struct CardState<Value: Sendable & Equatable>: Sendable, Equatable {

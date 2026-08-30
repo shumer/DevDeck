@@ -38,7 +38,7 @@ public enum RunConclusion: String, Sendable, Equatable, Codable {
     }
 
     /// Whether this run says anything about the health of the pipeline. Cancelled and skipped
-    /// runs do not — counting them would drag the success rate down for no reason.
+    /// runs do not - counting them would drag the success rate down for no reason.
     public var countsTowardSuccessRate: Bool {
         self == .success || self == .failure
     }

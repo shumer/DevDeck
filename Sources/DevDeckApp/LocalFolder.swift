@@ -9,7 +9,7 @@ enum LocalFolder {
         NSWorkspace.shared.activateFileViewerSelecting([folder])
     }
 
-    /// Opens a file in whatever handles it — the log of a project that was started from here.
+    /// Opens a file in whatever handles it - the log of a project that was started from here.
     /// A missing file is revealed instead of opened, because the folder is still the answer to
     /// "where would it be".
     static func open(_ file: URL) {

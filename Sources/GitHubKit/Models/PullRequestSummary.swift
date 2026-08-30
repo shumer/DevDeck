@@ -28,7 +28,7 @@ public enum CheckState: String, Sendable, Equatable, Codable {
         switch apiValue {
         case "SUCCESS": self = .success
         // ERROR is a check that blew up rather than reported a verdict; for the card it is
-        // indistinguishable from a failure — both mean "this will not merge as it stands".
+        // indistinguishable from a failure - both mean "this will not merge as it stands".
         case "FAILURE", "ERROR": self = .failure
         case "PENDING", "EXPECTED": self = .pending
         default: self = .none
@@ -40,7 +40,7 @@ public enum CheckState: String, Sendable, Equatable, Codable {
 public enum PullRequestHealth: String, Sendable, Equatable, Codable {
     /// Cannot merge without work: checks failed, or a reviewer asked for changes.
     case blocked
-    /// Waiting on someone — review, running checks, or an open thread.
+    /// Waiting on someone - review, running checks, or an open thread.
     case attention
     /// Approved, green and nothing unresolved.
     case ready
@@ -118,7 +118,7 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
 
     /// Two-character code for the card, so the title gets the width instead of a sentence.
     ///
-    /// Deliberately mirrors `statusLine` case for case — the full wording is what the row's
+    /// Deliberately mirrors `statusLine` case for case - the full wording is what the row's
     /// tooltip shows, and the two drifting apart would be worse than either alone.
     ///
     ///     RV  waiting for your review                   CP  checks running
@@ -141,7 +141,7 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     /// The ticket key a title starts with, and the rest of the title.
     ///
     /// Almost every title here begins `IR-6257 - …`, and left in the sentence the key eats the
-    /// width the actual subject needs — which is how a row ends up reading `IR-6257 - Dr…r the
+    /// width the actual subject needs - which is how a row ends up reading `IR-6257 - Dr…r the
     /// core flip.` A title with no key keeps the whole string.
     public var ticket: (key: String?, subject: String) {
         Self.splitTicket(from: title)

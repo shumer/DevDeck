@@ -59,7 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.delegate = self
         statusItem.menu = menu
 
-        // Panels are sized from the data, so anything that changes it can change their height —
+        // Panels are sized from the data, so anything that changes it can change their height -
         // a branch line appearing on a project card counts just as much as a pull request does.
         Publishers.MergeMany(
             controller.$pullRequests.map { _ in () }.eraseToAnyPublisher(),
@@ -103,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Panels
 
-    /// The built-in cards plus one per configured project, in the order the deck is laid out —
+    /// The built-in cards plus one per configured project, in the order the deck is laid out -
     /// Arc, then DDEV, then the plain ones, each group alphabetical. See
     /// `CardCatalog.projectOrder`.
     private var catalog: [CardDescriptor] {
@@ -196,7 +196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         var size = CardHostView.size(for: card, controller: controller)
         // Open at the height this card last settled at. Computing it now would use empty data
         // and produce a short panel that grows a moment later, pushing the rest of the column
-        // down — which is how the deck crept apart across launches.
+        // down - which is how the deck crept apart across launches.
         if let remembered = preferences.height(for: card) {
             size.height = remembered
         }
@@ -206,7 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         window.isMovableByWindowBackground = !preferences.isLocked
         window.delegate = self
         // Empty, with a delegate: `menuNeedsUpdate` fills it in every time it opens. A menu
-        // built once here would keep whatever checkmarks were right at launch — the lock and
+        // built once here would keep whatever checkmarks were right at launch - the lock and
         // the card toggles would look stuck no matter what was actually set.
         let contextMenu = NSMenu()
         contextMenu.delegate = self
@@ -226,7 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// `userMoved` is the exception, and it is the whole difference between the deck arranging
     /// itself and someone arranging it. Dragging a parked card, or tidying the deck while the
     /// monitor it belongs to is unplugged, is a decision, and it has to outrank the placement it
-    /// replaces — otherwise the arrangement is silently dropped and the next screen change
+    /// replaces - otherwise the arrangement is silently dropped and the next screen change
     /// hauls every card back to where it was parked. Which is exactly what it did.
     private func persistPosition(of card: CardID, userMoved: Bool = false) {
         guard let window = panels[card] else { return }
@@ -272,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         return NSPoint(x: screen.maxX - size.width - 28, y: y - size.height)
     }
 
-    /// Moves every panel sitting under `frame` in the same column by `dy` — positive is up,
+    /// Moves every panel sitting under `frame` in the same column by `dy` - positive is up,
     /// since AppKit's y grows upward.
     ///
     /// This is what stops a hidden card leaving a card-shaped hole, and what makes room when a
@@ -312,13 +312,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     ///
     /// macOS lays all the screens out in one coordinate space and re-lays it on every change,
     /// so unplugging the external display that happens to be the main one shifts the laptop's
-    /// screen underneath the cards — and the deck scatters, sometimes off-screen entirely.
+    /// screen underneath the cards - and the deck scatters, sometimes off-screen entirely.
     /// Because a placement names its display rather than a global point, putting things back is
     /// just reading it again: home if that display is here, parked on the main one if it is
     /// not, and home again the moment it returns.
     @objc private func screensChanged() {
-        // The arrangement is still settling when the notification arrives — a display that has
-        // just woken reports its old frame for a moment — so this runs after a beat.
+        // The arrangement is still settling when the notification arrives - a display that has
+        // just woken reports its old frame for a moment - so this runs after a beat.
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(replaceAll), object: nil)
         perform(#selector(replaceAll), with: nil, afterDelay: 0.6)
     }
@@ -338,7 +338,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     // MARK: Menu bar
 
-    /// A stack of cards with the app's initials cut out of the front one — the shape says
+    /// A stack of cards with the app's initials cut out of the front one - the shape says
     /// "deck", the letters say whose. Numbers go in the tooltip: a bare "8" in the menu bar
     /// belongs to nothing in particular.
     private func updateStatusItem() {
@@ -363,7 +363,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// state from whenever the menu happened to be created.
     private func populate(_ menu: NSMenu) {
         // AppKit re-enables any item whose target responds to the action unless automatic
-        // enabling is off — without this the not-built-yet cards become clickable again.
+        // enabling is off - without this the not-built-yet cards become clickable again.
         menu.autoenablesItems = false
 
         let header = NSMenuItem(title: "Cards", action: nil, keyEquivalent: "")
@@ -498,7 +498,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// below the screen. It deliberately does not reset to a corner.
     ///
     /// The wrapping is not a nicety. Six cards are over a thousand points tall, and a single
-    /// column pushed the last of them under the bottom edge — where nothing can grab it, and
+    /// column pushed the last of them under the bottom edge - where nothing can grab it, and
     /// the position was saved.
     @objc private func restack() {
         let ordered = visibleCards.compactMap { card in panels[card].map { (card, $0) } }
@@ -522,7 +522,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
         }
         // Tidying is an arrangement somebody asked for, so it is saved against the display the
-        // cards are actually on — even when that is a display they were only parked on.
+        // cards are actually on - even when that is a display they were only parked on.
         for (card, _) in ordered { persistPosition(of: card, userMoved: true) }
     }
 

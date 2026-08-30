@@ -9,7 +9,7 @@ import SwiftUI
 
 /// Maps a card identifier onto its view and its panel size.
 ///
-/// The single place that knows "this identifier draws that card" — adding a card means one
+/// The single place that knows "this identifier draws that card" - adding a card means one
 /// branch here and one descriptor in `CardCatalog`.
 struct CardHostView: View {
     @ObservedObject var controller: DeckController
@@ -96,7 +96,7 @@ struct CardHostView: View {
         controller.canStartDocker ? { controller.startDockerRuntime() } : nil
     }
 
-    /// Rows open in the browser of the account they belong to — one signed-in GitHub identity
+    /// Rows open in the browser of the account they belong to - one signed-in GitHub identity
     /// per browser profile is the whole reason accounts exist.
     private func open(_ url: URL, _ accountID: String) {
         LinkOpener.open(url, using: controller.browser(for: accountID))

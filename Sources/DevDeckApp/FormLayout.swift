@@ -9,7 +9,7 @@ class FlippedContainer: NSView {
 /// Builds a settings form: captions, and grouped boxes of label-and-control rows.
 ///
 /// Two things it exists to make impossible. Controls cannot overlap, because the cursor only
-/// ever moves by what was actually placed — hand-computed `y` values are what put three lines
+/// ever moves by what was actually placed - hand-computed `y` values are what put three lines
 /// of the DDEV row on top of each other. And nothing is fixed-width: the control side of every
 /// row stretches with the window, which is what left the old form with dead space down its
 /// right-hand side.
@@ -70,7 +70,7 @@ final class FormLayout {
     /// The form's own title: what is being edited, where it lives, and the one switch that is
     /// about the card rather than about the project.
     ///
-    /// The switch belongs here rather than in a row of its own with an empty label gutter —
+    /// The switch belongs here rather than in a row of its own with an empty label gutter -
     /// "show a card for this project" is not a field of the project, and as a row it produced
     /// the one thing the label gutter cannot do gracefully, which is nothing.
     func formHeader(title: String, subtitle: String?, accessory: (label: String, view: NSView)?) {
@@ -342,7 +342,7 @@ final class FormLayout {
         group = open
     }
 
-    /// Small secondary text inside a group — a status line under the fields.
+    /// Small secondary text inside a group - a status line under the fields.
     func note(_ field: NSTextField) {
         guard var open = group else { return }
         let top = open.cursor

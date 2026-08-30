@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Pieces shared by every card that fronts a local project.
 ///
-/// Arc, DDEV and plain project cards are the same shape — a state, some meta, links, controls —
+/// Arc, DDEV and plain project cards are the same shape - a state, some meta, links, controls -
 /// and differ only in what fills them. Keeping the pieces here is what stops the three drifting
 /// apart every time a padding is adjusted.
 
@@ -224,7 +224,7 @@ public struct CardActionRow: View {
         return intrinsic.map { $0 + surplus }
     }
 
-    /// What a button actually holds — icon, gap and label — with no padding at all.
+    /// What a button actually holds - icon, gap and label - with no padding at all.
     public nonisolated static func contentWidth(of action: CardAction) -> Double {
         intrinsicWidth(of: action) - labelPadding * 2 - (action.isProminent ? prominentPadding : 0)
     }
@@ -244,18 +244,18 @@ public struct CardActionRow: View {
 public enum CardStateTone: Sendable, Equatable {
     /// Working as it should.
     case good
-    /// Off, and that is nobody's problem — a stopped project is a normal thing.
+    /// Off, and that is nobody's problem - a stopped project is a normal thing.
     case neutral
     /// Busy, blocked or broken: the one a sweep down the column should catch.
     case alert
 }
 
-/// The state of the thing the card is about — the card's focal point.
+/// The state of the thing the card is about - the card's focal point.
 ///
 /// It replaced a 12.5-point line that looked exactly like the three lines around it, and then
 /// overshot: at 20 points in near-white it was the loudest thing on the desktop. What made it
 /// shout was not the size on its own but near-white at weight 600 on dark glass, so all three
-/// knobs move a little instead of one moving a lot — 17 points, 80% white, and the colour moves
+/// knobs move a little instead of one moving a lot - 17 points, 80% white, and the colour moves
 /// out of the word and into the dot.
 public struct CardHeroRow: View {
     private let color: Color
@@ -332,7 +332,7 @@ public struct CardHeroRow: View {
 
 /// The quiet block under the hero: the branch, then whatever names this checkout.
 ///
-/// The branch keeps a line of its own — branch names are routinely longer than anything beside
+/// The branch keeps a line of its own - branch names are routinely longer than anything beside
 /// them, and "which branch is this" must not be the thing that gets truncated.
 public struct CardMetaBlock: View {
     private let branch: String?
@@ -394,14 +394,14 @@ public struct CardMetaBlock: View {
         .padding(.top, Self.topPadding)
     }
 
-    /// The branch, and — when the checkout has an origin — the way to the repository.
+    /// The branch, and - when the checkout has an origin - the way to the repository.
     ///
     /// The line was already blue and monospaced, which is what a link looks like; all it was
     /// missing was being one. The arrow is what says so at rest, since these panels sit behind
     /// other windows and hover cannot be relied on to announce anything.
     ///
     /// It opens the repository rather than this branch. A branch link has to be right about
-    /// whether the remote has the branch, and being wrong lands on a 404 — while the reason to
+    /// whether the remote has the branch, and being wrong lands on a 404 - while the reason to
     /// click was to reach the repository without hunting for it.
     @ViewBuilder
     private func branchRow(_ branch: String) -> some View {

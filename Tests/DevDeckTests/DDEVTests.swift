@@ -38,7 +38,7 @@ nodejs_version: "18"
 """
 
 func runDDEVTests(_ run: TestRun) async {
-    run.section("DDEV — reading ddev list")
+    run.section("DDEV - reading ddev list")
 
     let entries = DDEVEnvironment.parseList(listOutput)
 
@@ -69,7 +69,7 @@ func runDDEVTests(_ run: TestRun) async {
         try expect(DDEVEnvironment.parseList("{\"level\":\"info\"}").isEmpty)
     }
 
-    run.section("DDEV — reading .ddev/config.yaml")
+    run.section("DDEV - reading .ddev/config.yaml")
 
     await run.test("php and database come from the checkout") {
         let config = DDEVConfig.parse(configYAML)
@@ -93,7 +93,7 @@ func runDDEVTests(_ run: TestRun) async {
         try expectEqual(config.phpVersion, "8.2")
     }
 
-    run.section("DDEV — status")
+    run.section("DDEV - status")
 
     await run.test("a project is matched by name, and by folder when it was renamed") {
         let environment = DDEVEnvironment(runner: StubCommandRunner([]))
@@ -134,7 +134,7 @@ func runDDEVTests(_ run: TestRun) async {
         try expectNil(DDEVStatus(state: .running).versionsLine)
     }
 
-    run.section("DDEV — what the project is built on")
+    run.section("DDEV - what the project is built on")
 
     await run.test("the version comes from composer.lock, not from ddev's type") {
         // Real numbers from this machine: both projects say `type: drupal9` in their DDEV
@@ -174,7 +174,7 @@ func runDDEVTests(_ run: TestRun) async {
         try expectEqual(withoutLock.frameworkLabel, "drupal9", "stale, but better than nothing")
     }
 
-    run.section("DDEV — projects and links")
+    run.section("DDEV - projects and links")
 
     await run.test("the title falls back to the ddev name") {
         try expectEqual(DDEVProject(id: "p", name: "nasdaqir").displayTitle, "nasdaqir")
@@ -275,7 +275,7 @@ func runDDEVTests(_ run: TestRun) async {
                         "ddev.project.governance")
     }
 
-    run.section("DDEV — storage")
+    run.section("DDEV - storage")
 
     await run.test("projects round trip and can be disabled") {
         let store = DDEVProjectsStore(backend: InMemoryPreferences())

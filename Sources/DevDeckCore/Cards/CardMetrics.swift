@@ -8,7 +8,7 @@ import Foundation
 public enum CardMetrics {
     /// Wide enough for the control row's labels.
     ///
-    /// 320 left the quiet buttons 61 points across, and `Terminal` with its icon needs 63 — so
+    /// 320 left the quiet buttons 61 points across, and `Terminal` with its icon needs 63 - so
     /// the label truncated on every card that had one. The row is the widest fixed thing on a
     /// card, so it is what sets the width.
     public static let width: Double = 352
@@ -33,7 +33,7 @@ public enum CardMetrics {
         total > collapsedRows
     }
 
-    /// Rows still hidden while expanded — the ones beyond the ceiling.
+    /// Rows still hidden while expanded - the ones beyond the ceiling.
     public static func hiddenWhenExpanded(total: Int) -> Int {
         max(0, total - maxExpandedRows)
     }

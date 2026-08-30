@@ -137,7 +137,7 @@ public struct ArcProjectCard: View {
         )
     }
 
-    /// Local first, then the published environments — built as one list so the order on screen
+    /// Local first, then the published environments - built as one list so the order on screen
     /// is the order written here rather than wherever a conditional child lands.
     nonisolated private static func environmentChips(
         project: ArcProject,

@@ -103,7 +103,7 @@ public enum CommandError: Error, Sendable, Equatable {
 /// plain `npx` cannot be found and the button appears to do nothing; `zsh -lc` sources the
 /// profile and fixes most of that. What it does not fix is anything installed by a version
 /// manager: a login shell that is not interactive never reads `.zshrc`, which is where nvm,
-/// rbenv and pyenv live. That produced the most confusing possible symptom — `ddev` and
+/// rbenv and pyenv live. That produced the most confusing possible symptom - `ddev` and
 /// `docker` working, both being in `/usr/local/bin`, while `npx` reported "command not found"
 /// from a machine that plainly has it. `ShellPath` asks an interactive shell once and every
 /// command gets the answer.
@@ -128,7 +128,7 @@ public struct ShellCommandRunner: CommandRunning {
             throw CommandError.missingDirectory(directory.path)
         }
 
-        // Resolved once per launch and reused. A command that needs nvm — `npx`, `pnpm` — is
+        // Resolved once per launch and reused. A command that needs nvm - `npx`, `pnpm` - is
         // otherwise not found at all when the app was launched from Finder.
         let path = isInteractive ? nil : await ShellPath.shared.value(runner: self)
 
@@ -160,7 +160,7 @@ public struct ShellCommandRunner: CommandRunning {
     ///
     /// Still one read loop per pipe, so the deadlock the two-reader design exists to avoid stays
     /// avoided; the only difference is that the caller hears about a line before the process
-    /// exits. Tools that draw progress with carriage returns — compose does — are split on those
+    /// exits. Tools that draw progress with carriage returns - compose does - are split on those
     /// too, or the whole run arrives as one enormous line at the end.
     private static func drain(
         _ handle: FileHandle,

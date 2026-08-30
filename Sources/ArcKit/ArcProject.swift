@@ -29,7 +29,7 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
         self.kind = kind
     }
 
-    /// Links stored before kinds existed are all admin tooling — the site links arrived with
+    /// Links stored before kinds existed are all admin tooling - the site links arrived with
     /// the field.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -50,8 +50,8 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
 
     /// Templates never add an environment prefix of their own.
     ///
-    /// The organisation field carries the whole host label — `sandbox.ilgiornale` for the
-    /// sandbox, `ilgiornale` for production — so a template that helpfully prepended
+    /// The organisation field carries the whole host label - `sandbox.ilgiornale` for the
+    /// sandbox, `ilgiornale` for production - so a template that helpfully prepended
     /// `sandbox.` produced `sandbox.sandbox.ilgiornale`. One place owns the environment, and
     /// it is the field the user types.
     ///
@@ -65,8 +65,8 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
             ArcLink(label: "Deployer", urlTemplate: "https://{org}.arcpublishing.com/deployments/fusion/", isEnabled: true),
             ArcLink(label: "Site Service", urlTemplate: "https://{org}.arcpublishing.com/developer/sites", isEnabled: false),
             ArcLink(label: "Delivery API", urlTemplate: "https://api.{org}.arcpublishing.com/content/v4", isEnabled: false),
-            // The published sites. There is nothing to derive them from — a site lives on its
-            // own domain — so they ship empty for the user to paste in, next to the local one.
+            // The published sites. There is nothing to derive them from - a site lives on its
+            // own domain - so they ship empty for the user to paste in, next to the local one.
             ArcLink(label: "Sandbox", urlTemplate: "", isEnabled: false, kind: .site),
             ArcLink(label: "Prod", urlTemplate: "", isEnabled: false, kind: .site),
         ]
@@ -173,12 +173,12 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         }
     }
 
-    /// Arc's own tooling — the card's first row.
+    /// Arc's own tooling - the card's first row.
     public var adminLinks: [ResolvedLink] {
         resolvedLinks.filter { $0.kind == .admin }
     }
 
-    /// The published environments — the card's second row, after the local one.
+    /// The published environments - the card's second row, after the local one.
     public var siteLinks: [ResolvedLink] {
         resolvedLinks.filter { $0.kind == .site }
     }
@@ -218,7 +218,7 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
     }
 
     /// Brings a stored link list up to date: rewrites templates this project shipped and got
-    /// wrong, applies renames, and appends links added since — otherwise a project made last
+    /// wrong, applies renames, and appends links added since - otherwise a project made last
     /// week never learns about the ones added this week.
     static func migrate(links: [ArcLink]) -> [ArcLink] {
         let defaults = ArcLink.defaults()

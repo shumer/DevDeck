@@ -3,7 +3,7 @@ import Foundation
 import TestHarness
 
 func runNetworkingTests(_ run: TestRun) async {
-    run.section("Networking — headers and rate limits")
+    run.section("Networking - headers and rate limits")
 
     await run.test("header lookup ignores case") {
         let response = HTTPResponse(statusCode: 200, headers: ["ETag": "\"abc\""], body: Data())
@@ -45,7 +45,7 @@ func runNetworkingTests(_ run: TestRun) async {
         try expectEqual(response.pollIntervalSeconds, 60)
     }
 
-    run.section("Networking — retry policy")
+    run.section("Networking - retry policy")
 
     await run.test("backoff grows and is capped") {
         let policy = RetryPolicy(maxAttempts: 5, baseDelay: 1, multiplier: 3, maxDelay: 10)
@@ -66,7 +66,7 @@ func runNetworkingTests(_ run: TestRun) async {
         try expect(!policy.shouldRetry(.rateLimited(resetAt: nil), afterAttempt: 1))
     }
 
-    run.section("Networking — conditional cache")
+    run.section("Networking - conditional cache")
 
     await run.test("a response without validators is not cached") {
         let cache = HTTPCache()
@@ -95,7 +95,7 @@ func runNetworkingTests(_ run: TestRun) async {
         try expectEqual(prepared, request)
     }
 
-    run.section("Networking — transport")
+    run.section("Networking - transport")
 
     let url = URL(string: "https://api.github.com/notifications")!
 

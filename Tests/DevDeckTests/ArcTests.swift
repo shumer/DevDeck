@@ -20,7 +20,7 @@ private func makeProject(
 }
 
 func runArcTests(_ run: TestRun) async {
-    run.section("Arc — project")
+    run.section("Arc - project")
 
     await run.test("identifiers are slugged and never collide") {
         try expectEqual(ArcProject.makeID(from: "Il Giornale!", existing: []), "il-giornale")
@@ -39,7 +39,7 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(
             links.first?.url.absoluteString,
             "https://editoriaitaliana.arcpublishing.com/home/",
-            "the confirmed PageBuilder shape — the environment lives in the organisation field"
+            "the confirmed PageBuilder shape - the environment lives in the organisation field"
         )
     }
 
@@ -101,7 +101,7 @@ func runArcTests(_ run: TestRun) async {
 
     await run.test("a site link stored before kinds existed is put back in its row") {
         // Sandbox and Prod shipped one build before kinds did, so a URL typed in between was
-        // saved without one and read back as admin tooling — five chips in the top row.
+        // saved without one and read back as admin tooling - five chips in the top row.
         let json = """
         { "id": "p", "title": "P", "organization": "ilgiornale", "healthPath": "/release",
           "isEnabled": true, "localURL": "",
@@ -156,7 +156,7 @@ func runArcTests(_ run: TestRun) async {
         )
     }
 
-    run.section("Arc — checked out branch")
+    run.section("Arc - checked out branch")
 
     await run.test("the branch is read straight from .git/HEAD") {
         let folder = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -198,7 +198,7 @@ func runArcTests(_ run: TestRun) async {
         try expectNil(GitCheckout.branch(in: nil))
     }
 
-    run.section("Arc — the port comes from .env")
+    run.section("Arc - the port comes from .env")
 
     await run.test("PORT is read the way a shell would read it") {
         let contents = """
@@ -272,7 +272,7 @@ func runArcTests(_ run: TestRun) async {
                         "an explicit setting still wins")
     }
 
-    run.section("Arc — project storage")
+    run.section("Arc - project storage")
 
     await run.test("a deck with no projects has no project cards") {
         try expect(ArcProjectsStore(backend: InMemoryPreferences()).projects().isEmpty,
@@ -290,7 +290,7 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(store.project(forCard: CardID(rawValue: "arc.project.ledwall"))?.id, "ledwall")
     }
 
-    run.section("Arc — local stack status")
+    run.section("Arc - local stack status")
 
     await run.test("no folder means nothing to run or check") {
         let service = LocalStackService(
@@ -429,7 +429,7 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(seen.value.last, "bind: address already in use")
     }
 
-    run.section("Arc — local stack actions")
+    run.section("Arc - local stack actions")
 
     await run.test("each action runs its own command") {
         for (action, expected) in [

@@ -5,7 +5,7 @@ import Foundation
 /// Kept as a literal rather than a resource file: the suite is a plain executable, so there
 /// is no `Bundle.module` to load resources from.
 enum Fixtures {
-    /// Four pull requests covering every health state, plus an `Issue` node — search returns
+    /// Four pull requests covering every health state, plus an `Issue` node - search returns
     /// those too, and they must be dropped rather than crash the decoder.
     static let pullRequestSearch = """
     {

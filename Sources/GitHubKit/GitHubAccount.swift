@@ -8,7 +8,7 @@ import Foundation
 /// other three off the card.
 public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
     /// Stable slug used in the Keychain account name. Never shown, never changed after
-    /// creation — renaming it would orphan the stored token.
+    /// creation - renaming it would orphan the stored token.
     public let id: String
     /// What the settings window and the error line call this account.
     public var label: String

@@ -1,4 +1,4 @@
-# 0005 — Ask the engine, not the process table
+# 0005 - Ask the engine, not the process table
 
 Status: accepted, 2026-08-02
 
@@ -16,28 +16,28 @@ the foreground.
 
 ## Decision
 
-1. **Status comes from the engine's own health URL** — `/release`, which the Arc documentation
+1. **Status comes from the engine's own health URL** - `/release`, which the Arc documentation
    points at and which reports the running engine version as a bonus.
 
    **The port is read from the project's `.env`.** The docs say bare `localhost`, and a real
-   checkout answered on 8080 because its `.env` sets `PORT=8080` — so a port written into
+   checkout answered on 8080 because its `.env` sets `PORT=8080` - so a port written into
    settings is stale the moment someone edits that file. `Local URL` stays as an override for
    a stack that does not follow `PORT`, and is empty by default.
 
    **A start waits for the engine.** `fusion daemon` returns when the containers exist, not
    when the engine serves; checking once and declaring failure is how a warming stack reads as
    "did not start". The card polls for up to a minute and, if nothing answers, says which URL
-   it tried — that message is nearly always about the port.
+   it tried - that message is nearly always about the port.
 2. **Start is `npx fusion daemon`**, the CLI's documented background mode. `stop`, `rebuild`
    and `down` map to their own commands, and every one of them is editable per project.
-   Restart is stop followed by start, sequentially — starting before the ports are released
+   Restart is stop followed by start, sequentially - starting before the ports are released
    fails in a way that looks like a broken stack.
 3. **Commands run through `zsh -lc`** in the project folder, on a background queue, with
    `/dev/null` as stdin. Each part earns its place:
    - a login shell, because an app launched from Finder has no Homebrew and no nvm on `PATH`
      and a plain `npx` is not found;
    - a background queue, because the caller is the main actor and blocking it freezes the
-     whole app for as long as the command runs — which looks exactly like a dead button;
+     whole app for as long as the command runs - which looks exactly like a dead button;
    - no stdin, because `npx` asks "Ok to proceed?" when a package is missing and a command
      waiting for an answer nobody can give never returns;
    - both pipes drained concurrently, because reading one to the end first deadlocks as soon
@@ -52,7 +52,7 @@ the foreground.
 - Container counts are best effort: Compose names its project after the directory, so they are
   counted by that label and simply omitted when the naming differs.
 - Arbitrary shell commands are stored in preferences and executed. They are the user's own,
-  typed into their own settings window — the same trust level as a shell alias — but this is
+  typed into their own settings window - the same trust level as a shell alias - but this is
   the one place in the app where that is true, and it should stay that way.
 - Local stack state polls on its own 10-second loop rather than the API refresh cadence: a
   stack that just came up should appear within seconds, and the check costs one local request.

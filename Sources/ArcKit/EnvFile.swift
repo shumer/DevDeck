@@ -3,7 +3,7 @@ import Foundation
 /// The project's own `.env`, which is where the local stack's port really lives.
 ///
 /// Fusion defaults to port 80 but every project is free to override `PORT`, and the value in
-/// the checkout is the only honest source — a port typed into settings goes stale the moment
+/// the checkout is the only honest source - a port typed into settings goes stale the moment
 /// someone edits `.env`.
 public enum EnvFile {
     public static let defaultPort = 80
