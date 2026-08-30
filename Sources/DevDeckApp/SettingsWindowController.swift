@@ -417,6 +417,18 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         row.onChange = { [weak self] in self?.applyProjectEdits($0) }
         row.onTestLink = { [weak self] in self?.testProjectLink($0) }
         row.onChooseFolder = { [weak self] in self?.chooseFolder($0) }
+        row.onStructureChange = { [weak self] _, project in
+            guard let self else { return }
+            var projects = self.projectsStore.projects()
+            if let index = projects.firstIndex(where: { $0.id == project.id }) {
+                projects[index] = project
+                self.projectsStore.save(projects)
+            }
+            self.onChanged()
+            // Rebuilt rather than reloaded: a link was added or removed, so the form has a
+            // different number of rows than the one on screen.
+            self.reloadDetail()
+        }
         place(row, in: container)
         projectRow = row
     }
