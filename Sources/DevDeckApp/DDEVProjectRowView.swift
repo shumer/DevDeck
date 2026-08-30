@@ -35,18 +35,24 @@ final class DDEVProjectRowView: FlippedContainer {
 
         let form = FormLayout(in: self)
 
+        enabledButton.setButtonType(.switch)
+        enabledButton.title = ""
+        enabledButton.state = project.isEnabled ? .on : .off
+        enabledButton.target = self
+        enabledButton.action = #selector(controlChanged)
+        // The same header the plain-project form has: the thing's name at the top, what it is
+        // underneath, and the one switch that decides whether it exists at all.
+        form.formHeader(
+            title: project.displayTitle,
+            subtitle: project.name,
+            accessory: (label: "Show card", view: enabledButton)
+        )
+
         form.beginGroup()
         titleField.stringValue = project.title
         titleField.placeholderString = project.name
         titleField.delegate = self
         form.row("Name", [(titleField, nil)])
-
-        enabledButton.setButtonType(.switch)
-        enabledButton.title = "Show a card for this project"
-        enabledButton.state = project.isEnabled ? .on : .off
-        enabledButton.target = self
-        enabledButton.action = #selector(controlChanged)
-        form.row("", [(enabledButton, nil)], height: 20)
 
         folderField.stringValue = project.folder ?? ""
         folderField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)

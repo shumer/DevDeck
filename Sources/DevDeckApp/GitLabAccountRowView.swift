@@ -35,18 +35,24 @@ final class GitLabAccountRowView: FlippedContainer {
 
         let form = FormLayout(in: self)
 
+        enabledButton.setButtonType(.switch)
+        enabledButton.title = ""
+        enabledButton.state = account.isEnabled ? .on : .off
+        enabledButton.target = self
+        enabledButton.action = #selector(controlChanged)
+        // The same header the plain-project form has: the thing's name at the top, what it is
+        // underneath, and the one switch that decides whether it exists at all.
+        form.formHeader(
+            title: account.label,
+            subtitle: account.displayHost,
+            accessory: (label: "Include", view: enabledButton)
+        )
+
         form.beginGroup()
         labelField.stringValue = account.label
         labelField.placeholderString = "Work"
         labelField.delegate = self
         form.row("Name", [(labelField, nil)])
-
-        enabledButton.setButtonType(.switch)
-        enabledButton.title = "Include this account in the cards"
-        enabledButton.state = account.isEnabled ? .on : .off
-        enabledButton.target = self
-        enabledButton.action = #selector(controlChanged)
-        form.row("", [(enabledButton, nil)], height: 20)
 
 
         hostField.stringValue = account.host.absoluteString
