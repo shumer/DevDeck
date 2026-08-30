@@ -12,7 +12,7 @@ public enum CardMetrics {
     /// the label truncated on every card that had one. The row is the widest fixed thing on a
     /// card, so it is what sets the width.
     public static let width: Double = 352
-    public static let rowHeight: Double = 27
+    public static let rowHeight: Double = 28
     public static let expanderHeight: Double = 22
 
     /// Rows shown before the card is expanded. Three is what fits without the panel becoming

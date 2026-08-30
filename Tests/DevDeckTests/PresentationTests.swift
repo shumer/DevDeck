@@ -1,6 +1,8 @@
+import AppKit
 import ArcKit
 import DevDeckCore
 import DevDeckUI
+import SwiftUI
 import Foundation
 import GitHubKit
 import TestHarness
@@ -30,11 +32,11 @@ func runPresentationTests(_ run: TestRun) async {
     await run.test("height follows the rows on screen") {
         let collapsed = CardMetrics.height(base: 127, total: 8, isExpanded: false)
         let expanded = CardMetrics.height(base: 127, total: 8, isExpanded: true)
-        try expectEqual(collapsed, 127 + 27 * 3 + 22, "three rows plus the expander")
-        try expectEqual(expanded, 127 + 27 * 8 + 22)
+        try expectEqual(collapsed, 127 + 28 * 3 + 22, "three rows plus the expander")
+        try expectEqual(expanded, 127 + 28 * 8 + 22)
         try expect(expanded > collapsed)
 
-        try expectEqual(CardMetrics.height(base: 127, total: 2, isExpanded: false), 127 + 27 * 2,
+        try expectEqual(CardMetrics.height(base: 127, total: 2, isExpanded: false), 127 + 28 * 2,
                         "no expander, no extra height")
     }
 
@@ -190,8 +192,8 @@ func runPresentationTests(_ run: TestRun) async {
 
     await run.test("every chip line is paid for, and no more") {
         try expectEqual(CardChipFlow.height(lineCount: 0), 0, "no chips, no block")
-        try expectEqual(CardChipFlow.height(lineCount: 1), 12 + 20)
-        try expectEqual(CardChipFlow.height(lineCount: 2), 12 + 40 + 5, "one gap between two lines")
+        try expectEqual(CardChipFlow.height(lineCount: 1), 11 + 22)
+        try expectEqual(CardChipFlow.height(lineCount: 2), 11 + 44 + 5, "one gap between two lines")
     }
 
     await run.test("a card grows by exactly one chip line when its chips wrap") {
@@ -231,6 +233,35 @@ func runPresentationTests(_ run: TestRun) async {
                 + CardActionRow.height + 12
         )
         try expect(arc < 210, "the redesign has to stay shorter than the 249 it replaced")
+    }
+
+    run.section("Cards - the palette")
+
+    await run.test("a chip wears its hue mixed back towards the text colour") {
+        // The chips carry the only colour left in the meta block, so the mix has to keep the
+        // hue recognisable while stopping five of them reading as a paint chart.
+        let ink = try expectNotNil(NSColor(DeckTheme.chipInk(DeckTheme.green)).usingColorSpace(NSColorSpace.sRGB), "ink")
+        let hue = try expectNotNil(NSColor(DeckTheme.green).usingColorSpace(NSColorSpace.sRGB), "hue")
+        let text = try expectNotNil(NSColor(DeckTheme.value).usingColorSpace(NSColorSpace.sRGB), "text")
+
+        try expect(ink.redComponent > hue.redComponent, "lighter than the hue on its own")
+        try expect(ink.redComponent < text.redComponent, "but still not plain text")
+        try expect(ink.greenComponent > ink.blueComponent, "and still green")
+        try expect(
+            abs(ink.redComponent - (hue.redComponent * 0.55 + text.redComponent * 0.45)) < 0.001,
+            "mixed 55/45, which is the number the design settles on"
+        )
+    }
+
+    await run.test("blending is a straight line between two colours") {
+        func red(_ color: Color) throws -> Double {
+            let resolved = try expectNotNil(NSColor(color).usingColorSpace(NSColorSpace.sRGB), "sRGB")
+            return Double(resolved.redComponent)
+        }
+        try expectEqual(try red(DeckTheme.blend(DeckTheme.green, with: DeckTheme.value, amount: 1)),
+                        try red(DeckTheme.green), "all of the first colour")
+        try expectEqual(try red(DeckTheme.blend(DeckTheme.green, with: DeckTheme.value, amount: 0)),
+                        try red(DeckTheme.value), "and none of it")
     }
 
     run.section("Cards - the control row")

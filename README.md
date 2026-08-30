@@ -426,7 +426,7 @@ question on all of them:
 2. **The state, at 17 points** - one vocabulary on every card: `running`, `stopped`,
    `starting…`, `paused`, `unknown`, `not configured`, and `Docker is not running` when that is
    what is really in the way. This is the card's focal point, but a quiet one: the words are
-   white at 80% and the colour lives in the dot beside them, which glows when it means something
+   white at 76% and the colour lives in the dot beside them, which glows when it means something
    and goes plain grey when a project is simply stopped. Colour returns to the words only when
    something wants attention. A detail like `pid 48213`, `mutagen paused` or `not in ddev list`
    sits at the end of the same line.
@@ -437,13 +437,20 @@ question on all of them:
 4. **What names this checkout**: the framework and folder on the left, versions or the start
    command on the right.
 5. **The links**, in one wrapping row: what you work in, a divider, then the environments -
-   local first, then test and UAT in violet, production in amber.
-6. **The controls.** The one action that matters now is half again as wide, tinted and bolder;
-   the rest recede to a hairline. All four carry an icon.
+   local first, then test and UAT in violet, production in amber. They all share one neutral
+   fill; the colour is in the lettering, mixed back towards white, so five links in a row read
+   as a row rather than as five things shouting.
+6. **The controls.** The one action that matters now is half again as wide, tinted, bolder and
+   the only one with an outline; the rest recede to a plain fill. All four carry an icon.
 
 The state pill, the horizontal rule and the footer are gone: the pill said what the state line
 says, and the timestamp took a whole row to be the least important thing on the card. Cards
 came down from 249 to about 200 points and hold more than they did.
+
+The palette is deliberately a step below fully saturated, and the contrast range is narrower at
+both ends than it was: dim text came up, the title came down, and the only outline left on a card
+belongs to the action being offered. One card looks better loud. Six of them on a desktop all day
+do not. See [docs/adr/0010-card-palette.md](docs/adr/0010-card-palette.md).
 
 ## Documentation
 
@@ -453,7 +460,8 @@ came down from 249 to about 200 points and hold more than they did.
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
 - [docs/adr/](docs/adr/) - why native, why SwiftPM only, why cards are configurable, why
   accounts are plural, how local stacks are driven, why DDEV shares one call, how a plain
-  project is started, why Docker is checked first
+  project is started, why Docker is checked first, how a card is laid out and why the deck is
+  quieter than it was
 
 ## Layout
 

@@ -10,7 +10,7 @@ import SwiftUI
 public enum CardChipFlow {
     public nonisolated static let spacing: Double = 5
     public nonisolated static let lineSpacing: Double = 5
-    public nonisolated static let topPadding: Double = 12
+    public nonisolated static let topPadding: Double = 11
     /// The divider is 1 point wide with 3 either side.
     public nonisolated static let dividerWidth: Double = 7
 
