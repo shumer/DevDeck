@@ -596,10 +596,19 @@ because a build nobody asked for is a build nobody checks. `.github/workflows/te
 suite on every push and pull request and fails on a compiler warning, which is the one place
 nobody is in a hurry.
 
-**The build is ad-hoc signed, not notarised**, so anybody downloading it meets Gatekeeper:
-right-click the app and choose Open, or run `xattr -dr com.apple.quarantine /Applications/DevDeck.app`
-once. Notarising properly needs a paid Apple Developer account and its certificates in the
-repository's secrets, which is a decision with a bill attached rather than a missing line of YAML.
+**The build is ad-hoc signed, not notarised**, so macOS quarantines it on download and refuses to
+open it. Every release says so and carries the line that installs it anyway, which unpacks the
+download into Applications, clears the flag and starts it:
+
+```
+pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-0.8-80.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app
+```
+
+`ditto` rather than `unzip`, to match how it was packed and keep the bundle's extended
+attributes; the `pkill` matters when it is an update rather than a first install, since a running
+copy would otherwise be overwritten underneath itself. Notarising properly needs a paid Apple
+Developer account and its certificates in the repository's secrets, which is a decision with a
+bill attached rather than a missing line of YAML.
 
 To cut a release: bump `VERSION`, commit, then create the release on GitHub with a tag like
 `v0.6`. The build number in the bundle is the commit count, so it moves on its own.
