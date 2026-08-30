@@ -1,0 +1,28 @@
+name: Tests
+
+# The suite on every push and every pull request. It is an executable rather than an XCTest
+# bundle - see docs/adr/0002-spm-only-toolchain.md - so there is nothing to install and nothing
+# to configure: one script, and it fails loudly.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Tests
+        run: ./run-tests.sh
+      # Warnings are worth failing on here rather than being read past locally: this is the one
+      # place nobody is in a hurry.
+      - name: Build without warnings
+        run: |
+          swift build 2>&1 | tee build.log
+          if grep -q "warning:" build.log; then
+            echo "::error::the build produced warnings"
+            exit 1
+          fi
