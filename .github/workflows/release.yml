@@ -1,0 +1,57 @@
+name: Release
+
+# Publishing a release on GitHub builds the app and attaches it, so the tag and the download can
+# never disagree about what is in it. Nothing is built on a push: a build nobody asked for is a
+# build nobody checks.
+on:
+  release:
+    types: [published]
+  # And by hand, for a dry run against a tag that already exists.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the build to
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # build.sh takes the build number from the commit count, so a shallow clone would
+          # produce a build number of one.
+          fetch-depth: 0
+
+      - name: Swift version
+        run: swift --version
+
+      # The suite runs first and the build stops if it fails: shipping a release with broken
+      # core logic is worse than not shipping one.
+      - name: Tests
+        run: ./run-tests.sh
+
+      # Tests already ran; build.sh would otherwise run them a second time.
+      - name: Build
+        run: ./build.sh --skip-tests --no-install
+
+      - name: Package
+        id: package
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          BUILD="$(git rev-list --count HEAD)"
+          NAME="DevDeck-${VERSION}-${BUILD}.zip"
+          # ditto rather than zip: it keeps the bundle's structure and its extended attributes,
+          # which a plain zip flattens into something macOS refuses to launch.
+          ditto -c -k --keepParent DevDeck.app "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          shasum -a 256 "$NAME"
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: gh release upload "$TAG" "${{ steps.package.outputs.name }}" --clobber

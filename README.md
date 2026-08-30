@@ -528,6 +528,23 @@ both ends than it was: dim text came up, the title came down, and the only outli
 belongs to the action being offered. One card looks better loud. Six of them on a desktop all day
 do not. See [docs/adr/0010-card-palette.md](docs/adr/0010-card-palette.md).
 
+## Releases
+
+Publishing a release on GitHub builds the app and attaches it: `.github/workflows/release.yml`
+runs the suite, builds the bundle and uploads `DevDeck-<version>-<build>.zip` to the tag, so the
+tag and the download cannot disagree about what is in it. Nothing is built on an ordinary push,
+because a build nobody asked for is a build nobody checks. `.github/workflows/tests.yml` runs the
+suite on every push and pull request and fails on a compiler warning, which is the one place
+nobody is in a hurry.
+
+**The build is ad-hoc signed, not notarised**, so anybody downloading it meets Gatekeeper:
+right-click the app and choose Open, or run `xattr -dr com.apple.quarantine /Applications/DevDeck.app`
+once. Notarising properly needs a paid Apple Developer account and its certificates in the
+repository's secrets, which is a decision with a bill attached rather than a missing line of YAML.
+
+To cut a release: bump `VERSION`, commit, then create the release on GitHub with a tag like
+`v0.6`. The build number in the bundle is the commit count, so it moves on its own.
+
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) - modules, data flow, where to add a card
