@@ -87,6 +87,7 @@ cannot work:
 | GitHub · pull requests | working | yes |
 | GitHub · inbox (notifications) | working | yes |
 | GitHub · Actions | working | no |
+| GitLab · merge requests | working | added per instance |
 | Arc XP · one card per project | working | added per project |
 | DDEV · one card per project | working | added per project |
 | Project · one card per project | working | added per project |
@@ -97,6 +98,17 @@ the ones somebody has asked you to review - two searches in one GraphQL request,
 GitHub's search cannot OR those qualifiers. A review someone is waiting on sorts just under the
 blocked rows, wears an eye and the code `RV`, and leaves the card the moment you review it. Turn
 it off with `includesReviewRequests` if you would rather the card stayed only about your work.
+
+**The same card again, for GitLab.** Merge requests you have open and the ones waiting on your
+review, in the same layout, the same row order and the same three health words, because the
+question is the same one. It is a card of its own rather than more rows on the GitHub card: the
+two refresh against different servers and fail independently, and a row that had to say which
+host it came from would need a column the GitHub card does not have. One GraphQL request per
+instance covers both halves, since GitLab's `currentUser` answers "mine" and "waiting on me"
+without a search string. Add an instance under **Settings → GitLab instances**: a host, a token
+with `read_api`, and the browser profile it opens in. The host lives on the account because
+GitLab is routinely self-hosted, so gitlab.com and a customer's own instance are two accounts on
+one card. Nothing appears until you add one.
 
 The Actions card follows the repositories your open pull requests are in, up to five per
 account. A fixed list instead of that is a field in `GitHubSettings` with no settings screen
@@ -510,7 +522,7 @@ do not. See [docs/adr/0010-card-palette.md](docs/adr/0010-card-palette.md).
   why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
   shares one call, how a plain project is started, why Docker is checked first, how a card is
   laid out, why the deck is quieter than it was, why a card has two sizes and only two, and why
-  the deck moves a card only when it was asked to
+  the deck moves a card only when it was asked to, and why GitLab is a card of its own
 
 ## Layout
 

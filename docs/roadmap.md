@@ -42,6 +42,9 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **GitLab merge requests** - a card of its own, yours and the ones waiting on your review, from
+  one GraphQL request per instance, with the host on the account because GitLab is routinely
+  self-hosted. See [adr/0013-gitlab.md](adr/0013-gitlab.md).
 - **Both icons, drawn in code** - an application icon at last, one card carrying the hero row,
   rendered at all ten sizes by `AppIconExport` and packed by `build.sh`; and a menu-bar icon with
   three states instead of a red glyph that meant three different things at once. Shipped as 0.5.

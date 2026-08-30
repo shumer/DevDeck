@@ -5,6 +5,7 @@ import DevDeckCore
 import DevDeckUI
 import Foundation
 import GitHubKit
+import GitLabKit
 import ProjectKit
 
 /// Owns the data every panel renders and the loop that keeps it fresh.
@@ -17,6 +18,7 @@ final class DeckController: ObservableObject {
     @Published private(set) var pullRequests = CardState<PullRequestsSnapshot>()
     @Published private(set) var inbox = CardState<InboxSnapshot>()
     @Published private(set) var actions = CardState<ActionsSnapshot>()
+    @Published private(set) var mergeRequests = CardState<MergeRequestsSnapshot>()
 
     /// Cards currently showing every row they have. Not persisted: expanding is a "let me look
     /// at this now" gesture, and a deck that comes back tall the next morning is a surprise.
@@ -44,6 +46,7 @@ final class DeckController: ObservableObject {
     private let preferences: Preferences
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
+    private let gitlabAccountsStore: GitLabAccountsStore
     private let projectsStore: ArcProjectsStore
     private let ddevProjectsStore: DDEVProjectsStore
     private let localProjectsStore: LocalProjectsStore
@@ -64,6 +67,7 @@ final class DeckController: ObservableObject {
         preferences: Preferences,
         tokenStore: any TokenStore,
         accountsStore: GitHubAccountsStore,
+        gitlabAccountsStore: GitLabAccountsStore,
         projectsStore: ArcProjectsStore,
         ddevProjectsStore: DDEVProjectsStore,
         localProjectsStore: LocalProjectsStore,
@@ -73,6 +77,7 @@ final class DeckController: ObservableObject {
         self.preferences = preferences
         self.tokenStore = tokenStore
         self.accountsStore = accountsStore
+        self.gitlabAccountsStore = gitlabAccountsStore
         self.projectsStore = projectsStore
         self.ddevProjectsStore = ddevProjectsStore
         self.localProjectsStore = localProjectsStore
@@ -514,6 +519,7 @@ final class DeckController: ObservableObject {
         if card == .githubPullRequests { return pullRequests.value != nil }
         if card == .githubInbox { return inbox.value != nil }
         if card == .githubActions { return actions.value != nil }
+        if card == .gitlabMergeRequests { return mergeRequests.value != nil }
         if let project = project(forCard: card) { return stackStatuses[project.id] != nil }
         if let project = ddevProject(forCard: card) { return ddevStatuses[project.id] != nil }
         if let project = localProject(forCard: card) { return localStatuses[project.id] != nil }
@@ -548,6 +554,20 @@ final class DeckController: ObservableObject {
         }
     }
 
+    /// GitLab account id to label, for the per-row chips on the merge requests card. Same rule
+    /// as the GitHub one: chips only appear when there is more than one instance to tell apart.
+    var gitlabAccountLabels: [String: String] {
+        Dictionary(
+            gitlabAccountsStore.enabledAccounts().map { ($0.id, $0.label) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
+    /// Where a GitLab row opens. An unknown id falls back to the system default.
+    func gitlabBrowser(for accountID: String) -> BrowserChoice {
+        gitlabAccountsStore.accounts().first { $0.id == accountID }?.browser ?? .systemDefault
+    }
+
     /// Account id to label, for the per-row chips. Cards only draw chips when there is more
     /// than one account, so this doubles as the "is this a multi-account deck" answer.
     var accountLabels: [String: String] {
@@ -580,6 +600,12 @@ final class DeckController: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Rebuilt every pass, the same as the GitHub one, so an instance added in settings is
+    /// picked up on the next refresh without restarting anything.
+    private var gitlab: GitLabWorkspace {
+        GitLabWorkspace(accounts: gitlabAccountsStore.enabledAccounts(), tokenStore: tokenStore)
     }
 
     /// Rebuilt every pass so an account added in settings is picked up on the next refresh
@@ -624,6 +650,17 @@ final class DeckController: ObservableObject {
             } catch {
                 let apiError = Self.apiError(from: error)
                 inbox.fail(apiError)
+                errors.append(apiError)
+            }
+        }
+
+        if activeCards.contains(.gitlabMergeRequests) {
+            mergeRequests.beginRefresh()
+            do {
+                mergeRequests.succeed(try await gitlab.mergeRequests(), at: Date())
+            } catch {
+                let apiError = Self.apiError(from: error)
+                mergeRequests.fail(apiError)
                 errors.append(apiError)
             }
         }

@@ -3,6 +3,7 @@ import ArcKit
 import DDEVKit
 import DevDeckCore
 import GitHubKit
+import GitLabKit
 import ProjectKit
 
 /// The settings window: sections, then the things in a section, then the form for one of them.
@@ -14,6 +15,7 @@ import ProjectKit
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     enum Section: String, CaseIterable {
         case github
+        case gitlab
         case arc
         case ddev
         case project
@@ -22,6 +24,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         var title: String {
             switch self {
             case .github: return "GitHub accounts"
+            case .gitlab: return "GitLab instances"
             case .arc: return "Arc projects"
             case .ddev: return "DDEV projects"
             case .project: return "Projects"
@@ -35,6 +38,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
+    private let gitlabAccountsStore: GitLabAccountsStore
     private let projectsStore: ArcProjectsStore
     private let ddevProjectsStore: DDEVProjectsStore
     private let localProjectsStore: LocalProjectsStore
@@ -56,6 +60,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var localStatuses: [String: LocalProjectStatus] = [:]
 
     private var accountRow: AccountRowView?
+    private var gitlabRow: GitLabAccountRowView?
     private var projectRow: ProjectRowView?
     private var ddevRow: DDEVProjectRowView?
     private var localRow: LocalProjectRowView?
@@ -66,6 +71,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     init(
         tokenStore: any TokenStore,
         accountsStore: GitHubAccountsStore,
+        gitlabAccountsStore: GitLabAccountsStore,
         projectsStore: ArcProjectsStore,
         ddevProjectsStore: DDEVProjectsStore,
         localProjectsStore: LocalProjectsStore,
@@ -74,6 +80,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     ) {
         self.tokenStore = tokenStore
         self.accountsStore = accountsStore
+        self.gitlabAccountsStore = gitlabAccountsStore
         self.projectsStore = projectsStore
         self.ddevProjectsStore = ddevProjectsStore
         self.localProjectsStore = localProjectsStore
@@ -258,6 +265,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
                 )
             }
+        case .gitlab:
+            items = gitlabAccountsStore.accounts().map { account in
+                let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
+                return SettingsListItem(
+                    id: account.id,
+                    title: account.label,
+                    subtitle: hasToken ? account.displayHost : "no token yet",
+                    state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
+                )
+            }
         case .arc:
             items = projectsStore.projects().map { project in
                 SettingsListItem(
@@ -314,6 +331,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         switch section {
         case .github:
             buildAccountForm(in: container, width: width)
+        case .gitlab:
+            buildGitLabForm(in: container, width: width)
         case .arc:
             buildArcForm(in: container, width: width)
         case .ddev:
@@ -359,6 +378,27 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         row.onTestLink = { [weak self] in self?.testAccountLink($0) }
         place(row, in: container)
         accountRow = row
+    }
+
+    private func buildGitLabForm(in container: FlippedContainer, width: CGFloat) {
+        guard let id = selection[.gitlab],
+              let account = gitlabAccountsStore.accounts().first(where: { $0.id == id })
+        else {
+            emptyState(
+                "No GitLab instances yet. Press + below the list, then paste a token with read_api.",
+                in: container,
+                width: width
+            )
+            return
+        }
+
+        let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
+        let row = GitLabAccountRowView(account: account, hasToken: hasToken, width: width)
+        row.onChange = { [weak self] in self?.applyGitLabEdits($0) }
+        row.onSave = { [weak self] in self?.saveGitLabAccount($0) }
+        row.onTestLink = { [weak self] in self?.testGitLabLink($0) }
+        place(row, in: container)
+        gitlabRow = row
     }
 
     private func buildArcForm(in container: FlippedContainer, width: CGFloat) {
@@ -597,6 +637,18 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             accounts.append(GitHubAccount(id: id, label: "New account"))
             accountsStore.save(accounts)
             selection[.github] = id
+        case .gitlab:
+            var accounts = gitlabAccountsStore.accounts()
+            let id = GitLabAccount.makeID(from: "gitlab", existing: accounts.map(\.id))
+            accounts.append(GitLabAccount(id: id, label: "GitLab"))
+            gitlabAccountsStore.save(accounts)
+            selection[.gitlab] = id
+            // The card is off by default, and adding an instance is the moment it becomes worth
+            // having. Turning it on by hand afterwards is a step nobody would guess at.
+            var layout = preferences.cardLayout
+            layout.setEnabled(true, for: .gitlabMergeRequests)
+            preferences.cardLayout = layout
+            onChanged()
         case .arc:
             var projects = projectsStore.projects()
             let id = ArcProject.makeID(from: "project", existing: projects.map(\.id))
@@ -630,6 +682,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             else { return }
             try? tokenStore.setToken(nil, for: account.tokenKey)
             accountsStore.save(accountsStore.accounts().filter { $0.id != id })
+        case .gitlab:
+            guard let id = selection[.gitlab],
+                  let account = gitlabAccountsStore.accounts().first(where: { $0.id == id }),
+                  confirm("Remove \(account.label)?", detail: "Its token is deleted from the Keychain as well.")
+            else { return }
+            try? tokenStore.setToken(nil, for: account.tokenKey)
+            gitlabAccountsStore.save(gitlabAccountsStore.accounts().filter { $0.id != id })
         case .arc:
             guard let id = selection[.arc],
                   let project = projectsStore.projects().first(where: { $0.id == id }),
@@ -679,6 +738,91 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         applyAccountEdits(row)
         guard let url = URL(string: "https://github.com/pulls") else { return }
         LinkOpener.open(url, using: row.editedAccount.browser)
+    }
+
+    private func applyGitLabEdits(_ row: GitLabAccountRowView) {
+        let edited = row.editedAccount
+        persistGitLab(edited)
+        row.apply(edited)
+        row.setStatus(Self.browserSummary(browser: edited.browser))
+        reloadList()
+        onChanged()
+    }
+
+    private func testGitLabLink(_ row: GitLabAccountRowView) {
+        applyGitLabEdits(row)
+        let account = row.editedAccount
+        LinkOpener.open(
+            account.host.appendingPathComponent("dashboard").appendingPathComponent("merge_requests"),
+            using: account.browser
+        )
+    }
+
+    private func persistGitLab(_ account: GitLabAccount) {
+        var accounts = gitlabAccountsStore.accounts()
+        guard let index = accounts.firstIndex(where: { $0.id == account.id }) else { return }
+        accounts[index] = account
+        gitlabAccountsStore.save(accounts)
+    }
+
+    /// Verified before it is stored, the same as a GitHub token: a rejected token that lands in
+    /// the Keychain anyway turns into a card that fails for reasons nobody can see.
+    private func saveGitLabAccount(_ row: GitLabAccountRowView) {
+        let edited = row.editedAccount
+        let token = row.enteredToken
+
+        guard !token.isEmpty else {
+            persistGitLab(edited)
+            row.apply(edited)
+            verifyStoredGitLabToken(for: edited, row: row)
+            onChanged()
+            return
+        }
+
+        row.setStatus("Checking…")
+        Task { [weak self] in
+            guard let self else { return }
+            let probe = GitLabClient.makeDefault(
+                account: edited,
+                tokenStore: InMemoryTokenStore(tokens: [edited.tokenKey: token])
+            )
+            do {
+                let snapshot = try await MergeRequestsService(client: probe, accountID: edited.id).fetch()
+                try self.tokenStore.setToken(token, for: edited.tokenKey)
+                self.persistGitLab(edited)
+                row.apply(edited)
+                row.clearTokenField()
+                row.setStatus("Saved. \(snapshot.totalCount) open merge requests on \(edited.displayHost).")
+                self.reloadList()
+                self.onChanged()
+            } catch let error as APIError {
+                row.setStatus("Rejected: \(error.displayMessage)", isError: true)
+            } catch {
+                row.setStatus("Rejected: \(error.localizedDescription)", isError: true)
+            }
+        }
+    }
+
+    private func verifyStoredGitLabToken(for account: GitLabAccount, row: GitLabAccountRowView) {
+        guard ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil else {
+            row.setStatus("No token yet. Paste one above.", isError: true)
+            return
+        }
+        row.setStatus("Checking the stored token…")
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let snapshot = try await MergeRequestsService(
+                    client: GitLabClient.makeDefault(account: account, tokenStore: self.tokenStore),
+                    accountID: account.id
+                ).fetch()
+                row.setStatus("Token works. \(snapshot.totalCount) open merge requests.")
+            } catch let error as APIError {
+                row.setStatus("Stored token: \(error.displayMessage)", isError: true)
+            } catch {
+                row.setStatus("Stored token: \(error.localizedDescription)", isError: true)
+            }
+        }
     }
 
     private static func browserSummary(browser: BrowserChoice) -> String {

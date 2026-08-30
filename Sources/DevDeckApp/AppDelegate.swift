@@ -5,6 +5,7 @@ import Combine
 import DevDeckCore
 import DevDeckUI
 import GitHubKit
+import GitLabKit
 import ProjectKit
 import ServiceManagement
 import SwiftUI
@@ -14,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let preferences = Preferences()
     private let tokenStore: any TokenStore = CompositeTokenStore.standard()
     private let accountsStore = GitHubAccountsStore(backend: UserDefaults.standard)
+    private let gitlabAccountsStore = GitLabAccountsStore(backend: UserDefaults.standard)
     private let projectsStore = ArcProjectsStore(backend: UserDefaults.standard)
     private let ddevProjectsStore = DDEVProjectsStore(backend: UserDefaults.standard)
     private let localProjectsStore = LocalProjectsStore(backend: UserDefaults.standard)
@@ -22,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         preferences: preferences,
         tokenStore: tokenStore,
         accountsStore: accountsStore,
+        gitlabAccountsStore: gitlabAccountsStore,
         projectsStore: projectsStore,
         ddevProjectsStore: ddevProjectsStore,
         localProjectsStore: localProjectsStore
@@ -29,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private lazy var settingsController = SettingsWindowController(
         tokenStore: tokenStore,
         accountsStore: accountsStore,
+        gitlabAccountsStore: gitlabAccountsStore,
         projectsStore: projectsStore,
         ddevProjectsStore: ddevProjectsStore,
         localProjectsStore: localProjectsStore,
