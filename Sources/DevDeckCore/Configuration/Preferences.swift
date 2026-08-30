@@ -133,6 +133,18 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue ? "1" : "0", forKey: "panels.summon") }
     }
 
+    /// Whether the deck keeps its columns closed up by itself.
+    ///
+    /// Off by default, and it has to be: it is the one setting that moves cards the user placed.
+    /// With it on, a card growing a line pushes the column back into shape and a deliberate gap
+    /// inside a column cannot survive. That is a fair deal when the deck *is* a column, and the
+    /// wrong one for a deck scattered across the desktop, which is why it is a switch rather
+    /// than a behaviour.
+    public var packsColumns: Bool {
+        get { backend.bool(forKey: "panels.pack") }
+        set { backend.set(newValue, forKey: "panels.pack") }
+    }
+
     /// The combination that raises the deck. Anything unreadable in storage falls back to the
     /// default rather than leaving the app with no shortcut at all.
     public var summonHotKey: HotKeyCombo {
