@@ -8,6 +8,7 @@ import SwiftUI
 /// status, and a grey octocat reads as a worse octocat.
 public enum CardGlyph: String, Sendable, Equatable, CaseIterable {
     case github
+    case gitlab
     case arc
     case ddev
     case node
@@ -36,6 +37,7 @@ public struct CardGlyphView: View {
     public nonisolated static func mark(for glyph: CardGlyph) -> BrandMark.Vector? {
         switch glyph {
         case .github: return BrandMark.github
+        case .gitlab: return BrandMark.gitlab
         case .node: return BrandMark.node
         case .docker: return BrandMark.docker
         case .ddev: return BrandMark.ddev
@@ -47,6 +49,7 @@ public struct CardGlyphView: View {
     private var content: some View {
         switch glyph {
         case .github: VectorMark(BrandMark.github)
+        case .gitlab: VectorMark(BrandMark.gitlab)
         case .node: VectorMark(BrandMark.node)
         case .docker: VectorMark(BrandMark.docker)
         case .ddev: VectorMark(BrandMark.ddev)

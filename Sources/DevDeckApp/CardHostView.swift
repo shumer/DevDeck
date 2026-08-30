@@ -4,6 +4,7 @@ import DDEVKit
 import DevDeckCore
 import DevDeckUI
 import GitHubKit
+import GitLabKit
 import ProjectKit
 import SwiftUI
 
@@ -31,6 +32,14 @@ struct CardHostView: View {
                     accountLabels: controller.accountLabels,
                     isExpanded: controller.isExpanded(card),
                     onOpen: open,
+                    onToggleExpand: { controller.toggleExpanded(card) }
+                )
+            } else if card == .gitlabMergeRequests {
+                MergeRequestsCard(
+                    state: controller.mergeRequests,
+                    accountLabels: controller.gitlabAccountLabels,
+                    isExpanded: controller.isExpanded(card),
+                    onOpen: openGitLab,
                     onToggleExpand: { controller.toggleExpanded(card) }
                 )
             } else if card == .githubActions {
@@ -110,6 +119,12 @@ struct CardHostView: View {
 
     /// Rows open in the browser of the account they belong to - one signed-in GitHub identity
     /// per browser profile is the whole reason accounts exist.
+    /// GitLab rows open in the browser of the instance they came from, for the same reason
+    /// GitHub rows do: one signed-in identity per browser profile.
+    private func openGitLab(_ url: URL, _ accountID: String) {
+        LinkOpener.open(url, using: controller.gitlabBrowser(for: accountID))
+    }
+
     private func open(_ url: URL, _ accountID: String) {
         LinkOpener.open(url, using: controller.browser(for: accountID))
     }
@@ -126,6 +141,11 @@ struct CardHostView: View {
             return InboxCard.size(for: controller.inbox, isExpanded: controller.isExpanded(card))
         case .githubActions:
             return ActionsCard.size
+        case .gitlabMergeRequests:
+            return MergeRequestsCard.size(
+                for: controller.mergeRequests,
+                isExpanded: controller.isExpanded(card)
+            )
         default:
             if let project = controller.ddevProject(forCard: card) {
                 return DDEVProjectCard.size(
@@ -162,6 +182,10 @@ struct CardHostView: View {
             return URL(string: "https://github.com/pulls")
         case .githubInbox:
             return URL(string: "https://github.com/notifications")
+        case .gitlabMergeRequests:
+            // The instance is per account, so the dashboard cannot be a constant. The card's
+            // own rows carry absolute URLs; this is only the double-click on the background.
+            return URL(string: "https://gitlab.com/dashboard/merge_requests")
         case .githubActions:
             // Actions has no cross-repository page; the closest thing is the dashboard.
             return URL(string: "https://github.com")

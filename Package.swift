@@ -37,14 +37,19 @@ let package = Package(
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(
             name: "DevDeckUI",
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "ProjectKit"],
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
         // The AppKit shell: borderless panels, menu bar, placement and locking.
+        .target(
+            name: "GitLabKit",
+            dependencies: ["DevDeckCore"]
+        ),
+
         .executableTarget(
             name: "DevDeckApp",
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI"],
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
@@ -80,7 +85,7 @@ let package = Package(
             name: "DevDeckTests",
             // DevDeckUI is here for the card-sizing arithmetic, which the panels depend on
             // being right and which is plain maths rather than anything drawn.
-            dependencies: ["DevDeckCore", "GitHubKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI", "TestHarness"],
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI", "TestHarness"],
             path: "Tests/DevDeckTests"
         ),
     ]

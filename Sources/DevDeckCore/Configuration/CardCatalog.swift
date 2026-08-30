@@ -15,6 +15,7 @@ public extension CardID {
     static let githubPullRequests = CardID(rawValue: "github.pullRequests")
     static let githubInbox = CardID(rawValue: "github.inbox")
     static let githubActions = CardID(rawValue: "github.actions")
+    static let gitlabMergeRequests = CardID(rawValue: "gitlab.mergeRequests")
     static let arcOrganizations = CardID(rawValue: "arc.organizations")
     static let localStack = CardID(rawValue: "local.stack")
 }
@@ -60,6 +61,15 @@ public enum CardCatalog {
             id: .githubActions,
             title: "GitHub Actions",
             subtitle: "Workflow success rate and running jobs",
+            isImplemented: true,
+            isEnabledByDefault: false
+        ),
+        // Off by default: a deck that has never heard of GitLab should not carry a card asking
+        // for a token to an instance nobody uses. Adding an account in settings turns it on.
+        CardDescriptor(
+            id: .gitlabMergeRequests,
+            title: "Merge requests",
+            subtitle: "Yours, plus the ones waiting for your review",
             isImplemented: true,
             isEnabledByDefault: false
         ),

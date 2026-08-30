@@ -1,3 +1,4 @@
+import DevDeckCore
 import Foundation
 
 /// Everything the "my pull requests" card renders, computed once so the view stays dumb.
