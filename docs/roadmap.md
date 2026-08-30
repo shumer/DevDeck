@@ -42,6 +42,11 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **The deck's own housekeeping** - the refresh interval and the Actions repository list are
+  controls rather than model fields, a right-click on a panel is about that card, project kinds
+  are submenus, powering off every DDEV project asks first, the four settings forms all open the
+  same way, a project can carry a link of its own, an inbox row can be marked read, and the deck
+  can be saved as a named arrangement and put back. Shipped as 0.7.
 - **The Keychain stops asking** - tokens are stored with an access list that a rebuild does not
   invalidate, so an update no longer costs one password prompt per token.
 - **A release builds itself** - publishing a release on GitHub runs the suite, builds the bundle
@@ -92,16 +97,15 @@
 
 1. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
-2. **Mark as read** from the inbox card, so the panel is not read-only.
-3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
+2. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
-4. **Adding a link to a project by hand** - Test, UAT and Prod are editable, but there is no
-   button for an extra one of your own; the model already carries them.
-5. **A fixed repository list for the Actions card** - `GitHubSettings.actionsRepositories`
-   exists and nothing in settings writes it.
-6. **The same treatment for the Arc, DDEV and account forms** - the plain-project form has the
-   header, command rows, toggle rows and coloured tags; the other three still have the label
-   gutter and the footnotes.
+3. **The phone** - the local site as a QR code on the card, `ddev share` for DDEV, and a real
+   tunnel for the rest. Nothing here is hard; the decision is which of the three.
+4. **Work in flight** - one card for every checkout at once: what is uncommitted, what is behind,
+   what is unpushed. The only idea left that shows something the deck cannot show today.
+5. **A code identity that survives a rebuild** - a self-signed certificate would let the Keychain
+   items go back to naming this app rather than none, and a Developer ID would also end
+   Gatekeeper for anybody downloading a release.
 
 ## Not planned
 

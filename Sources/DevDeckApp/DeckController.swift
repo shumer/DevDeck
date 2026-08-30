@@ -435,6 +435,47 @@ final class DeckController: ObservableObject {
         }
     }
 
+    /// Marks one inbox row read and takes it off the card at once.
+    ///
+    /// Optimistic on purpose. The notifications endpoint answers conditional requests, so the
+    /// next poll can legitimately come back 304 for a while, and a row that is dealt with would
+    /// sit there looking undone. If the call fails, the next poll puts it back.
+    func markRead(_ item: InboxItem) {
+        guard let account = accountsStore.accounts().first(where: { $0.id == item.accountID }),
+              let snapshot = inbox.value
+        else { return }
+
+        inbox.succeed(
+            InboxSnapshot(
+                items: snapshot.items.filter { $0.id != item.id },
+                serverPollInterval: snapshot.serverPollInterval,
+                failures: snapshot.failures
+            ),
+            at: Date()
+        )
+        updateStatusItem?()
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await NotificationsService(
+                    client: GitHubClient.makeDefault(
+                        tokenStore: self.tokenStore,
+                        settings: account.settings(basedOn: self.settings),
+                        tokenKey: account.tokenKey
+                    ),
+                    settings: self.settings,
+                    accountID: account.id
+                ).markRead(item.id)
+            } catch {
+                Log.refresh.error("Could not mark read: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    /// The menu bar carries the unread count, so it has to hear about a row leaving.
+    var updateStatusItem: (() -> Void)?
+
     // MARK: Being told
 
     /// Set by the app delegate, because posting a banner is AppKit's business rather than the

@@ -111,8 +111,8 @@ GitLab is routinely self-hosted, so gitlab.com and a customer's own instance are
 one card. Nothing appears until you add one.
 
 The Actions card follows the repositories your open pull requests are in, up to five per
-account. A fixed list instead of that is a field in `GitHubSettings` with no settings screen
-behind it yet.
+account, unless you name them yourself under Settings → General → Fetching, where the refresh
+interval lives too.
 
 ## Build and run
 
@@ -404,14 +404,21 @@ Its menu holds what you do:
   card would hang below the screen, so a deck of six cannot push its last card under the bottom
   edge where nothing can grab it. The order it lays out is the deck's own: the built-in cards,
   then Arc projects, then DDEV, then the plain ones, each group alphabetical.
-- **Power off all DDEV**, **Open pull requests in browser**, **Refresh now**, **Settings…**, **Quit**
+- **Arrangements** - save the deck as it stands under a name, and put it back later. An
+  arrangement is which cards are on the deck, which are folded to one row, and where each one
+  sits; the tick shows which one you are in, compared rather than remembered, so it cannot claim
+  an arrangement you have since dragged your way out of. Alt-click one to forget it.
+- **Power off all DDEV**, which now asks first, **Open pull requests in browser**, **Refresh
+  now**, **Settings…**, **Quit**
 
 What the deck *is* rather than what you do with it lives in Settings, under General: where the
 panels sit, whether they are locked, whether a column packs itself, the summon shortcut and its
 dimming, and start-at-login. A menu that mixes the two grows until the thing you came for is
 somewhere in the middle of it.
 
-Right-click a panel for the same menu, with **Collapse to one row** for that card on top.
+Right-click a panel and the menu is about that card: fold it to a row, show or hide its log,
+take it off the deck, and then the two or three things you might want next. The card list and the
+deck-wide switches stay in the menu-bar menu, where they belong.
 
 The settings window is three columns: the sections - GitHub accounts, Arc projects, DDEV
 projects, Projects, General - then what is in the section, then the form for the one selected. Only one

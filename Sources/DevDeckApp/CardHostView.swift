@@ -36,7 +36,8 @@ struct CardHostView: View {
                     isCollapsed: controller.isCollapsed(card),
                     onOpen: open,
                     onToggleExpand: { controller.toggleExpanded(card) },
-                    onOpenDashboard: { openDashboard(for: card) }
+                    onOpenDashboard: { openDashboard(for: card) },
+                    onMarkRead: { controller.markRead($0) }
                 )
             } else if card == .gitlabMergeRequests {
                 MergeRequestsCard(

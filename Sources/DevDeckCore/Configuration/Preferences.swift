@@ -133,6 +133,17 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue ? "1" : "0", forKey: "panels.summon") }
     }
 
+    /// Saved arrangements of the deck, by name.
+    public var arrangements: [DeckArrangement] {
+        get {
+            guard let data = backend.data(forKey: "panels.arrangements"),
+                  let decoded = try? JSONDecoder().decode([DeckArrangement].self, from: data)
+            else { return [] }
+            return decoded
+        }
+        set { backend.set(try? JSONEncoder().encode(newValue), forKey: "panels.arrangements") }
+    }
+
     /// Repositories the Actions card watches, as `owner/name`.
     ///
     /// Empty means "follow my open pull requests", which is the right default for one person's
