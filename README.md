@@ -519,6 +519,14 @@ list on the web. It is remembered per card,
 so the projects you are not working on today take a row each while the one you are stays whole.
 Six collapsed cards come to 324 points against 1218 whole.
 
+The **QR button** beside it puts the running site on your phone: the site is already being
+served, it is only being asked for by a name that means "this device", so the address is swapped
+for this Mac's own on the wifi and drawn as a code to point a camera at. It appears only while
+the project is actually up, because a code pointing at a port nothing is listening on is a worse
+answer than no button. No account, no tunnel, nothing published to the internet. The phone has to
+be on the same network, and a dev server bound to localhost only will still refuse: that is what
+`--host` is for.
+
 The small button beside the clock opens the **log tray**: the last six lines the project is
 writing, in place, on any of the three project cards. Arc reads the containers carrying the
 project's compose label, DDEV reads `ddev logs -s web`, and a plain project reads the log its

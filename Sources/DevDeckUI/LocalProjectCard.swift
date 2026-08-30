@@ -1,5 +1,6 @@
 import DevDeckCore
 import ProjectKit
+import AppKit
 import SwiftUI
 
 /// One plain project: whether it is up, where to open it, and the command that starts it.
@@ -13,6 +14,9 @@ public struct LocalProjectCard: View {
     private let docker: DockerStatus
     private let logs: LogLines?
     private let isCollapsed: Bool
+    /// The same site, addressed for another device on this network. Nil unless it is running.
+    private let phoneURL: URL?
+    @State private var isShowingPhone = false
     private let onOpen: (URL) -> Void
     private let onAction: (LocalProjectAction) -> Void
     private let onOpenTerminal: () -> Void
@@ -27,6 +31,7 @@ public struct LocalProjectCard: View {
         docker: DockerStatus = DockerStatus(state: .unknown),
         logs: LogLines? = nil,
         isCollapsed: Bool = false,
+        phoneURL: URL? = nil,
         onOpen: @escaping (URL) -> Void = { _ in },
         onAction: @escaping (LocalProjectAction) -> Void = { _ in },
         onOpenTerminal: @escaping () -> Void = {},
@@ -40,6 +45,7 @@ public struct LocalProjectCard: View {
         self.docker = docker
         self.logs = logs
         self.isCollapsed = isCollapsed
+        self.phoneURL = phoneURL
         self.onOpen = onOpen
         self.onAction = onAction
         self.onOpenTerminal = onOpenTerminal
@@ -98,7 +104,7 @@ public struct LocalProjectCard: View {
             title: "Project · \(project.displayTitle)",
             glyph: glyph,
             timestamp: ProjectCardMetrics.timestamp(status.checkedAt),
-            toggle: logToggle
+            toggles: headerToggles
         ) {
             hero
             CardMetaBlock(
@@ -224,13 +230,35 @@ public struct LocalProjectCard: View {
         ]
     }
 
-    /// The switch that opens the tray. Absent when nothing can be shown, because a control that
-    /// opens an empty box is worse than no control.
-    private var logToggle: CardHeaderToggle? {
-        guard let onToggleLogs else { return nil }
-        return CardHeaderToggle(
-            isOn: logs != nil,
-            help: logs == nil ? "show the last log lines" : "hide the log"
-        ) { onToggleLogs() }
+    /// The buttons in the header. The log tray, and the phone, which is only ever offered for a
+    /// site that is actually being served: a QR code pointing at a port nothing is listening on
+    /// is a worse answer than no button.
+    private var headerToggles: [CardHeaderToggle] {
+        var toggles: [CardHeaderToggle] = []
+        if let onToggleLogs {
+            toggles.append(CardHeaderToggle(
+                id: "log",
+                isOn: logs != nil,
+                help: logs == nil ? "show the last log lines" : "hide the log"
+            ) { onToggleLogs() })
+        }
+        if let phoneURL {
+            toggles.append(CardHeaderToggle(
+                id: "phone",
+                isOn: isShowingPhone,
+                systemImage: "qrcode",
+                help: "open this on your phone",
+                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard))
+            ) { isShowingPhone.toggle() })
+        }
+        return toggles
+    }
+
+    /// Puts the address where a phone cannot reach: the Mac's own pasteboard, for sending it on
+    /// in a message when a camera is not to hand.
+    private func copyToPasteboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        isShowingPhone = false
     }
 }
