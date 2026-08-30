@@ -16,6 +16,7 @@ public extension CardID {
     static let githubInbox = CardID(rawValue: "github.inbox")
     static let githubActions = CardID(rawValue: "github.actions")
     static let gitlabMergeRequests = CardID(rawValue: "gitlab.mergeRequests")
+    static let workInFlight = CardID(rawValue: "local.workInFlight")
     static let arcOrganizations = CardID(rawValue: "arc.organizations")
     static let localStack = CardID(rawValue: "local.stack")
 }
@@ -73,6 +74,13 @@ public enum CardCatalog {
             // things nobody can tell apart at a glance.
             title: "GitLab merge requests",
             subtitle: "Yours, plus the ones waiting for your review",
+            isImplemented: true,
+            isEnabledByDefault: false
+        ),
+        CardDescriptor(
+            id: .workInFlight,
+            title: "Work in flight",
+            subtitle: "Uncommitted, unpushed and behind, across every checkout",
             isImplemented: true,
             isEnabledByDefault: false
         ),
