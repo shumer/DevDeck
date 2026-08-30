@@ -4,7 +4,7 @@ import SwiftUI
 
 /// "GitHub inbox": what is waiting on me, loudest first.
 public struct InboxCard: View {
-    public static let baseHeight: Double = 119
+    public nonisolated static let baseHeight: Double = 119
 
     private let state: CardState<InboxSnapshot>
     private let now: Date

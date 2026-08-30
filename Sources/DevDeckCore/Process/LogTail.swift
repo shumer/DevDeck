@@ -64,7 +64,7 @@ public enum LogTail {
     /// and the tray is not a terminal.
     public static func strippingEscapes(_ line: String) -> String {
         var result = ""
-        var characters = Array(line)
+        let characters = Array(line)
         var index = 0
 
         while index < characters.count {

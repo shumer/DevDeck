@@ -181,8 +181,8 @@ func runGitLabTests(_ run: TestRun) async {
         let snapshot = try expectNotNil(snapshot, "snapshot")
         let withFraction = snapshot.mergeRequests.first { $0.iid == 41 }
         let without = snapshot.mergeRequests.first { $0.iid == 42 }
-        try expectNotNil(withFraction, "fractional")
-        try expectNotNil(without, "plain")
+        _ = try expectNotNil(withFraction, "fractional")
+        _ = try expectNotNil(without, "plain")
         try expect(
             (withFraction?.updatedAt ?? .distantPast) > (without?.updatedAt ?? .distantFuture),
             "both shapes appear across GitLab versions, and both have to parse"
