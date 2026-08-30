@@ -1,4 +1,4 @@
-# 0008 — Docker is checked before a card offers to start anything
+# 0008 - Docker is checked before a card offers to start anything
 
 Status: accepted, 2026-08-03
 
@@ -14,7 +14,7 @@ unix:///Users/…/.docker/run/docker.sock. Is the docker daemon running?"}
 ```
 
 The DDEV card turned that into `unknown to ddev` and the Arc card into `local stack not
-running` — both true sentences that explain nothing and blame the wrong thing. The user's own
+running` - both true sentences that explain nothing and blame the wrong thing. The user's own
 words: the Start button is there, but pressing it will not start anything.
 
 ## Decision
@@ -27,7 +27,7 @@ words: the Start button is there, but pressing it will not start anything.
 2. **The daemon is asked, not the process table.** Colima, OrbStack, Rancher and a remote
    context all serve `docker` with no Docker Desktop anywhere; looking for a running
    application would call all of them "not running". This is the same rule as everywhere else
-   in the deck — ask the thing, not what launched it.
+   in the deck - ask the thing, not what launched it.
 3. **Three answers, not two.** A non-zero exit is "not running"; exit 127 or `command not
    found` is "not installed". They lead to different sentences and different buttons.
 4. **`unknown` gates nothing.** Not having asked yet is not evidence, and blocking on it would
@@ -36,7 +36,7 @@ words: the Start button is there, but pressing it will not start anything.
    it.
 6. **The Start button becomes Start Docker** where there is an application to open, and opens
    it without stealing focus. `starting` is then held locally for up to three minutes against
-   probes that still say no — Docker Desktop takes the better part of a minute, and flipping
+   probes that still say no - Docker Desktop takes the better part of a minute, and flipping
    the card back in between is exactly what makes a button look broken.
 7. **The wording lives in one place.** `DockerGate` in `DevDeckUI` owns the pill, the state
    line, the colour and the button, so the three card types cannot describe the same condition

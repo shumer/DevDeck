@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// Tooling and environments used to be a row each, which spent a row of height on a distinction
 /// a divider makes. Wrapping means the number of lines is no longer fixed, and the panel has to
-/// know it exactly — a card an inch too short clips its own buttons — so the line arithmetic
+/// know it exactly - a card an inch too short clips its own buttons - so the line arithmetic
 /// lives here beside the layout that produces it.
 public enum CardChipFlow {
     public nonisolated static let spacing: Double = 5

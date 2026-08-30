@@ -32,7 +32,7 @@ public struct LocalProjectLink: Sendable, Equatable, Codable, Identifiable {
     }
 
     /// The deployed environments, the same three every project here has. Nothing can derive
-    /// them — each lives on its own domain — so they ship empty for the user to paste in.
+    /// them - each lives on its own domain - so they ship empty for the user to paste in.
     public static func defaultEnvironments() -> [LocalProjectLink] {
         ["Test", "UAT", "Prod"].map {
             LocalProjectLink(label: $0, urlTemplate: "", isEnabled: false, kind: .site)
@@ -54,13 +54,13 @@ public struct LocalProjectLink: Sendable, Equatable, Codable, Identifiable {
 ///
 /// The three fields at the heart of it are deliberately unopinionated. `docker compose up -d`
 /// returns as soon as the containers are up, while `npm run dev` holds its terminal until it is
-/// killed — the difference is one checkbox rather than two kinds of project, because everything
+/// killed - the difference is one checkbox rather than two kinds of project, because everything
 /// downstream of it is the same.
 public struct LocalProject: Sendable, Equatable, Codable, Identifiable {
     /// Stable slug used in the card identifier, so it is never renamed.
     public let id: String
     public var title: String
-    /// What the footer says the project is — `vite`, `docker compose`. Free text; nothing
+    /// What the footer says the project is - `vite`, `docker compose`. Free text; nothing
     /// derives behaviour from it.
     public var subtitle: String
     public var folder: String?
@@ -155,7 +155,7 @@ public struct LocalProject: Sendable, Equatable, Codable, Identifiable {
     }
 
     /// What the Local site chip opens: the override when there is one, otherwise whatever is
-    /// being health-checked — for a dev server they are the same address.
+    /// being health-checked - for a dev server they are the same address.
     public var siteURL: URL? {
         let trimmed = localSiteURL.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty { return URL(string: trimmed) }
@@ -167,7 +167,7 @@ public struct LocalProject: Sendable, Equatable, Codable, Identifiable {
         resolve(links.filter { $0.kind == .tool })
     }
 
-    /// The environments, local first — the local one is derived, the deployed ones are typed in.
+    /// The environments, local first - the local one is derived, the deployed ones are typed in.
     public func environmentLinks() -> [LocalProjectResolvedLink] {
         var resolved: [LocalProjectResolvedLink] = []
         if let site = siteURL {

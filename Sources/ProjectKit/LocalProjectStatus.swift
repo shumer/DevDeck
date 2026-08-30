@@ -5,7 +5,7 @@ public enum LocalProjectState: String, Sendable, Equatable, Codable {
     /// The health URL answered, or the started process is alive and there is nothing else to
     /// ask.
     case running
-    /// The process we started is alive but nothing is serving yet — a dev server compiling,
+    /// The process we started is alive but nothing is serving yet - a dev server compiling,
     /// or a container still coming up.
     case starting
     case stopped
@@ -23,7 +23,7 @@ public struct LocalProjectStatus: Sendable, Equatable {
     public var checkedAt: Date?
     /// The process this app started, when there is one.
     public var pid: Int32?
-    /// Branch the checkout is on — what the local site is actually serving.
+    /// Branch the checkout is on - what the local site is actually serving.
     public var branch: String?
     /// The repository this checkout came from, when it has an origin.
     public var repositoryURL: URL?

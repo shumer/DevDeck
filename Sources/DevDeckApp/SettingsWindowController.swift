@@ -485,7 +485,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             return
         case .project:
             // Nothing knows about these projects, so the folder is the one thing that has to be
-            // asked for — and once it is known, the folder itself answers most of the rest.
+            // asked for - and once it is known, the folder itself answers most of the rest.
             addLocalProject()
             return
         case .general:
@@ -796,7 +796,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         var project = LocalProject(id: id, title: name, folder: url.path)
 
         // Applied on creation only. From here on the fields belong to the user, and a later
-        // guess must never quietly replace what they typed — the Detect button is how they ask
+        // guess must never quietly replace what they typed - the Detect button is how they ask
         // for one.
         if let suggestion = ProjectProbe.suggestion(for: url) {
             project.subtitle = suggestion.subtitle
@@ -854,7 +854,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             guard let self else { return }
             let status = await LocalProjectService(project: project).status()
             self.localStatuses[project.id] = status
-            // Only if the user is still looking at this project — the check takes a moment and
+            // Only if the user is still looking at this project - the check takes a moment and
             // they may have moved on.
             guard self.section == .project, self.selection[.project] == project.id else { return }
             self.reloadDetail()

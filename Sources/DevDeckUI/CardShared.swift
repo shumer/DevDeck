@@ -6,7 +6,7 @@ import SwiftUI
 /// itself turns into a hand.
 ///
 /// Panels sit behind other windows, so hover tracking only starts once the deck has been
-/// clicked and the app is active. That is why the controls also carry a resting fill — the
+/// clicked and the app is active. That is why the controls also carry a resting fill - the
 /// affordance cannot depend on hover alone.
 public struct ClickableHighlight: ViewModifier {
     private let cornerRadius: CGFloat
@@ -76,7 +76,7 @@ public struct CardPlaceholder<Value: Sendable & Equatable>: View {
     }
 }
 
-/// Which account a row came from. Only drawn when more than one is configured — with a single
+/// Which account a row came from. Only drawn when more than one is configured - with a single
 /// account the chip would be noise on every row.
 public struct AccountChip: View {
     private let label: String

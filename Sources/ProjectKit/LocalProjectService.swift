@@ -32,7 +32,7 @@ public struct ProjectRuntimeFiles: Sendable {
 /// Runs a plain project and reports whether it is up.
 ///
 /// The awkward part of a project like this is that its start command may or may not return.
-/// Both are handled the same way — output goes to a log file, the process id is written down —
+/// Both are handled the same way - output goes to a log file, the process id is written down -
 /// so that "is it up" can always be answered by asking the health URL rather than by
 /// remembering what kind of command it was.
 public struct LocalProjectService: Sendable {
@@ -137,7 +137,7 @@ public struct LocalProjectService: Sendable {
     /// resource: a Docker container from another project held 8080, answered the configured
     /// `/health` with a 404, and the card reported a backend nobody had started as running. A
     /// 404 is a server saying it does not know this path, which is the answer of somebody else's
-    /// server — and a 500 is not something you can open either.
+    /// server - and a 500 is not something you can open either.
     ///
     /// Redirects count, and so do 401 and 403: those are this project's own server saying "yes,
     /// and you need to sign in", which is a normal thing for a health path to do.
@@ -236,7 +236,7 @@ public struct LocalProjectService: Sendable {
     /// Runs the command in the background, with its output in the log and its process id
     /// written down.
     ///
-    /// Everything here is load-bearing. The redirection is what lets the caller return at all —
+    /// Everything here is load-bearing. The redirection is what lets the caller return at all -
     /// a background child holding the runner's pipes keeps the read open until it exits, which
     /// for a dev server is forever. `nohup` is what lets it outlive this app.
     public static func detachedCommand(_ command: String, log: URL, pidFile: URL) -> String {
@@ -254,7 +254,7 @@ public struct LocalProjectService: Sendable {
     /// Kills a process and everything under it.
     ///
     /// Killing the recorded pid alone is not enough: `npm run dev` is a wrapper, and stopping
-    /// it leaves the server it spawned holding the port — which then makes the next start fail
+    /// it leaves the server it spawned holding the port - which then makes the next start fail
     /// for a reason nobody can see.
     public static func killTreeCommand(pid: Int32) -> String {
         "kt() { local child; for child in $(pgrep -P $1 2>/dev/null); do kt $child; done; "

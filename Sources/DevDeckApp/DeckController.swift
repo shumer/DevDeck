@@ -227,7 +227,7 @@ final class DeckController: ObservableObject {
 
     /// One `ddev list` answers for every card, so the cost does not grow with the deck.
     /// `finished` names projects whose command has just returned. They are refreshed even
-    /// though their status still says "working" — it says that because this very call is what
+    /// though their status still says "working" - it says that because this very call is what
     /// clears it, and skipping them left a card stuck on "starting…" over a project that had
     /// been up for minutes.
     private func refreshDDEV(finished: Set<String> = []) async {
@@ -446,8 +446,8 @@ final class DeckController: ObservableObject {
         )
     }
 
-    /// Where this account's links open. An unknown id — a row left over from an account that
-    /// was just removed — falls back to the system default.
+    /// Where this account's links open. An unknown id - a row left over from an account that
+    /// was just removed - falls back to the system default.
     func browser(for accountID: String) -> BrowserChoice {
         accountsStore.accounts().first { $0.id == accountID }?.browser ?? .systemDefault
     }
@@ -584,7 +584,7 @@ final class DeckController: ObservableObject {
 
     /// What the menu-bar item conveys.
     ///
-    /// The icon carries the identity and one bit of state — is anything wrong. The numbers
+    /// The icon carries the identity and one bit of state - is anything wrong. The numbers
     /// live in the tooltip: a bare count in the menu bar says nothing about which app it
     /// belongs to, which is exactly the complaint it earned.
     var statusSummary: (tooltip: String, isAlert: Bool) {

@@ -4,7 +4,7 @@ import Foundation
 /// Talks to the `ddev` CLI.
 ///
 /// One `ddev list -j` answers for every project at once, so a deck with six cards costs the
-/// same as a deck with one — which is the reason this is a shared environment rather than a
+/// same as a deck with one - which is the reason this is a shared environment rather than a
 /// service per project, the way Arc's local stack is.
 public struct DDEVEnvironment: Sendable {
     private let runner: any CommandRunning
@@ -26,8 +26,8 @@ public struct DDEVEnvironment: Sendable {
 
     /// Every project DDEV knows about, keyed by name.
     ///
-    /// Returns nil when `ddev` could not be asked at all — a missing binary or a daemon that
-    /// is down — which is different from "it answered and there are no projects".
+    /// Returns nil when `ddev` could not be asked at all - a missing binary or a daemon that
+    /// is down - which is different from "it answered and there are no projects".
     public func list() async -> [DDEVListEntry]? {
         guard
             let result = try? await runner.run("ddev list -j", in: workingDirectory, timeout: 30),
@@ -138,7 +138,7 @@ public struct DDEVEnvironment: Sendable {
         return try? await runner.run(action.command, in: folder, timeout: 900)
     }
 
-    /// Stops every project and the router — the "give me my memory back" button.
+    /// Stops every project and the router - the "give me my memory back" button.
     public func powerOff() async -> CommandResult? {
         try? await runner.run("ddev poweroff", in: workingDirectory, timeout: 300)
     }

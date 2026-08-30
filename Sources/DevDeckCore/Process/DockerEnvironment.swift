@@ -58,7 +58,7 @@ public struct DockerStatus: Sendable, Equatable {
 /// serve `docker` with no Docker Desktop anywhere, and a process-table check would call every
 /// one of them "not running".
 public struct DockerEnvironment: Sendable {
-    /// Server version only — it fails fast and says nothing when the daemon is down, which is
+    /// Server version only - it fails fast and says nothing when the daemon is down, which is
     /// exactly the two answers this needs.
     public static let probeCommand = "docker version --format '{{.Server.Version}}'"
 
@@ -78,7 +78,7 @@ public struct DockerEnvironment: Sendable {
 
     public func status() async -> DockerStatus {
         guard let result = try? await runner.run(Self.probeCommand, in: workingDirectory, timeout: 20) else {
-            // The probe could not be run at all — treat it as unknown rather than blaming
+            // The probe could not be run at all - treat it as unknown rather than blaming
             // Docker for something that went wrong on this side.
             return DockerStatus(state: .unknown, checkedAt: clock.now)
         }

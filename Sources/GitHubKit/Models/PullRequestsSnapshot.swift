@@ -73,7 +73,7 @@ public struct PullRequestsSnapshot: Sendable, Equatable, Codable {
 
     /// Rows for the card body: worst first, then most recently touched.
     ///
-    /// Sorting by health rather than by date is deliberate — the reason to look at the card is
+    /// Sorting by health rather than by date is deliberate - the reason to look at the card is
     /// to find the PR that is stuck, and that one is rarely the newest. A review someone is
     /// waiting on sits just under the blocked ones: it is the only row where the person held up
     /// is not you.

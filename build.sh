@@ -52,7 +52,7 @@ echo "Built: $APP"
 
 # Installing is the default. macOS registers the login item by path, and this directory's
 # bundle is deleted and recreated on every build, so the copy that actually runs must live
-# in /Applications — otherwise a rebuild leaves the old version running.
+# in /Applications - otherwise a rebuild leaves the old version running.
 if [ "${1:-}" = "--no-install" ] || [ "${2:-}" = "--no-install" ]; then
   echo "Run:   open '$APP'    Quit: pkill -f DevDeck"
   exit 0

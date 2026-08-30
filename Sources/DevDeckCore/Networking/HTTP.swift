@@ -15,7 +15,7 @@ public struct HTTPRequest: Sendable, Equatable {
     public var body: Data?
 
     /// Identity used for conditional requests. Nil means "never send If-None-Match for this
-    /// call" — correct for POST bodies such as GraphQL, where an ETag would be meaningless.
+    /// call" - correct for POST bodies such as GraphQL, where an ETag would be meaningless.
     public var cacheKey: String?
 
     public init(

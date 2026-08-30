@@ -62,7 +62,7 @@ public final class InMemoryPreferences: PreferencesBackend, @unchecked Sendable 
 
 /// Typed access to everything the app remembers between launches.
 ///
-/// Secrets are deliberately absent — those live in the Keychain via `TokenStore`.
+/// Secrets are deliberately absent - those live in the Keychain via `TokenStore`.
 public final class Preferences: @unchecked Sendable {
     private let backend: PreferencesBackend
 
@@ -124,7 +124,7 @@ public final class Preferences: @unchecked Sendable {
     /// The height a card last settled at.
     ///
     /// Panels open before their data arrives, so a card would come up at its empty height and
-    /// then grow — shoving whatever sits beneath it down the screen on every launch. Starting
+    /// then grow - shoving whatever sits beneath it down the screen on every launch. Starting
     /// at the remembered height means the growth is usually nothing at all.
     public func height(for card: CardID) -> Double? {
         guard let raw = backend.string(forKey: "panels.\(card.rawValue).height"),

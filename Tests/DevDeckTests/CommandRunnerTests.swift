@@ -4,8 +4,8 @@ import TestHarness
 
 /// These run real processes, which the rest of the suite never does.
 ///
-/// They earn it: every bug this file covers — a blocked main thread, a command waiting on
-/// stdin, a timeout that never fired — was invisible to a stubbed runner and showed up as a
+/// They earn it: every bug this file covers - a blocked main thread, a command waiting on
+/// stdin, a timeout that never fired - was invisible to a stubbed runner and showed up as a
 /// button that did nothing.
 func runCommandRunnerTests(_ run: TestRun) async {
     run.section("Commands")
@@ -78,7 +78,7 @@ func runCommandRunnerTests(_ run: TestRun) async {
         try expect(result.succeeded)
     }
 
-    run.section("Commands — the PATH a terminal actually has")
+    run.section("Commands - the PATH a terminal actually has")
 
     await run.test("the answer is found among whatever the profile prints on its way past") {
         // A real `.zshrc` here prints `exec zsh` before anything else, which is why the value

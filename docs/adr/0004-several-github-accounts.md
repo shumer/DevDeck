@@ -1,4 +1,4 @@
-# 0004 — Several GitHub accounts, merged into one card
+# 0004 - Several GitHub accounts, merged into one card
 
 Status: accepted, 2026-08-02
 
@@ -9,7 +9,7 @@ each organisation separately, organisations behind SAML SSO need their own autho
 personal repositories sit under an identity that has nothing to do with the work ones. In
 practice covering four organisations means holding three or four tokens.
 
-The alternative — one card per account — was rejected quickly: the question a card answers is
+The alternative - one card per account - was rejected quickly: the question a card answers is
 "what do I have open", not "what do I have open in this organisation". Splitting it by token
 makes the reader do the merging.
 
@@ -34,6 +34,6 @@ makes the reader do the merging.
   controller derives that from `accountID` on the pull requests.
 - Adding an account is a settings-window action with no restart: the workspace is rebuilt each
   refresh from the stored list.
-- The smoke tool only checks the first account — a command-line process does not share the
+- The smoke tool only checks the first account - a command-line process does not share the
   app's preferences domain.
 - Rate limits are per token, so more accounts means more budget, not less.

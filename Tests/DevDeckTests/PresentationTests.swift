@@ -6,7 +6,7 @@ import GitHubKit
 import TestHarness
 
 func runPresentationTests(_ run: TestRun) async {
-    run.section("Cards — expanding")
+    run.section("Cards - expanding")
 
     await run.test("a collapsed card shows three rows at most") {
         try expectEqual(CardMetrics.rowCount(total: 8, isExpanded: false), 3)
@@ -38,7 +38,7 @@ func runPresentationTests(_ run: TestRun) async {
                         "no expander, no extra height")
     }
 
-    run.section("Cards — tidying the deck")
+    run.section("Cards - tidying the deck")
 
     // A real deck: the five cards on this machine, on the built-in display.
     let screen = CGRect(x: 0, y: 0, width: 1512, height: 957)
@@ -104,7 +104,7 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(DeckLayout.tidy(sizes: [], anchorTopLeft: .zero, screen: screen, gap: 12).isEmpty)
     }
 
-    run.section("Panels — a placement belongs to a display")
+    run.section("Panels - a placement belongs to a display")
 
     // A laptop and an external, arranged with the external as the main display: the laptop's
     // screen sits below and to the left, which is where the numbers come from.
@@ -176,7 +176,7 @@ func runPresentationTests(_ run: TestRun) async {
         try expectNil(PanelPlacement(storage: "|1|2"), "and neither is a nameless display")
     }
 
-    run.section("Cards — chips wrap, and the panel knows by how much")
+    run.section("Cards - chips wrap, and the panel knows by how much")
 
     await run.test("chips break onto a new line only when the line is full") {
         // Widths chosen against the real content width of 292 points.
@@ -218,7 +218,7 @@ func runPresentationTests(_ run: TestRun) async {
     }
 
     await run.test("the three project cards are built to the same measurements") {
-        // Same chips, same branch — the three cards must come out the same height, or one of
+        // Same chips, same branch - the three cards must come out the same height, or one of
         // them has quietly grown its own layout.
         let arc = ProjectCardMetrics.height(
             tools: ["Mailpit"], environments: ["Local site", "Prod"], hasBranch: true, hasMetaRow: true
@@ -233,7 +233,7 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(arc < 210, "the redesign has to stay shorter than the 249 it replaced")
     }
 
-    run.section("Cards — the control row")
+    run.section("Cards - the control row")
 
     await run.test("every button gets the same air around its label") {
         // The real row, with the label that caused this: `Terminal` all but touched its border
@@ -314,7 +314,7 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(ChromiumProfiles.parse(localState: Data("{}".utf8)).isEmpty)
     }
 
-    run.section("Accounts — stored shape")
+    run.section("Accounts - stored shape")
 
     await run.test("an account stored before browsers existed still decodes") {
         let json = """

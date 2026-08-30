@@ -10,8 +10,8 @@ the budget is 5000 points/hour and the panel polls every two minutes.
 ## The query
 
 `PullRequestsService.query`, operation `DevDeckPullRequests`. **Two searches in one request**:
-GitHub's search syntax cannot express "mine or waiting on me" — `author:@me` and
-`review-requested:@me` do not OR — while GraphQL is happy to run both and hand back both, which
+GitHub's search syntax cannot express "mine or waiting on me" - `author:@me` and
+`review-requested:@me` do not OR - while GraphQL is happy to run both and hand back both, which
 costs one round trip rather than two.
 
 ```graphql
@@ -44,7 +44,7 @@ is:open is:pr author:@me archived:false sort:updated [draft:false] [org:…]
 Notes that are easy to get wrong:
 
 - `search` returns `Issue` nodes too. Those decode with every field nil and are dropped in
-  `summary(from:)` — do not assume every node is a pull request.
+  `summary(from:)` - do not assume every node is a pull request.
 - `issueCount` is the server-side total. The card shows it, not `nodes.count`, so the number
   stays right when the fetch limit truncates the list.
 - `statusCheckRollup` is nil when nothing has reported on the head commit; that is "no
@@ -69,7 +69,7 @@ find the pull request that is stuck, and that one is rarely the newest.
 
 - REST and GraphQL have **separate** budgets, both 5000/hour for a user token.
 - `APITransport` parses `x-ratelimit-limit/remaining/used/reset` from every response.
-- A `403` with `x-ratelimit-remaining: 0` is a rate limit, not a permission problem — GitHub
+- A `403` with `x-ratelimit-remaining: 0` is a rate limit, not a permission problem - GitHub
   uses the same status for both, and the counter is the only way to tell them apart.
 - `X-Poll-Interval` (sent on the notifications endpoint) always wins over the configured
   interval when it asks for more.
@@ -83,13 +83,13 @@ Fine-grained personal access token. Permissions per card:
 | Card | Permission |
 |---|---|
 | pull requests | repository: **pull requests** (read), **contents** (read), **metadata** (read) |
-| inbox | account: **notifications** (read) — this one is a *user* permission, not a repository one |
+| inbox | account: **notifications** (read) - this one is a *user* permission, not a repository one |
 | actions | repository: **actions** (read) |
 
 The inbox permission is the one that catches people out: it lives under the account section
 rather than the repository section, and without it `/notifications` answers
-`403 Resource not accessible by personal access token` — surfaced on the card as
-"Forbidden — Resource not accessible by personal access token". A classic token needs the
+`403 Resource not accessible by personal access token` - surfaced on the card as
+"Forbidden - Resource not accessible by personal access token". A classic token needs the
 `notifications` scope instead.
 
 Two further failure modes look like "everything is fine but empty":
@@ -97,7 +97,7 @@ Two further failure modes look like "everything is fine but empty":
 1. A fine-grained token must be **approved by each organisation** before it can see anything
    owned by it. Until then search returns zero results with no error.
 2. Under SAML SSO a classic token must be **authorised for the organisation**, otherwise the
-   API answers `403` with a message about SAML enforcement — surfaced as
+   API answers `403` with a message about SAML enforcement - surfaced as
    `APIError.forbidden(message)`.
 
 `scripts/smoke-test.sh` prints organisation and repository counts, which distinguishes an
@@ -122,7 +122,7 @@ GraphQL answers `200` with an `errors` array. `GitHubClient` turns that into
 `APIError.graphQL([messages])` rather than letting a half-empty payload reach the UI.
 `APIError.displayMessage` is what the card shows.
 
-## Inbox — `GET /notifications`
+## Inbox - `GET /notifications`
 
 The closest thing GitHub has to a todo list. `NotificationsService` asks for `all=false`
 (unread only) with the cache key `github.notifications`.
@@ -131,7 +131,7 @@ The closest thing GitHub has to a todo list. `NotificationsService` asks for `al
 - `X-Poll-Interval` tells us how often the endpoint may be polled. It is read from the
   response, put on the snapshot and fed into `RefreshPolicy.nextDelay(serverHint:)`, which
   never polls faster than asked.
-- `reason` is a growing set. Anything unrecognised becomes `.other` and still shows up — a
+- `reason` is a growing set. Anything unrecognised becomes `.other` and still shows up - a
   notification nobody can explain is still a notification.
 - Rows are sorted unread first, then by `NotificationReason.priority` (security > review
   requested > mention > assigned > CI > the rest), then newest first. `actionableCount` is
@@ -142,7 +142,7 @@ The closest thing GitHub has to a todo list. `NotificationsService` asks for `al
   it every link 404s in a way that looks like a permissions problem. An unfamiliar host is
   passed through untouched rather than mangled.
 
-## Actions — `GET /repos/{owner}/{repo}/actions/runs`
+## Actions - `GET /repos/{owner}/{repo}/actions/runs`
 
 One request per repository, each with its own cache key (`github.actions.owner/name`), fired
 concurrently.
@@ -154,24 +154,24 @@ concurrently.
 - A repository answering 404 or 403 is **skipped**, not fatal: one archived or newly private
   repository must not blank a card covering four others. The error only surfaces when every
   repository fails.
-- `timed_out`, `action_required` and `startup_failure` all collapse into `.failure` — for the
+- `timed_out`, `action_required` and `startup_failure` all collapse into `.failure` - for the
   person reading the card they mean the same thing.
 - `cancelled` and `skipped` are excluded from the success rate; counting them would drag the
   number down for no reason. With nothing decisive in the window the rate is `nil`, drawn as
-  `–` rather than a red zero.
+  `-` rather than a red zero.
 - `run_started_at` is absent on older runs, so `created_at` is the fallback anchor for the
   duration.
 
 
 ## Review requests
 
-`review-requested:@me` returns the pull requests where you are still on the hook — GitHub drops
+`review-requested:@me` returns the pull requests where you are still on the hook - GitHub drops
 one from that search the moment you submit a review, which is exactly when it should leave the
 card. The rows are marked `isReviewRequest`, which changes three things and nothing else: the
 health is always `attention` (whatever the checks say, the thing outstanding is you), the code
 is `RV`, and the row sorts just under the blocked ones.
 
-A pull request that answers both searches — possible across forks or with some team rules —
+A pull request that answers both searches - possible across forks or with some team rules -
 is kept once, as yours.
 
 `GitHubSettings.includesReviewRequests` turns it off. The query is then replaced with one that

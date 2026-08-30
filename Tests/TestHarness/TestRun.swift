@@ -38,11 +38,11 @@ public final class TestRun: @unchecked Sendable {
             print("  ok   \(name)")
         } catch let failure as TestFailure {
             let location = "\((failure.file as NSString).lastPathComponent):\(failure.line)"
-            failures.append("\(currentSection) › \(name) — \(failure.message) [\(location)]")
-            print("  FAIL \(name) — \(failure.message) [\(location)]")
+            failures.append("\(currentSection) › \(name) - \(failure.message) [\(location)]")
+            print("  FAIL \(name) - \(failure.message) [\(location)]")
         } catch {
-            failures.append("\(currentSection) › \(name) — threw \(error)")
-            print("  FAIL \(name) — threw \(error)")
+            failures.append("\(currentSection) › \(name) - threw \(error)")
+            print("  FAIL \(name) - threw \(error)")
         }
     }
 

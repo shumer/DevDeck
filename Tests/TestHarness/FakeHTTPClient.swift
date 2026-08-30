@@ -4,7 +4,7 @@ import Foundation
 /// Replays scripted responses and records what was asked of it.
 ///
 /// Two modes, because two shapes of test need them: a queue for a single endpoint called
-/// repeatedly, and routes for code that fans out over several URLs concurrently — there the
+/// repeatedly, and routes for code that fans out over several URLs concurrently - there the
 /// arrival order is not deterministic and a queue would make the test flaky.
 public actor FakeHTTPClient: HTTPClient {
     private var pending: [Result<HTTPResponse, Error>]

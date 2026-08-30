@@ -6,8 +6,8 @@ plus a menu-bar item with the count.
 
 Native macOS, built from a SwiftPM package with no Xcode required.
 
-Pull requests across every account a token can see — yours and the ones waiting on your
-review — worst first:
+Pull requests across every account a token can see - yours and the ones waiting on your
+review - worst first:
 
 ```
 ┌────────────────────────────────────────────┐
@@ -36,7 +36,7 @@ An Arc XP project: whether its local Fusion stack is up, and the links you use:
 └────────────────────────────────────────────┘
 ```
 
-A DDEV project, which can describe itself — versions, state and URLs all come from DDEV or
+A DDEV project, which can describe itself - versions, state and URLs all come from DDEV or
 the checkout:
 
 ```
@@ -50,7 +50,7 @@ the checkout:
 └────────────────────────────────────────────┘
 ```
 
-Anything else — a folder, a command and a URL that proves it worked:
+Anything else - a folder, a command and a URL that proves it worked:
 
 ```
 ┌────────────────────────────────────────────┐
@@ -69,7 +69,7 @@ cannot work:
 ```
 ┌────────────────────────────────────────────┐
 │ ▣ DDEV · ACME SHOP                23:41:02 │
-│ ● Docker is not running — start it first   │
+│ ● Docker is not running - start it first   │
 │ ⎇ main                                     │
 │ drupal 10.6.11 · acme-shop                 │
 │ Mailpit │ Local site Test UAT Prod         │
@@ -87,10 +87,10 @@ cannot work:
 | Arc XP · one card per project | working | added per project |
 | DDEV · one card per project | working | added per project |
 | Project · one card per project | working | added per project |
-| Arc XP · deployed bundle versions | planned — needs an org token | — |
+| Arc XP · deployed bundle versions | planned - needs an org token | - |
 
 **The card carries both halves of "what do I owe today."** Your own open pull requests, and
-the ones somebody has asked you to review — two searches in one GraphQL request, because
+the ones somebody has asked you to review - two searches in one GraphQL request, because
 GitHub's search cannot OR those qualifiers. A review someone is waiting on sorts just under the
 blocked rows, wears an eye and the code `RV`, and leaves the card the moment you review it. Turn
 it off with `includesReviewRequests` if you would rather the card stayed only about your work.
@@ -101,10 +101,10 @@ behind it yet.
 
 ## Build and run
 
-Needs the Swift 6 toolchain from the Command Line Tools — `xcode-select --install`. **Xcode is
+Needs the Swift 6 toolchain from the Command Line Tools - `xcode-select --install`. **Xcode is
 not required**: there is no project file and nothing here opens in it. Docker is needed only by
-the project cards that run something in containers — Arc's Fusion stack, DDEV, and any plain
-project marked as needing it — and the deck says plainly when it is not running.
+the project cards that run something in containers - Arc's Fusion stack, DDEV, and any plain
+project marked as needing it - and the deck says plainly when it is not running.
 
 ```bash
 git clone git@github.com:shumer/DesktopWidgets.git widgets && cd widgets
@@ -118,7 +118,7 @@ quits any running copy, replaces `/Applications/DevDeck.app` and launches the ne
 is left for you to drag anywhere.
 
 The copy in `/Applications` is the one that matters. macOS registers a login item **by path**,
-and the bundle in the repository is deleted and recreated on every build — so "Start at login"
+and the bundle in the repository is deleted and recreated on every build - so "Start at login"
 only works for the installed copy.
 
 | Command | What it does |
@@ -127,10 +127,10 @@ only works for the installed copy.
 | `./build.sh --no-install` | builds `./DevDeck.app` only; open it yourself with `open ./DevDeck.app` |
 | `./build.sh --skip-tests` | skips the suite; fine for a quick loop, never in CI |
 | `./build.sh --skip-tests --no-install` | both, in that order |
-| `swift run DevDeck` | runs from the terminal without bundling — handy for `print` debugging |
+| `swift run DevDeck` | runs from the terminal without bundling - handy for `print` debugging |
 | `pkill -f DevDeck` | quits every running copy |
 
-**Settings → General shows the running version** — `DevDeck 0.3 (build 31)` — and which bundle
+**Settings → General shows the running version** - `DevDeck 0.3 (build 31)` - and which bundle
 it came from. The marketing number lives in `VERSION` and is bumped by hand when a release
 earns a name; the build number is the commit count, so it moves on every rebuild. That is the
 quickest way to tell whether the copy in front of you is the change you just made or the one
@@ -149,7 +149,7 @@ scripts/smoke-test.sh        # optional: one real API call, prints counts, never
 ```
 
 `seed-token.sh` takes an account and a variable name, because one token per account is the
-point — a fine-grained token is approved per organisation, so no single one covers every
+point - a fine-grained token is approved per organisation, so no single one covers every
 employer:
 
 ```bash
@@ -166,12 +166,12 @@ It is verified against the API before it is stored, and it only ever lives in th
 Keychain.
 
 Settings live in the `com.shumer.devdeck` preferences domain. To start over:
-`defaults delete com.shumer.devdeck` (tokens survive that — they are in the Keychain).
+`defaults delete com.shumer.devdeck` (tokens survive that - they are in the Keychain).
 
 ### Several accounts
 
 One token rarely covers everything: a fine-grained token is approved per organisation, and
-some organisations sit behind SAML SSO. **Settings → GitHub accounts** manages a list — each
+some organisations sit behind SAML SSO. **Settings → GitHub accounts** manages a list - each
 account has its own label, its own organisations and its own token in the Keychain.
 
 All accounts feed the same cards. Pull requests visible to two accounts are shown once. When
@@ -187,7 +187,7 @@ an **Open links in** setting: a browser, and for Chrome, Edge, Brave, Vivaldi an
 profile as well, listed by the names you gave them. Clicking a row then lands in the profile
 that is signed in as that account.
 
-The pickers apply the moment you change them — there is a **Test** button beside them that
+The pickers apply the moment you change them - there is a **Test** button beside them that
 opens one page so you can see where it lands. Only the token needs an explicit **Verify
 token** press, because it is checked against the API before being stored.
 
@@ -199,7 +199,7 @@ that would not work.
 
 Cards show three rows and a **show N more** line. Clicking it grows the panel to show up to
 twelve, pushing the panels below it down; clicking again collapses. It is deliberately not
-remembered — expanding is a "let me look at this now" gesture, and a deck that comes back tall
+remembered - expanding is a "let me look at this now" gesture, and a deck that comes back tall
 the next morning is a surprise.
 
 ### The token
@@ -211,7 +211,7 @@ catch people out:
 
 - the **notifications** permission sits under the account section rather than the repository
   section, and without it the inbox card shows
-  `Forbidden — Resource not accessible by personal access token`;
+  `Forbidden - Resource not accessible by personal access token`;
 
 - a fine-grained token must be **approved by each organisation** before it can see anything
   there, and until then the API answers with an empty result rather than an error;
@@ -227,23 +227,23 @@ you use, the browser they open in, and control of its local Fusion stack.
 
 - **Links** are templates with `{org}` and `{site}` substituted. **The organisation field
   carries the environment**: type `sandbox.acme` for the sandbox and `acme` for
-  production, and the templates add nothing of their own — PageBuilder becomes
+  production, and the templates add nothing of their own - PageBuilder becomes
   `https://sandbox.acme.arcpublishing.com/home/`. PageBuilder, Composer and Deployer are
   confirmed against a real organisation; Site Service and Delivery API are guesses, so press
   **Test** on each and edit the field in place when it is wrong.
 - **Sandbox and Prod ship empty**: a published site lives on its own domain and there is
   nothing to derive it from. Paste the URLs in and switch them on.
-- **Two rows.** Arc's tooling on top — PageBuilder, Composer, Deployer, all in blue — and the
+- **Two rows.** Arc's tooling on top - PageBuilder, Composer, Deployer, all in blue - and the
   environments you can open below it, in the order local, sandbox, production. The local chip
   is green while the stack is up and grey when it is not, sandbox is violet and production
   amber: production is the one worth a beat of hesitation, so it is the one that is not calm.
 - **Local stack** buttons run the Arc CLI in the project folder: **Start** is `npx fusion
-  daemon` (the CLI's background mode — `fusion start` runs in the foreground and would hold
+  daemon` (the CLI's background mode - `fusion start` runs in the foreground and would hold
   the app hostage), **Stop** is `npx fusion stop`, **Restart** is one then the other. All three
   are editable per project.
 - **Running or not** is answered by asking the engine, not by watching processes: the card
   requests `/release` and shows the engine version it reports. A stack you started by hand in
-  a terminal therefore shows as running too — the card reports what is actually serving.
+  a terminal therefore shows as running too - the card reports what is actually serving.
 - **The port comes from the project's `.env`.** Fusion defaults to 80, but `PORT` in the
   checkout overrides it, and that file is the only honest source. Leave **Local URL** empty
   and the card follows it; fill it in only for a stack that does not. The chip says
@@ -251,14 +251,14 @@ you use, the browser they open in, and control of its local Fusion stack.
   tooltip, along with every other link's.
 - **After a start the card waits.** `fusion daemon` returns as soon as the containers exist,
   while the engine needs longer to serve, so the card polls for up to a minute before
-  concluding anything — and if nothing ever answers it names the URL it tried.
+  concluding anything - and if nothing ever answers it names the URL it tried.
 - **The branch is on the card, and clicking it opens the repository.** Both come from the files
-  in `.git` — `HEAD` for the branch, `config` for origin — read directly rather than by running
+  in `.git` - `HEAD` for the branch, `config` for origin - read directly rather than by running
   `git` every ten seconds. So the card shows what the running stack is actually serving,
   including after switching branches in a terminal, and the line that says so is one click from
   the code. It opens the repository rather than the branch on purpose: a branch link has to be
   right about whether the remote has that branch, and a local branch nobody has pushed is the
-  normal state of a checkout — the repository is the one page that always exists.
+  normal state of a checkout - the repository is the one page that always exists.
 - **Folder** opens the checkout in Finder, **Terminal** opens it in iTerm, Warp or Terminal,
   whichever is installed.
 
@@ -266,42 +266,42 @@ Commands run through a login shell (`zsh -lc`) **with the `PATH` your terminal a
 An app launched from Finder inherits a bare environment, and a login shell alone does not fix
 it: it reads `.zprofile` but never `.zshrc`, where nvm and friends live. So the app asks an
 interactive shell for its `PATH` once at launch and gives it to every command. Without that,
-`ddev` and `docker` work — they are in `/usr/local/bin` — and `npx` reports "command not found"
+`ddev` and `docker` work - they are in `/usr/local/bin` - and `npx` reports "command not found"
 from a machine that plainly has it.
 
 ## DDEV projects
 
 **Settings → DDEV projects → Add project** offers what `ddev list` found, so there is no
-folder to go hunting for — DDEV already knows every project on the machine.
+folder to go hunting for - DDEV already knows every project on the machine.
 
 - **One `ddev list -j` answers for the whole deck.** Six cards cost the same as one, which is
   why this is a shared environment rather than a probe per project.
 - **The framework version comes from `composer.lock`.** DDEV's own `type:` is a setting
-  nobody updates after an upgrade — two projects here still said `drupal9` while running
-  Drupal 11.4.4 and 10.6.11 — so the footer reads the lock file, which cannot drift that way,
+  nobody updates after an upgrade - two projects here still said `drupal9` while running
+  Drupal 11.4.4 and 10.6.11 - so the footer reads the lock file, which cannot drift that way,
   and falls back to the DDEV type only when there is no lock file at all.
 - **PHP and database versions come from `.ddev/config.yaml`.** `ddev list` does not carry
   them and `ddev describe` is a process per project, while the file is right there in the
-  checkout — the same trick as Arc's `PORT` and the git branch.
+  checkout - the same trick as Arc's `PORT` and the git branch.
 - **Paused is its own state.** DDEV pauses containers without tearing them down, and calling
   that "stopped" would misrepresent what pressing Start is about to do.
 - **A broken file sync is called out.** When mutagen is enabled and not `ok`, the card says
   so: edits stop reaching the container and nothing else on screen would hint at why.
-- **Two rows of links.** Mailpit and xhgui on top, straight from DDEV — Mailpit on by
+- **Two rows of links.** Mailpit and xhgui on top, straight from DDEV - Mailpit on by
   default, xhgui not. Below them the environments: the local site, which DDEV reports, then
   **Test, UAT and Prod**, which ship empty for you to paste addresses into. Local is green,
   test and UAT violet, production amber.
 - **Only the local link waits on the container.** It is dimmed while the project is down,
   because a link into a stopped project lands on a connection error that reads as a broken
   app; a deployed site is reachable either way.
-- **Power off all DDEV** in the menu runs `ddev poweroff` — every project and the router, for
+- **Power off all DDEV** in the menu runs `ddev poweroff` - every project and the router, for
   when the laptop needs its memory back.
 
 ## Plain projects
 
 Everything that is neither Arc nor DDEV: a compose stack, a dev server, a Makefile. **Settings
-→ Projects → +** asks for a folder and then reads it — a compose file, a `dev` script in
-`package.json`, a `up:` target in a Makefile — and fills the commands in for you. The **Detect**
+→ Projects → +** asks for a folder and then reads it - a compose file, a `dev` script in
+`package.json`, a `up:` target in a Makefile - and fills the commands in for you. The **Detect**
 button does the same again later, and nothing is ever guessed over something you typed.
 
 - **One checkbox decides how the command is run.** *The command keeps running* is on for
@@ -311,14 +311,14 @@ button does the same again later, and nothing is ever guessed over something you
   opens that file. A command that returns is simply run and waited for, with its output kept in
   the same log.
 - **Stop kills the whole tree** when there is no stop command of your own. `npm run dev` is a
-  wrapper, and killing it alone leaves the server it spawned holding the port — which then makes
+  wrapper, and killing it alone leaves the server it spawned holding the port - which then makes
   the next start fail for a reason nothing on screen would explain.
-- **The health URL decides whether it is running**, exactly as the Arc card asks the engine — so
+- **The health URL decides whether it is running**, exactly as the Arc card asks the engine - so
   a stack you started yourself in a terminal reads as running too. Up means 2xx, 3xx, 401 or 403;
   a 404 or a 500 does not count. A local port is a shared resource, and the first version of this
   rule counted any answer at all: a Docker container from another project held 8080, answered the
   configured `/health` with a 404, and the card reported a backend nobody had started as running.
-- **Live process, silent URL, is `starting…`** rather than stopped — that is a dev server
+- **Live process, silent URL, is `starting…`** rather than stopped - that is a dev server
   compiling, and it resolves itself within seconds.
 - **Test, UAT and Prod ship empty**, next to the local site, the same as everywhere else. Extra
   tooling links may use `{site}` to avoid repeating the port.
@@ -337,14 +337,14 @@ the same ten-second loop: `docker version --format '{{.Server.Version}}'`.
 - **The daemon is asked, not the process table.** Colima, OrbStack, Rancher and a remote context
   all serve `docker` with no Docker Desktop anywhere, and looking for a running app would call
   every one of them "not running".
-- **A card that needs Docker says so** — the pill reads `docker off`, the state line says why,
+- **A card that needs Docker says so** - the pill reads `docker off`, the state line says why,
   and the Start button becomes **▶ Start Docker**, which opens Docker Desktop (or OrbStack,
   Rancher, Podman Desktop) without stealing focus. The card then says `docker starting…` until
   the daemon answers.
 - **A running project is never gated.** Something is clearly serving it, and no probe beats that.
 - **Not having asked yet blocks nothing**, so the first second of a launch does not grey out
   every button.
-- Where there is no runtime application to open — Colima is a CLI — the card shows a disabled
+- Where there is no runtime application to open - Colima is a CLI - the card shows a disabled
   Start rather than a button that would do nothing.
 
 ### Status codes
@@ -364,53 +364,53 @@ is done.
 ## Using it
 
 The menu-bar item is a stack of cards with the app's initials cut out of the front one, and it
-turns red when something needs you — the numbers are in its tooltip rather than in the menu
+turns red when something needs you - the numbers are in its tooltip rather than in the menu
 bar, where a bare count belongs to no app in particular. It is drawn in code
 (`DeckIcon`), and `swift run IconPreview out.png` renders it at menu-bar size, on a light and
 a dark bar, for when it needs adjusting.
 
 Everything else lives in its menu:
 
-- **Cards** — show or hide each card; a hidden card is not fetched at all. Arc projects get
+- **Cards** - show or hide each card; a hidden card is not fetched at all. Arc projects get
   their own group below the built-in cards.
-- **Keep on desktop / Float above windows** — panels behind your windows, or above them.
-- **Lock position** — stop dragging once the layout is right.
-- **Tidy panels into columns** — close up gaps without resetting where you put them. It anchors
+- **Keep on desktop / Float above windows** - panels behind your windows, or above them.
+- **Lock position** - stop dragging once the layout is right.
+- **Tidy panels into columns** - close up gaps without resetting where you put them. It anchors
   on the topmost panel and stacks downwards, starting a new column beside it whenever the next
   card would hang below the screen, so a deck of six cannot push its last card under the bottom
   edge where nothing can grab it. The order it lays out is the deck's own: the built-in cards,
   then Arc projects, then DDEV, then the plain ones, each group alphabetical.
 - **Start at login**, **Refresh now**, **Settings…**
 
-The settings window is three columns: the sections — GitHub accounts, Arc projects, DDEV
-projects, Projects, General — then what is in the section, then the form for the one selected. Only one
+The settings window is three columns: the sections - GitHub accounts, Arc projects, DDEV
+projects, Projects, General - then what is in the section, then the form for the one selected. Only one
 account or project has a form on screen at a time, which is what keeps two similarly named
 projects apart, and the form stretches with the window. Add and remove are the `+` and `−`
 under the list. Everything applies as you change it; only a token waits for **Verify token**,
 because it is checked against the API before being stored.
 
-Drag a panel anywhere; the position is remembered per card — **against the display it is on**,
+Drag a panel anywhere; the position is remembered per card - **against the display it is on**,
 not as a point on the desktop. Unplug the external monitor and the cards that live on it are
 parked on whatever screen is left, keeping their distance from the top; plug it back in and they
 go home. Nothing is re-saved while a card is parked, because parking is not a decision you made.
 This is why a deck kept on the laptop screen no longer scatters when an external display that
 happens to be the main one comes and goes. While the display a card belongs to is unplugged the
-card is parked somewhere visible and still remembers where it lives — but if you tidy or drag it
+card is parked somewhere visible and still remembers where it lives - but if you tidy or drag it
 while it is parked, that is where it now lives, and it stays there. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
 panel for the same menu.
 
 Buttons work on the first click even though the deck sits behind your windows and is never the
-frontmost app — which is not what AppKit does by default, and is why they used to need pressing
+frontmost app - which is not what AppKit does by default, and is why they used to need pressing
 twice.
 
 A long command narrates itself. Starting an Arc stack takes about a minute, and while it runs
 the card shows the line the command has just printed instead of nothing at all. If the stack
-never comes up, the card keeps the reason the command gave — a port already taken, most often —
+never comes up, the card keeps the reason the command gave - a port already taken, most often -
 rather than reporting the silence that followed.
 
 Anything clickable lights up under the pointer and turns the cursor into a hand. Because the
-panels sit behind other windows, that tracking starts once the deck itself has been clicked —
+panels sit behind other windows, that tracking starts once the deck itself has been clicked -
 so buttons and links also carry a resting fill rather than relying on hover to look pressable.
 
 ### How a card is put together
@@ -419,11 +419,11 @@ Every project card is the same six things, in the same order, so one glance answ
 question on all of them:
 
 1. **A mark and the title**, with the time of the last check on the right. The mark says what
-   kind of project it is — the octocat, Arc's A, DDEV's mark, Node's hexagon, Docker's whale, a
+   kind of project it is - the octocat, Arc's A, DDEV's mark, Node's hexagon, Docker's whale, a
    hammer for a Makefile. They are the real logos, drawn from the vendors' own SVG path data
    rather than shipped as images: this toolchain has no asset catalog, and a hand-drawn
    impression of the octocat at fifteen points looks exactly like what it is.
-2. **The state, at 17 points** — one vocabulary on every card: `running`, `stopped`,
+2. **The state, at 17 points** - one vocabulary on every card: `running`, `stopped`,
    `starting…`, `paused`, `unknown`, `not configured`, and `Docker is not running` when that is
    what is really in the way. This is the card's focal point, but a quiet one: the words are
    white at 80% and the colour lives in the dot beside them, which glows when it means something
@@ -431,12 +431,12 @@ question on all of them:
    something wants attention. A detail like `pid 48213`, `mutagen paused` or `not in ddev list`
    sits at the end of the same line.
 3. **The branch**, on a line of its own, because branch names are longer than anything beside
-   them — and it is a link: the checkout knows its origin, so clicking it opens the repository
+   them - and it is a link: the checkout knows its origin, so clicking it opens the repository
    on GitHub in the project's own browser. An arrow at the end of the line says so; a checkout
    with no remote simply has no arrow.
 4. **What names this checkout**: the framework and folder on the left, versions or the start
    command on the right.
-5. **The links**, in one wrapping row: what you work in, a divider, then the environments —
+5. **The links**, in one wrapping row: what you work in, a divider, then the environments -
    local first, then test and UAT in violet, production in amber.
 6. **The controls.** The one action that matters now is half again as wide, tinted and bolder;
    the rest recede to a hairline. All four carry an icon.
@@ -447,11 +447,11 @@ came down from 249 to about 200 points and hold more than they did.
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) — modules, data flow, where to add a card
-- [docs/github-api.md](docs/github-api.md) — the GraphQL query, rate limits, token setup
-- [docs/development.md](docs/development.md) — toolchain, scripts, definition of done
-- [docs/roadmap.md](docs/roadmap.md) — what is done and what is next
-- [docs/adr/](docs/adr/) — why native, why SwiftPM only, why cards are configurable, why
+- [docs/architecture.md](docs/architecture.md) - modules, data flow, where to add a card
+- [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
+- [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
+- [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
+- [docs/adr/](docs/adr/) - why native, why SwiftPM only, why cards are configurable, why
   accounts are plural, how local stacks are driven, why DDEV shares one call, how a plain
   project is started, why Docker is checked first
 

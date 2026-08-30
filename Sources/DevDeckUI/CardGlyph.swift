@@ -3,7 +3,7 @@ import SwiftUI
 /// The mark in front of a card's title, saying what kind of thing the card is about.
 ///
 /// Real logos, drawn from the vendors' own path data rather than approximated out of circles
-/// and triangles — see `BrandMark`. Each keeps its brand colour, which is why they are the one
+/// and triangles - see `BrandMark`. Each keeps its brand colour, which is why they are the one
 /// exception to the rule that colour on these cards means state: nobody reads a logo as a
 /// status, and a grey octocat reads as a worse octocat.
 public enum CardGlyph: String, Sendable, Equatable, CaseIterable {
@@ -31,7 +31,7 @@ public struct CardGlyphView: View {
     }
 
     /// The vector behind a glyph, or nil where the glyph is a system symbol. Public so the
-    /// suite can check that every logo actually parses — a mark that silently comes out empty
+    /// suite can check that every logo actually parses - a mark that silently comes out empty
     /// looks, on a card, exactly like a mark that was never added.
     public nonisolated static func mark(for glyph: CardGlyph) -> BrandMark.Vector? {
         switch glyph {
@@ -83,7 +83,7 @@ private struct VectorMark: View {
     }
 }
 
-/// Arc XP: the wordmark's "A" — a white left stroke and a right one that runs from Arc's blue
+/// Arc XP: the wordmark's "A" - a white left stroke and a right one that runs from Arc's blue
 /// into its green. The navy disc it usually sits on is left out; on dark glass it would be a
 /// dark hole rather than a logo.
 private struct ArcMark: View {

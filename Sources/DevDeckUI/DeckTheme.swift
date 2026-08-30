@@ -4,7 +4,7 @@ import SwiftUI
 /// The card frame's own measurements.
 ///
 /// Separate from `CardChrome` because it is generic over its content, and a generic type's
-/// static members cannot be read without naming that content — while every size calculation in
+/// static members cannot be read without naming that content - while every size calculation in
 /// the app needs exactly these numbers.
 public enum CardChromeMetrics {
     public static let horizontalPadding: Double = 14

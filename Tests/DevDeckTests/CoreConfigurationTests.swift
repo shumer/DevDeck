@@ -9,7 +9,7 @@ private let catalog: [CardDescriptor] = [
 ]
 
 func runConfigurationTests(_ run: TestRun) async {
-    run.section("Cards — layout")
+    run.section("Cards - layout")
 
     await run.test("defaults come from the catalog") {
         let layout = CardLayout.default

@@ -5,7 +5,7 @@ import SwiftUI
 /// One plain project: whether it is up, where to open it, and the command that starts it.
 ///
 /// The same shape as the Arc and DDEV cards and built from the same pieces. What differs is
-/// that nothing here can describe itself — there is no `ddev list` to ask — so the card shows
+/// that nothing here can describe itself - there is no `ddev list` to ask - so the card shows
 /// exactly what was configured, and the health URL is the only thing that decides "running".
 public struct LocalProjectCard: View {
     private let project: LocalProject
@@ -69,7 +69,7 @@ public struct LocalProjectCard: View {
         }
     }
 
-    /// What this project is built on. Nothing declares it, so it is read from the command —
+    /// What this project is built on. Nothing declares it, so it is read from the command -
     /// which is the one thing every plain project definitely has.
     private var glyph: CardGlyph {
         switch project.kind {

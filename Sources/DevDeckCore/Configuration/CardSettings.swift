@@ -31,7 +31,7 @@ public struct CardLayout: Codable, Sendable, Equatable {
     /// The stored settings say only whether a card is shown, never where it sits. They used to
     /// carry the order as well, and that order was an accident: a card was appended the first
     /// time it was switched on, so the deck ended up in the sequence the projects happened to be
-    /// added in, and "Tidy panels" laid them out that way — which is why tidying read as
+    /// added in, and "Tidy panels" laid them out that way - which is why tidying read as
     /// scrambling. Order belongs to the catalog, where it can be a rule someone chose.
     public func resolved(catalog: [CardDescriptor] = CardCatalog.all) -> [ResolvedCard] {
         let stored = Dictionary(

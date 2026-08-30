@@ -21,7 +21,7 @@ public struct DisplayFrame: Sendable, Equatable {
 /// macOS lays every screen out in one coordinate space and re-lays it whenever a display comes
 /// or goes: unplug the external one that happens to be the main display and the laptop's screen
 /// moves under the cards, so an absolute point that meant "top left of the laptop" now means
-/// somewhere else entirely — often off every screen. Remembering the display and the offset
+/// somewhere else entirely - often off every screen. Remembering the display and the offset
 /// within it means a card comes back where it was, and a card whose display is gone can be
 /// parked somewhere visible **without forgetting where it belongs**.
 public struct PanelPlacement: Sendable, Equatable {
@@ -99,7 +99,7 @@ public struct PanelPlacement: Sendable, Equatable {
     /// The same offset applied to some other display, clamped so the panel stays reachable.
     ///
     /// What a card falls back to while its own display is unplugged. It keeps its shape of the
-    /// layout — the same distance from the top, roughly the same side — instead of being piled
+    /// layout - the same distance from the top, roughly the same side - instead of being piled
     /// into a corner, and the placement itself is left alone so the card goes home when the
     /// display returns.
     public func topLeft(borrowing display: DisplayFrame, size: CGSize) -> CGPoint {
@@ -125,7 +125,7 @@ public struct PanelPlacement: Sendable, Equatable {
     /// The rule has two halves and both matter. A panel parked on a borrowed display keeps the
     /// placement it already has, so unplugging a monitor for an hour does not make the deck move
     /// house. But a panel the user has just dragged, or a deck they have just tidied, is a
-    /// decision, and a decision outranks the placement it replaces — otherwise the arrangement is
+    /// decision, and a decision outranks the placement it replaces - otherwise the arrangement is
     /// dropped on the floor and the next screen change hauls every card back to where it was
     /// parked.
     public static func shouldRecord(

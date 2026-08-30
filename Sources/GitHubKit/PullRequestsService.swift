@@ -20,7 +20,7 @@ public struct PullRequestsService: Sendable {
 
     public func fetch() async throws -> PullRequestsSnapshot {
         // Both searches ride in one request. GitHub's search cannot express "mine or waiting on
-        // me" in a single query — the qualifiers do not OR — but GraphQL is happy to run two and
+        // me" in a single query - the qualifiers do not OR - but GraphQL is happy to run two and
         // hand back both, which costs one round trip rather than two.
         let payload: SearchPayload = try await client.graphQL(
             query: Self.query,
@@ -45,7 +45,7 @@ public struct PullRequestsService: Sendable {
     /// review. `review-requested:@me` drops a pull request the moment you review it, which is
     /// exactly when it should leave the card.
     ///
-    /// Returns an empty string when the setting is off — GitHub rejects an empty search, so the
+    /// Returns an empty string when the setting is off - GitHub rejects an empty search, so the
     /// query becomes a harmless one that matches nothing rather than an error.
     public static func reviewQuery(settings: GitHubSettings) -> String {
         guard settings.includesReviewRequests else { return "is:pr is:open author:@me is:draft is:merged" }
@@ -71,7 +71,7 @@ public struct PullRequestsService: Sendable {
         }
     }
 
-    /// One query for the whole card. `reviewThreads` is capped at 100 — a PR with more open
+    /// One query for the whole card. `reviewThreads` is capped at 100 - a PR with more open
     /// conversations than that is already the most blocked thing on the card.
     static let query = """
     query DevDeckPullRequests($q: String!, $r: String!, $limit: Int!) {

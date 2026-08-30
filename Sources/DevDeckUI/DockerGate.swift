@@ -4,7 +4,7 @@ import SwiftUI
 /// The Docker precondition, said the same way on every card that has one.
 ///
 /// A card whose project cannot start without Docker has to answer a different question when
-/// Docker is down: not "is this project running" — obviously not — but "why is the button
+/// Docker is down: not "is this project running" - obviously not - but "why is the button
 /// there at all". Pressing Start with no daemon produces a wall of shell output the card has
 /// nowhere to put, so the card says what is wrong instead and offers the thing that fixes it.
 public enum DockerGate {
@@ -44,8 +44,8 @@ public enum DockerGate {
 
     /// The action that replaces Start while Docker is in the way.
     ///
-    /// `onStart` is nil when there is no runtime to launch — a machine on Colima has a CLI and
-    /// no app to open — and then there is nothing to offer but the disabled Start.
+    /// `onStart` is nil when there is no runtime to launch - a machine on Colima has a CLI and
+    /// no app to open - and then there is nothing to offer but the disabled Start.
     public static func startAction(_ status: DockerStatus, onStart: (() -> Void)?) -> CardAction {
         guard let onStart else {
             return CardAction("Start", systemImage: "play.fill", tint: DeckTheme.green, isEnabled: false)

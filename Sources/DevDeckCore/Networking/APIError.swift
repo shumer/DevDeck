@@ -4,7 +4,7 @@ import Foundation
 public enum APIError: Error, Sendable, Equatable {
     /// The token is missing, expired or revoked.
     case unauthorized
-    /// Authenticated but not allowed — most often SAML SSO authorisation is missing
+    /// Authenticated but not allowed - most often SAML SSO authorisation is missing
     /// for the organisation, which GitHub reports as 403 rather than 401.
     case forbidden(String?)
     case rateLimited(resetAt: Date?)

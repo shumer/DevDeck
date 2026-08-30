@@ -26,7 +26,7 @@ private func summary(
 }
 
 func runAccountsTests(_ run: TestRun) async {
-    run.section("Accounts — identity")
+    run.section("Accounts - identity")
 
     await run.test("the first account keeps the original token key") {
         try expectEqual(GitHubAccount.default.tokenKey, TokenKey.github,
@@ -60,7 +60,7 @@ func runAccountsTests(_ run: TestRun) async {
                         "an account with no organisations does not clear the deck-wide list")
     }
 
-    run.section("Accounts — storage")
+    run.section("Accounts - storage")
 
     await run.test("an unconfigured deck still has one account") {
         let store = GitHubAccountsStore(backend: InMemoryPreferences())
@@ -91,7 +91,7 @@ func runAccountsTests(_ run: TestRun) async {
         try expectEqual(GitHubAccountsStore(backend: backend).accounts().count, 1)
     }
 
-    run.section("Accounts — merging")
+    run.section("Accounts - merging")
 
     await run.test("pull requests from two accounts land on one card") {
         let merged = PullRequestsSnapshot.merging([
@@ -135,7 +135,7 @@ func runAccountsTests(_ run: TestRun) async {
         try expectNil([AccountFailure]().summary)
     }
 
-    run.section("Accounts — fan-out")
+    run.section("Accounts - fan-out")
 
     await run.test("one broken account does not blank the card") {
         let workspace = GitHubWorkspace(

@@ -7,10 +7,10 @@ import SwiftUI
 /// The alternative was drawing the brand marks by hand out of circles and triangles, and it
 /// looked like what it was. Every logo here ships as one or two `d` attributes copied from the
 /// vendor's own SVG, so what appears on the card is the real mark rather than an impression of
-/// it — and no asset catalog is needed, which this toolchain does not have anyway.
+/// it - and no asset catalog is needed, which this toolchain does not have anyway.
 public enum SVGPath {
     /// Parses `d` and scales it from its viewBox into `rect`, keeping the aspect ratio and
-    /// centring what is left over — the same rule `preserveAspectRatio="xMidYMid meet"` states.
+    /// centring what is left over - the same rule `preserveAspectRatio="xMidYMid meet"` states.
     public static func path(_ commands: String, viewBox: CGSize, in rect: CGRect) -> Path {
         let raw = parse(commands)
         guard viewBox.width > 0, viewBox.height > 0 else { return raw }

@@ -35,7 +35,7 @@ public struct ActionsSnapshot: Sendable, Equatable, Codable {
         )
     }
 
-    /// Share of decisive runs that passed, 0…1. Nil when nothing decisive ran in the window —
+    /// Share of decisive runs that passed, 0…1. Nil when nothing decisive ran in the window -
     /// which is different from 0% and must not be drawn as a red zero.
     public var successRate: Double? {
         let decisive = runs.filter { $0.conclusion.countsTowardSuccessRate }
@@ -58,7 +58,7 @@ public struct ActionsSnapshot: Sendable, Equatable, Codable {
         return durations.reduce(0, +) / Double(durations.count)
     }
 
-    /// Failures newest first — the rows worth putting on the card.
+    /// Failures newest first - the rows worth putting on the card.
     public func recentFailures(limit: Int? = nil) -> [WorkflowRun] {
         let failures = runs
             .filter { $0.conclusion == .failure }

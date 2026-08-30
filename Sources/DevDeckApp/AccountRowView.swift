@@ -5,7 +5,7 @@ import GitHubKit
 /// The form for one GitHub account.
 ///
 /// The token field is always empty on screen. A stored secret is never written back into the
-/// UI — the status line says whether one exists, and typing replaces it.
+/// UI - the status line says whether one exists, and typing replaces it.
 @MainActor
 final class AccountRowView: FlippedContainer {
     private(set) var account: GitHubAccount

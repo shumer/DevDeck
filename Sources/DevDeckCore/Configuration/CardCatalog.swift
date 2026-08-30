@@ -83,7 +83,7 @@ public enum CardCatalog {
         all.first { $0.id == id }
     }
 
-    /// The catalog plus whatever cards the user's own configuration adds — one per Arc
+    /// The catalog plus whatever cards the user's own configuration adds - one per Arc
     /// project, for instance. Layout and menu code always works against this, so a project
     /// added in settings becomes a card without any change here.
     public static func all(including dynamic: [CardDescriptor]) -> [CardDescriptor] {
@@ -94,7 +94,7 @@ public enum CardCatalog {
     /// each group alphabetical.
     ///
     /// A rule rather than an accident. The order used to come from the stored settings, where a
-    /// card was appended the first time it was switched on — so the deck ended up in the
+    /// card was appended the first time it was switched on - so the deck ended up in the
     /// sequence the projects happened to be added in, and "Tidy panels" faithfully reproduced
     /// it. Kinds first because that is how the menu groups them and how someone thinks about
     /// them; alphabetical within a kind because any other rule needs remembering.

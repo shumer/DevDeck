@@ -9,7 +9,7 @@ public enum ProcessLiveness {
     public static func isAlive(_ pid: Int32) -> Bool {
         guard pid > 0 else { return false }
         if kill(pid, 0) == 0 { return true }
-        // EPERM means it exists and belongs to someone else — still alive. Only ESRCH is a
+        // EPERM means it exists and belongs to someone else - still alive. Only ESRCH is a
         // genuine "no such process".
         return errno == EPERM
     }

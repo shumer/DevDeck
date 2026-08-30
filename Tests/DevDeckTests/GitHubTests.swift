@@ -17,7 +17,7 @@ private func makeClient(
 }
 
 func runGitHubTests(_ run: TestRun) async {
-    run.section("GitHub — search query")
+    run.section("GitHub - search query")
 
     await run.test("the default query asks for my open pull requests") {
         let query = PullRequestsService.searchQuery(settings: .default)
@@ -36,7 +36,7 @@ func runGitHubTests(_ run: TestRun) async {
         try expect(query.contains("org:shumer"))
     }
 
-    run.section("GitHub — pull request decoding")
+    run.section("GitHub - pull request decoding")
 
     let (client, http) = makeClient(responses: [.success(.json(Fixtures.pullRequestSearch))])
     let snapshot = try? await PullRequestsService(client: client).fetch()
@@ -128,10 +128,10 @@ func runGitHubTests(_ run: TestRun) async {
         settings.includesReviewRequests = false
         let query = PullRequestsService.reviewQuery(settings: settings)
         try expect(!query.contains("review-requested"), "nothing is asked for")
-        try expect(!query.isEmpty, "and the query is still valid — GitHub rejects an empty one")
+        try expect(!query.isEmpty, "and the query is still valid - GitHub rejects an empty one")
     }
 
-    run.section("GitHub — API mapping")
+    run.section("GitHub - API mapping")
 
     await run.test("status codes mirror the wording they abbreviate") {
         func make(
