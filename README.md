@@ -54,12 +54,15 @@ Anything else - a folder, a command and a URL that proves it worked:
 
 ```
 ┌────────────────────────────────────────────┐
-│ ⬡ PROJECT · ACME PORTAL           23:58:04 │
+│ ⬡ PROJECT · ACME PORTAL        ≡  23:58:04 │
 │ ● running                       pid 48213  │
 │ ⎇ feat/PROJ-77-tables ↗                    │
 │ docker compose · acme-portal  docker com…  │
 │ pgAdmin Traefik │ Local site UAT Prod      │
-│ [ ⏻ Stop ] [↻ Restart] [Logs] [Folder]     │
+│ TAIL ACME-PORTAL.LOG                     ⤢ │
+│ listening on 3000                          │
+│ GET /health 200 4ms                        │
+│ [ ⏻ Stop ] [↻ Restart] [Folder] [Terminal] │
 └────────────────────────────────────────────┘
 ```
 
@@ -307,8 +310,8 @@ button does the same again later, and nothing is ever guessed over something you
 - **One checkbox decides how the command is run.** *The command keeps running* is on for
   `npm run dev` and off for `docker compose up -d`. A command that holds its process is started
   detached with `nohup`, its output goes to a log under `~/Library/Application
-  Support/DevDeck/projects`, and its process id is written down beside it; **Logs** on the card
-  opens that file. A command that returns is simply run and waited for, with its output kept in
+  Support/DevDeck/projects`, and its process id is written down beside it; the card's log tray
+  shows the end of that file, and the arrow inside it opens the whole thing. A command that returns is simply run and waited for, with its output kept in
   the same log.
 - **Stop kills the whole tree** when there is no stop command of your own. `npm run dev` is a
   wrapper, and killing it alone leaves the server it spawned holding the port - which then makes
@@ -369,18 +372,23 @@ bar, where a bare count belongs to no app in particular. It is drawn in code
 (`DeckIcon`), and `swift run IconPreview out.png` renders it at menu-bar size, on a light and
 a dark bar, for when it needs adjusting.
 
-Everything else lives in its menu:
+Its menu holds what you do:
 
-- **Cards** - show or hide each card; a hidden card is not fetched at all. Arc projects get
-  their own group below the built-in cards.
-- **Keep on desktop / Float above windows** - panels behind your windows, or above them.
-- **Lock position** - stop dragging once the layout is right.
+- **Cards** - show or hide each card; a hidden card is not fetched at all. Projects get their own
+  group per kind, below the built-in cards.
 - **Tidy panels into columns** - close up gaps without resetting where you put them. It anchors
   on the topmost panel and stacks downwards, starting a new column beside it whenever the next
   card would hang below the screen, so a deck of six cannot push its last card under the bottom
   edge where nothing can grab it. The order it lays out is the deck's own: the built-in cards,
   then Arc projects, then DDEV, then the plain ones, each group alphabetical.
-- **Start at login**, **Refresh now**, **Settings…**
+- **Power off all DDEV**, **Open pull requests in browser**, **Refresh now**, **Settings…**, **Quit**
+
+What the deck *is* rather than what you do with it lives in Settings, under General: where the
+panels sit, whether they are locked, whether a column packs itself, the summon shortcut and its
+dimming, and start-at-login. A menu that mixes the two grows until the thing you came for is
+somewhere in the middle of it.
+
+Right-click a panel for the same menu, with **Collapse to one row** for that card on top.
 
 The settings window is three columns: the sections - GitHub accounts, Arc projects, DDEV
 projects, Projects, General - then what is in the section, then the form for the one selected. Only one
@@ -487,10 +495,11 @@ do not. See [docs/adr/0010-card-palette.md](docs/adr/0010-card-palette.md).
 - [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
-- [docs/adr/](docs/adr/) - why native, why SwiftPM only, why cards are configurable, why
-  accounts are plural, how local stacks are driven, why DDEV shares one call, how a plain
-  project is started, why Docker is checked first, how a card is laid out and why the deck is
-  quieter than it was
+- [docs/adr/](docs/adr/) - twelve decisions and what they cost: why native, why SwiftPM only,
+  why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
+  shares one call, how a plain project is started, why Docker is checked first, how a card is
+  laid out, why the deck is quieter than it was, why a card has two sizes and only two, and why
+  the deck moves a card only when it was asked to
 
 ## Layout
 

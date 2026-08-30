@@ -33,7 +33,7 @@
   with a log and a pid, and the health URL decides whether it is running. Shipped as 0.3.
 - **The Docker gate** - one probe for the whole deck, and cards that need containers say
   "Docker is not running" and offer to start it rather than a Start that cannot work.
-- **The card redesign** - one focal point per card: the state at 20 points, the pill and the
+- **The card redesign** - one focal point per card: the state at 17 points, the pill and the
   footer gone, chips wrapped into one block, quieter controls with icons, the vendors' real
   logos parsed from their own SVGs, a card 352 points wide so `Terminal` fits, and glass that
   is glass again rather than grey paint. Three directions were mocked up first; see
@@ -43,7 +43,8 @@
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
 - **The menu is for doing, Settings is for deciding** - placement, locking, packing, summoning
-  and start-at-login moved out of the menu-bar menu into Settings under General.
+  and start-at-login moved out of the menu-bar menu into Settings under General. Shipped as 0.4,
+  together with the log tray, the collapsed card, summoning and the placement fixes.
 - **The deck stops moving cards nobody asked it to move** - restarting reproduces a layout
   exactly, and closing up a column is a switch rather than a habit. See
   [adr/0012-automatic-movement.md](adr/0012-automatic-movement.md).
