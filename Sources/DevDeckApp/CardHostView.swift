@@ -41,6 +41,7 @@ struct CardHostView: View {
                     status: controller.ddevStatus(for: project),
                     docker: controller.docker,
                     logs: controller.logs(for: card),
+                    isCollapsed: controller.isCollapsed(card),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
@@ -55,6 +56,7 @@ struct CardHostView: View {
                     status: controller.stackStatus(for: project),
                     docker: controller.docker,
                     logs: controller.logs(for: card),
+                    isCollapsed: controller.isCollapsed(card),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onRevealFolder: { LocalFolder.reveal(project.folderURL) },
@@ -69,6 +71,7 @@ struct CardHostView: View {
                     status: controller.localStatus(for: project),
                     docker: controller.docker,
                     logs: controller.logs(for: card),
+                    isCollapsed: controller.isCollapsed(card),
                     onOpen: { LinkOpener.open($0, using: project.browser) },
                     onAction: { controller.perform($0, for: project) },
                     onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
@@ -128,14 +131,16 @@ struct CardHostView: View {
                 return DDEVProjectCard.size(
                     for: project,
                     status: controller.ddevStatus(for: project),
-                    logs: controller.logs(for: card)
+                    logs: controller.logs(for: card),
+                    isCollapsed: controller.isCollapsed(card)
                 )
             }
             if let project = controller.localProject(forCard: card) {
                 return LocalProjectCard.size(
                     for: project,
                     status: controller.localStatus(for: project),
-                    logs: controller.logs(for: card)
+                    logs: controller.logs(for: card),
+                    isCollapsed: controller.isCollapsed(card)
                 )
             }
             guard let project = controller.project(forCard: card) else {
@@ -144,7 +149,8 @@ struct CardHostView: View {
             return ArcProjectCard.size(
                 for: project,
                 status: controller.stackStatus(for: project),
-                logs: controller.logs(for: card)
+                logs: controller.logs(for: card),
+                isCollapsed: controller.isCollapsed(card)
             )
         }
     }

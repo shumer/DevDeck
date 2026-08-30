@@ -12,6 +12,7 @@ public struct LocalProjectCard: View {
     private let status: LocalProjectStatus
     private let docker: DockerStatus
     private let logs: LogLines?
+    private let isCollapsed: Bool
     private let onOpen: (URL) -> Void
     private let onAction: (LocalProjectAction) -> Void
     private let onOpenTerminal: () -> Void
@@ -25,6 +26,7 @@ public struct LocalProjectCard: View {
         status: LocalProjectStatus,
         docker: DockerStatus = DockerStatus(state: .unknown),
         logs: LogLines? = nil,
+        isCollapsed: Bool = false,
         onOpen: @escaping (URL) -> Void = { _ in },
         onAction: @escaping (LocalProjectAction) -> Void = { _ in },
         onOpenTerminal: @escaping () -> Void = {},
@@ -37,6 +39,7 @@ public struct LocalProjectCard: View {
         self.status = status
         self.docker = docker
         self.logs = logs
+        self.isCollapsed = isCollapsed
         self.onOpen = onOpen
         self.onAction = onAction
         self.onOpenTerminal = onOpenTerminal
@@ -46,8 +49,11 @@ public struct LocalProjectCard: View {
         self.onOpenLogFile = onOpenLogFile
     }
 
-    nonisolated public static func size(for project: LocalProject, status: LocalProjectStatus, logs: LogLines? = nil) -> CGSize {
-        CGSize(
+    nonisolated public static func size(for project: LocalProject, status: LocalProjectStatus, logs: LogLines? = nil, isCollapsed: Bool = false) -> CGSize {
+        guard !isCollapsed else {
+            return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
+        }
+        return CGSize(
             width: CardMetrics.width,
             height: ProjectCardMetrics.height(
                 tools: project.toolLinks().map(\.label),
@@ -60,6 +66,34 @@ public struct LocalProjectCard: View {
     }
 
     public var body: some View {
+        if isCollapsed {
+            collapsed
+        } else {
+            full
+        }
+    }
+
+    /// One row: the mark, the state dot, the name and the action the state implies.
+    private var collapsed: some View {
+        CardCollapsedRow(
+            glyph: glyph,
+            title: project.displayTitle,
+            note: collapsedNote,
+            tone: heroState.tone,
+            color: heroState.color,
+            action: lifecycle.first,
+            help: status.detail ?? heroText
+        )
+    }
+
+    /// Running says how many containers; anything else says what it is. The dot has already
+    /// said which of the two this is, so the words do not repeat it.
+    private var collapsedNote: String? {
+        if status.isRunning, let pid = status.pid { return "pid \(pid)" }
+        return heroText
+    }
+
+    private var full: some View {
         CardChrome(
             title: "Project · \(project.displayTitle)",
             glyph: glyph,

@@ -42,6 +42,8 @@
   once per launch, so `npx` and `pnpm` work from a card and not only from a terminal.
 - **Buttons act on the first click**, and a stop that did not take effect says so instead of
   being repainted green by the next poll.
+- **A card has two sizes** - whole, or one 44-point row with the mark, the state dot, the name
+  and the one action the state implies, kept per card. See [adr/0011-two-sizes.md](adr/0011-two-sizes.md).
 - **The log tray** - the last six lines a project is writing, on the card itself, for Arc, DDEV
   and plain projects alike, read only while the tray is open.
 - **A running command narrates itself** - its newest line sits on the card while it works, and a

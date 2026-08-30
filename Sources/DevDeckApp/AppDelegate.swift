@@ -44,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     /// moving them. AppKit posts `windowDidMove` for programmatic moves too, so without this the
     /// deck saves its own repositioning as though it were an arrangement a person chose.
     private var isRepositioning = false
+    private var menuOwners: [ObjectIdentifier: CardID] = [:]
     private var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
 
@@ -70,7 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             controller.$ddevStatuses.map { _ in () }.eraseToAnyPublisher(),
             controller.$localStatuses.map { _ in () }.eraseToAnyPublisher(),
             // A tray opening or filling changes the card's height, so the panel has to follow.
-            controller.$logTails.map { _ in () }.eraseToAnyPublisher()
+            controller.$logTails.map { _ in () }.eraseToAnyPublisher(),
+            controller.$collapsedCards.map { _ in () }.eraseToAnyPublisher()
         )
         .receive(on: RunLoop.main)
         .sink { [weak self] _ in
@@ -181,6 +183,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             reposition {
                 window.setFrame(frame, display: true, animate: false)
             }
+            // Collapsing changes the shape as well as the height.
+            window.apply(cornerRadius: cornerRadius(for: card))
             window.invalidateShadow()
             persistPosition(of: card)
             preferences.setHeight(size.height, for: card)
@@ -203,7 +207,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             size.height = remembered
         }
         let hosting = PanelHostingView(rootView: CardHostView(controller: controller, card: card))
-        let window = PanelWindow(card: card, size: size, origin: origin(for: card, size: size), content: hosting)
+        let window = PanelWindow(
+            card: card,
+            size: size,
+            origin: origin(for: card, size: size),
+            cornerRadius: cornerRadius(for: card),
+            content: hosting
+        )
         window.level = displayMode.windowLevel
         window.isMovableByWindowBackground = !preferences.isLocked
         window.delegate = self
@@ -212,6 +222,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // the card toggles would look stuck no matter what was actually set.
         let contextMenu = NSMenu()
         contextMenu.delegate = self
+        // Which panel a menu belongs to, so a right-click can offer something about *this* card
+        // rather than only about the deck.
+        menuOwners[ObjectIdentifier(contextMenu)] = card
         window.contentView?.menu = contextMenu
         reposition { window.orderFrontRegardless() }
         panels[card] = window
@@ -358,7 +371,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        if let card = menuOwners[ObjectIdentifier(menu)] {
+            let isCollapsed = controller.isCollapsed(card)
+            let item = NSMenuItem(
+                title: isCollapsed ? "Show the whole card" : "Collapse to one row",
+                action: #selector(toggleCollapsed(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = card.rawValue
+            menu.addItem(item)
+            menu.addItem(.separator())
+        }
         populate(menu)
+    }
+
+    @objc private func toggleCollapsed(_ item: NSMenuItem) {
+        guard let raw = item.representedObject as? String else { return }
+        controller.toggleCollapsed(CardID(rawValue: raw))
+    }
+
+    /// A collapsed panel is a different shape, not just a shorter one.
+    private func cornerRadius(for card: CardID) -> CGFloat {
+        controller.isCollapsed(card) ? CollapsedCardMetrics.cornerRadius : DeckTheme.cornerRadius
     }
 
     /// Every menu in the app is repopulated here as it opens, so a checkmark can never show
