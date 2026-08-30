@@ -30,31 +30,41 @@ public struct MergeRequestsCard: View {
     /// Account id to label. More than one entry turns the per-row chips on.
     private let accountLabels: [String: String]
     private let isExpanded: Bool
+    private let isCollapsed: Bool
     private let onOpen: (URL, String) -> Void
     private let onToggleExpand: () -> Void
+    private let onOpenDashboard: () -> Void
 
     public init(
         state: CardState<MergeRequestsSnapshot>,
         now: Date = Date(),
         accountLabels: [String: String] = [:],
         isExpanded: Bool = false,
+        isCollapsed: Bool = false,
         onOpen: @escaping (URL, String) -> Void = { _, _ in },
-        onToggleExpand: @escaping () -> Void = {}
+        onToggleExpand: @escaping () -> Void = {},
+        onOpenDashboard: @escaping () -> Void = {}
     ) {
         self.state = state
         self.now = now
         self.accountLabels = accountLabels
         self.isExpanded = isExpanded
+        self.isCollapsed = isCollapsed
         self.onOpen = onOpen
         self.onToggleExpand = onToggleExpand
+        self.onOpenDashboard = onOpenDashboard
     }
 
     /// Panel size for the current contents. The app resizes the window with this, so the card
     /// and the panel never disagree about how much room the rows need.
-    public static func size(
+    public nonisolated static func size(
         for state: CardState<MergeRequestsSnapshot>,
-        isExpanded: Bool
+        isExpanded: Bool,
+        isCollapsed: Bool = false
     ) -> CGSize {
+        guard !isCollapsed else {
+            return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
+        }
         let total = state.value?.mergeRequests.count ?? 0
         return CGSize(
             width: CardMetrics.width,
@@ -63,6 +73,44 @@ public struct MergeRequestsCard: View {
     }
 
     public var body: some View {
+        if isCollapsed {
+            collapsed
+        } else {
+            full
+        }
+    }
+
+    /// One row: the mark, a dot for how loud the card is, its name and the count. A list card
+    /// has no lifecycle to offer, so its single action is the one thing it can do - open the
+    /// same list on the web.
+    private var collapsed: some View {
+        CardCollapsedRow(
+            glyph: CardGlyph.gitlab,
+            title: "Merge requests",
+            note: collapsedNote,
+            tone: collapsedTone.tone,
+            color: collapsedTone.color,
+            action: CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard),
+            help: collapsedNote ?? "Merge requests"
+        )
+    }
+
+    /// The pill's words, which are already the shortest true sentence about the card.
+    private var collapsedNote: String? {
+        guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
+        if snapshot.blockedCount > 0 { return "\(snapshot.blockedCount) blocked · \(snapshot.totalCount) open" }
+        if snapshot.reviewRequestCount > 0 { return "\(snapshot.reviewRequestCount) to review · \(snapshot.totalCount) open" }
+        return snapshot.totalCount == 0 ? "clear" : "\(snapshot.totalCount) open"
+    }
+
+    private var collapsedTone: (tone: CardStateTone, color: Color) {
+        guard let snapshot = state.value else { return (.neutral, DeckTheme.label) }
+        if snapshot.blockedCount > 0 { return (.alert, DeckTheme.red) }
+        if snapshot.reviewRequestCount > 0 { return (.alert, DeckTheme.amber) }
+        return (.good, DeckTheme.green)
+    }
+
+    private var full: some View {
         CardChrome(
             title: "GitLab · merge requests",
             glyph: .gitlab,

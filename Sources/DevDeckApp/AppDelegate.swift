@@ -177,9 +177,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         // then corrects itself, which moves everything under it twice.
         controller.setActiveCards(Set(wanted))
 
+        // A card that has never been placed is put down after the whole deck is on screen, not
+        // while it is still being built: a new card added at launch would otherwise pick its
+        // spot from the two panels that happened to exist at that moment and land under one of
+        // them, on top of a card whose saved position had not been restored yet.
+        var unplaced: [CardID] = []
         for card in wanted where panels[card] == nil {
+            if preferences.placement(for: card) == nil { unplaced.append(card) }
             showPanel(card)
         }
+        for card in unplaced { settle(card) }
     }
 
     /// Grows and shrinks panels as their contents change, keeping the top edge where it is and
@@ -341,6 +348,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
         }
 
+        // A card with no placement joins the deck. It used to land on whichever display happened
+        // to be main, which for a deck kept on the laptop meant a new card appearing alone on an
+        // external monitor, where the answer to "where is my card" is "on another screen".
+        if let spot = originBesideTheDeck(size: size) { return spot }
+
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         var y = screen.maxY - 28
         for candidate in visibleCards {
@@ -351,6 +363,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             if panels[candidate] != nil { y -= candidateSize.height + DeckTheme.panelGap }
         }
         return NSPoint(x: screen.maxX - size.width - 28, y: y - size.height)
+    }
+
+    /// Puts a card that has never had a position into the deck, and writes it down.
+    ///
+    /// Saved immediately rather than at the next move, so the card comes back to the same place
+    /// tomorrow instead of being re-derived from whatever the deck looks like then.
+    private func settle(_ card: CardID) {
+        guard let window = panels[card],
+              let point = originBesideTheDeck(size: window.frame.size, ignoring: card)
+        else { return }
+        reposition { window.setFrameOrigin(point) }
+        persistPosition(of: card)
+    }
+
+    /// Where a card with no position of its own goes: into the deck, not onto whatever display
+    /// happens to be main. The arithmetic is `DeckLayout.nextSpot`; this only supplies the deck.
+    private func originBesideTheDeck(size: NSSize, ignoring card: CardID? = nil) -> NSPoint? {
+        let frames = panels.filter { $0.key != card }.values.map(\.frame)
+        guard let first = frames.first,
+              let screen = NSScreen.screens.first(where: { $0.visibleFrame.intersects(first) })?.visibleFrame,
+              let spot = DeckLayout.nextSpot(
+                  size: size,
+                  among: frames,
+                  screen: screen,
+                  gap: DeckTheme.panelGap
+              )
+        else { return nil }
+        return NSPoint(x: spot.x, y: spot.y)
     }
 
     /// Moves every panel sitting under `frame` in the same column by `dy` - positive is up,

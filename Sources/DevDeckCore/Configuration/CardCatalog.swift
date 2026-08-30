@@ -68,7 +68,10 @@ public enum CardCatalog {
         // for a token to an instance nobody uses. Adding an account in settings turns it on.
         CardDescriptor(
             id: .gitlabMergeRequests,
-            title: "Merge requests",
+            // Named for its service, unlike "Pull requests", which was here first and alone.
+            // Two entries called "Pull requests" and "Merge requests" side by side are two
+            // things nobody can tell apart at a glance.
+            title: "GitLab merge requests",
             subtitle: "Yours, plus the ones waiting for your review",
             isImplemented: true,
             isEnabledByDefault: false
