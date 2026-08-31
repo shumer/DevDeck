@@ -429,6 +429,30 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(seen.value.last, "bind: address already in use")
     }
 
+    run.section("Arc - which Fusion is actually running")
+
+    await run.test("the release comes from the engine's image tag") {
+        // Taken from a real stack. The site's port is published by fusion-cli-api, so asking the
+        // site for /release answers with that container's own version: this deck showed 6.2.0
+        // for a stack running engine 7.0.2, and both numbers were true about different things.
+        let output = """
+        fusion-origin\twashpost/fusion-origin:latest
+        fusion-engine\twashpost/fusion-engine:7.0.2
+        fusion-cli-api\twashpost/fusion-cli-api:production
+        fusion-admin\twashpost/pb-editor-api:dev
+        """
+        try expectEqual(LocalStackService.engineRelease(fromImages: output), "7.0.2")
+    }
+
+    await run.test("a tag that says nothing is not shown as a version") {
+        let floating = "fusion-engine\twashpost/fusion-engine:latest"
+        try expectNil(LocalStackService.engineRelease(fromImages: floating),
+                      "`latest` on a card is a word, not an answer")
+        try expectNil(LocalStackService.engineRelease(fromImages: "fusion-cli-api\twashpost/fusion-cli-api:6.2.0"),
+                      "and the engine is the only container whose version is the stack's")
+        try expectNil(LocalStackService.engineRelease(fromImages: ""))
+    }
+
     run.section("Arc - the local editor")
 
     await run.test("PageBuilder's editor follows the port the checkout serves on") {

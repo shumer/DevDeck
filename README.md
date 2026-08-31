@@ -521,7 +521,12 @@ question on all of them:
    on GitHub in the project's own browser. An arrow at the end of the line says so; a checkout
    with no remote simply has no arrow.
 4. **What names this checkout**: the framework and folder on the left, versions or the start
-   command on the right.
+   command on the right. For an Arc project the version is the Fusion release actually running,
+   read from the engine container's image tag rather than from the site's `/release` endpoint:
+   that endpoint is answered by whatever is published on the site's port, which locally is
+   `fusion-cli-api` reporting its own version. It is not `FUSION_RELEASE` from `.env` either,
+   which says what the stack will run after the next build rather than what is serving requests
+   now.
 5. **The links**, in one wrapping row: what you work in, a divider, then the environments -
    local first, then test and UAT in violet, production in amber. An Arc project also gets
    **Local PageBuilder** beside **Local site**: the editor as served by the stack you are
