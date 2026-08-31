@@ -282,6 +282,8 @@ func runPresentationTests(_ run: TestRun) async {
         let environments = [90.0, 135.0]
         let grouped = CardChipFlow.groupedWidths(tools: tools, environments: environments, available: 324)
         try expectEqual(grouped.breakBefore, 2, "the divider becomes the break")
+        try expectEqual(grouped.widths, tools + environments,
+                        "and stops being drawn: a separator between two lines is a tick in the margin")
         try expectEqual(
             CardChipFlow.lineCount(widths: grouped.widths, available: 324, breakBefore: grouped.breakBefore),
             2,
@@ -292,6 +294,7 @@ func runPresentationTests(_ run: TestRun) async {
     await run.test("groups that fit side by side are left alone") {
         let grouped = CardChipFlow.groupedWidths(tools: [60], environments: [70, 60], available: 324)
         try expectNil(grouped.breakBefore, "a break here would spend a line to say nothing")
+        try expectEqual(grouped.widths.count, 4, "so the divider is drawn, which is its whole job")
         try expectEqual(CardChipFlow.lineCount(widths: grouped.widths, available: 324), 1)
     }
 
