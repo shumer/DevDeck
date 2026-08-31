@@ -523,7 +523,10 @@ question on all of them:
 4. **What names this checkout**: the framework and folder on the left, versions or the start
    command on the right.
 5. **The links**, in one wrapping row: what you work in, a divider, then the environments -
-   local first, then test and UAT in violet, production in amber. They all share one neutral
+   local first, then test and UAT in violet, production in amber. An Arc project also gets
+   **PB editor** beside its local site: PageBuilder's editor as served by the stack you are
+   running, on the port the checkout's own `.env` says, which is a different place from the
+   hosted PageBuilder link three chips to the left. They all share one neutral
    fill; the colour is in the lettering, mixed back towards white, so five links in a row read
    as a row rather than as five things shouting.
 6. **The controls.** The one action that matters now is half again as wide, tinted, bolder and

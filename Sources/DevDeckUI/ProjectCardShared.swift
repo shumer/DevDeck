@@ -62,7 +62,10 @@ public struct ProjectChipRow: View {
 
     @ViewBuilder
     private func view(for chip: ProjectChip) -> some View {
-        let isLocal = chip.kind == .site && chip.label == Self.localLabel
+        // By where it points rather than by what it is called: the local site is not the only
+        // local thing on the card any more, and a link into a stopped stack lands on a connection
+        // error that reads as a broken app rather than a stopped one.
+        let isLocal = chip.kind == .site && LocalAddress.isLoopback(chip.url)
         // A deployed environment is reachable whether or not anything is running here; only the
         // local one goes nowhere, and a link into a stopped project lands on a connection error
         // that reads as a broken app rather than a stopped one.

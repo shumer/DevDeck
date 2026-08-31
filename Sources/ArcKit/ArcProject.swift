@@ -268,6 +268,20 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         URL(string: effectiveLocalURL)
     }
 
+    /// PageBuilder's editor, served by the local stack rather than by Arc.
+    ///
+    /// The path is fixed by PageBuilder itself, and the host and port are the site's, read from
+    /// the checkout's `.env` like everything else local. It was missing for the same reason it
+    /// is easy to miss: the remote PageBuilder link has been on the card since the beginning, and
+    /// it goes to the hosted one, which is not where you edit the site you are running.
+    public static let localPageBuilderPath = "/pagebuilder/experiences/_default/pages/"
+
+    public var localPageBuilderURL: URL? {
+        let base = effectiveLocalURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !base.isEmpty else { return nil }
+        return URL(string: base + Self.localPageBuilderPath)
+    }
+
     /// Card identifier for this project.
     public var cardID: CardID { CardID(rawValue: "arc.project.\(id)") }
 
