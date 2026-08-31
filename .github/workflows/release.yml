@@ -78,14 +78,26 @@ jobs:
             # a horizontal rule glued to the last paragraph is a heading, not a rule.
             printf '\n<!-- devdeck-install -->\n\n---\n\n## Installing\n\n'
             printf 'The build is ad-hoc signed and not notarised, so macOS quarantines it on '
-            printf 'download and refuses to open it. One line does the lot: unpacks it into '
-            printf 'Applications, clears the quarantine flag and starts it.\n\n'
+            printf 'download and will not open it on the first try.\n\n'
+
+            printf '**Without a terminal.** Unzip it in Finder, drag `DevDeck.app` into '
+            printf 'Applications, then right-click it and choose Open, and Open again in the '
+            printf 'dialog that appears. That is the whole of it, and it needs no permissions.\n\n'
+
+            printf '**With a terminal**, if yours is allowed to read your Downloads folder:\n\n'
             printf '```\n'
             printf 'pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/%s /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app\n' "$ASSET"
             printf '```\n\n'
             printf 'The first command quits a copy that is already running, which matters when '
-            printf 'this is an update rather than a first install. If Applications refuses to be '
-            printf 'written to, put `~/Applications` in both places instead.\n'
+            printf 'this is an update rather than a first install.\n\n'
+
+            printf 'If `ditto` answers **Operation not permitted**, it is macOS rather than the '
+            printf 'archive, and it is one of two things. Either the terminal has not been given '
+            printf 'access to your Downloads folder, under System Settings, Privacy and '
+            printf 'Security, Files and Folders; or you are not an administrator of this Mac, in '
+            printf 'which case `mkdir -p ~/Applications` and use `~/Applications` in all three '
+            printf 'places instead. Either way the Finder route above works without changing '
+            printf 'anything.\n'
           } >> notes.md
 
           gh release edit "$TAG" --notes-file notes.md
