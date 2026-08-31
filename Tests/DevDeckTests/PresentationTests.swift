@@ -274,6 +274,40 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(CardChipFlow.height(lineCount: 2), 11 + 44 + 5, "one gap between two lines")
     }
 
+    await run.test("two groups share a line only if the second one fits on it whole") {
+        // The real row: two hosted tools and the two local ones, on a card 324 points wide.
+        // Squeezing one environment up beside the tools is what put `Local site` with the hosted
+        // PageBuilder and `Local PageBuilder` alone underneath it.
+        let tools = [104.0, 92.0]
+        let environments = [90.0, 135.0]
+        let grouped = CardChipFlow.groupedWidths(tools: tools, environments: environments, available: 324)
+        try expectEqual(grouped.breakBefore, 2, "the divider becomes the break")
+        try expectEqual(
+            CardChipFlow.lineCount(widths: grouped.widths, available: 324, breakBefore: grouped.breakBefore),
+            2,
+            "and it costs nothing: the line was going to happen anyway"
+        )
+    }
+
+    await run.test("groups that fit side by side are left alone") {
+        let grouped = CardChipFlow.groupedWidths(tools: [60], environments: [70, 60], available: 324)
+        try expectNil(grouped.breakBefore, "a break here would spend a line to say nothing")
+        try expectEqual(CardChipFlow.lineCount(widths: grouped.widths, available: 324), 1)
+    }
+
+    await run.test("a group too wide for a line of its own is not worth breaking for") {
+        // Four environments that wrap however they are placed. Breaking at the divider would
+        // spend a third line on a block that was always going to need two.
+        let grouped = CardChipFlow.groupedWidths(
+            tools: [80],
+            environments: [120, 120, 120, 120],
+            available: 324
+        )
+        try expectNil(grouped.breakBefore)
+        try expectEqual(CardChipFlow.lineCount(widths: grouped.widths, available: 324), 3,
+                        "three lines either way, and a break would have made it four")
+    }
+
     await run.test("a card grows by exactly one chip line when its chips wrap") {
         var project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let stopped = LocalStackStatus(state: .stopped)

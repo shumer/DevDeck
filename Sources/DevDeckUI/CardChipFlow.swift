@@ -23,14 +23,50 @@ public enum CardChipFlow {
         return ceil(text.size().width) + 16
     }
 
+    /// Where the second group starts, when the two only fit by being split.
+    ///
+    /// The groups share a line only if the second one fits on it whole. Otherwise the divider
+    /// becomes the break: tools on one line, environments on the next. Breaking anywhere else
+    /// puts `Local site` up with the hosted tools and `Local PageBuilder` alone underneath,
+    /// which is two chips that belong together, wrapped apart, on a card whose whole point is
+    /// that a glance answers the question.
+    ///
+    /// It costs nothing in height: the line was going to happen either way.
+    public nonisolated static func groupedWidths(
+        tools: [Double],
+        environments: [Double],
+        available: Double
+    ) -> (widths: [Double], breakBefore: Int?) {
+        guard !tools.isEmpty, !environments.isEmpty else {
+            return (tools + environments, nil)
+        }
+
+        let widths = tools + [dividerWidth] + environments
+        let toolsWidth = tools.reduce(0, +) + spacing * Double(tools.count - 1)
+        let groupWidth = environments.reduce(0, +) + spacing * Double(environments.count - 1)
+        let together = toolsWidth + spacing + dividerWidth + spacing + groupWidth
+
+        // They fit side by side, or the environments would not fit on a line of their own
+        // either, in which case a break buys nothing and costs a line.
+        guard together > available, groupWidth <= available, lineCount(widths: tools, available: available) == 1
+        else { return (widths, nil) }
+
+        return (widths, tools.count)
+    }
+
     /// Pure line-breaking, so the arithmetic can be tested without a font.
-    public nonisolated static func lineCount(widths: [Double], available: Double) -> Int {
+    public nonisolated static func lineCount(widths: [Double], available: Double, breakBefore: Int? = nil) -> Int {
         guard !widths.isEmpty else { return 0 }
         var lines = 1
         var used: Double = 0
         var isLineEmpty = true
 
-        for width in widths {
+        for (index, width) in widths.enumerated() {
+            if index == breakBefore, !isLineEmpty {
+                lines += 1
+                used = width
+                continue
+            }
             let needed = isLineEmpty ? width : used + spacing + width
             // The first chip of a line is placed whatever its width: a chip wider than the card
             // has to go somewhere, and starting a new line for it would loop forever.
@@ -53,10 +89,25 @@ public enum CardChipFlow {
 
     /// Height of a chip block holding these labels, with a divider between the two groups.
     public nonisolated static func height(tools: [String], environments: [String]) -> Double {
-        var widths = tools.map(width(of:))
-        if !widths.isEmpty, !environments.isEmpty { widths.append(dividerWidth) }
-        widths.append(contentsOf: environments.map(width(of:)))
-        return height(lineCount: lineCount(widths: widths, available: CardChromeMetrics.contentWidth))
+        let grouped = groupedWidths(
+            tools: tools.map(width(of:)),
+            environments: environments.map(width(of:)),
+            available: CardChromeMetrics.contentWidth
+        )
+        return height(lineCount: lineCount(
+            widths: grouped.widths,
+            available: CardChromeMetrics.contentWidth,
+            breakBefore: grouped.breakBefore
+        ))
+    }
+
+    /// Where the layout should break, for a row that is drawing these two groups.
+    public nonisolated static func breakIndex(tools: [String], environments: [String]) -> Int? {
+        groupedWidths(
+            tools: tools.map(width(of:)),
+            environments: environments.map(width(of:)),
+            available: CardChromeMetrics.contentWidth
+        ).breakBefore
     }
 }
 
@@ -66,7 +117,13 @@ public enum CardChipFlow {
 /// reordered a conditional first child and put the local site on a line of its own. Here the
 /// order on screen is the order the subviews were given, always.
 public struct CardChipLayout: Layout {
-    public init() {}
+    /// The subview to start a new line at, whatever else would have fitted beside it. Nil is
+    /// the ordinary flow.
+    private let breakBefore: Int?
+
+    public init(breakBefore: Int? = nil) {
+        self.breakBefore = breakBefore
+    }
 
     public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         // Typed rather than inferred: `proposal.width` is a `CGFloat?` and the fallback is a
@@ -110,6 +167,12 @@ public struct CardChipLayout: Layout {
 
         for index in subviews.indices {
             let width = subviews[index].sizeThatFits(.unspecified).width
+            if index == breakBefore, !current.isEmpty {
+                lines.append(current)
+                current = [index]
+                used = width
+                continue
+            }
             let needed = current.isEmpty ? width : used + CardChipFlow.spacing + width
             if current.isEmpty || needed <= available {
                 current.append(index)

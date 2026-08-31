@@ -53,7 +53,12 @@ public struct ProjectChipRow: View {
     public nonisolated static let localPageBuilderLabel = "Local PageBuilder"
 
     public var body: some View {
-        CardChipLayout {
+        // The divider is a subview like any other, so the layout is told which index it sits at
+        // rather than being asked to work out what the chips mean.
+        CardChipLayout(breakBefore: CardChipFlow.breakIndex(
+            tools: tools.map(\.label),
+            environments: environments.map(\.label)
+        )) {
             ForEach(tools) { chip in
                 view(for: chip)
             }
