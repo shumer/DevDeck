@@ -206,10 +206,21 @@ public struct LocalStackService: Sendable {
                     repositoryURL: repositoryURL
                 )
             }
+            // Asked once and read twice: how many containers are up, and which Fusion the engine
+            // among them actually is.
+            let running = await containers()
+            let names = running?
+                .split(separator: "\n")
+                .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+                .count
+
             return LocalStackStatus(
                 state: .running,
-                engineVersion: Self.engineVersion(from: response.body),
-                containers: await containerCount(),
+                // The image tag when the stack can be asked, and the endpoint's own answer only
+                // as a fallback, for a stack somebody started outside Docker.
+                engineVersion: running.flatMap(Self.engineRelease(fromImages:))
+                    ?? Self.engineVersion(from: response.body),
+                containers: names.map { $0 > 0 ? $0 : nil } ?? nil,
                 checkedAt: clock.now,
                 siteURL: siteURL,
                 branch: branch,
@@ -249,17 +260,49 @@ public struct LocalStackService: Sendable {
         return names.count
     }
 
-    /// The containers this project's compose stack is running, by name.
-    private func containerNames() async -> [String]? {
+    /// Which Fusion the running stack actually is, from the engine container's image tag.
+    ///
+    /// Not from `/release`, which is what this used to read and what it says on the card. That
+    /// endpoint is answered by whatever is published on the site's port, and locally that is
+    /// `fusion-cli-api`, which reports its own version: a stack running engine 7.0.2 was showing
+    /// 6.2.0, and both numbers were true about different things.
+    ///
+    /// Not from `FUSION_RELEASE` in `.env` either. That says which release the stack will run the
+    /// next time it is built, which is not the same as the one serving your requests now, and the
+    /// difference between those two is exactly the confusion this card exists to prevent.
+    public static func engineRelease(fromImages output: String) -> String? {
+        for line in output.split(separator: "\n") {
+            let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard columns.count >= 2 else { continue }
+            let image = String(columns[1])
+            guard image.contains("fusion-engine") else { continue }
+            // `washpost/fusion-engine:7.0.2`, and a tag that says nothing is worth nothing.
+            guard let tag = image.split(separator: ":").last.map(String.init),
+                  tag != image, tag != "latest", tag != "production", tag != "dev"
+            else { return nil }
+            return tag
+        }
+        return nil
+    }
+
+    /// The containers this project's compose stack is running, by name, and what they run.
+    ///
+    /// One call rather than two: the count and the engine's release come out of the same line.
+    private func containers() async -> String? {
         guard let folder = project.folderURL else { return nil }
         let name = Self.composeProjectName(for: folder)
-        let command = "docker ps --filter label=com.docker.compose.project=\(name) --format '{{.Names}}'"
+        let command = "docker ps --filter label=com.docker.compose.project=\(name) --format '{{.Names}}\t{{.Image}}'"
         guard let result = try? await runner.run(command, in: folder, timeout: 10), result.succeeded else {
             return nil
         }
         return result.standardOutput
+    }
+
+    private func containerNames() async -> [String]? {
+        guard let output = await containers() else { return nil }
+        return output
             .split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .compactMap { $0.split(separator: "\t").first.map { String($0).trimmingCharacters(in: .whitespaces) } }
             .filter { !$0.isEmpty }
     }
 
