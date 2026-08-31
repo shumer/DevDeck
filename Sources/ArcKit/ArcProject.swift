@@ -259,9 +259,26 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
         return EnvFile.localURL(in: folderURL)
     }
 
+    /// Just the server: scheme, host and port, with whatever the site itself needs stripped off.
+    ///
+    /// A local URL is allowed to carry more than an address. A multisite checkout is served as
+    /// `http://localhost:8112/?_website=liberoquotidiano`, and that query is what makes the
+    /// *front end* show the right site. Everything else that lives on this stack - the engine's
+    /// health endpoint, PageBuilder's editor - is addressed by path from the server itself, and
+    /// gluing a path onto the end of that produced
+    /// `http://localhost:8112/?_website=liberoquotidiano/release`, which is not a URL to anything.
+    public var localOrigin: URL? {
+        guard var components = URLComponents(string: effectiveLocalURL), components.host != nil else {
+            return nil
+        }
+        components.path = ""
+        components.query = nil
+        components.fragment = nil
+        return components.url
+    }
+
     public var healthURL: URL? {
-        let base = effectiveLocalURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        return URL(string: base + healthPath)
+        localOrigin?.appendingPathComponent(healthPath)
     }
 
     public var localSiteURL: URL? {
@@ -277,9 +294,8 @@ public struct ArcProject: Sendable, Equatable, Codable, Identifiable {
     public static let localPageBuilderPath = "/pagebuilder/experiences/_default/pages/"
 
     public var localPageBuilderURL: URL? {
-        let base = effectiveLocalURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard !base.isEmpty else { return nil }
-        return URL(string: base + Self.localPageBuilderPath)
+        guard let origin = localOrigin else { return nil }
+        return URL(string: origin.absoluteString + Self.localPageBuilderPath)
     }
 
     /// Card identifier for this project.

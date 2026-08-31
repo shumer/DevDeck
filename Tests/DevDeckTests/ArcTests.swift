@@ -449,6 +449,22 @@ func runArcTests(_ run: TestRun) async {
         )
     }
 
+    await run.test("a multisite local URL keeps its query for the site and drops it for everything else") {
+        // A multisite checkout is served as one origin with the site in the query. That query is
+        // what makes the front end show Libero rather than one of its siblings, and it is exactly
+        // what must not end up in the middle of a path.
+        var project = ArcProject(id: "p", title: "Libero", organization: "acme", folder: "/tmp")
+        project.localURL = "http://localhost:8112/?_website=liberoquotidiano"
+
+        try expectEqual(project.localSiteURL?.absoluteString,
+                        "http://localhost:8112/?_website=liberoquotidiano",
+                        "the site link is the one thing that needs the query")
+        try expectEqual(project.localPageBuilderURL?.absoluteString,
+                        "http://localhost:8112/pagebuilder/experiences/_default/pages/")
+        try expectEqual(project.healthURL?.absoluteString, "http://localhost:8112/release",
+                        "the engine answers by path, not per site")
+    }
+
     await run.test("the hosted PageBuilder link is a different place entirely") {
         let hosted = ArcLink.defaults().first { $0.label == "PageBuilder" }
         try expectEqual(hosted?.urlTemplate, "https://{org}.arcpublishing.com/home/",
