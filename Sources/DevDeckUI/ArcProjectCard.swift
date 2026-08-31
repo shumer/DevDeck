@@ -203,6 +203,12 @@ public struct ArcProjectCard: View {
             // checkout, and it is one hover away for anyone who wants it.
             chips.append(ProjectChip(label: ProjectChipRow.localLabel, url: local, kind: .site))
         }
+        if let editor = project.localPageBuilderURL {
+            // Next to the local site, because it is the same stack: one is the page, the other is
+            // where you edit it. The hosted PageBuilder link a few chips to the left edits
+            // something else entirely.
+            chips.append(ProjectChip(label: "PB editor", url: editor, kind: .site))
+        }
         chips.append(contentsOf: project.siteLinks.map {
             ProjectChip(label: $0.label, url: $0.url, kind: .site)
         })

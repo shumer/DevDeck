@@ -57,14 +57,18 @@ public enum LocalAddress {
         return found.sorted { $0.name < $1.name }.map(\.address)
     }
 
+    /// Whether this URL is this machine talking to itself.
+    public static func isLoopback(_ url: URL?) -> Bool {
+        guard let host = url?.host?.lowercased() else { return false }
+        return host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" || host == "::1"
+    }
+
     /// The same URL, addressed so another device on this network can ask for it.
     ///
     /// Returns nil for anything that is not this machine by another name: a link to a staging
     /// site does not need rewriting, and rewriting it would send the phone somewhere wrong.
     public static func rewrite(_ url: URL, to address: String) -> URL? {
-        guard let host = url.host?.lowercased(),
-              host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" || host == "::1"
-        else { return nil }
+        guard isLoopback(url) else { return nil }
 
         var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         components?.host = address

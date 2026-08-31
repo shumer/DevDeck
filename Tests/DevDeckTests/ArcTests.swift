@@ -429,6 +429,32 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(seen.value.last, "bind: address already in use")
     }
 
+    run.section("Arc - the local editor")
+
+    await run.test("PageBuilder's editor follows the port the checkout serves on") {
+        var project = ArcProject(id: "p", title: "P", organization: "acme", folder: "/tmp")
+        project.localURL = "http://localhost:8112"
+        try expectEqual(
+            project.localPageBuilderURL?.absoluteString,
+            "http://localhost:8112/pagebuilder/experiences/_default/pages/",
+            "the host and port are the site's; only the path belongs to PageBuilder"
+        )
+
+        // Cleared, so the port comes from the checkout's own .env, which is where it really
+        // lives. With no .env at all that is port 80, which Fusion leaves implicit.
+        project.localURL = ""
+        try expectEqual(
+            project.localPageBuilderURL?.absoluteString,
+            "http://localhost/pagebuilder/experiences/_default/pages/"
+        )
+    }
+
+    await run.test("the hosted PageBuilder link is a different place entirely") {
+        let hosted = ArcLink.defaults().first { $0.label == "PageBuilder" }
+        try expectEqual(hosted?.urlTemplate, "https://{org}.arcpublishing.com/home/",
+                        "which is why the local one needed a chip of its own rather than a rename")
+    }
+
     run.section("Arc - local stack actions")
 
     await run.test("each action runs its own command") {
