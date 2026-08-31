@@ -44,6 +44,13 @@ public struct ProjectChipRow: View {
 
     /// The label DDEV, Arc and plain projects all give the local environment.
     public nonisolated static let localLabel = "Local site"
+    /// PageBuilder's editor as this stack serves it.
+    ///
+    /// Named to match its neighbour rather than shortened. "PB editor" beside a "PageBuilder"
+    /// chip three places to the left is two names for one product and no clue which of them is
+    /// the one you are running; "Local site" and "Local PageBuilder" say what they are and that
+    /// they are the same stack.
+    public nonisolated static let localPageBuilderLabel = "Local PageBuilder"
 
     public var body: some View {
         CardChipLayout {

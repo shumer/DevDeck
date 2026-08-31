@@ -207,7 +207,11 @@ public struct ArcProjectCard: View {
             // Next to the local site, because it is the same stack: one is the page, the other is
             // where you edit it. The hosted PageBuilder link a few chips to the left edits
             // something else entirely.
-            chips.append(ProjectChip(label: "PB editor", url: editor, kind: .site))
+            chips.append(ProjectChip(
+                label: ProjectChipRow.localPageBuilderLabel,
+                url: editor,
+                kind: .site
+            ))
         }
         chips.append(contentsOf: project.siteLinks.map {
             ProjectChip(label: $0.label, url: $0.url, kind: .site)
