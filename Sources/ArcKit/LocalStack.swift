@@ -208,19 +208,14 @@ public struct LocalStackService: Sendable {
             }
             // Asked once and read twice: how many containers are up, and which Fusion the engine
             // among them actually is.
-            let running = await containers()
-            let names = running?
-                .split(separator: "\n")
-                .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-                .count
+            let running = await containers() ?? []
 
             return LocalStackStatus(
                 state: .running,
                 // The image tag when the stack can be asked, and the endpoint's own answer only
                 // as a fallback, for a stack somebody started outside Docker.
-                engineVersion: running.flatMap(Self.engineRelease(fromImages:))
-                    ?? Self.engineVersion(from: response.body),
-                containers: names.map { $0 > 0 ? $0 : nil } ?? nil,
+                engineVersion: Self.engineRelease(in: running) ?? Self.engineVersion(from: response.body),
+                containers: running.isEmpty ? nil : running.count,
                 checkedAt: clock.now,
                 siteURL: siteURL,
                 branch: branch,
@@ -270,11 +265,9 @@ public struct LocalStackService: Sendable {
     /// Not from `FUSION_RELEASE` in `.env` either. That says which release the stack will run the
     /// next time it is built, which is not the same as the one serving your requests now, and the
     /// difference between those two is exactly the confusion this card exists to prevent.
-    public static func engineRelease(fromImages output: String) -> String? {
-        for line in output.split(separator: "\n") {
-            let columns = line.split(separator: "\t", omittingEmptySubsequences: false)
-            guard columns.count >= 2 else { continue }
-            let image = String(columns[1])
+    public static func engineRelease(in containers: [(name: String, image: String)]) -> String? {
+        for container in containers {
+            let image = container.image
             guard image.contains("fusion-engine") else { continue }
             // `washpost/fusion-engine:7.0.2`, and a tag that says nothing is worth nothing.
             guard let tag = image.split(separator: ":").last.map(String.init),
@@ -285,25 +278,40 @@ public struct LocalStackService: Sendable {
         return nil
     }
 
-    /// The containers this project's compose stack is running, by name, and what they run.
+    /// Every running container, with the directory its compose file was read from.
     ///
-    /// One call rather than two: the count and the engine's release come out of the same line.
-    private func containers() async -> String? {
-        guard let folder = project.folderURL else { return nil }
-        let name = Self.composeProjectName(for: folder)
-        let command = "docker ps --filter label=com.docker.compose.project=\(name) --format '{{.Names}}\t{{.Image}}'"
-        guard let result = try? await runner.run(command, in: folder, timeout: 10), result.succeeded else {
-            return nil
+    /// Not filtered by compose project name, which is what this did and why it matched nothing:
+    /// Fusion generates its compose file under `.fusion/` and calls the project `fusion`, the
+    /// same for every checkout on the machine. The working directory is the label that actually
+    /// says whose containers these are.
+    public static let listCommand =
+        "docker ps --format '{{.Names}}\t{{.Image}}\t{{.Label \"com.docker.compose.project.working_dir\"}}'"
+
+    /// The rows belonging to one checkout: the ones whose compose file lives inside it.
+    ///
+    /// A prefix rather than an equality, because the directory is the checkout for some stacks
+    /// and a folder inside it for others, and both are this project's containers.
+    public static func containers(in output: String, folder: URL) -> [(name: String, image: String)] {
+        let root = folder.standardizedFileURL.path
+        return output.split(separator: "\n").compactMap { line in
+            let columns = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard columns.count >= 3 else { return nil }
+            let directory = columns[2].trimmingCharacters(in: .whitespaces)
+            guard directory == root || directory.hasPrefix(root + "/") else { return nil }
+            return (columns[0].trimmingCharacters(in: .whitespaces), columns[1])
         }
-        return result.standardOutput
+    }
+
+    private func containers() async -> [(name: String, image: String)]? {
+        guard let folder = project.folderURL else { return nil }
+        guard let result = try? await runner.run(Self.listCommand, in: folder, timeout: 10),
+              result.succeeded
+        else { return nil }
+        return Self.containers(in: result.standardOutput, folder: folder)
     }
 
     private func containerNames() async -> [String]? {
-        guard let output = await containers() else { return nil }
-        return output
-            .split(separator: "\n")
-            .compactMap { $0.split(separator: "\t").first.map { String($0).trimmingCharacters(in: .whitespaces) } }
-            .filter { !$0.isEmpty }
+        await containers()?.map(\.name)
     }
 
     /// What Compose calls a stack started in this folder: the folder's name, lowercased, with
