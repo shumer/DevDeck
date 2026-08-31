@@ -51,7 +51,11 @@ public enum CardChipFlow {
         guard together > available, groupWidth <= available, lineCount(widths: tools, available: available) == 1
         else { return (widths, nil) }
 
-        return (widths, tools.count)
+        // The divider goes with the decision. Its whole job is to separate the two groups on a
+        // shared line, and once they are on lines of their own it has nothing left to say: on
+        // screen it became a vertical tick hanging off the left margin, pushing the row it was
+        // meant to introduce out of line with the one above.
+        return (tools + environments, tools.count)
     }
 
     /// Pure line-breaking, so the arithmetic can be tested without a font.

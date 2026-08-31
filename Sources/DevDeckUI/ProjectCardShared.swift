@@ -55,14 +55,17 @@ public struct ProjectChipRow: View {
     public var body: some View {
         // The divider is a subview like any other, so the layout is told which index it sits at
         // rather than being asked to work out what the chips mean.
-        CardChipLayout(breakBefore: CardChipFlow.breakIndex(
+        let breakBefore = CardChipFlow.breakIndex(
             tools: tools.map(\.label),
             environments: environments.map(\.label)
-        )) {
+        )
+
+        return CardChipLayout(breakBefore: breakBefore) {
             ForEach(tools) { chip in
                 view(for: chip)
             }
-            if !tools.isEmpty, !environments.isEmpty {
+            // Only when the two groups share a line. A break says the same thing, and better.
+            if breakBefore == nil, !tools.isEmpty, !environments.isEmpty {
                 CardChipDivider()
             }
             ForEach(environments) { chip in
