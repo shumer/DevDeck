@@ -613,6 +613,11 @@ download into Applications, clears the flag and starts it:
 pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-0.8-80.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app
 ```
 
+Each release also carries the Finder route, which needs no permissions at all: unzip, drag into
+Applications, right-click and Open. That one matters more than it looks, because `ditto` answers
+**Operation not permitted** on a Mac whose terminal has not been given access to the Downloads
+folder, or whose user is not an administrator, and neither has anything to do with the archive.
+
 That block is written by the workflow rather than typed into the notes, so it always names the
 file that was actually built: a version number typed by hand is one release away from being
 wrong, and wrong here means somebody's download does not open and they do not know why.
