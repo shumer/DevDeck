@@ -431,26 +431,53 @@ func runArcTests(_ run: TestRun) async {
 
     run.section("Arc - which Fusion is actually running")
 
+    // Taken from a real machine: two stacks' worth of containers, Fusion's compose project named
+    // `fusion` whatever the checkout is, and the working directory as the only label that says
+    // whose they are.
+    let dockerOutput = """
+    fusion-origin\twashpost/fusion-origin:latest\t/Users/me/Projects/libero-theme/.fusion
+    fusion-engine\twashpost/fusion-engine:7.0.2\t/Users/me/Projects/libero-theme/.fusion
+    fusion-cli-api\twashpost/fusion-cli-api:production\t/Users/me/Projects/libero-theme/.fusion
+    ddev-shop-web\tdrud/ddev-webserver:v1.24\t/Users/me/Projects/shop
+    """
+
+    await run.test("containers belong to the checkout their compose file lives in") {
+        // Fusion calls the compose project `fusion` for every checkout on the machine, so
+        // filtering by project name matched nothing at all: the card showed no container count
+        // and fell back to asking the site for its version.
+        let mine = LocalStackService.containers(
+            in: dockerOutput,
+            folder: URL(fileURLWithPath: "/Users/me/Projects/libero-theme")
+        )
+        try expectEqual(mine.count, 3, "including the ones under .fusion, and not the neighbour's")
+        try expect(!mine.contains { $0.name.hasPrefix("ddev") })
+        try expect(LocalStackService.containers(
+            in: dockerOutput,
+            folder: URL(fileURLWithPath: "/Users/me/Projects/other")
+        ).isEmpty)
+    }
+
     await run.test("the release comes from the engine's image tag") {
-        // Taken from a real stack. The site's port is published by fusion-cli-api, so asking the
-        // site for /release answers with that container's own version: this deck showed 6.2.0
-        // for a stack running engine 7.0.2, and both numbers were true about different things.
-        let output = """
-        fusion-origin\twashpost/fusion-origin:latest
-        fusion-engine\twashpost/fusion-engine:7.0.2
-        fusion-cli-api\twashpost/fusion-cli-api:production
-        fusion-admin\twashpost/pb-editor-api:dev
-        """
-        try expectEqual(LocalStackService.engineRelease(fromImages: output), "7.0.2")
+        // The site's port is published by fusion-cli-api, so asking the site for /release answers
+        // with that container's own version: this deck showed 6.2.0 for a stack running engine
+        // 7.0.2, and both numbers were true about different things.
+        let mine = LocalStackService.containers(
+            in: dockerOutput,
+            folder: URL(fileURLWithPath: "/Users/me/Projects/libero-theme")
+        )
+        try expectEqual(LocalStackService.engineRelease(in: mine), "7.0.2")
     }
 
     await run.test("a tag that says nothing is not shown as a version") {
-        let floating = "fusion-engine\twashpost/fusion-engine:latest"
-        try expectNil(LocalStackService.engineRelease(fromImages: floating),
-                      "`latest` on a card is a word, not an answer")
-        try expectNil(LocalStackService.engineRelease(fromImages: "fusion-cli-api\twashpost/fusion-cli-api:6.2.0"),
-                      "and the engine is the only container whose version is the stack's")
-        try expectNil(LocalStackService.engineRelease(fromImages: ""))
+        try expectNil(
+            LocalStackService.engineRelease(in: [(name: "fusion-engine", image: "washpost/fusion-engine:latest")]),
+            "`latest` on a card is a word, not an answer"
+        )
+        try expectNil(
+            LocalStackService.engineRelease(in: [(name: "fusion-cli-api", image: "washpost/fusion-cli-api:6.2.0")]),
+            "and the engine is the only container whose version is the stack's"
+        )
+        try expectNil(LocalStackService.engineRelease(in: []))
     }
 
     run.section("Arc - the local editor")
