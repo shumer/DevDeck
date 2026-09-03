@@ -17,7 +17,7 @@ public struct CardCollapsedRow: View {
     private let note: String?
     private let tone: CardStateTone
     private let color: Color
-    private let action: CardAction?
+    private let actions: [CardAction]
     private let help: String
 
     public init(
@@ -26,7 +26,7 @@ public struct CardCollapsedRow: View {
         note: String?,
         tone: CardStateTone,
         color: Color,
-        action: CardAction? = nil,
+        actions: [CardAction] = [],
         help: String
     ) {
         self.glyph = glyph
@@ -34,7 +34,7 @@ public struct CardCollapsedRow: View {
         self.note = note
         self.tone = tone
         self.color = color
-        self.action = action
+        self.actions = actions
         self.help = help
     }
 
@@ -50,15 +50,22 @@ public struct CardCollapsedRow: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
-            if let note {
+            // The note goes as soon as the row is carrying controls. It is detail rather than
+            // state - `10 containers`, `pid 48213` - and the dot has already said good, busy or
+            // off by colour. Keeping both leaves the name 91 points and truncates it.
+            if let note, actions.count < 2 {
                 Text(note)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(tone == .alert ? color : DeckTheme.value.opacity(0.55))
                     .lineLimit(1)
                     .fixedSize()
             }
-            if let action {
-                button(action)
+            if !actions.isEmpty {
+                HStack(spacing: Self.buttonSpacing) {
+                    ForEach(actions) { action in
+                        button(action)
+                    }
+                }
             }
         }
         .frame(height: CollapsedCardMetrics.rowHeight)
@@ -89,13 +96,17 @@ public struct CardCollapsedRow: View {
         }
     }
 
-    /// One icon, no label. Which action it is has already been decided by the state, the same
-    /// way the full card's control row decides it: the first entry of the lifecycle.
+    public nonisolated static let buttonSize: Double = 24
+    public nonisolated static let buttonSpacing: Double = 4
+
+    /// Icons, no labels. Which lifecycle action leads has already been decided by the state, the
+    /// same way the full card's control row decides it. Four of them take 108 points of the 324
+    /// a row has, which is what dropping the note pays for.
     private func button(_ action: CardAction) -> some View {
         Image(systemName: action.systemImage ?? "play.fill")
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(action.isEnabled ? action.tint : action.tint.opacity(0.28))
-            .frame(width: 24, height: 24)
+            .frame(width: Self.buttonSize, height: Self.buttonSize)
             .background(
                 RoundedRectangle(cornerRadius: 7)
                     .fill(action.tint == DeckTheme.value

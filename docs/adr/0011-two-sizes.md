@@ -34,9 +34,16 @@ A card is either whole or one row of 44 points. There is no third size.
 - **The note** is the running detail when the project is up, the container count, the pid or a
   mutagen warning, and the state word otherwise. The dot has already said which of the two this
   is, so the words do not repeat it.
-- **The action is not chosen.** It is the first entry of the `lifecycle` array each card already
-  builds, so stopped offers Start, running offers Stop, and a card mid-command offers nothing
-  pressable.
+- **The actions are not chosen.** They are the `lifecycle` array each card already builds, so
+  stopped leads with Start and running with Stop, plus a terminal and, while there is a site to
+  open, the site. Folder is left out although the full card has it: a terminal opens in the folder
+  anyway, and a row this size cannot spend 24 points saying the same thing twice. A control that
+  is disabled is left out too, apart from the lifecycle one, because four squares of which two
+  cannot be pressed reads as a broken row rather than an idle project.
+- **The note goes when the controls arrive.** `10 containers` is 78 points of the 324 a row has,
+  and four squares are 108. The dot has already said good, busy or off by colour, so the note is
+  detail rather than state, and keeping both leaves the name 91 points and truncates it. One
+  control, as a list card has, keeps its note.
 - **The corner radius drops to 14.** It is the one number a collapsed card cannot inherit: at 44
   points tall, a 20-point radius reads as a pill rather than as a card.
 - **Collapsing closes the log tray.** Six lines of log under a one-line card is not a card.

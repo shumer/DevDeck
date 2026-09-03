@@ -604,6 +604,26 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(ActionsCard.size(isCollapsed: false).height > CollapsedCardMetrics.height)
     }
 
+    await run.test("a folded project keeps its controls, and drops the note to fit them") {
+        let project = ArcProject(id: "p", title: "Libero", organization: "acme", folder: "/tmp")
+        // A view is main-actor work even when all that is asked of it is arithmetic, so the
+        // answers are taken over there and compared here.
+        let (running, showsNote, stopped) = await MainActor.run {
+            let up = ArcProjectCard(project: project, status: LocalStackStatus(state: .running, containers: 10))
+            let down = ArcProjectCard(project: project, status: LocalStackStatus(state: .stopped))
+            return (up.collapsedActionTitles, up.showsCollapsedNote, down.collapsedActionTitles)
+        }
+
+        // Four squares take 108 points of the 324 a row has. The note is what pays for them:
+        // `10 containers` is 78, and the dot has already said running.
+        try expectEqual(running, ["Stop", "Restart", "Terminal", "Open the site"])
+        try expect(!showsNote, "the dot carries the state; the count is detail")
+
+        // Stopped: no restart worth offering and nothing to open, so the row is two live
+        // squares rather than four with two dead ones.
+        try expectEqual(stopped, ["Start", "Terminal"])
+    }
+
     await run.test("an open tray is not carried into a collapsed card") {
         let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let status = LocalStackStatus(state: .running)

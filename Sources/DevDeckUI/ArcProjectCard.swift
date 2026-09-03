@@ -86,10 +86,33 @@ public struct ArcProjectCard: View {
             note: collapsedNote,
             tone: heroState.tone,
             color: heroState.color,
-            action: lifecycle.first,
+            actions: collapsedActions,
             help: status.detail ?? heroText
         )
     }
+
+    /// What a folded card keeps: the action the state implies, a restart when it can be done,
+    /// a terminal, and the site while there is one to open.
+    ///
+    /// Folder is left out although the full card has it, because a terminal opens in the folder
+    /// anyway and a row this size cannot spend 24 points saying the same thing twice. A disabled
+    /// control is left out too, apart from the lifecycle one: four squares of which two cannot be
+    /// pressed reads as a broken row rather than an idle project.
+    private var collapsedActions: [CardAction] {
+        var actions: [CardAction] = []
+        if let first = lifecycle.first { actions.append(first) }
+        actions.append(contentsOf: lifecycle.dropFirst().filter(\.isEnabled))
+        actions.append(CardAction("Terminal", systemImage: "terminal", action: onOpenTerminal))
+        if let site = status.isRunning ? (status.siteURL ?? project.localSiteURL) : nil {
+            actions.append(CardAction("Open the site", systemImage: "arrow.up.forward") { onOpen(site) })
+        }
+        return actions
+    }
+
+    /// What the collapsed row will draw, for the suite: a view's body cannot be asked, and the
+    /// arithmetic behind "which controls fit" is worth being sure about.
+    public var collapsedActionTitles: [String] { collapsedActions.map(\.title) }
+    public var showsCollapsedNote: Bool { collapsedActions.count < 2 }
 
     /// Running says how many containers; anything else says what it is. The dot has already
     /// said which of the two this is, so the words do not repeat it.

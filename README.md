@@ -551,9 +551,10 @@ permission: the shortcut is a Carbon hot key, not a global key monitor, so macOS
 ask you about.
 
 Right-click a panel and **Collapse to one row** folds the card down to 44 points: the mark, the
-state dot, the name, one note and the single action that state implies. Every card can do it. On a
-project that action is Start or Stop; on a list card, which has no lifecycle, it opens the same
-list on the web. It is remembered per card,
+state dot, the name and its controls as small squares. On a project those are the action the state
+implies, a restart when there is one worth offering, a terminal, and the site while something is
+serving it; on a list card, which has no lifecycle, one square opens the same list on the web and
+the row keeps its count instead. It is remembered per card,
 so the projects you are not working on today take a row each while the one you are stays whole.
 Six collapsed cards come to 324 points against 1218 whole.
 
