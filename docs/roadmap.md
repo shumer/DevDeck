@@ -21,7 +21,8 @@
   restart running the Arc CLI in the project folder.
 - **Settings with sections** - GitHub accounts, Arc projects and General kept apart in one
   window, and a menu-bar icon that says which app it belongs to.
-- **Settings as sections, list and form** - three columns, one item edited at a time, forms
+- **Settings as one list and a form** - grouped by kind with General pinned at the top, one item
+  edited at a time, forms
   built by `FormLayout` so they stretch with the window instead of leaving dead space.
 
 - **DDEV projects** - one card each, fed by a single `ddev list` for the whole deck, with PHP

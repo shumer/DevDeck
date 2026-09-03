@@ -362,19 +362,28 @@ apart, off-screen ones cannot.
 
 ## The settings window
 
-Four sections and three columns: the sections, the things in the selected section, and the form
-for one of them.
+Two columns: everything configurable in one list, grouped by kind, and the form for whichever row
+is selected.
 
 ```
-sections          list                     form
-GitHub accounts   ● Governance             ┌ Name        [ Governance        ] ┐
-Arc projects        whistleblower          │ Folder      [ /Users/…  ][Choose]│
-DDEV projects ▸   ○ nasdaqir               └───────────────────────────────────┘
-General             NasdaqIR               Links on the card …
-                  [+] [−]
+list                        form
+DECK                        ┌ Name        [ Governance        ] ┐
+  General                   │ Folder      [ /Users/…  ][Choose] │
+GITHUB ACCOUNTS             └────────────────────────────────────┘
+● GitHub                    Links on the card …
+DDEV PROJECTS
+● Governance
+○ nasdaqir
+[+ ⌄] [−]
 ```
 
-The middle column is the answer to a real problem: with every project's fields stacked down one
+The sections had a column of their own until the window was drawn at true scale and looked at:
+184 points for six buttons, in an app with about thirty settings in it, is a column spent on a
+choice a heading makes just as well. Deleting it also put every page over the width at which
+`FormLayout` used to change the label gutter, so the gutter stopped depending on which page you
+were on.
+
+The list column is the answer to a real problem: with every project's fields stacked down one
 page, it was impossible to see where one ended and the next began. Only the selected item has a
 form, and the list carries the identity - name, what tells it apart, and a state dot.
 
