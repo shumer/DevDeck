@@ -67,6 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var displayMode: DisplayMode { preferences.displayMode }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Before any window exists, because a settings field with no Edit menu behind it cannot
+        // be pasted into.
+        EditMenu.install()
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.toolTip = "DevDeck, open pull requests"
         let menu = NSMenu()
