@@ -445,6 +445,10 @@ Right-click a panel and the menu is about that card: fold it to a row, show or h
 take it off the deck, and then the two or three things you might want next. The card list and the
 deck-wide switches stay in the menu-bar menu, where they belong.
 
+Cut, copy and paste work in the settings window. That is not as obvious as it sounds for an
+agent app: with no Dock icon there is no menu bar of its own, ⌘V is routed through the main menu,
+and with no Edit menu there was nothing to route it to, so pasting a token was impossible.
+
 The settings window is three columns: the sections - GitHub accounts, Arc projects, DDEV
 projects, Projects, General - then what is in the section, then the form for the one selected. Only one
 account or project has a form on screen at a time, which is what keeps two similarly named

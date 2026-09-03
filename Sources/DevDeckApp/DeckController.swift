@@ -61,6 +61,8 @@ final class DeckController: ObservableObject {
     /// on the API refresh cadence.
     private var stackLoop: Task<Void, Never>?
     private var consecutiveFailures = 0
+    /// Keeps a card from flipping to bad news on one unlucky poll. See `StateSettler`.
+    private var settler = StateSettler()
 
     /// Cards currently on screen. Nothing is fetched for a hidden card.
     private var activeCards: Set<CardID> = []
@@ -158,12 +160,22 @@ final class DeckController: ObservableObject {
             // the top of it would flip the card back to "stopped" mid-restart.
             if stackStatuses[project.id]?.isBusy == true { continue }
             let service = LocalStackService(project: project, runner: commandRunner)
-            stackStatuses[project.id] = await service.status()
+            let probed = await service.status()
+            // One failed probe is a hiccup: the engine drops a request while it reloads and the
+            // card would say "stopped" about a stack that is up.
+            guard settler.shouldApply(
+                isGood: probed.isRunning,
+                wasGood: stackStatuses[project.id]?.isRunning ?? false,
+                for: "arc.\(project.id)"
+            ) else { continue }
+            stackStatuses[project.id] = probed
         }
     }
 
     /// Runs a stack command and keeps the card honest while it does.
     func perform(_ action: LocalStackAction, for project: ArcProject) {
+        // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
+        settler.reset("arc.\(project.id)")
         guard project.supportsLocalStack else { return }
         stackStatuses[project.id] = LocalStackStatus(
             state: .working,
@@ -259,7 +271,16 @@ final class DeckController: ObservableObject {
             // the card back mid-restart. A stale "working" is overruled: a task that died
             // without reporting must not freeze the card for the rest of the session.
             if !finished.contains(project.id), isBusyAndFresh(project.id) { continue }
-            ddevStatuses[project.id] = ddevEnvironment.status(for: project, entries: entries)
+            let probed = ddevEnvironment.status(for: project, entries: entries)
+            // `ddev list` answers slowly while a project is starting and occasionally not at
+            // all, and the card would say "not in ddev list" about a project that is running.
+            // A command that has just finished is not a poll, so it goes straight through.
+            guard finished.contains(project.id) || settler.shouldApply(
+                isGood: probed.isRunning,
+                wasGood: ddevStatuses[project.id]?.isRunning ?? false,
+                for: "ddev.\(project.id)"
+            ) else { continue }
+            ddevStatuses[project.id] = probed
         }
     }
 
@@ -272,6 +293,8 @@ final class DeckController: ObservableObject {
     }
 
     func perform(_ action: DDEVAction, for project: DDEVProject) {
+        // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
+        settler.reset("ddev.\(project.id)")
         guard project.folderURL != nil else { return }
         ddevStatuses[project.id] = DDEVStatus(
             state: .working,
@@ -343,6 +366,11 @@ final class DeckController: ObservableObject {
 
     private func refreshDocker() async {
         let probed = await dockerEnvironment.status()
+        // The daemon is busy often enough to miss one `docker version`, and every card that
+        // needs containers says "Docker is not running" when it does.
+        guard settler.shouldApply(isGood: probed.isReady, wasGood: docker.isReady, for: "docker") else {
+            return
+        }
         // Docker Desktop takes the better part of a minute to come up, and flipping the cards
         // back to "not running" in between is how a button looks like it did nothing. The
         // window is bounded so a launch that silently failed cannot leave the deck waiting
@@ -378,7 +406,15 @@ final class DeckController: ObservableObject {
             // task that died without reporting must not freeze the card for the session.
             if !finished.contains(project.id), isLocalBusyAndFresh(project.id) { continue }
             let service = LocalProjectService(project: project, runner: commandRunner)
-            localStatuses[project.id] = await service.status()
+            let probed = await service.status()
+            // A dev server rebuilding drops requests for a second or two, and the card would
+            // call that stopped.
+            guard finished.contains(project.id) || settler.shouldApply(
+                isGood: probed.isRunning,
+                wasGood: localStatuses[project.id]?.isRunning ?? false,
+                for: "project.\(project.id)"
+            ) else { continue }
+            localStatuses[project.id] = probed
         }
     }
 
@@ -389,6 +425,8 @@ final class DeckController: ObservableObject {
     }
 
     func perform(_ action: LocalProjectAction, for project: LocalProject) {
+        // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
+        settler.reset("project.\(project.id)")
         guard project.supportsCommands else { return }
         let previous = localStatuses[project.id]
         localStatuses[project.id] = LocalProjectStatus(

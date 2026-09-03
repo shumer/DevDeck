@@ -68,6 +68,14 @@ things, this one prints `exec zsh` - and every command afterwards runs non-inter
 that `PATH` in its environment. Running everything interactively would also work, and would put
 that banner in the middle of output something is parsing.
 
+**One bad answer is not news.** A poll asked every couple of minutes comes back wrong every so
+often: the daemon misses a `docker version` while it is busy, `ddev list` is slow while a project
+starts, an engine drops a request as it reloads. Left alone the card flips to "stopped" or
+"Docker is not running" and is right again seconds later, which watched for an hour reads as a
+deck that lies. `StateSettler` holds a *worse* answer back until it has been given twice, and
+lets a better one through at once. Pressing a button resets it, because a decision is not a
+hiccup and a stop must show immediately.
+
 **A command's outcome is verified, not assumed.** `fusion daemon` returns before the engine
 serves and `fusion stop` returns before the containers are down, so both are followed by a wait
 - `waitUntilRunning` and `waitUntilStopped`. The second one matters more than it looks: without

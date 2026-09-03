@@ -436,6 +436,46 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(DeckArrangements.removing("L5", from: list).count, DeckArrangements.limit - 1)
     }
 
+    run.section("One bad answer is not news")
+
+    await run.test("a card does not flip on a single failed poll") {
+        var settler = StateSettler()
+        // Up, and the poll misses once: the card keeps saying up.
+        try expect(!settler.shouldApply(isGood: false, wasGood: true, for: "arc.tempo"))
+        // It misses twice: now it is a fact.
+        try expect(settler.shouldApply(isGood: false, wasGood: true, for: "arc.tempo"))
+    }
+
+    await run.test("good news is believed at once, and it clears the count") {
+        var settler = StateSettler()
+        try expect(!settler.shouldApply(isGood: false, wasGood: true, for: "a"))
+        try expect(settler.shouldApply(isGood: true, wasGood: false, for: "a"),
+                   "nobody was ever annoyed by a card that noticed something came up")
+        try expect(!settler.shouldApply(isGood: false, wasGood: true, for: "a"),
+                   "and the miss before it does not count towards the next one")
+    }
+
+    await run.test("nothing is held back when the card is already showing bad news") {
+        var settler = StateSettler()
+        try expect(settler.shouldApply(isGood: false, wasGood: false, for: "a"),
+                   "including the very first answer about anything")
+    }
+
+    await run.test("things are counted apart from each other") {
+        var settler = StateSettler()
+        try expect(!settler.shouldApply(isGood: false, wasGood: true, for: "arc.tempo"))
+        try expect(!settler.shouldApply(isGood: false, wasGood: true, for: "ddev.shop"),
+                   "one project missing a poll says nothing about another")
+    }
+
+    await run.test("pressing a button is a decision, not a poll") {
+        var settler = StateSettler()
+        try expect(!settler.shouldApply(isGood: false, wasGood: true, for: "arc.tempo"))
+        settler.reset("arc.tempo")
+        try expect(!settler.shouldApply(isGood: false, wasGood: true, for: "arc.tempo"),
+                   "the count starts again, so a stop shows immediately and is not confirmed by a stale miss")
+    }
+
     run.section("Being told")
 
     let review = DeckAlert(
