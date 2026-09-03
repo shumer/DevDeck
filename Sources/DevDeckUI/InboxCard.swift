@@ -67,7 +67,7 @@ public struct InboxCard: View {
             note: collapsedNote,
             tone: collapsedTone.tone,
             color: collapsedTone.color,
-            action: CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard),
+            actions: [CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard)],
             help: collapsedNote ?? "GitHub inbox"
         )
     }
