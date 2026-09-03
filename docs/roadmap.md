@@ -46,6 +46,9 @@
 - **The phone and the work in flight** - the running site as a QR code addressed to this Mac on
   the wifi, offered only while the project is up; and one card for every checkout at once, showing
   what is uncommitted, unpushed or behind. Shipped as 0.8.
+- **A day of somebody else's use** - paste works in settings, a card no longer believes one bad
+  poll, a folded card keeps its controls, and the settings window lost a column and gained the
+  margins it never had. Shipped as 0.9.
 - **The deck's own housekeeping** - the refresh interval and the Actions repository list are
   controls rather than model fields, a right-click on a panel is about that card, project kinds
   are submenus, powering off every DDEV project asks first, the four settings forms all open the
