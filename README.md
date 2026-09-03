@@ -449,11 +449,15 @@ Cut, copy and paste work in the settings window. That is not as obvious as it so
 agent app: with no Dock icon there is no menu bar of its own, ⌘V is routed through the main menu,
 and with no Edit menu there was nothing to route it to, so pasting a token was impossible.
 
-The settings window is three columns: the sections - GitHub accounts, Arc projects, DDEV
-projects, Projects, General - then what is in the section, then the form for the one selected. Only one
+The settings window is two columns: everything you can configure in one list, grouped by kind
+with General pinned at the top, and the form for whichever row is selected. Only one
 account or project has a form on screen at a time, which is what keeps two similarly named
-projects apart, and the form stretches with the window. Add and remove are the `+` and `−`
-under the list. Everything applies as you change it; only a token waits for **Verify token**,
+projects apart, and the form stretches with the window. Add and remove are the `+` and `−` under
+the list; the `+` is a pull-down, since with every kind in one list it has to ask which kind.
+
+The sections used to have a column of their own, 184 points of it, which is a lot to spend on a
+choice a heading makes just as well in an app with about thirty settings in it. Those points went
+to the forms, and with them the label gutter stopped changing width from page to page. Everything applies as you change it; only a token waits for **Verify token**,
 because it is checked against the API before being stored.
 
 Drag a panel anywhere; the position is remembered per card - **against the display it is on**,

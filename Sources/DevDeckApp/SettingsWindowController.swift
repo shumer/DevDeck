@@ -32,8 +32,20 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             }
         }
 
-        /// General is a page, not a list of things.
-        var hasList: Bool { self != .general }
+        /// What the `+` calls this kind, and the order it offers them in.
+        var addTitle: String {
+            switch self {
+            case .github: return "GitHub account"
+            case .gitlab: return "GitLab instance"
+            case .arc: return "Arc project"
+            case .ddev: return "DDEV project"
+            case .project: return "Project"
+            case .general: return ""
+            }
+        }
+
+        /// General is a page rather than a list of things, so nothing can be added to it.
+        static var addable: [Section] { allCases.filter { $0 != .general } }
     }
 
     private let tokenStore: any TokenStore
@@ -51,8 +63,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     var onTestNotification: () -> Void = {}
 
     private var window: NSWindow?
-    private var sidebar: NSView?
-    private var sidebarButtons: [Section: NSButton] = [:]
     private var list: SettingsListView?
     private var detailScroll: NSScrollView?
     private var detail: FlippedContainer?
@@ -69,8 +79,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var ddevRow: DDEVProjectRowView?
     private var localRow: LocalProjectRowView?
 
-    private static let sidebarWidth: CGFloat = 184
-    private static let listWidth: CGFloat = 196
+    /// One list column instead of a sidebar and a list. Six buttons in a column of their own
+    /// was 184 points spent on a choice a heading makes just as well, in an app with about
+    /// thirty settings in it, and the forms wanted those points more. It also puts every page
+    /// over the width where the label gutter used to change under them.
+    private static let listWidth: CGFloat = 232
 
     init(
         tokenStore: any TokenStore,
@@ -118,32 +131,33 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         content.wantsLayer = true
         content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
-        buildSidebar(in: content)
-
         let list = SettingsListView(
             frame: NSRect(
-                x: Self.sidebarWidth,
+                x: 0,
                 y: 0,
                 width: Self.listWidth,
                 height: content.bounds.height
             )
         )
         list.autoresizingMask = [.height]
-        list.onSelect = { [weak self] id in
-            guard let self else { return }
-            self.selection[self.section] = id
+        list.onSelect = { [weak self] compound in
+            guard let self, let entry = Self.parse(compound) else { return }
+            // The row says which kind it is, so choosing one is also how the section changes.
+            self.section = entry.section
+            self.selection[entry.section] = entry.id
             self.reloadDetail()
         }
-        list.onAdd = { [weak self] in self?.addItem() }
+        list.onAdd = { [weak self] title in self?.addItem(forMenuTitle: title) }
+        list.setAddOptions(Section.addable.map(\.addTitle))
         list.onRemove = { [weak self] in self?.removeSelected() }
         content.addSubview(list)
         self.list = list
 
         let scroll = NSScrollView(
             frame: NSRect(
-                x: Self.sidebarWidth + Self.listWidth,
+                x: Self.listWidth,
                 y: 0,
-                width: content.bounds.width - Self.sidebarWidth - Self.listWidth,
+                width: content.bounds.width - Self.listWidth,
                 height: content.bounds.height
             )
         )
@@ -162,45 +176,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
-    private func buildSidebar(in content: NSView) {
-        let sidebar = NSView(frame: NSRect(x: 0, y: 0, width: Self.sidebarWidth, height: content.bounds.height))
-        sidebar.autoresizingMask = [.height]
-        sidebar.wantsLayer = true
-        sidebar.layer?.backgroundColor = NSColor.underPageBackgroundColor.withAlphaComponent(0.6).cgColor
-        content.addSubview(sidebar)
-        self.sidebar = sidebar
-
-        let header = NSTextField(labelWithString: "SETTINGS")
-        header.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
-        header.textColor = NSColor.tertiaryLabelColor
-        header.frame = NSRect(x: 18, y: content.bounds.height - 40, width: 120, height: 14)
-        header.autoresizingMask = [.minYMargin]
-        sidebar.addSubview(header)
-
-        var y = content.bounds.height - 68
-        for item in Section.allCases {
-            let button = NSButton(title: "  " + item.title, target: self, action: #selector(sectionClicked(_:)))
-            button.frame = NSRect(x: 10, y: y, width: Self.sidebarWidth - 20, height: 28)
-            button.isBordered = false
-            button.alignment = .left
-            button.font = NSFont.systemFont(ofSize: 13)
-            button.wantsLayer = true
-            button.layer?.cornerRadius = 6
-            button.layer?.cornerCurve = .continuous
-            button.autoresizingMask = [.minYMargin]
-            button.identifier = NSUserInterfaceItemIdentifier(item.rawValue)
-            sidebar.addSubview(button)
-            sidebarButtons[item] = button
-            y -= 32
-        }
-
-        let separator = NSView(frame: NSRect(x: Self.sidebarWidth - 1, y: 0, width: 1, height: content.bounds.height))
-        separator.wantsLayer = true
-        separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
-        separator.autoresizingMask = [.height]
-        sidebar.addSubview(separator)
-    }
-
     func windowDidResize(_ notification: Notification) {
         // The form is laid out for a width, so it is rebuilt when the width changes. Cheap,
         // and it keeps every field stretched to the window instead of stopping short of it.
@@ -209,47 +184,23 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     // MARK: Sections
 
-    @objc private func sectionClicked(_ sender: NSButton) {
-        guard let raw = sender.identifier?.rawValue, let item = Section(rawValue: raw) else { return }
-        select(item)
-    }
-
     private func select(_ item: Section) {
         section = item
-
-        for (candidate, button) in sidebarButtons {
-            let isSelected = candidate == item
-            button.layer?.backgroundColor = isSelected
-                ? NSColor.controlAccentColor.cgColor
-                : NSColor.clear.cgColor
-            button.contentTintColor = isSelected ? .white : .labelColor
-            button.attributedTitle = NSAttributedString(
-                string: "  " + candidate.title,
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: 13, weight: isSelected ? .semibold : .regular),
-                    .foregroundColor: isSelected ? NSColor.white : NSColor.labelColor,
-                ]
-            )
-        }
-
-        layoutColumns()
         reloadList()
         reloadDetail()
     }
 
-    /// General has nothing to list, so its page takes the list column's width too.
-    private func layoutColumns() {
-        guard let content = window?.contentView, let list, let detailScroll else { return }
-        let showsList = section.hasList
-        list.isHidden = !showsList
+    /// A row's identity across the whole list: two projects of different kinds can share an id,
+    /// and the list is one column now.
+    private static func entryID(_ section: Section, _ id: String) -> String {
+        "\(section.rawValue):\(id)"
+    }
 
-        let detailLeft = Self.sidebarWidth + (showsList ? Self.listWidth : 0)
-        detailScroll.frame = NSRect(
-            x: detailLeft,
-            y: 0,
-            width: content.bounds.width - detailLeft,
-            height: content.bounds.height
-        )
+    private static func parse(_ compound: String) -> (section: Section, id: String)? {
+        guard let separator = compound.firstIndex(of: ":"),
+              let section = Section(rawValue: String(compound[compound.startIndex..<separator]))
+        else { return nil }
+        return (section, String(compound[compound.index(after: separator)...]))
     }
 
     // MARK: The list column
@@ -257,65 +208,81 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private func reloadList() {
         guard let list else { return }
 
-        let items: [SettingsListItem]
-        switch section {
-        case .github:
-            items = accountsStore.accounts().map { account in
-                let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
-                return SettingsListItem(
-                    id: account.id,
-                    title: account.label,
-                    subtitle: hasToken ? "token stored" : "no token yet",
-                    state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
-                )
-            }
-        case .gitlab:
-            items = gitlabAccountsStore.accounts().map { account in
-                let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
-                return SettingsListItem(
-                    id: account.id,
-                    title: account.label,
-                    subtitle: hasToken ? account.displayHost : "no token yet",
-                    state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
-                )
-            }
-        case .arc:
-            items = projectsStore.projects().map { project in
-                SettingsListItem(
-                    id: project.id,
-                    title: project.title,
-                    subtitle: project.organization.isEmpty ? "no organisation" : project.organization,
-                    state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
-                )
-            }
-        case .ddev:
-            items = ddevProjectsStore.projects().map { project in
-                SettingsListItem(
-                    id: project.id,
-                    title: project.displayTitle,
-                    subtitle: project.folderURL?.lastPathComponent ?? "no folder",
-                    state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
-                )
-            }
-        case .project:
-            items = localProjectsStore.projects().map { project in
-                SettingsListItem(
-                    id: project.id,
-                    title: project.displayTitle,
-                    // The command rather than the folder: with several checkouts under one
-                    // parent the folder names look alike, and the command is what differs.
-                    subtitle: project.startCommand.isEmpty ? "no start command" : project.startCommand,
-                    state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
-                )
-            }
-        case .general:
-            items = []
-        }
+        // Every kind at once, because the list is the sections now. General is pinned at the
+        // top as a row of its own: it is a page rather than a list, and putting it anywhere
+        // else would leave it as the one thing you reach differently from everything else.
+        var sections: [SettingsListSection] = [
+            SettingsListSection(
+                title: "Deck",
+                items: [SettingsListItem(
+                    id: Self.entryID(.general, "general"),
+                    title: "General",
+                    subtitle: "The deck, notifications, the shortcut",
+                    state: nil
+                )],
+                isAddable: false
+            ),
+        ]
 
-        let stored = selection[section]
-        let valid = items.contains { $0.id == stored } ? stored : items.first?.id
-        selection[section] = valid
-        list.show(items, selecting: valid)
+        sections.append(SettingsListSection(title: Section.github.title, items: accountsStore.accounts().map { account in
+            let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
+            return SettingsListItem(
+                id: Self.entryID(.github, account.id),
+                title: account.label,
+                subtitle: hasToken ? "token stored" : "no token yet",
+                state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
+            )
+        }))
+
+        sections.append(SettingsListSection(title: Section.gitlab.title, items: gitlabAccountsStore.accounts().map { account in
+            let hasToken = ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
+            return SettingsListItem(
+                id: Self.entryID(.gitlab, account.id),
+                title: account.label,
+                subtitle: hasToken ? account.displayHost : "no token yet",
+                state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
+            )
+        }))
+
+        sections.append(SettingsListSection(title: Section.arc.title, items: projectsStore.projects().map { project in
+            SettingsListItem(
+                id: Self.entryID(.arc, project.id),
+                title: project.title,
+                subtitle: project.organization.isEmpty ? "no organisation" : project.organization,
+                state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+            )
+        }))
+
+        sections.append(SettingsListSection(title: Section.ddev.title, items: ddevProjectsStore.projects().map { project in
+            SettingsListItem(
+                id: Self.entryID(.ddev, project.id),
+                title: project.displayTitle,
+                subtitle: project.name,
+                state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+            )
+        }))
+
+        sections.append(SettingsListSection(title: Section.project.title, items: localProjectsStore.projects().map { project in
+            SettingsListItem(
+                id: Self.entryID(.project, project.id),
+                title: project.displayTitle,
+                // The command rather than the folder: with several checkouts under one parent
+                // the folder names look alike, and the command is what differs.
+                subtitle: project.startCommand.isEmpty ? "no start command" : project.startCommand,
+                state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+            )
+        }))
+
+        let wanted = section == .general
+            ? Self.entryID(.general, "general")
+            : selection[section].map { Self.entryID(section, $0) }
+        let ids = sections.flatMap { $0.items.map(\.id) }
+        let valid = ids.contains(where: { $0 == wanted }) ? wanted : ids.first
+        if let valid, let entry = Self.parse(valid) {
+            section = entry.section
+            if entry.section != .general { selection[entry.section] = entry.id }
+        }
+        list.show(sections, selecting: valid)
     }
 
     // MARK: The form column
@@ -539,7 +506,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         actionsField.placeholderString = "owner/name, owner/name"
         actionsField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         actionsField.delegate = self
-        form.row("Actions watches", [(actionsField, nil)])
+        form.row("Actions", [(actionsField, nil)])
         form.endGroup()
         form.footnote("An empty Actions list follows the repositories your open pull requests are "
             + "in, up to five per account, which is the right default for one person's deck. The "
@@ -723,6 +690,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     // MARK: Adding and removing
+
+    private func addItem(forMenuTitle title: String) {
+        guard let kind = Section.addable.first(where: { $0.addTitle == title }) else { return }
+        section = kind
+        addItem()
+    }
 
     private func addItem() {
         switch section {
