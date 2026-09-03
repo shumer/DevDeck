@@ -57,8 +57,15 @@ final class SettingsListView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.5).cgColor
+        // The sidebar material, not a tinted rectangle. `textBackgroundColor` at half alpha is
+        // white on macOS 26, which is what the form column is too, so the two ran together and
+        // the column stopped reading as a sidebar at all.
+        let material = NSVisualEffectView(frame: bounds)
+        material.material = .sidebar
+        material.blendingMode = .behindWindow
+        material.state = .followsWindowActiveState
+        material.autoresizingMask = [.width, .height]
+        addSubview(material)
 
         scroll.frame = NSRect(x: 0, y: footerHeight, width: bounds.width, height: bounds.height - footerHeight)
         scroll.autoresizingMask = [.width, .height]
@@ -82,6 +89,14 @@ final class SettingsListView: NSView {
         remove.bezelStyle = .smallSquare
         remove.autoresizingMask = [.maxXMargin]
         addSubview(remove)
+
+        // A hairline over the footer, so the buttons read as a bar rather than as two controls
+        // floating at the bottom of the list.
+        let footerLine = NSView(frame: NSRect(x: 0, y: footerHeight, width: bounds.width, height: 1))
+        footerLine.wantsLayer = true
+        footerLine.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.6).cgColor
+        footerLine.autoresizingMask = [.width]
+        addSubview(footerLine)
 
         let separator = NSView(frame: NSRect(x: bounds.width - 1, y: 0, width: 1, height: bounds.height))
         separator.wantsLayer = true
@@ -144,16 +159,19 @@ final class SettingsListView: NSView {
         document.frame = NSRect(x: 0, y: 0, width: width, height: max(y + 6, scroll.contentSize.height))
     }
 
-    static let headerHeight: CGFloat = 24
+    static let headerHeight: CGFloat = 30
     static let emptyHeight: CGFloat = 24
     static let sectionGap: CGFloat = 10
 
     private static func header(_ title: String, width: CGFloat) -> NSView {
-        let label = NSTextField(labelWithString: title.uppercased())
-        label.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
-        label.textColor = NSColor.tertiaryLabelColor
+        let label = NSTextField(labelWithString: title)
+        // Sentence case at 11 semibold rather than 10-point caps in tertiary grey. Six groups
+        // in one column only work if the headings are louder than the rows they gather, and
+        // caps at tertiary are quieter than the subtitle of every row under them.
+        label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = NSColor.secondaryLabelColor
         let container = FlippedContainer(frame: NSRect(x: 0, y: 0, width: width, height: headerHeight))
-        label.frame = NSRect(x: 12, y: 8, width: width - 24, height: 14)
+        label.frame = NSRect(x: 16, y: 13, width: width - 28, height: 15)
         label.autoresizingMask = [.width]
         container.addSubview(label)
         return container
@@ -166,7 +184,7 @@ final class SettingsListView: NSView {
         label.font = NSFont.systemFont(ofSize: 11)
         label.textColor = NSColor.tertiaryLabelColor
         let container = FlippedContainer(frame: NSRect(x: 0, y: 0, width: width, height: emptyHeight))
-        label.frame = NSRect(x: 24, y: 4, width: width - 36, height: 15)
+        label.frame = NSRect(x: 28, y: 4, width: width - 40, height: 15)
         label.autoresizingMask = [.width]
         container.addSubview(label)
         return container
@@ -200,6 +218,7 @@ final class SettingsListRow: NSView {
     private let titleField = NSTextField(labelWithString: "")
     private let subtitleField = NSTextField(labelWithString: "")
     private let dot = NSView()
+    private let selection = NSView()
 
     var isSelected = false {
         didSet { applySelection() }
@@ -210,14 +229,22 @@ final class SettingsListRow: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
 
         wantsLayer = true
-        layer?.cornerRadius = 6
-        layer?.cornerCurve = .continuous
+
+        // The selection is a rounded rectangle inset from the column, not a band running edge
+        // to edge: the second is what a table row looks like, the first is what a sidebar's
+        // selection looks like, and this is a sidebar.
+        selection.frame = NSRect(x: 8, y: 3, width: width - 16, height: Self.height - 6)
+        selection.autoresizingMask = [.width]
+        selection.wantsLayer = true
+        selection.layer?.cornerRadius = 6
+        selection.layer?.cornerCurve = .continuous
+        addSubview(selection)
 
         let hasDot = item.state != nil
-        let left: CGFloat = hasDot ? 24 : 12
+        let left: CGFloat = hasDot ? 32 : 20
 
         if let state = item.state {
-            dot.frame = NSRect(x: 12, y: Self.height / 2 - 3, width: 6, height: 6)
+            dot.frame = NSRect(x: 20, y: Self.height / 2 - 3, width: 6, height: 6)
             dot.wantsLayer = true
             dot.layer?.cornerRadius = 3
             dot.layer?.backgroundColor = state.cgColor
@@ -228,7 +255,7 @@ final class SettingsListRow: NSView {
         titleField.stringValue = item.title
         titleField.font = NSFont.systemFont(ofSize: 13)
         titleField.lineBreakMode = .byTruncatingTail
-        titleField.frame = NSRect(x: left, y: 21, width: width - left - 10, height: 16)
+        titleField.frame = NSRect(x: left, y: 21, width: width - left - 16, height: 16)
         titleField.autoresizingMask = [.width]
         addSubview(titleField)
 
@@ -236,7 +263,7 @@ final class SettingsListRow: NSView {
         subtitleField.font = NSFont.systemFont(ofSize: 11)
         subtitleField.textColor = NSColor.secondaryLabelColor
         subtitleField.lineBreakMode = .byTruncatingMiddle
-        subtitleField.frame = NSRect(x: left, y: 5, width: width - left - 10, height: 14)
+        subtitleField.frame = NSRect(x: left, y: 5, width: width - left - 16, height: 14)
         subtitleField.autoresizingMask = [.width]
         addSubview(subtitleField)
     }
@@ -255,7 +282,7 @@ final class SettingsListRow: NSView {
     }
 
     private func applySelection() {
-        layer?.backgroundColor = isSelected ? NSColor.controlAccentColor.cgColor : NSColor.clear.cgColor
+        selection.layer?.backgroundColor = isSelected ? NSColor.controlAccentColor.cgColor : NSColor.clear.cgColor
         titleField.textColor = isSelected ? .white : .labelColor
         subtitleField.textColor = isSelected ? NSColor.white.withAlphaComponent(0.75) : .secondaryLabelColor
     }
