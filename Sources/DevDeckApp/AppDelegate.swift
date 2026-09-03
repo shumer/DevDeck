@@ -138,6 +138,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             settingsController.show()
         }
 
+        // `open -a DevDeck --args --settings`, for looking at the settings window without
+        // hunting through a menu bar that has no window of its own.
+        if let index = CommandLine.arguments.firstIndex(of: "--settings") {
+            // An optional section after it, so a page can be looked at without hunting for it
+            // through a menu bar that has no window of its own.
+            let named = CommandLine.arguments.count > index + 1
+                ? SettingsWindowController.Section(rawValue: CommandLine.arguments[index + 1])
+                : nil
+            settingsController.show(named ?? .github)
+        }
+
         if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {
             LoginItem.set(true)
         }

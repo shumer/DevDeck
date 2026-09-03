@@ -23,6 +23,21 @@ final class FormLayout {
     /// The open group box, if any, and how far down it we are.
     private var group: (box: FlippedContainer, cursor: CGFloat, separators: [CGFloat])?
 
+    /// A gap owed to whatever comes next, spent when it arrives.
+    ///
+    /// The one thing a form cannot know at the moment it closes a group is whether the next
+    /// thing explains it. A footnote belongs to the group above and needs to sit close to it; a
+    /// header belongs to what follows and needs air before it. Closing a group therefore owes a
+    /// gap rather than spending one, and the next call decides how much of it to pay.
+    private var pendingGap: CGFloat = 0
+
+    /// Gaps between blocks. A footnote is 10 under its group and 22 above the next header, so it
+    /// reads as belonging to what it explains. It used to be 18 and 14, closer to the wrong one.
+    static let gapAfterGroup: CGFloat = 24
+    static let gapBeforeFootnote: CGFloat = 10
+    static let gapAfterFootnote: CGFloat = 22
+    static let gapAfterHeader: CGFloat = 6
+
     /// Width of the label gutter. Narrower on a narrow window, as System Settings does.
     private let labelWidth: CGFloat
 
@@ -31,10 +46,23 @@ final class FormLayout {
         self.width = parent.bounds.width
         self.sideInset = sideInset
         self.cursor = top
-        self.labelWidth = parent.bounds.width < 560 ? 96 : 124
+        // One gutter, wide enough for the longest label this form has. It used to be 96 on a
+        // narrow window and 124 on a wide one, which put two different forms in one window and
+        // truncated "Organisations", 83.7 points of text in a 76-point field.
+        self.labelWidth = 132
     }
 
-    var usedHeight: CGFloat { cursor }
+    /// How much room the form needs, with the margin under it.
+    ///
+    /// Without the last one, the bottom group's border ends flush against the edge of the scroll
+    /// view, which reads as a page that was cut off rather than one that finished.
+    var usedHeight: CGFloat { cursor + Self.bottomInset }
+
+    /// Every row indents by the same amount, whatever kind of row it is. It used to be 12 for a
+    /// labelled row and 14 for a toggle, which is invisible on its own and a wobble down the
+    /// left edge when a form stacks both.
+    static let rowInset: CGFloat = 16
+    static let bottomInset: CGFloat = 24
 
     private var contentWidth: CGFloat { width - sideInset * 2 }
 
@@ -42,16 +70,20 @@ final class FormLayout {
 
     /// A line above a group saying what the group is.
     func header(_ text: String) {
+        flush()
         let label = NSTextField(labelWithString: text)
         label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
         label.textColor = NSColor.secondaryLabelColor
         label.frame = NSRect(x: sideInset + 2, y: cursor, width: contentWidth - 4, height: 15)
         parent.addSubview(label)
-        cursor += 20
+        cursor += 15 + Self.gapAfterHeader
     }
 
     /// An explanation under a group, in the same place macOS puts them.
     func footnote(_ text: String) {
+        // A footnote is the one thing that wants to be closer to what came before it than to
+        // what comes after, so it pays a smaller gap than anything else would.
+        flush(Self.gapBeforeFootnote)
         let label = NSTextField(wrappingLabelWithString: text)
         label.font = NSFont.systemFont(ofSize: 11)
         label.textColor = NSColor.secondaryLabelColor
@@ -60,11 +92,20 @@ final class FormLayout {
         let height = label.sizeThatFits(NSSize(width: contentWidth - 4, height: .greatestFiniteMagnitude)).height
         label.frame = NSRect(x: sideInset + 2, y: cursor, width: contentWidth - 4, height: height)
         parent.addSubview(label)
-        cursor += height + 14
+        cursor += height
+        pendingGap = Self.gapAfterFootnote
     }
 
     func space(_ points: CGFloat = 10) {
+        flush()
         cursor += points
+    }
+
+    /// Pays the gap owed by whatever came before, or the amount asked for instead.
+    private func flush(_ override: CGFloat? = nil) {
+        guard pendingGap > 0 else { return }
+        cursor += override ?? pendingGap
+        pendingGap = 0
     }
 
     /// The form's own title: what is being edited, where it lives, and the one switch that is
@@ -74,6 +115,7 @@ final class FormLayout {
     /// "show a card for this project" is not a field of the project, and as a row it produced
     /// the one thing the label gutter cannot do gracefully, which is nothing.
     func formHeader(title: String, subtitle: String?, accessory: (label: String, view: NSView)?) {
+        flush()
         let name = NSTextField(labelWithString: title)
         name.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
         name.lineBreakMode = .byTruncatingTail
@@ -114,6 +156,7 @@ final class FormLayout {
     // MARK: Groups
 
     func beginGroup() {
+        flush()
         let box = FlippedContainer(frame: NSRect(x: sideInset, y: cursor, width: contentWidth, height: 0))
         box.wantsLayer = true
         box.layer?.backgroundColor = NSColor.textBackgroundColor.cgColor
@@ -121,6 +164,9 @@ final class FormLayout {
         box.layer?.cornerCurve = .continuous
         box.layer?.borderWidth = 1
         box.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.5).cgColor
+        // Or a row that paints its own background - `liveRow` does - covers the bottom border
+        // and squares off the two corners it reaches.
+        box.layer?.masksToBounds = true
         parent.addSubview(box)
         group = (box, 0, [])
     }
@@ -132,13 +178,15 @@ final class FormLayout {
         // Hairlines between rows, drawn after the fact so a row never has to know whether it
         // is the last one.
         for offset in open.separators.dropFirst() {
-            let line = NSView(frame: NSRect(x: 12, y: offset, width: open.box.frame.width - 12, height: 1))
+            let line = NSView(frame: NSRect(x: Self.rowInset, y: offset, width: open.box.frame.width - Self.rowInset, height: 1))
             line.wantsLayer = true
             line.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.45).cgColor
             open.box.addSubview(line)
         }
 
-        cursor += open.cursor + 18
+        cursor += open.cursor
+        // Owed rather than spent: what comes next decides. See `pendingGap`.
+        pendingGap = Self.gapAfterGroup
         group = nil
     }
 
@@ -157,12 +205,12 @@ final class FormLayout {
             field.font = NSFont.systemFont(ofSize: 13)
             field.alignment = .right
             field.lineBreakMode = .byTruncatingTail
-            field.frame = NSRect(x: 12, y: top + (rowHeight - 17) / 2, width: labelWidth - 20, height: 17)
+            field.frame = NSRect(x: Self.rowInset, y: top + (rowHeight - 17) / 2, width: labelWidth - Self.rowInset - 14, height: 17)
             open.box.addSubview(field)
         }
 
-        let left = label == nil ? 14 : labelWidth
-        let available = open.box.frame.width - left - 14
+        let left = label == nil ? Self.rowInset : labelWidth
+        let available = open.box.frame.width - left - Self.rowInset
         let spacing: CGFloat = 8
         let fixed = controls.compactMap(\.width).reduce(0, +)
         let flexibleCount = controls.filter { $0.width == nil }.count
@@ -205,7 +253,7 @@ final class FormLayout {
         let label = NSTextField(labelWithString: isRequired ? "\(caption) •" : caption)
         label.font = NSFont.systemFont(ofSize: 9.5, weight: .semibold)
         label.textColor = isRequired ? NSColor.systemOrange : NSColor.secondaryLabelColor
-        label.frame = NSRect(x: 12, y: top + 8, width: open.box.frame.width - 24, height: 12)
+        label.frame = NSRect(x: Self.rowInset, y: top + 8, width: open.box.frame.width - Self.rowInset * 2, height: 12)
         open.box.addSubview(label)
 
         let accessoryWidth: CGFloat = accessory == nil ? 0 : 66
@@ -240,7 +288,7 @@ final class FormLayout {
         let top = open.cursor
         open.separators.append(top)
 
-        toggle.frame = NSRect(x: 14, y: top + 10, width: 34, height: 21)
+        toggle.frame = NSRect(x: Self.rowInset, y: top + 10, width: 34, height: 21)
         open.box.addSubview(toggle)
 
         let caption = NSTextField(labelWithString: title)
@@ -306,7 +354,7 @@ final class FormLayout {
         let top = open.cursor
         open.separators.append(top)
 
-        check.frame = NSRect(x: 14, y: top + 10, width: 16, height: 16)
+        check.frame = NSRect(x: Self.rowInset, y: top + 10, width: 16, height: 16)
         open.box.addSubview(check)
 
         let badge = NSTextField(labelWithString: tag.uppercased())
@@ -350,7 +398,7 @@ final class FormLayout {
         field.font = NSFont.systemFont(ofSize: 11)
         field.textColor = NSColor.secondaryLabelColor
         field.lineBreakMode = .byTruncatingTail
-        field.frame = NSRect(x: 14, y: top + 7, width: open.box.frame.width - 28, height: 15)
+        field.frame = NSRect(x: Self.rowInset, y: top + 7, width: open.box.frame.width - Self.rowInset * 2, height: 15)
         open.box.addSubview(field)
         open.cursor = top + 29
         group = open
