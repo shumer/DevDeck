@@ -146,6 +146,9 @@ public struct LocalProjectCard: View {
     private var glyph: CardGlyph {
         switch project.kind {
         case .node: return .node
+        case .next: return .next
+        case .nest: return .nest
+        case .bun: return .bun
         case .docker: return .docker
         case .make: return .make
         case .other: return .project
