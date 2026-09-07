@@ -65,6 +65,14 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
+        // Renders every card mark at the size a card draws it. Same reason as IconPreview.
+        .executableTarget(
+            name: "GlyphPreview",
+            dependencies: ["DevDeckUI"],
+            path: "Tools/GlyphPreview",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+
         // Renders the application icon into an .iconset for `iconutil`, called by build.sh.
         .executableTarget(
             name: "AppIconExport",

@@ -22,6 +22,7 @@ scripts/smoke-test.sh             # one real API call using the stored token
 ./build.sh --skip-tests           # do not do this
 swift run DevDeck                 # run from the terminal without bundling
 swift run IconPreview out.png     # draw the menu-bar icon at menu-bar size, at 2×
+swift run GlyphPreview out.png    # draw every card mark at 15 points and blown up
 pkill -f DevDeck                  # quit a running instance
 ```
 

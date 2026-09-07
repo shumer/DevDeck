@@ -314,10 +314,11 @@ folder to go hunting for - DDEV already knows every project on the machine.
 
 ## Plain projects
 
-Everything that is neither Arc nor DDEV: a compose stack, a dev server, a Makefile. **Settings
-→ Projects → +** asks for a folder and then reads it - a compose file, a `dev` script in
-`package.json`, a `up:` target in a Makefile - and fills the commands in for you. The **Detect**
-button does the same again later, and nothing is ever guessed over something you typed.
+Everything that is neither Arc nor DDEV: a compose stack, a dev server, a Makefile, a
+Next and Nest monorepo. **Settings → Projects → +** asks for a folder and then reads it - a
+compose file, a `dev` script in `package.json`, a `up:` target in a Makefile - and fills the
+commands in for you. The **Detect** button does the same again later, and nothing is ever
+guessed over something you typed.
 
 - **One checkbox decides how the command is run.** *The command keeps running* is on for
   `npm run dev` and off for `docker compose up -d`. A command that holds its process is started
@@ -338,7 +339,17 @@ button does the same again later, and nothing is ever guessed over something you
 - **Test, UAT and Prod ship empty**, next to the local site, the same as everywhere else. Extra
   tooling links may use `{site}` to avoid repeating the port.
 - **Needs Docker** puts the card behind the Docker check below. It is ticked for you when the
-  folder is a compose project.
+  folder is a compose project, and also when the `dev` script reaches Docker through another
+  script of its own: `bun run dev` being `bun run db:up && turbo run dev` is a stack that cannot
+  start without a daemon, and a card that does not know it offers a Start that cannot work.
+- **A workspace is read through to its apps.** A monorepo root has no framework and names no
+  port; the apps under `workspaces` do. The probe walks them in one order - front ends first,
+  the API last - so the health URL comes out as the site you would open rather than the backend
+  behind it, and the caption says `bun · next + nest` rather than `npm`. A port written into the
+  script wins, then `.env`, then the framework's own default.
+- **The mark says what it is.** Node's hexagon, Docker's whale, a hammer for a Makefile, and now
+  Next's disc, Nest's cat and Bun. It is read from the start command and the caption, so a card
+  whose mark comes out wrong is fixed by writing the framework's name in the caption.
 
 The commands run in the project folder through a login shell, so `npm`, `make` and `docker` are
 found the same way your terminal finds them.
@@ -513,8 +524,8 @@ Every project card is the same six things, in the same order, so one glance answ
 question on all of them:
 
 1. **A mark and the title**, with the time of the last check on the right. The mark says what
-   kind of project it is - the octocat, Arc's A, DDEV's mark, Node's hexagon, Docker's whale, a
-   hammer for a Makefile. They are the real logos, drawn from the vendors' own SVG path data
+   kind of project it is - the octocat, Arc's A, DDEV's mark, Node's hexagon, Next's disc,
+   Nest's cat, Bun, Docker's whale, a hammer for a Makefile. They are the real logos, drawn from the vendors' own SVG path data
    rather than shipped as images: this toolchain has no asset catalog, and a hand-drawn
    impression of the octocat at fifteen points looks exactly like what it is.
 2. **The state, at 17 points** - one vocabulary on every card: `running`, `stopped`,
@@ -671,4 +682,5 @@ Tests/
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
+  GlyphPreview/    renders every card mark at the size a card draws it
 ```

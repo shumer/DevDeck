@@ -12,6 +12,9 @@ public enum CardGlyph: String, Sendable, Equatable, CaseIterable {
     case arc
     case ddev
     case node
+    case next
+    case nest
+    case bun
     case docker
     case make
     case project
@@ -39,6 +42,9 @@ public struct CardGlyphView: View {
         case .github: return BrandMark.github
         case .gitlab: return BrandMark.gitlab
         case .node: return BrandMark.node
+        case .next: return BrandMark.next
+        case .nest: return BrandMark.nest
+        case .bun: return BrandMark.bun
         case .docker: return BrandMark.docker
         case .ddev: return BrandMark.ddev
         case .arc, .make, .project: return nil
@@ -51,6 +57,9 @@ public struct CardGlyphView: View {
         case .github: VectorMark(BrandMark.github)
         case .gitlab: VectorMark(BrandMark.gitlab)
         case .node: VectorMark(BrandMark.node)
+        case .next: VectorMark(BrandMark.next)
+        case .nest: VectorMark(BrandMark.nest)
+        case .bun: VectorMark(BrandMark.bun)
         case .docker: VectorMark(BrandMark.docker)
         case .ddev: VectorMark(BrandMark.ddev)
         case .arc: ArcMark()

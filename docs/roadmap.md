@@ -46,6 +46,11 @@
 - **The phone and the work in flight** - the running site as a QR code addressed to this Mac on
   the wifi, offered only while the project is up; and one card for every checkout at once, showing
   what is uncommitted, unpushed or behind. Shipped as 0.8.
+- **Monorepos read properly** - a Turborepo of a Next front end and a Nest API is a plain
+  project like any other, but the probe now walks its workspaces for the app that serves the
+  site, reads the port off the script line or `.env`, follows the dev script one level to find
+  the Docker it starts, and picks a mark that names the framework rather than the runtime. Next,
+  Nest and Bun joined the brand marks. Shipped as 0.9.1. See [adr/0014-monorepos-and-marks.md](adr/0014-monorepos-and-marks.md).
 - **A day of somebody else's use** - paste works in settings, a card no longer believes one bad
   poll, a folded card keeps its controls, and the settings window lost a column and gained the
   margins it never had. Shipped as 0.9.

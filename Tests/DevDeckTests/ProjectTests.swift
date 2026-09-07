@@ -38,7 +38,13 @@ private func makeFolder(_ files: [String: String]) -> URL {
         .appendingPathComponent("devdeck-probe-\(UUID().uuidString)", isDirectory: true)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     for (name, contents) in files {
-        try? contents.write(to: directory.appendingPathComponent(name), atomically: true, encoding: .utf8)
+        // A name may carry a path, so a workspace can be laid out the way a real one is.
+        let url = directory.appendingPathComponent(name)
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try? contents.write(to: url, atomically: true, encoding: .utf8)
     }
     return directory
 }
@@ -356,8 +362,89 @@ func runProjectTests(_ run: TestRun) async {
         ])
         let suggestion = try expectNotNil(ProjectProbe.suggestion(for: folder), "suggestion")
         try expectEqual(suggestion.startCommand, "pnpm run dev")
-        try expectEqual(suggestion.subtitle, "pnpm")
+        try expectEqual(suggestion.subtitle, "pnpm · next", "the caption names what it runs, not only how")
         try expectEqual(suggestion.healthURL, "http://localhost:3000", "next, read from the script line")
+    }
+
+    await run.test("a pinned package manager beats the lock files around it") {
+        let folder = makeFolder([
+            "package.json": #"{"packageManager":"bun@1.4.2","scripts":{"dev":"turbo run dev"}}"#,
+            "package-lock.json": "{}",
+        ])
+        let suggestion = try expectNotNil(ProjectProbe.suggestion(for: folder), "suggestion")
+        try expectEqual(suggestion.startCommand, "bun run dev", "the repo says bun, so npm is not offered")
+    }
+
+    await run.test("a monorepo is read for the app that serves the site") {
+        // The shape of a turborepo with a Next front end and a Nest API, which is the case the
+        // root manifest alone answers nothing about: it has no framework of its own, and its
+        // dev script names neither a port nor the docker it ends up calling.
+        let folder = makeFolder([
+            "package.json": #"{"packageManager":"bun@1.4.2","workspaces":["apps/*","packages/*"],"scripts":{"dev":"bun run db:up && turbo run dev","db:up":"docker compose -f docker-compose.local.yml up -d --wait db"},"devDependencies":{"turbo":"^2.10.12"}}"#,
+            "apps/web/package.json": #"{"scripts":{"dev":"next dev --port 3000"},"dependencies":{"next":"16.3.2"}}"#,
+            "apps/api/package.json": #"{"scripts":{"dev":"nest start --watch"},"dependencies":{"@nestjs/core":"^11.1.6"}}"#,
+            "packages/contracts/package.json": #"{"name":"contracts"}"#,
+        ])
+        let suggestion = try expectNotNil(ProjectProbe.suggestion(for: folder), "suggestion")
+        try expectEqual(suggestion.startCommand, "bun run dev")
+        try expectEqual(suggestion.holdsProcess, true)
+        try expectEqual(
+            suggestion.healthURL,
+            "http://localhost:3000",
+            "the front end rather than the API: the health URL is the thing you open"
+        )
+        try expectEqual(suggestion.subtitle, "bun · next + nest", "both are named, the site first")
+        try expectEqual(
+            suggestion.requiresDocker,
+            true,
+            "dev reaches docker through db:up, and a Start that needs it must say so"
+        )
+    }
+
+    await run.test("a port is read from the script line, then .env, then the framework") {
+        try expectEqual(ProjectProbe.port(in: "next dev --port 4100"), 4100)
+        try expectEqual(ProjectProbe.port(in: "vite --port=4200"), 4200)
+        try expectEqual(ProjectProbe.port(in: "PORT=4300 node server.js"), 4300)
+        try expectNil(ProjectProbe.port(in: "next dev"), "nothing to read")
+
+        let folder = makeFolder([
+            "package.json": #"{"scripts":{"dev":"next dev"},"dependencies":{"next":"16.0.0"}}"#,
+            ".env": "# the port the site moved to\nPORT=3100\nOTHER=x\n",
+        ])
+        try expectEqual(
+            ProjectProbe.suggestion(for: folder)?.healthURL,
+            "http://localhost:3100",
+            ".env beats the framework default"
+        )
+    }
+
+    await run.test("a dev script that touches nothing containerised leaves Docker alone") {
+        let folder = makeFolder([
+            "package.json": #"{"scripts":{"dev":"vite","lint":"docker run lint"},"devDependencies":{"vite":"^5.0.0"}}"#,
+        ])
+        try expectEqual(
+            ProjectProbe.suggestion(for: folder)?.requiresDocker,
+            false,
+            "a docker command in some other script is not this project's business"
+        )
+        try expectEqual(
+            ProjectProbe.referencedScripts(in: "bun run db:up && turbo run dev", known: ["db:up", "dev"]),
+            ["db:up"],
+            "turbo is not a package manager, so what follows it is not a script of ours"
+        )
+    }
+
+    await run.test("the mark follows the framework rather than the runtime under it") {
+        try expectEqual(ProjectKind.detect(startCommand: "bun run dev", subtitle: "bun · next + nest"), .next)
+        try expectEqual(ProjectKind.detect(startCommand: "bun run dev", subtitle: "bun · nest"), .nest)
+        try expectEqual(ProjectKind.detect(startCommand: "bun run dev", subtitle: "bun"), .bun)
+        try expectEqual(ProjectKind.detect(startCommand: "docker compose up -d"), .docker)
+        try expectEqual(
+            ProjectKind.detect(startCommand: "npm run bundle"),
+            .node,
+            "bundle is not bun, which a substring match got wrong"
+        )
+        try expectEqual(ProjectKind.detect(startCommand: "./start.sh"), .other)
     }
 
     await run.test("compose wins over a Makefile in the same folder") {
