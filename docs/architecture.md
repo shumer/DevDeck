@@ -234,6 +234,16 @@ that, which is why the parser is worth its hundred lines. The suite checks every
 lands inside the box it was given, and is not a speck in the corner of it - a logo that silently
 comes out empty looks, on a card, identical to one that was never added.
 
+`swift run GlyphPreview out.png` draws the lot at 15 points and blown up, on the glass they
+sit on, which is the only way to tell a mark that fills correctly from one whose
+knocked-out letter has gone solid.
+
+Two of them do not wear their own colour. GitHub's octocat is black and Next's disc is black,
+and black on dark glass is a hole rather than a logo, so both go white - which is what both
+vendors do on a dark background themselves. Which mark a plain project gets is `ProjectKind`,
+matching whole words in the start command and the caption, framework ahead of runtime: see
+[adr/0014-monorepos-and-marks.md](adr/0014-monorepos-and-marks.md).
+
 ## Card sizing
 
 `CardMetrics` in `DevDeckCore` owns the row-count and height arithmetic, because two places
