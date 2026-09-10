@@ -675,10 +675,11 @@ Sources/
   ProjectKit/      plain projects: folder probe, detached start, log and pid, health check
   DevDeckUI/       SwiftUI cards, the shared card pieces, the brand marks and their SVG
                    parser, and the visual language
-  DevDeckApp/      AppKit shell: panels, menu bar, placement, settings
+  DevDeckApp/      AppKit shell: the controller and its loops, the panel coordinator, the
+                   menu, arrangements, the summon key, settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (232 tests, offline)
+  DevDeckTests/    the suite (322 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
