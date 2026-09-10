@@ -60,7 +60,8 @@ final class DeckController: ObservableObject {
     /// A separate, faster loop: a stack that has just come up should show up in seconds, not
     /// on the API refresh cadence.
     private var stackLoop: Task<Void, Never>?
-    private var consecutiveFailures = 0
+    /// Runs the remote cards and owns the backoff. See `RefreshCycle`.
+    private let cycle = RefreshCycle()
     /// Keeps a card from flipping to bad news on one unlucky poll. See `StateSettler`.
     private var settler = StateSettler()
 
@@ -824,68 +825,10 @@ final class DeckController: ObservableObject {
 
     /// Runs one pass over every active card and returns how long to wait before the next one.
     ///
-    /// The cards refresh concurrently but share one failure counter: when the token is bad or
-    /// the network is down, everything fails together and the deck should back off as a whole
-    /// rather than three times over.
+    /// The remote cards go through `RefreshCycle`, which owns the shared failure counter and
+    /// the backoff; what is left here is the local work that follows them.
     private func refreshOnce() async -> TimeInterval {
-        let workspace = self.workspace
-        var errors: [APIError] = []
-        var serverHint: TimeInterval?
-
-        if activeCards.contains(.githubPullRequests) {
-            pullRequests.beginRefresh()
-            do {
-                let snapshot = try await workspace.pullRequests()
-                pullRequests.succeed(snapshot, at: Date())
-                announce(alerts(from: snapshot), for: .githubPullRequests)
-            } catch {
-                let apiError = Self.apiError(from: error)
-                pullRequests.fail(apiError)
-                errors.append(apiError)
-            }
-        }
-
-        if activeCards.contains(.githubInbox) {
-            inbox.beginRefresh()
-            do {
-                let snapshot = try await workspace.inbox()
-                inbox.succeed(snapshot, at: Date())
-                // GitHub states how often it wants to be polled on this endpoint; ignoring it
-                // is the fastest way to get a token throttled.
-                serverHint = snapshot.serverPollInterval
-            } catch {
-                let apiError = Self.apiError(from: error)
-                inbox.fail(apiError)
-                errors.append(apiError)
-            }
-        }
-
-        if activeCards.contains(.gitlabMergeRequests) {
-            mergeRequests.beginRefresh()
-            do {
-                let snapshot = try await gitlab.mergeRequests()
-                mergeRequests.succeed(snapshot, at: Date())
-                announce(alerts(from: snapshot), for: .gitlabMergeRequests)
-            } catch {
-                let apiError = Self.apiError(from: error)
-                mergeRequests.fail(apiError)
-                errors.append(apiError)
-            }
-        }
-
-        if activeCards.contains(.githubActions) {
-            actions.beginRefresh()
-            do {
-                let snapshot = try await workspace.actions(
-                    repositoriesByAccount: actionsRepositoriesByAccount
-                )
-                actions.succeed(snapshot, at: Date())
-            } catch {
-                let apiError = Self.apiError(from: error)
-                actions.fail(apiError)
-                errors.append(apiError)
-            }
-        }
+        let pass = await cycle.run(remoteSources, active: activeCards, policy: refreshPolicy, now: Date())
 
         // After the projects, because a tray reads what the state it just reported came from.
         await refreshOpenLogs()
@@ -895,53 +838,70 @@ final class DeckController: ObservableObject {
         let address = LocalAddress.current()
         if address != localAddress { localAddress = address }
 
-        guard let firstError = errors.first else {
-            consecutiveFailures = 0
-            return refreshPolicy.nextDelay(consecutiveFailures: 0, serverHint: serverHint)
+        if let failure = pass.failures.first {
+            Log.refresh.error("Refresh failed: \(failure.error.displayMessage, privacy: .public)")
         }
-
-        consecutiveFailures += 1
-        Log.refresh.error("Refresh failed: \(firstError.displayMessage, privacy: .public)")
-        return refreshPolicy.nextDelay(
-            after: firstError,
-            consecutiveFailures: consecutiveFailures,
-            now: Date()
-        )
+        return pass.delay
     }
 
-    /// Repositories the Actions card watches, per account.
-    ///
-    /// A repository belongs to exactly one account, so the list has to be grouped rather than
-    /// broadcast: asking every account about every repository would spend most of the requests
-    /// on 404s. With nothing configured it follows the open pull requests, five per account,
-    /// which keeps the card useful with no configuration at all.
+    /// The remote cards, in the order they are asked. Built per pass so a workspace rebuilt
+    /// from settings is the one that is asked.
+    private var remoteSources: [RefreshSource] {
+        [
+            RefreshSource(card: .githubPullRequests) { @MainActor [weak self] in
+                guard let self else { return nil }
+                let snapshot = try await self.fetch(into: \.pullRequests) { try await self.workspace.pullRequests() }
+                self.announce(self.alerts(from: snapshot), for: .githubPullRequests)
+                return nil
+            },
+            RefreshSource(card: .githubInbox) { @MainActor [weak self] in
+                guard let self else { return nil }
+                let snapshot = try await self.fetch(into: \.inbox) { try await self.workspace.inbox() }
+                // GitHub states how often it wants to be polled on this endpoint; ignoring it
+                // is the fastest way to get a token throttled.
+                return snapshot.serverPollInterval
+            },
+            RefreshSource(card: .gitlabMergeRequests) { @MainActor [weak self] in
+                guard let self else { return nil }
+                let snapshot = try await self.fetch(into: \.mergeRequests) { try await self.gitlab.mergeRequests() }
+                self.announce(self.alerts(from: snapshot), for: .gitlabMergeRequests)
+                return nil
+            },
+            RefreshSource(card: .githubActions) { @MainActor [weak self] in
+                guard let self else { return nil }
+                _ = try await self.fetch(into: \.actions) {
+                    try await self.workspace.actions(repositoriesByAccount: self.actionsRepositoriesByAccount)
+                }
+                return nil
+            },
+        ]
+    }
+
+    /// One fetch into one card's state: marks it refreshing, stores what came back or the
+    /// failure, and rethrows so the cycle counts it.
+    private func fetch<Value>(
+        into keyPath: ReferenceWritableKeyPath<DeckController, CardState<Value>>,
+        _ load: () async throws -> Value
+    ) async throws -> Value {
+        self[keyPath: keyPath].beginRefresh()
+        do {
+            let value = try await load()
+            self[keyPath: keyPath].succeed(value, at: Date())
+            return value
+        } catch {
+            self[keyPath: keyPath].fail(APIError.wrapping(error))
+            throw error
+        }
+    }
+
+    /// Repositories the Actions card watches, per account. With nothing configured it follows
+    /// the open pull requests.
     private var actionsRepositoriesByAccount: [String: [String]] {
-        let accounts = accountsStore.enabledAccounts()
-
-        if !settings.actionsRepositories.isEmpty {
-            var grouped: [String: [String]] = [:]
-            for repository in settings.actionsRepositories {
-                let owner = String(repository.split(separator: "/").first ?? "")
-                let account = accounts.first { $0.organizations.contains(owner) } ?? accounts.first
-                guard let account else { continue }
-                grouped[account.id, default: []].append(repository)
-            }
-            return grouped
-        }
-
-        guard let snapshot = pullRequests.value else { return [:] }
-        var grouped: [String: [String]] = [:]
-        for pullRequest in snapshot.prioritized() {
-            var repositories = grouped[pullRequest.accountID] ?? []
-            guard repositories.count < 5, !repositories.contains(pullRequest.repository) else { continue }
-            repositories.append(pullRequest.repository)
-            grouped[pullRequest.accountID] = repositories
-        }
-        return grouped
-    }
-
-    private static func apiError(from error: Error) -> APIError {
-        (error as? APIError) ?? .transport(error.localizedDescription)
+        ActionsWatchList.repositoriesByAccount(
+            configured: settings.actionsRepositories,
+            accounts: accountsStore.enabledAccounts(),
+            pullRequests: pullRequests.value
+        )
     }
 
     // MARK: Menu bar summary
@@ -952,63 +912,20 @@ final class DeckController: ObservableObject {
     /// live in the tooltip: a bare count in the menu bar says nothing about which app it
     /// belongs to, which is exactly the complaint it earned.
     var statusSummary: DeckStatusSummary {
-        var lines: [String] = []
-        // Kept apart on purpose. The icon used to go red for any of these three, which made it
-        // say "something" and nothing about what, so the reason lived in a tooltip nobody hovers
-        // long enough to read.
-        var blockedCount = 0
-        var waitingCount = 0
-
-        if activeCards.contains(.githubPullRequests) {
-            if let snapshot = pullRequests.value {
-                var line = "\(snapshot.totalCount) open pull request\(snapshot.totalCount == 1 ? "" : "s")"
-                if snapshot.blockedCount > 0 {
-                    line += ", \(snapshot.blockedCount) blocked"
-                    blockedCount += snapshot.blockedCount
-                }
-                if snapshot.reviewRequestCount > 0 {
-                    line += ", \(snapshot.reviewRequestCount) waiting for your review"
-                    waitingCount += snapshot.reviewRequestCount
-                }
-                lines.append(line)
-            } else {
-                lines.append("Pull requests: not loaded yet")
-            }
-        }
-
-        if activeCards.contains(.githubInbox) {
-            if let snapshot = inbox.value {
-                var line = "\(snapshot.unreadCount) unread"
-                if snapshot.actionableCount > 0 {
-                    line += ", \(snapshot.actionableCount) waiting on you"
-                    waitingCount += snapshot.actionableCount
-                }
-                lines.append(line)
-            }
-        }
-
+        var projectLines: [String] = []
         for project in activeProjects {
-            let status = stackStatus(for: project)
-            lines.append("\(project.title): local stack \(status.state.rawValue)")
+            projectLines.append("\(project.title): local stack \(stackStatus(for: project).state.rawValue)")
         }
-
         for project in activeLocalProjects {
-            lines.append("\(project.displayTitle): \(localStatus(for: project).state.rawValue)")
+            projectLines.append("\(project.displayTitle): \(localStatus(for: project).state.rawValue)")
         }
-
-        // Said once, at the bottom, rather than repeated on every project line. Not an alert:
-        // Docker being off is a normal state of a laptop, not something gone wrong.
-        if let reason = docker.blockingReason, !activeProjects.isEmpty || !activeDDEVProjects.isEmpty
-            || !activeLocalProjects.isEmpty {
-            lines.append(reason)
-        }
-
-        if lines.isEmpty { lines.append("No cards on screen") }
-        return DeckStatusSummary(
-            tooltip: "DevDeck\n" + lines.joined(separator: "\n"),
-            blockedCount: blockedCount,
-            waitingCount: waitingCount
+        return DeckStatusSummary.make(
+            activeCards: activeCards,
+            pullRequests: pullRequests.value,
+            inbox: inbox.value,
+            projectLines: projectLines,
+            hasLocalCards: !activeProjects.isEmpty || !activeDDEVProjects.isEmpty || !activeLocalProjects.isEmpty,
+            docker: docker
         )
     }
 }
-
