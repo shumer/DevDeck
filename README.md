@@ -160,7 +160,7 @@ becomes worth it.
 
 ```bash
 scripts/seed-token.sh        # optional: copies a token from env.local into the Keychain
-scripts/smoke-test.sh        # optional: one real API call, prints counts, never the token
+scripts/smoke-test.sh        # optional: real GitHub and GitLab calls, prints counts, never a token
 ```
 
 `seed-token.sh` takes an account and a variable name, because one token per account is the
@@ -233,7 +233,8 @@ catch people out:
 - under SAML SSO, a classic token must be **authorised for each organisation** as well.
 
 `scripts/smoke-test.sh` prints how many organisations the token can actually see, which is
-the fastest way to tell "no open pull requests" from "cannot see the organisation".
+the fastest way to tell "no open pull requests" from "cannot see the organisation". It does
+the same for every GitLab instance in Settings, with the token each one has in the Keychain.
 
 ## Arc XP projects
 
@@ -680,7 +681,7 @@ Sources/
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (322 tests, offline)
+  DevDeckTests/    the suite (323 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
