@@ -1,63 +1,22 @@
-import ArcKit
-import DDEVKit
 import DevDeckCore
-import ProjectKit
 
 /// The cards this deck can show, and which of them it is showing.
 ///
-/// The built-in cards plus one per configured project, in the order the deck is laid out: Arc,
-/// then DDEV, then the plain ones, each group alphabetical. See `CardCatalog.projectOrder`. Read
-/// fresh every time, so a project added in settings is in the list the moment it is asked for.
+/// The built-in cards plus whatever the modules add, one per configured project, in the order
+/// the modules are given, which is the order the deck is laid out in. Read fresh every time,
+/// so a project added in settings is in the list the moment it is asked for.
 @MainActor
 final class DeckCards {
     private let preferences: Preferences
-    private let projectsStore: ArcProjectsStore
-    private let ddevProjectsStore: DDEVProjectsStore
-    private let localProjectsStore: LocalProjectsStore
+    private let modules: [CardModule]
 
-    init(
-        preferences: Preferences,
-        projectsStore: ArcProjectsStore,
-        ddevProjectsStore: DDEVProjectsStore,
-        localProjectsStore: LocalProjectsStore
-    ) {
+    init(preferences: Preferences, modules: [CardModule]) {
         self.preferences = preferences
-        self.projectsStore = projectsStore
-        self.ddevProjectsStore = ddevProjectsStore
-        self.localProjectsStore = localProjectsStore
+        self.modules = modules
     }
 
     var catalog: [CardDescriptor] {
-        let arc = projectsStore.projects().map { project in
-            CardDescriptor(
-                id: project.cardID,
-                title: project.title,
-                subtitle: "Arc · \(project.organization)",
-                isImplemented: true,
-                isEnabledByDefault: true
-            )
-        }
-        let ddev = ddevProjectsStore.projects().map { project in
-            CardDescriptor(
-                id: project.cardID,
-                title: project.displayTitle,
-                subtitle: "DDEV · \(project.name)",
-                isImplemented: true,
-                isEnabledByDefault: true
-            )
-        }
-        let plain = localProjectsStore.projects().map { project in
-            CardDescriptor(
-                id: project.cardID,
-                title: project.displayTitle,
-                subtitle: project.startCommand.isEmpty ? "Project" : "Project · \(project.startCommand)",
-                isImplemented: true,
-                isEnabledByDefault: true
-            )
-        }
-        return CardCatalog.all(
-            including: CardCatalog.projectOrder(arc: arc, ddev: ddev, plain: plain)
-        )
+        CardCatalog.all(including: modules.flatMap { $0.descriptors() })
     }
 
     /// Every card with its switch, in deck order.
@@ -70,16 +29,15 @@ final class DeckCards {
         preferences.cardLayout.visibleCards(catalog: catalog).map(\.id)
     }
 
-    /// Which kind of project a card is for, so a menu can group them. Nil for a built-in card.
-    enum ProjectKind {
-        case arc, ddev, plain
+    /// The menu group a card goes under, so a menu can keep project kinds apart. Nil for a
+    /// built-in card.
+    func menuGroup(of card: CardID) -> String? {
+        modules.first { $0.owns(card) }?.menuGroup
     }
 
-    func projectKind(of card: CardID) -> ProjectKind? {
-        if projectsStore.project(forCard: card) != nil { return .arc }
-        if ddevProjectsStore.project(forCard: card) != nil { return .ddev }
-        if localProjectsStore.project(forCard: card) != nil { return .plain }
-        return nil
+    /// The groups, in deck order, for a menu to offer in the same order.
+    var menuGroups: [String] {
+        modules.compactMap(\.menuGroup)
     }
 
     func setEnabled(_ isEnabled: Bool, for card: CardID) {

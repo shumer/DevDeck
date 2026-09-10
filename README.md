@@ -676,7 +676,8 @@ Sources/
   DevDeckUI/       SwiftUI cards, the shared card pieces, the brand marks and their SVG
                    parser, and the visual language
   DevDeckApp/      AppKit shell: the controller and its loops, the panel coordinator, the
-                   menu, arrangements, the summon key, settings
+                   menu, arrangements, the summon key, the settings window
+    Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
   DevDeckTests/    the suite (322 tests, offline)
