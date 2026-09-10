@@ -49,13 +49,14 @@
 - **The application layer in pieces** - the refresh loop decides in Core under tests and
   only fetches in the app, the app delegate is a composition root over five objects with one
   job each, and a kind of card is one module: its view, size, catalog entries, menu group and
-  settings section in one file. The smoke test covers every GitLab instance as well. See
+  settings section in one file. The smoke test covers every GitLab instance as well, and the
+  app builds against the macOS 27 SDK without Xcode. Shipped as 0.10. See
   [adr/0015-application-layer-in-pieces.md](adr/0015-application-layer-in-pieces.md).
 - **Monorepos read properly** - a Turborepo of a Next front end and a Nest API is a plain
   project like any other, but the probe now walks its workspaces for the app that serves the
   site, reads the port off the script line or `.env`, follows the dev script one level to find
   the Docker it starts, and picks a mark that names the framework rather than the runtime. Next,
-  Nest and Bun joined the brand marks. Shipped as 0.9.1. See [adr/0014-monorepos-and-marks.md](adr/0014-monorepos-and-marks.md).
+  Nest and Bun joined the brand marks. Shipped as 0.10. See [adr/0014-monorepos-and-marks.md](adr/0014-monorepos-and-marks.md).
 - **A day of somebody else's use** - paste works in settings, a card no longer believes one bad
   poll, a folded card keeps its controls, and the settings window lost a column and gained the
   margins it never had. Shipped as 0.9.
