@@ -46,6 +46,10 @@
 - **The phone and the work in flight** - the running site as a QR code addressed to this Mac on
   the wifi, offered only while the project is up; and one card for every checkout at once, showing
   what is uncommitted, unpushed or behind. Shipped as 0.8.
+- **The application layer in pieces** - the refresh loop decides in Core under tests and
+  only fetches in the app, the app delegate is a composition root over five objects with one
+  job each, and a kind of card is one module: its view, size, catalog entries, menu group and
+  settings section in one file. See [adr/0015-application-layer-in-pieces.md](adr/0015-application-layer-in-pieces.md).
 - **Monorepos read properly** - a Turborepo of a Next front end and a Nest API is a plain
   project like any other, but the probe now walks its workspaces for the app that serves the
   site, reads the port off the script line or `.env`, follows the dev script one level to find

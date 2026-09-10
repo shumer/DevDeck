@@ -152,18 +152,21 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         menu.addItem(header)
 
         let resolved = cards.resolved
-        for card in resolved where cards.projectKind(of: card.id) == nil {
+        for card in resolved where cards.menuGroup(of: card.id) == nil {
             menu.addItem(cardItem(card))
         }
 
         // Projects get their own groups: with several of them the built-in cards would
         // otherwise be lost in the middle of a list of site names.
-        let ddev = resolved.filter { cards.projectKind(of: $0.id) == .ddev }
-        addGroup("Arc projects", cards: resolved.filter { cards.projectKind(of: $0.id) == .arc }, to: menu)
-        addGroup("DDEV projects", cards: ddev, to: menu)
-        addGroup("Projects", cards: resolved.filter { cards.projectKind(of: $0.id) == .plain }, to: menu)
+        for group in cards.menuGroups {
+            addGroup(group, cards: resolved.filter { cards.menuGroup(of: $0.id) == group }, to: menu)
+        }
 
-        if !ddev.isEmpty {
+        // The one item that is about a kind rather than a card. It stays here rather than in
+        // the module, because it is the only one and a protocol for it would be a protocol
+        // with one conformer.
+        let hasDDEV = resolved.contains { cards.menuGroup(of: $0.id) == "DDEV projects" }
+        if hasDDEV {
             let powerOff = NSMenuItem(
                 title: "Power off all DDEV",
                 action: #selector(powerOffDDEV),

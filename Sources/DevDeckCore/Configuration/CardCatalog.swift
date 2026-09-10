@@ -125,12 +125,12 @@ public enum CardCatalog {
         ddev: [CardDescriptor],
         plain: [CardDescriptor]
     ) -> [CardDescriptor] {
-        byTitle(arc) + byTitle(ddev) + byTitle(plain)
+        sortedByTitle(arc) + sortedByTitle(ddev) + sortedByTitle(plain)
     }
 
     /// Compared the way a person reads a list: case-insensitively, and with numbers as numbers
     /// so `site2` comes before `site10`.
-    private static func byTitle(_ cards: [CardDescriptor]) -> [CardDescriptor] {
+    public static func sortedByTitle(_ cards: [CardDescriptor]) -> [CardDescriptor] {
         cards.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
     }
 }

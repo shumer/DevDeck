@@ -383,7 +383,14 @@ itself that one of them could do.
   faster local loop for Docker, stacks and projects. The parts of it that decide rather than
   fetch live where the suite can reach them: `RefreshCycle` in Core, `ActionsWatchList` in
   GitHubKit, `DeckStatusSummary.make` in the UI module.
-- `DeckCards` is the card list: the built-in cards plus one per configured project, in deck
+- The modules, one per kind of card, under `Modules/`: `PullRequestsModule`, `InboxModule`,
+  `ActionsModule`, `MergeRequestsModule`, `WorkInFlightModule`, `ArcProjectModule`,
+  `DDEVProjectModule` and `LocalProjectModule`. A `CardModule` says which cards it owns and
+  gives their view, size, dashboard, catalog entries and menu group. The project modules are
+  also their kind's `SettingsSection`; the two account sections, GitHub and GitLab, live in the
+  same files as the cards they feed. `CardHostView` and `DeckCards` ask the modules and know no
+  kind by name.
+- `DeckCards` is the card list: the built-in cards plus whatever the modules add, in module
   order, and which of them are switched on.
 - `PanelCoordinator` owns the windows: which cards have one, how big each is, and where it
   sits. The two rules it exists to keep are stated on `persistPosition` and `syncPanelSizes`: a
@@ -393,8 +400,9 @@ itself that one of them could do.
 - `ArrangementsController` owns saved decks: naming one, applying one, offering them.
 - `Summoner` owns the key that raises the deck, the tap-to-latch rule and the veils; what
   "raised" does to the panels is the coordinator's.
-- `SettingsWindowController` owns the settings window, its list and the form for the selected
-  row.
+- `SettingsWindowController` owns the settings window, its list and the form column. Each
+  section fills its own rows and form and adds and removes its own things; `GeneralSettingsPage`
+  is the one page that lists nothing.
 
 All of them are `@MainActor`. The panels themselves are `PanelWindow`, a borderless `NSWindow`
 hosting `CardHostView`, which is the one place that maps a card identifier onto its SwiftUI
@@ -476,5 +484,12 @@ environment, so a stale `GITHUB_TOKEN` export cannot shadow the token set in Set
 3. Add the state to `DeckController` and a `RefreshSource` for it; the cycle only asks it
    while the card is active.
 4. Write the SwiftUI card in `DevDeckUI` against a `CardState<…>`.
-5. Wire it into `CardHostView` (view + size + dashboard URL) and flip `isImplemented`.
+5. Write a `CardModule` under `DevDeckApp/Modules` that owns the identifier and returns the
+   view, the size and the dashboard, add it to the list in `AppDelegate`, and flip
+   `isImplemented`. A kind with things to configure is a `SettingsSection` too, and goes in
+   the settings window's list in the same place.
 6. Update `README.md`, this file and `docs/roadmap.md`.
+
+What is still per kind by name is inside `DeckController`: the status dictionaries, the local
+refresh loop and the three `perform` functions. That is the data plumbing, and it is the next
+thing to move if a fourth kind of project ever arrives.
