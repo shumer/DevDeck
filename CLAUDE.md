@@ -1,6 +1,6 @@
 # Working in this repository
 
-## Before every commit — not optional
+## Before every commit - not optional
 
 Run this every time, including for a one-line change. Skipping it because the change "obviously
 cannot break anything" is how the README ended up describing a version, a module list and a
@@ -14,10 +14,10 @@ swift build      # must add no warnings
 Then, before writing the commit:
 
 1. **Tests.** New behaviour has a test. A fixed bug has a test that fails without the fix.
-   A red suite is never committed — not "temporarily", not "to fix in the next one".
+   A red suite is never committed - not "temporarily", not "to fix in the next one".
 2. **README.** Update it whenever user-visible behaviour changed: a new card, a new setting, a
    changed default, a new prerequisite. Check the counts and examples it quotes are still true.
-3. **`docs/`.** Update the file the change belongs to — `architecture.md` for structure,
+3. **`docs/`.** Update the file the change belongs to - `architecture.md` for structure,
    `development.md` for how to work on it, `github-api.md` for API behaviour. Add an ADR when a
    *decision* was made rather than a detail implemented, and record the alternatives that were
    rejected and why.
@@ -30,12 +30,15 @@ committed on an unrun suite.
 
 ## Toolchain constraints
 
-Xcode is **not** installed — only the Command Line Tools. Consequences that keep coming back:
+Xcode is **not** installed - only the Command Line Tools. Consequences that keep coming back:
 
 - `swift test` does not work: no `XCTest`, no `swift-testing`. The suite is the executable
   target `Tests/DevDeckTests` using `Tests/TestHarness`. Do not add an XCTest target.
 - No `.xcodeproj`, no WidgetKit extension. Panels are borderless `NSWindow`s hosting SwiftUI.
 - `./build.sh` assembles and ad-hoc signs `DevDeck.app` by hand.
+- The scripts source `scripts/toolchain.sh`, which pins `SDKROOT` to the SDK of the running
+  macOS: the tools' default symlink can point at a beta SDK whose SwiftUI needs a macro plugin
+  only Xcode has. A bare `swift build` that fails on `SwiftUIMacros` is that, not the code.
 
 ## Invariants
 
@@ -46,7 +49,7 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
   sleeping. Use `FakeHTTPClient`, `InMemoryTokenStore`, `InMemoryPreferences`,
   `RecordingSleeper`, `MutableDateProvider`. Live checks belong in `Tools/Smoke`.
 - **Tokens only ever go to the Keychain.** Never into the repository, `UserDefaults`, a
-  dotfile, a log line or a commit. A stored token is never written back into a text field —
+  dotfile, a log line or a commit. A stored token is never written back into a text field -
   the settings row says one exists, and typing replaces it.
 - **Account ids are Keychain filenames.** `GitHubAccount.id` is never renamed, and the first
   account keeps the un-suffixed key `github`.
@@ -58,22 +61,22 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
 - **Row height and panel height come from `CardMetrics`.** The card and the window it lives in
   must not compute it separately, or the last row gets clipped.
 - **Links open through `LinkOpener` with the row's account**, never `NSWorkspace.open` directly
-  — that is what puts a work pull request in the work browser profile.
+  - that is what puts a work pull request in the work browser profile.
 - **`statusCode` and `statusLine` mirror each other case for case.** The code is on the row,
   the wording is in its tooltip; the two drifting apart is worse than either alone.
 - **Local commands run through `ShellCommandRunner`** (a login shell) in the project folder.
   A bare `Process` with `npx` cannot find node when the app is launched from Finder.
-- **Local stack state comes from the health URL**, never from the process table — the stack is
+- **Local stack state comes from the health URL**, never from the process table - the stack is
   often started by hand, and a card that says "stopped" while the site serves is worse than no
   card.
-- **Docker state comes from the daemon** (`docker version`), never from a running Docker.app —
+- **Docker state comes from the daemon** (`docker version`), never from a running Docker.app -
   Colima, OrbStack and a remote context all serve `docker` with no application at all. One
   probe per refresh feeds the whole deck.
 - **A card never offers a Start that cannot work.** Anything containerised goes through
   `DockerGate`, which owns the wording, the colour and the button for that condition in one
   place.
 - **A plain project's start is detached with a log and a pid.** A background child holding the
-  runner's pipes never returns, and Stop kills the process tree rather than the recorded pid —
+  runner's pipes never returns, and Stop kills the process tree rather than the recorded pid -
   a wrapper left behind keeps the port.
 - **Project ids are card identifiers** (`arc.project.<id>`, `ddev.project.<id>`,
   `project.<id>`) and are never renamed.
@@ -82,7 +85,7 @@ Xcode is **not** installed — only the Command Line Tools. Consequences that ke
   should stretch pass a `nil` width; nothing in a settings form is a fixed number of points
   wide.
 - **Panel positions anchor on the top-left corner**, and a shift caused by a card growing is
-  never persisted — that pair is what stops the deck creeping apart between launches.
+  never persisted - that pair is what stops the deck creeping apart between launches.
 - **Menus are populated by `menuNeedsUpdate`, never built and handed to a view.** A menu built
   once keeps the checkmarks it had at creation, which is how the lock toggle looked stuck on.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it

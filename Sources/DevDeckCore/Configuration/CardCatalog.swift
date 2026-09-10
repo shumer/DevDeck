@@ -1,6 +1,7 @@
 import Foundation
 
-/// Stable identifier of a card. Raw values are persisted in `config.json`, so they must never change.
+/// Stable identifier of a card. Raw values are persisted in preferences and in panel placement
+/// keys, so they must never change.
 public struct CardID: RawRepresentable, Codable, Hashable, Sendable, CustomStringConvertible {
     public let rawValue: String
 
@@ -40,8 +41,8 @@ public struct CardDescriptor: Sendable, Equatable {
 
 /// Registry of every card the app knows about, in default display order.
 ///
-/// Adding a card means adding a descriptor here; the settings UI and `config.json` merge logic
-/// pick it up automatically, and users who already have a config keep their own ordering.
+/// Adding a card means adding a descriptor here; the settings UI and the stored card layout
+/// pick it up automatically, and users who already have a layout keep their own ordering.
 public enum CardCatalog {
     public static let all: [CardDescriptor] = [
         CardDescriptor(

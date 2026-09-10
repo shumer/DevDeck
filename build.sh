@@ -6,6 +6,8 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/toolchain.sh
+source "$HERE/scripts/toolchain.sh"
 APP="$HERE/DevDeck.app"
 MACOS="$APP/Contents/MacOS"
 
