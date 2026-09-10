@@ -51,7 +51,9 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   `RecordingSleeper`, `MutableDateProvider`. Live checks belong in `Tools/Smoke`.
 - **Tokens only ever go to the Keychain.** Never into the repository, `UserDefaults`, a
   dotfile, a log line or a commit. A stored token is never written back into a text field -
-  the settings row says one exists, and typing replaces it.
+  the settings row says one exists, and typing replaces it. How an item is protected follows
+  from `CodeIdentity.current()` through `KeychainAccessPolicy`, never from a build flag: open
+  for an ad-hoc build, bound to the app for a signed one.
 - **Account ids are Keychain filenames.** `GitHubAccount.id` is never renamed, and the first
   account keeps the un-suffixed key `github`.
 - **A card fails only when every account fails.** Partial failures go on the snapshot as

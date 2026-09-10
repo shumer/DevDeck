@@ -159,11 +159,13 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(try? JSONEncoder().encode(newValue), forKey: "github.actions.repositories") }
     }
 
-    /// Whether the stored tokens have been rewritten with an access control list that survives
-    /// a rebuild. One pass, once, and then never again.
-    public var hasRepairedKeychain: Bool {
-        get { backend.bool(forKey: "keychain.repaired") }
-        set { backend.set(newValue, forKey: "keychain.repaired") }
+    /// The access mode the stored tokens were last written in, as `KeychainAccessPolicy`
+    /// names it. Compared with what the running signature wants at every launch, so a change of
+    /// signature rewrites the items once. Nil means never written by this code; the older flag
+    /// it replaces meant the open mode.
+    public var keychainAccessMode: String? {
+        get { backend.string(forKey: "keychain.acl") ?? (backend.bool(forKey: "keychain.repaired") ? "open" : nil) }
+        set { backend.set(newValue, forKey: "keychain.acl") }
     }
 
     /// Whether DevDeck may notify you at all.

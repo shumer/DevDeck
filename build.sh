@@ -56,7 +56,24 @@ rm -rf "$(dirname "$ICONSET")"
 
 cp "$(swift build --package-path "$HERE" -c release --show-bin-path)/DevDeck" "$MACOS/DevDeck"
 chmod +x "$MACOS/DevDeck"
-codesign --force --sign - "$APP" 2>/dev/null || echo "(ad-hoc signing skipped)"
+
+# Signed with an identity when one is named, ad-hoc otherwise. CODESIGN_IDENTITY is the name
+# or the SHA-1 of a code-signing identity in the Keychain: a Developer ID on the release
+# runner, or a certificate made by hand in Keychain Access here. With an identity the
+# Keychain can bind the tokens to the app and the updater can check what it downloads; ad-hoc,
+# neither is possible, and the code knows which it got. Hardened runtime goes with the
+# identity, because notarisation requires it and nothing here needs an exception. The
+# timestamp only with a Developer ID: Apple's timestamp server has no opinion on a
+# certificate it did not issue.
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+  TIMESTAMP="--timestamp=none"
+  case "$CODESIGN_IDENTITY" in *"Developer ID"*) TIMESTAMP="--timestamp" ;; esac
+  codesign --force --options runtime "$TIMESTAMP" --sign "$CODESIGN_IDENTITY" "$APP"
+  codesign --verify --strict --verbose=1 "$APP"
+  echo "Signed with: $CODESIGN_IDENTITY"
+else
+  codesign --force --sign - "$APP" 2>/dev/null || echo "(ad-hoc signing skipped)"
+fi
 
 echo "Built: $APP"
 

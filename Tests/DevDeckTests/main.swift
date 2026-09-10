@@ -19,5 +19,6 @@ await runProjectTests(run)
 await runCommandRunnerTests(run)
 await runDeckTests(run)
 await runUpdateTests(run)
+await runIdentityTests(run)
 
 run.finish()
