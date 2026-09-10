@@ -12,6 +12,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// Where a clicked banner goes. The account comes with it, so a pull request opens in the
     /// browser profile signed in as the identity that owns it.
     var onOpen: ((URL, String) -> Void)?
+    /// A banner about a newer build was clicked: start the update.
+    var onUpdate: (() -> Void)?
 
     private let center = UNUserNotificationCenter.current()
     private var isAuthorized = false
@@ -61,6 +63,21 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         )
     }
 
+    /// A newer build exists. Carries no service mark: this one is the app's own news, and the
+    /// application icon macOS puts on every banner is exactly right for it.
+    func postUpdate(_ version: String) {
+        guard isAuthorized else { return }
+        deliver(
+            identifier: "devdeck.update.\(version)",
+            title: "DevDeck \(version) is available",
+            body: "Click to update, or choose Update in the menu-bar menu whenever it suits.",
+            url: nil,
+            accountID: nil,
+            source: nil,
+            action: "update"
+        )
+    }
+
     func post(_ alerts: [DeckAlert]) {
         guard isAuthorized, !alerts.isEmpty else { return }
         Log.app.info("Posting \(alerts.count, privacy: .public) notification(s)")
@@ -99,7 +116,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         body: String,
         url: URL?,
         accountID: String?,
-        source: DeckAlert.Source
+        source: DeckAlert.Source?,
+        action: String? = nil
     ) {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -108,10 +126,13 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         if let url, let accountID {
             content.userInfo = ["url": url.absoluteString, "account": accountID]
         }
+        if let action {
+            content.userInfo["action"] = action
+        }
         // macOS puts the application icon on every banner and will not be talked out of it, but
         // an attachment is drawn beside the text: that is where the service's own mark goes, so
         // "who is asking" is answered before the words are read.
-        if let artwork = NotificationArtwork.fileURL(for: source),
+        if let source, let artwork = NotificationArtwork.fileURL(for: source),
            let attachment = try? UNNotificationAttachment(identifier: source.rawValue, url: artwork) {
             content.attachments = [attachment]
         }
@@ -144,8 +165,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         let info = response.notification.request.content.userInfo
         let address = info["url"] as? String
         let account = info["account"] as? String
+        let action = info["action"] as? String
         Task { @MainActor in
-            if let address, let url = URL(string: address) {
+            if action == "update" {
+                self.onUpdate?()
+            } else if let address, let url = URL(string: address) {
                 self.onOpen?(url, account ?? "")
             }
             completionHandler()

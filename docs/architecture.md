@@ -400,6 +400,10 @@ itself that one of them could do.
 - `ArrangementsController` owns saved decks: naming one, applying one, offering them.
 - `Summoner` owns the key that raises the deck, the tap-to-latch rule and the veils; what
   "raised" does to the panels is the coordinator's.
+- `Updater` asks GitHub for the latest release and, when told to, installs it: download,
+  `ditto`, a check of the unpacked bundle, the old copy to the Trash, the new one in its place,
+  relaunch. What counts as an update and whether the unpacked bundle is trusted is
+  `UpdateCheck` in Core, under tests. See [adr/0016-self-update.md](adr/0016-self-update.md).
 - `SettingsWindowController` owns the settings window, its list and the form column. Each
   section fills its own rows and form and adds and removes its own things; `GeneralSettingsPage`
   is the one page that lists nothing.

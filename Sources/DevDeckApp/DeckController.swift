@@ -904,6 +904,17 @@ final class DeckController: ObservableObject {
         )
     }
 
+    /// The card whose command is still running, by title, or nil when none is.
+    ///
+    /// An update replaces the bundle and quits, and doing that under a running `fusion start`
+    /// is how a stack is left half up with nothing on screen to say so.
+    var workingCardTitle: String? {
+        for project in activeProjects where stackStatuses[project.id]?.isBusy == true { return project.title }
+        for project in activeDDEVProjects where ddevStatuses[project.id]?.isBusy == true { return project.displayTitle }
+        for project in activeLocalProjects where localStatuses[project.id]?.isBusy == true { return project.displayTitle }
+        return nil
+    }
+
     // MARK: Menu bar summary
 
     /// What the menu-bar item conveys.

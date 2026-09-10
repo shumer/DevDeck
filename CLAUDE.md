@@ -89,6 +89,10 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   never persisted - that pair is what stops the deck creeping apart between launches.
 - **Menus are populated by `menuNeedsUpdate`, never built and handed to a view.** A menu built
   once keeps the checkmarks it had at creation, which is how the lock toggle looked stuck on.
+- **An update is never installed without a click, and the running copy is never touched
+  before the new one is unpacked and verified.** The check runs by itself; the download and
+  the swap wait for a person, and the old bundle goes to the Trash, not away. `UpdateCheck`
+  decides, `Updater` does; keep it that way so the deciding stays under tests.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it
   is verified first. A control that silently does nothing until some other button is pressed
   is how the browser choice failed to take effect at all.
