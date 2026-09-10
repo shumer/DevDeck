@@ -32,6 +32,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # The tag's commit, on a manual run as well as on a publish. A dispatch would
+          # otherwise build whatever main is at, and attach to an old tag a build that the tag
+          # does not name.
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           # build.sh takes the build number from the commit count, so a shallow clone would
           # produce a build number of one.
           fetch-depth: 0
