@@ -370,6 +370,22 @@ edge and then saved that position. The column grows towards whichever side of th
 more room, and a new column is clamped inside the screen: overlapping panels can be dragged
 apart, off-screen ones cannot.
 
+## The application layer
+
+`DevDeckApp` is the only module that touches AppKit, and it is three objects:
+
+- `AppDelegate` is the composition root: it builds the stores, the controller and the settings
+  window, and owns the panels, their placement, the arrangements menu, summoning and the
+  menu-bar item.
+- `DeckController` owns the data every panel renders and the two loops that keep it fresh: the
+  API loop, paced by `RefreshPolicy`, and a faster local loop for Docker, stacks and projects.
+- `SettingsWindowController` owns the settings window, its list and the form for the selected
+  row.
+
+All three are `@MainActor`. The panels themselves are `PanelWindow`, a borderless `NSWindow`
+hosting `CardHostView`, which is the one place that maps a card identifier onto its SwiftUI
+view and its size.
+
 ## The settings window
 
 Two columns: everything configurable in one list, grouped by kind, and the form for whichever row

@@ -21,17 +21,30 @@ public struct TestFailure: Error, Sendable {
 /// gives named tests, async support and a non-zero exit code for CI.
 public final class TestRun: @unchecked Sendable {
     private var passed = 0
+    private var skipped = 0
     private var failures: [String] = []
     private var currentSection = ""
+    /// Words from the command line. A section runs when its name contains any of them, so
+    /// `./run-tests.sh projects` runs the five project sections and nothing else. Empty means
+    /// everything, which is what CI and the pre-commit run want.
+    private let filters: [String]
+    private var isSectionActive = true
 
-    public init() {}
+    public init(arguments: [String] = Array(CommandLine.arguments.dropFirst())) {
+        filters = arguments.map { $0.lowercased() }
+    }
 
     public func section(_ name: String) {
         currentSection = name
-        print("\n\(name)")
+        isSectionActive = filters.isEmpty || filters.contains { name.lowercased().contains($0) }
+        if isSectionActive { print("\n\(name)") }
     }
 
     public func test(_ name: String, _ body: () async throws -> Void) async {
+        guard isSectionActive else {
+            skipped += 1
+            return
+        }
         do {
             try await body()
             passed += 1
@@ -49,7 +62,8 @@ public final class TestRun: @unchecked Sendable {
     /// Prints the summary and exits with 1 if anything failed, so `./run-tests.sh` and any
     /// build script can rely on the status code alone.
     public func finish() -> Never {
-        print("\n\(passed) passed, \(failures.count) failed")
+        let note = skipped > 0 ? ", \(skipped) skipped by filter" : ""
+        print("\n\(passed) passed, \(failures.count) failed\(note)")
         for failure in failures {
             print("  · \(failure)")
         }
