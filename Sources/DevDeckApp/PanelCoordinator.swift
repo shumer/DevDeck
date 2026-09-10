@@ -85,7 +85,7 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
     }
 
     private func showPanel(_ card: CardID) {
-        var size = CardHostView.size(for: card, controller: controller)
+        var size = CardHostView.size(for: card)
         // Open at the height this card last settled at. Computing it now would use empty data
         // and produce a short panel that grows a moment later, pushing the rest of the column
         // down - which is how the deck crept apart across launches.
@@ -123,7 +123,7 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
             // way. It opens at the height it last settled at and waits.
             guard controller.hasLoaded(card) || preferences.height(for: card) == nil else { continue }
 
-            let size = CardHostView.size(for: card, controller: controller)
+            let size = CardHostView.size(for: card)
             let old = window.frame
             guard abs(old.height - size.height) > 0.5 || abs(old.width - size.width) > 0.5 else { continue }
 
@@ -291,7 +291,7 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         var y = screen.maxY - 28
         for candidate in cards.visible {
-            let candidateSize = CardHostView.size(for: candidate, controller: controller)
+            let candidateSize = CardHostView.size(for: candidate)
             if candidate == card {
                 return NSPoint(x: screen.maxX - candidateSize.width - 28, y: y - candidateSize.height)
             }

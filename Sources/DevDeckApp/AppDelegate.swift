@@ -36,12 +36,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ddevProjectsStore: ddevProjectsStore,
         localProjectsStore: localProjectsStore
     )
-    private lazy var cards: DeckCards = DeckCards(
-        preferences: preferences,
-        projectsStore: projectsStore,
-        ddevProjectsStore: ddevProjectsStore,
-        localProjectsStore: localProjectsStore
-    )
+    // One module per kind of card, in deck order: the built-in cards, then Arc, DDEV and plain
+    // projects. The project modules are their own settings sections as well.
+    private lazy var arcModule = ArcProjectModule(context: ModuleContext(controller: controller), store: projectsStore)
+    private lazy var ddevModule = DDEVProjectModule(context: ModuleContext(controller: controller), store: ddevProjectsStore)
+    private lazy var localModule = LocalProjectModule(context: ModuleContext(controller: controller), store: localProjectsStore)
+    private lazy var modules: [CardModule] = {
+        let context = ModuleContext(controller: controller)
+        return [
+            PullRequestsModule(context: context),
+            InboxModule(context: context),
+            ActionsModule(context: context),
+            MergeRequestsModule(context: context),
+            WorkInFlightModule(context: context),
+            arcModule,
+            ddevModule,
+            localModule,
+        ]
+    }()
+    private lazy var cards: DeckCards = DeckCards(preferences: preferences, modules: modules)
     private lazy var panels: PanelCoordinator = PanelCoordinator(
         preferences: preferences,
         controller: controller,
@@ -67,21 +80,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var summoner: Summoner = Summoner(preferences: preferences) { [unowned self] raised in
         self.panels.setRaised(raised)
     }
-    private lazy var settingsController: SettingsWindowController = SettingsWindowController(
-        tokenStore: tokenStore,
-        accountsStore: accountsStore,
-        gitlabAccountsStore: gitlabAccountsStore,
-        projectsStore: projectsStore,
-        ddevProjectsStore: ddevProjectsStore,
-        localProjectsStore: localProjectsStore,
-        preferences: preferences
-    ) { [weak self] in
-        // A project added or removed in settings changes the card list, not just the data.
-        self?.panels.syncPanels()
-        self?.controller.refreshNow()
-        // And any deck preference may have changed, which only counts once it is applied.
-        self?.applyDeckPreferences()
+    private lazy var generalPage: GeneralSettingsPage = GeneralSettingsPage(preferences: preferences) { [weak self] in
+        self?.settingsChanged()
     }
+    private lazy var settingsController: SettingsWindowController = SettingsWindowController(
+        sections: [
+            GitHubAccountsSection(store: accountsStore, tokenStore: tokenStore),
+            GitLabInstancesSection(store: gitlabAccountsStore, tokenStore: tokenStore, preferences: preferences),
+            arcModule,
+            ddevModule,
+            localModule,
+        ],
+        general: generalPage
+    ) { [weak self] in self?.settingsChanged() }
 
     private let notifier = Notifier()
     private var cancellables = Set<AnyCancellable>()
@@ -90,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Before any window exists, because a settings field with no Edit menu behind it cannot
         // be pasted into.
         EditMenu.install()
+        CardHostView.modules = modules
         menu.install()
 
         // Panels are sized from the data, so anything that changes it can change their height -
@@ -133,10 +145,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.start()
         summoner.install()
 
-        settingsController.onRequestNotifications = { [weak self] completion in
+        generalPage.onRequestNotifications = { [weak self] completion in
             self?.notifier.requestAuthorization(completion) ?? completion(false)
         }
-        settingsController.onTestNotification = { [weak self] in self?.notifier.postTest() }
+        generalPage.onTestNotification = { [weak self] in self?.notifier.postTest() }
 
         // No token on any account means nothing can load; open the one window that fixes that.
         let hasAnyToken = accountsStore.accounts().contains { account in
@@ -159,6 +171,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {
             LoginItem.set(true)
         }
+    }
+
+    /// Anything in settings changed: a project added or removed changes the card list, not just
+    /// the data, and any deck preference may have changed, which only counts once it is applied.
+    private func settingsChanged() {
+        panels.syncPanels()
+        controller.refreshNow()
+        applyDeckPreferences()
     }
 
     /// Puts every deck preference into effect at once.
