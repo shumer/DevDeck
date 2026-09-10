@@ -3,6 +3,11 @@ name: Release
 # Publishing a release on GitHub builds the app and attaches it, so the tag and the download can
 # never disagree about what is in it. Nothing is built on a push: a build nobody asked for is a
 # build nobody checks.
+#
+# With the signing secrets in place the build is signed with a Developer ID, hardened, notarised
+# and stapled, and macOS opens it as it is. Without them it is ad-hoc signed, as it always was,
+# and the install notes say what to do about that. Which of the two happened is decided once,
+# at the top, and every later step reads it.
 on:
   release:
     types: [published]
@@ -19,6 +24,11 @@ permissions:
 jobs:
   build:
     runs-on: macos-15
+    env:
+      # A secret cannot be read in an `if`; an env var set from one can. Empty secrets compare
+      # equal to the empty string, so a repository without them takes the ad-hoc path.
+      HAS_SIGNING: ${{ secrets.DEVELOPER_ID_P12 != '' && secrets.NOTARY_KEY_P8 != '' }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,9 +44,56 @@ jobs:
       - name: Tests
         run: ./run-tests.sh
 
-      # Tests already ran; build.sh would otherwise run them a second time.
+      # A keychain of its own, thrown away with the runner. The identity's SHA-1 is what
+      # build.sh signs with, so no team id or certificate name has to be typed anywhere.
+      - name: Import the signing certificate
+        if: env.HAS_SIGNING == 'true'
+        env:
+          P12_BASE64: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          CERTIFICATE="$RUNNER_TEMP/certificate.p12"
+          printf '%s' "$P12_BASE64" | base64 --decode > "$CERTIFICATE"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$CERTIFICATE" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          rm "$CERTIFICATE"
+
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep 'Developer ID Application' | head -1 | awk '{print $2}')"
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::the certificate holds no Developer ID Application identity"
+            exit 1
+          fi
+          echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      # Tests already ran; build.sh would otherwise run them a second time. It signs with
+      # CODESIGN_IDENTITY when the step above set one.
       - name: Build
         run: ./build.sh --skip-tests --no-install
+
+      # Apple looks at the build and says whether it may open without a warning; the ticket is
+      # then stapled to the bundle so the answer travels with it and works offline.
+      - name: Notarise
+        if: env.HAS_SIGNING == 'true'
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+        run: |
+          KEY="$RUNNER_TEMP/notary.p8"
+          printf '%s' "$NOTARY_KEY_P8" | base64 --decode > "$KEY"
+          ditto -c -k --keepParent DevDeck.app "$RUNNER_TEMP/notarise.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarise.zip" \
+            --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
+          rm "$KEY"
+          xcrun stapler staple DevDeck.app
+          spctl --assess --type execute --verbose=2 DevDeck.app
 
       - name: Package
         id: package
@@ -53,16 +110,15 @@ jobs:
       - name: Attach to the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: gh release upload "$TAG" "${{ steps.package.outputs.name }}" --clobber
 
-      # Written by the workflow rather than by hand, because it names the file it has just built.
-      # Typed into the notes by a person, it is one release away from being wrong, and wrong here
-      # means somebody's download will not open and they will not know why.
+      # Written by the workflow rather than by hand, because it names the file it has just built
+      # and knows whether it was notarised. Typed into the notes by a person, it is one release
+      # away from being wrong, and wrong here means somebody's download will not open and they
+      # will not know why.
       - name: Say how to install it
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
           ASSET: ${{ steps.package.outputs.name }}
         run: |
           # Everything from the marker down is ours, so re-running on the same tag replaces the
@@ -77,27 +133,37 @@ jobs:
             # A leading blank line, because `gh` hands the body back without a trailing one and
             # a horizontal rule glued to the last paragraph is a heading, not a rule.
             printf '\n<!-- devdeck-install -->\n\n---\n\n## Installing\n\n'
-            printf 'The build is ad-hoc signed and not notarised, so macOS quarantines it on '
-            printf 'download and will not open it on the first try.\n\n'
 
-            printf '**Without a terminal.** Unzip it in Finder, drag `DevDeck.app` into '
-            printf 'Applications, then right-click it and choose Open, and Open again in the '
-            printf 'dialog that appears. That is the whole of it, and it needs no permissions.\n\n'
+            if [ "$HAS_SIGNING" = "true" ]; then
+              printf 'Unzip it, drag `DevDeck.app` into Applications and open it. The build is '
+              printf 'signed with a Developer ID and notarised by Apple, so macOS opens it as it '
+              printf 'is. From here on the app updates itself: when a newer release exists, the '
+              printf 'menu-bar menu opens with **Update to …** as its first line.\n'
+            else
+              printf 'The build is ad-hoc signed and not notarised, so macOS quarantines it on '
+              printf 'download and will not open it on the first try. This is only for a first '
+              printf 'install: from here on the app updates itself, and what it downloads carries '
+              printf 'no quarantine.\n\n'
 
-            printf '**With a terminal**, if yours is allowed to read your Downloads folder:\n\n'
-            printf '```\n'
-            printf 'pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/%s /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app\n' "$ASSET"
-            printf '```\n\n'
-            printf 'The first command quits a copy that is already running, which matters when '
-            printf 'this is an update rather than a first install.\n\n'
+              printf '**Without a terminal.** Unzip it in Finder, drag `DevDeck.app` into '
+              printf 'Applications, then right-click it and choose Open, and Open again in the '
+              printf 'dialog that appears. That is the whole of it, and it needs no permissions.\n\n'
 
-            printf 'If `ditto` answers **Operation not permitted**, it is macOS rather than the '
-            printf 'archive, and it is one of two things. Either the terminal has not been given '
-            printf 'access to your Downloads folder, under System Settings, Privacy and '
-            printf 'Security, Files and Folders; or you are not an administrator of this Mac, in '
-            printf 'which case `mkdir -p ~/Applications` and use `~/Applications` in all three '
-            printf 'places instead. Either way the Finder route above works without changing '
-            printf 'anything.\n'
+              printf '**With a terminal**, if yours is allowed to read your Downloads folder:\n\n'
+              printf '```\n'
+              printf 'pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/%s /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app\n' "$ASSET"
+              printf '```\n\n'
+              printf 'The first command quits a copy that is already running, which matters when '
+              printf 'this is an update rather than a first install.\n\n'
+
+              printf 'If `ditto` answers **Operation not permitted**, it is macOS rather than the '
+              printf 'archive, and it is one of two things. Either the terminal has not been given '
+              printf 'access to your Downloads folder, under System Settings, Privacy and '
+              printf 'Security, Files and Folders; or you are not an administrator of this Mac, in '
+              printf 'which case `mkdir -p ~/Applications` and use `~/Applications` in all three '
+              printf 'places instead. Either way the Finder route above works without changing '
+              printf 'anything.\n'
+            fi
           } >> notes.md
 
           gh release edit "$TAG" --notes-file notes.md

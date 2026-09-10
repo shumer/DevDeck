@@ -72,23 +72,43 @@ Rules:
   Tests that read `.env`, `.git/HEAD`, `.ddev/config.yaml` or `composer.lock` write those
   files into a temporary folder for the same reason.
 
-## Keychain and ad-hoc signing
+## Signing
 
-The app is ad-hoc signed, so its code signature changes on every build and macOS asks for the
-login keychain before letting the new binary read a token it stored earlier.
+A local build is ad-hoc signed unless `CODESIGN_IDENTITY` names an identity in the Keychain, and
+the code reads which it got: an ad-hoc build writes tokens with an open access list, a signed
+one lets the Keychain bind them to the app and the updater check what it downloads. See
+[adr/0017-signature-decides.md](adr/0017-signature-decides.md).
 
-**"Always Allow" holds until the next `./build.sh`, and no longer** - the rebuilt binary is a
-different identity as far as the keychain is concerned. In day-to-day use, where the app is
-not being rebuilt, the prompt appears once and then stays quiet.
+**Your own machine, today.** In Keychain Access: Certificate Assistant, Create a Certificate,
+name it `DevDeck Local`, type Code Signing. Then:
 
-`scripts/seed-token.sh` writes its item with `-A` (any application may read it), so tokens
-seeded that way never prompt at all; the Settings window writes normally-scoped items. If the
-prompting gets in the way during a stretch of rebuilding, re-seed the token with the script.
+```bash
+CODESIGN_IDENTITY="DevDeck Local" ./build.sh
+```
 
-The permanent fix, if it is ever worth the one-time setup, is a self-signed code-signing
-certificate in the login keychain and `codesign -s "<name>"` in `build.sh` instead of `-`:
-a stable identity means one "Always Allow" forever. Deliberately not done - the prompt is
-tolerable and the certificate is a manual Keychain Access step.
+The first launch rewrites the stored tokens once, one password prompt each, and after that
+neither updates nor rebuilds prompt again, because the identity is the same. Leave the
+variable unset and the build is ad-hoc as before; nothing else changes.
+
+**Releases, once the Developer ID exists.** The workflow signs, notarises and staples on the
+runner, never here: `notarytool` ships with Xcode, which the runner has. It needs five
+repository secrets, and with any of them missing it builds the ad-hoc release it always did.
+
+| secret | what it is |
+|---|---|
+| `DEVELOPER_ID_P12` | the Developer ID Application certificate with its private key, exported from Keychain Access as `.p12`, then `base64 -i cert.p12` |
+| `DEVELOPER_ID_P12_PASSWORD` | the password given to that export |
+| `NOTARY_KEY_ID` | the App Store Connect API key's id |
+| `NOTARY_ISSUER_ID` | the issuer id shown next to it |
+| `NOTARY_KEY_P8` | the `.p8` file of that key, `base64 -i AuthKey_XXXX.p8` |
+
+Where they come from: the certificate under developer.apple.com, Certificates, plus, Developer
+ID Application, fed a request made in Keychain Access (Certificate Assistant, Request a
+Certificate from a Certificate Authority, saved to disk); only the account holder can create
+one. The API key under App Store Connect, Users and Access, Integrations, App Store Connect
+API, Team Keys, role Developer; the `.p8` downloads once. Set them with `gh secret set NAME`
+and the value on standard input, so nothing lands in a shell history, then run the release
+workflow by hand against an existing tag to see the signed path work before the next release.
 
 ## Definition of done
 

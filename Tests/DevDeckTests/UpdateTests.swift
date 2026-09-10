@@ -84,7 +84,7 @@ func runUpdateTests(_ run: TestRun) async {
         let decoded = try UpdateCheck.decode(Data(json.utf8))
         try expectEqual(decoded.tagName, "v0.11")
         try expectEqual(decoded.assets.first?.size, 1_719_879)
-        try expectNotNil(decoded.publishedAt, "published_at")
+        _ = try expectNotNil(decoded.publishedAt, "published_at")
     }
 
     await run.test("the request goes to the latest release, unauthenticated") {

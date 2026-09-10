@@ -185,6 +185,9 @@ final class Updater {
                 guard UpdateCheck.verifyBundle(at: fresh, version: update.version) else {
                     throw UpdateFailure("what unpacked is not DevDeck \(update.version)")
                 }
+                guard UpdateCheck.trusts(update: CodeIdentity.kind(ofBundleAt: fresh), running: CodeIdentity.current()) else {
+                    throw UpdateFailure("the download is not signed by the same identity as this copy")
+                }
                 try await self.swap(fresh, for: bundleURL)
                 self.relaunch(at: bundleURL)
             } catch {
