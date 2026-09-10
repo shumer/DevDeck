@@ -374,20 +374,29 @@ apart, off-screen ones cannot.
 
 ## The application layer
 
-`DevDeckApp` is the only module that touches AppKit, and it is three objects:
+`DevDeckApp` is the only module that touches AppKit. `AppDelegate` is its composition root:
+it builds the stores and the objects below, wires the events between them, and does nothing
+itself that one of them could do.
 
-- `AppDelegate` is the composition root: it builds the stores, the controller and the settings
-  window, and owns the panels, their placement, the arrangements menu, summoning and the
-  menu-bar item.
 - `DeckController` owns the data every panel renders and the two loops that keep it fresh: the
   API loop, which hands its sources to `RefreshCycle` and sleeps for what it is told, and a
   faster local loop for Docker, stacks and projects. The parts of it that decide rather than
   fetch live where the suite can reach them: `RefreshCycle` in Core, `ActionsWatchList` in
   GitHubKit, `DeckStatusSummary.make` in the UI module.
+- `DeckCards` is the card list: the built-in cards plus one per configured project, in deck
+  order, and which of them are switched on.
+- `PanelCoordinator` owns the windows: which cards have one, how big each is, and where it
+  sits. The two rules it exists to keep are stated on `persistPosition` and `syncPanelSizes`: a
+  position is written down only when a person chose it, and the deck settling into its data is
+  not a layout event. See [Placement](#placement).
+- `DeckMenu` owns the menu-bar item and every menu, all filled in as they open.
+- `ArrangementsController` owns saved decks: naming one, applying one, offering them.
+- `Summoner` owns the key that raises the deck, the tap-to-latch rule and the veils; what
+  "raised" does to the panels is the coordinator's.
 - `SettingsWindowController` owns the settings window, its list and the form for the selected
   row.
 
-All three are `@MainActor`. The panels themselves are `PanelWindow`, a borderless `NSWindow`
+All of them are `@MainActor`. The panels themselves are `PanelWindow`, a borderless `NSWindow`
 hosting `CardHostView`, which is the one place that maps a card identifier onto its SwiftUI
 view and its size.
 
