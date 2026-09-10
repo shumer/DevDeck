@@ -17,7 +17,7 @@ That single fact shapes the project:
 ```bash
 ./run-tests.sh                    # offline suite; non-zero exit on failure
 ./run-tests.sh projects docker    # only the sections whose names contain these words
-scripts/smoke-test.sh             # one real API call using the stored token
+scripts/smoke-test.sh             # real GitHub and GitLab calls using the stored tokens
 ./build.sh                        # tests, build, bundle, install to /Applications, launch
 ./build.sh --no-install           # build the bundle only
 ./build.sh --skip-tests           # do not do this

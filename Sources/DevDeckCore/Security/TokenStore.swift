@@ -111,14 +111,20 @@ public struct KeychainTokenStore: TokenStore {
 }
 
 /// Reads tokens from the process environment. Used by the smoke-test tool and by anyone
-/// running the app from a shell that already exports `GITHUB_TOKEN`.
+/// running the app from a shell that already exports `GITHUB_TOKEN` or `GITLAB_TOKEN`.
 public struct EnvironmentTokenStore: TokenStore {
     private let environment: [String: String]
     private let variableNames: [String: [String]]
 
+    /// The first account of each service, by the names a shell would already have them under.
+    public static let defaultVariableNames: [String: [String]] = [
+        "github": ["DEVDECK_GITHUB_TOKEN", "GITHUB_TOKEN"],
+        "gitlab": ["DEVDECK_GITLAB_TOKEN", "GITLAB_TOKEN"],
+    ]
+
     public init(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        variableNames: [String: [String]] = ["github": ["DEVDECK_GITHUB_TOKEN", "GITHUB_TOKEN"]]
+        variableNames: [String: [String]] = EnvironmentTokenStore.defaultVariableNames
     ) {
         self.environment = environment
         self.variableNames = variableNames
