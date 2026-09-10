@@ -36,9 +36,10 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   target `Tests/DevDeckTests` using `Tests/TestHarness`. Do not add an XCTest target.
 - No `.xcodeproj`, no WidgetKit extension. Panels are borderless `NSWindow`s hosting SwiftUI.
 - `./build.sh` assembles and ad-hoc signs `DevDeck.app` by hand.
-- The scripts source `scripts/toolchain.sh`, which pins `SDKROOT` to the SDK of the running
-  macOS: the tools' default symlink can point at a beta SDK whose SwiftUI needs a macro plugin
-  only Xcode has. A bare `swift build` that fails on `SwiftUIMacros` is that, not the code.
+- **No `@State` in `DevDeckUI`.** From the macOS 27 SDK on, that attribute resolves to a macro
+  whose plugin only Xcode ships, so it does not compile here. Write the storage out instead, a
+  stored `State(initialValue:)` and a computed property over it; `ClickableHighlight` shows
+  the shape. The other wrappers (`@ObservedObject`, `@Published`) are still plain wrappers.
 
 ## Invariants
 

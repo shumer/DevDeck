@@ -11,7 +11,15 @@ import SwiftUI
 public struct ClickableHighlight: ViewModifier {
     private let cornerRadius: CGFloat
     private let isEnabled: Bool
-    @State private var isHovering = false
+    // Written out rather than as `@State`. In the macOS 27 SDK that attribute resolves to a
+    // macro whose plugin only Xcode ships, and this project builds with the Command Line
+    // Tools; the `State` struct itself is still there, and a stored one is exactly what the
+    // attribute expands to. SwiftUI finds it by its type, not by the attribute.
+    private var _isHovering = State(initialValue: false)
+    private var isHovering: Bool {
+        get { _isHovering.wrappedValue }
+        nonmutating set { _isHovering.wrappedValue = newValue }
+    }
 
     public init(cornerRadius: CGFloat, isEnabled: Bool) {
         self.cornerRadius = cornerRadius
