@@ -84,7 +84,7 @@ let package = Package(
         // Live check against the real API, run by scripts/smoke-test.sh.
         .executableTarget(
             name: "DevDeckSmoke",
-            dependencies: ["DevDeckCore", "GitHubKit"],
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit"],
             path: "Tools/Smoke"
         ),
 

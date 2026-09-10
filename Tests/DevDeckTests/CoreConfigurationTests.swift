@@ -265,6 +265,14 @@ func runConfigurationTests(_ run: TestRun) async {
         try expectNil(try EnvironmentTokenStore(environment: [:]).token(for: .github))
     }
 
+    await run.test("GITLAB_TOKEN answers for the first GitLab instance, and for nothing else") {
+        let store = EnvironmentTokenStore(environment: ["GITLAB_TOKEN": "glpat-example"])
+        try expectEqual(try store.token(for: TokenKey(account: "gitlab")), "glpat-example")
+        try expectNil(try store.token(for: .github), "a GitLab token is not a GitHub token")
+        try expectNil(try store.token(for: TokenKey(account: "gitlab.work")),
+                      "a second instance has no variable; it is configured in the app")
+    }
+
     await run.test("DEVDECK_GITHUB_TOKEN wins over GITHUB_TOKEN") {
         let store = EnvironmentTokenStore(environment: [
             "GITHUB_TOKEN": "shell",
