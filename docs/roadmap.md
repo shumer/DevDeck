@@ -50,7 +50,7 @@
   every six hours, one line at the top of the menu and one banner when there is a newer build,
   and an install only on a click: download, `ditto`, the unpacked bundle checked against the
   release, the old copy to the Trash, relaunch. No quarantine on what the app fetches itself,
-  so the right-click dance ends after the first install. See [adr/0016-self-update.md](adr/0016-self-update.md).
+  so the right-click dance ends after the first install. Shipped as 0.11. See [adr/0016-self-update.md](adr/0016-self-update.md).
 - **The application layer in pieces** - the refresh loop decides in Core under tests and
   only fetches in the app, the app delegate is a composition root over five objects with one
   job each, and a kind of card is one module: its view, size, catalog entries, menu group and
