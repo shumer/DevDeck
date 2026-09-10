@@ -146,7 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updater.onChange = { [weak self] in self?.settingsController.reloadDetail() }
         notifier.onUpdate = { [weak self] in self?.updater.install() }
 
-        repairKeychainOnce()
+        alignKeychainAccess()
 
         panels.syncPanels()
         menu.updateStatusItem()
@@ -210,24 +210,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Rewrites every stored token once, with an access list that a rebuild does not invalidate.
+    /// Rewrites every stored token when the way it should be protected has changed.
     ///
-    /// A token written by an earlier build is bound to that build's code identity, and this app
-    /// is ad-hoc signed, so every update makes macOS ask for the Keychain password once per
-    /// token. Reading them here costs one last round of those prompts and ends them: after this
-    /// pass the items are readable by this user's processes without one.
-    private func repairKeychainOnce() {
-        guard !preferences.hasRepairedKeychain else { return }
+    /// The protection follows the signature, see `KeychainAccessPolicy`. An ad-hoc build writes
+    /// items anybody can read, because binding them to a signature that changes every build
+    /// costs one password prompt per token per update. A build signed with a real identity
+    /// binds them to itself. The first launch after the signature changes rewrites the items
+    /// once, one prompt each, and the mode is remembered so it is not done again.
+    private func alignKeychainAccess() {
+        let wanted = KeychainAccessPolicy.mode(for: CodeIdentity.current())
+        guard preferences.keychainAccessMode != wanted else { return }
 
         let keys = accountsStore.accounts().map(\.tokenKey)
             + gitlabAccountsStore.accounts().map(\.tokenKey)
-        var repaired = 0
+        var rewritten = 0
         for key in keys {
             guard let token = (try? tokenStore.token(for: key)) ?? nil else { continue }
             try? tokenStore.setToken(token, for: key)
-            repaired += 1
+            rewritten += 1
         }
-        preferences.hasRepairedKeychain = true
-        Log.app.info("Rewrote \(repaired, privacy: .public) Keychain item(s) so a rebuild stops asking")
+        preferences.keychainAccessMode = wanted
+        Log.app.info("Rewrote \(rewritten, privacy: .public) Keychain item(s) for access mode \(wanted, privacy: .public)")
     }
 }

@@ -168,6 +168,18 @@ public enum UpdateCheck {
         return found == version
     }
 
+    /// Whether a build about to replace this one was signed by the same hand.
+    ///
+    /// A signed app only accepts a build with its own identity: that is the check an updater
+    /// exists to make, and it is what a Developer ID buys. An ad-hoc app has nothing to compare
+    /// against, and HTTPS to GitHub plus the bundle's own plist is the whole of its trust,
+    /// which is exactly the trust a download by hand had.
+    public static func trusts(update: CodeIdentity.Kind, running: CodeIdentity.Kind) -> Bool {
+        guard case .signed(let own) = running else { return true }
+        guard case .signed(let theirs) = update else { return false }
+        return own == theirs
+    }
+
     /// The bundle inside an unpacked archive, wherever `ditto` put it.
     public static func bundle(inUnpacked folder: URL) -> URL? {
         let contents = (try? FileManager.default.contentsOfDirectory(

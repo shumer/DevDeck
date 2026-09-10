@@ -481,6 +481,14 @@ Tokens live in the login Keychain and nowhere else - not in the repository, not 
 `UserDefaults`, not in a dotfile. `CompositeTokenStore` reads Keychain first, then the
 environment, so a stale `GITHUB_TOKEN` export cannot shadow the token set in Settings.
 
+How an item is protected follows from the signature the app finds itself under.
+`CodeIdentity.current()` asks the running process; `KeychainAccessPolicy` turns the answer into
+a mode: an ad-hoc build writes the open access list, because binding to a signature that
+changes every build costs a prompt per token per update, and a signed build lets the Keychain
+bind the item to the application. The mode is remembered, and the first launch under a
+different signature rewrites the items once. The same identity is what the updater compares a
+downloaded build against. See [adr/0017-signature-decides.md](adr/0017-signature-decides.md).
+
 ## Adding a card
 
 1. Add a `CardDescriptor` to `CardCatalog` with `isImplemented: false`.

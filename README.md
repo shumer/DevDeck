@@ -600,22 +600,24 @@ do not. See [docs/adr/0010-card-palette.md](docs/adr/0010-card-palette.md).
 
 ## The Keychain and the password prompt
 
-Tokens live in the login Keychain and nowhere else. A Keychain item is normally bound to the
-exact binary that wrote it, and this app is ad-hoc signed, so every build has a different code
-identity: to macOS the new build is a different application, and it asks for the Keychain password
-once per stored token. Three tokens, three prompts, on every update. The items are therefore
-written with an access list that names no application, which is the same thing
-`scripts/seed-token.sh` has always done with `security -A`.
+Tokens live in the login Keychain and nowhere else. How each item is protected follows from how
+the app is signed, and the code finds that out for itself at launch:
 
-The trade is worth stating plainly: any process running as you can then read those tokens without
-a prompt. The alternative is not "safer by default", it is a Developer ID certificate (a paid
-Apple Developer account, 99 USD a year) or a self-signed certificate made by hand in Keychain
-Access, either of which gives the app a code identity that survives a rebuild. That is a decision
-with a bill attached rather than a missing line of code, and a token nobody stores because the
-prompt drove them off is not safer than one stored this way.
+- **Signed with an identity that survives a rebuild**, a Developer ID or a certificate you made
+  in Keychain Access, the Keychain does what it does by default: the item is bound to this
+  application, and any other process gets a password prompt. Updates do not prompt, because the
+  identity is the same.
+- **Ad-hoc signed**, which is what a local build and the current releases are, the items are
+  written with an access list that names no application. A Keychain item is normally bound to
+  the exact binary that wrote it, and an ad-hoc signature is different for every build, so the
+  alternative is one password prompt per token per update. The trade is worth stating plainly:
+  any process running as you can then read those tokens without a prompt.
 
-Tokens saved by an earlier build are rewritten once, at the first launch after this change. That
-last round of prompts is the end of them.
+The first launch after the signature changes rewrites the stored items once, one prompt each,
+and remembers the mode. To bind your own tokens today, before a Developer ID: make a
+code-signing certificate in Keychain Access (Certificate Assistant, Create a Certificate, type
+Code Signing) and build with `CODESIGN_IDENTITY="its name" ./build.sh`. See
+[adr/0017-signature-decides.md](docs/adr/0017-signature-decides.md).
 
 ## Releases
 
@@ -626,9 +628,11 @@ because a build nobody asked for is a build nobody checks. `.github/workflows/te
 suite on every push and pull request and fails on a compiler warning, which is the one place
 nobody is in a hurry.
 
-**The build is ad-hoc signed, not notarised**, so macOS quarantines it on download and refuses to
-open it. Every release says so and carries the line that installs it anyway, which unpacks the
-download into Applications, clears the flag and starts it:
+**With the signing secrets in the repository the build is signed with a Developer ID, hardened,
+notarised and stapled on the runner**, and macOS opens it as it is. Without them it is ad-hoc
+signed, macOS quarantines it on download and refuses to open it, and every release says so and
+carries the line that installs it anyway, which unpacks the download into Applications, clears
+the flag and starts it:
 
 ```
 pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-0.8-80.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app

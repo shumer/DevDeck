@@ -125,9 +125,11 @@
 3. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
    Tailscale for the rest. The QR code covers the same network; this covers the customer on a
    call.
-4. **A code identity that survives a rebuild** - a self-signed certificate would let the Keychain
-   items go back to naming this app rather than none, and a Developer ID would also end
-   Gatekeeper for anybody downloading a release.
+4. **A code identity that survives a rebuild** - the code and the workflow are ready: the
+   Keychain mode and the updater's check follow the signature, `build.sh` signs with whatever
+   `CODESIGN_IDENTITY` names, and the release workflow signs, notarises and staples behind five
+   secrets. Waiting on the Developer ID certificate from the Apple Developer Program, bought
+   on 2026-09-10. See [adr/0017-signature-decides.md](adr/0017-signature-decides.md).
 
 ## Not planned
 

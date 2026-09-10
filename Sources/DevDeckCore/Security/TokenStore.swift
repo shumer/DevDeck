@@ -30,7 +30,13 @@ public protocol TokenStore: Sendable {
 /// The Keychain is the only place a token is persisted. It is never written to the repo,
 /// to `UserDefaults`, or to a dotfile in the project.
 public struct KeychainTokenStore: TokenStore {
-    public init() {}
+    /// Who signed the running app, which decides how an item is protected. See
+    /// `KeychainAccessPolicy`.
+    private let identity: CodeIdentity.Kind
+
+    public init(identity: CodeIdentity.Kind = CodeIdentity.current()) {
+        self.identity = identity
+    }
 
     public func token(for key: TokenKey) throws -> String? {
         var query = Self.baseQuery(key)
@@ -74,7 +80,9 @@ public struct KeychainTokenStore: TokenStore {
         insert[kSecValueData as String] = data
         // Tokens are only needed while the user is logged in and the machine is unlocked.
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
-        if let access = Self.openAccess() {
+        // Only for a build with no identity to bind to. Signed, the default access list is
+        // the right one: this application, and a prompt for anybody else.
+        if KeychainAccessPolicy.opensAccess(for: identity), let access = Self.openAccess() {
             insert[kSecAttrAccess as String] = access
         }
         let addStatus = SecItemAdd(insert as CFDictionary, nil)
@@ -83,16 +91,16 @@ public struct KeychainTokenStore: TokenStore {
 
     /// An access control list that does not name a single application.
     ///
-    /// Without this, a Keychain item is bound to the exact binary that wrote it, and this app is
-    /// ad-hoc signed: every build has a different code identity, so the next launch is a
-    /// different application as far as macOS is concerned and it asks for the Keychain password
-    /// once per stored token. Three tokens, three password prompts, on every update.
+    /// For an ad-hoc build. A Keychain item is bound to the exact binary that wrote it, and an
+    /// ad-hoc signature is different for every build, so the next launch is a different
+    /// application as far as macOS is concerned and it asks for the Keychain password once per
+    /// stored token. Three tokens, three password prompts, on every update.
     ///
     /// The trade is real and worth stating: any process running as this user can read these
     /// tokens without a prompt. It is the same trade `scripts/seed-token.sh` has always made with
-    /// `security -A`, and the alternative is not "safer by default" but "a Developer ID, or a
-    /// self-signed certificate the user has to make by hand", which is a different decision with
-    /// a bill attached. A token nobody stores because the prompt drove them off is not safer.
+    /// `security -A`. A build signed with an identity does not make it: see
+    /// `KeychainAccessPolicy`. A token nobody stores because the prompt drove them off is not
+    /// safer.
     ///
     /// The three calls it needs were deprecated with `SecKeychain` in 10.10 and have no modern
     /// equivalent, because on iOS the question does not arise, so they live in `KeychainACL` in C
