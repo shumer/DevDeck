@@ -16,6 +16,7 @@ That single fact shapes the project:
 
 ```bash
 ./run-tests.sh                    # offline suite; non-zero exit on failure
+./run-tests.sh projects docker    # only the sections whose names contain these words
 scripts/smoke-test.sh             # one real API call using the stored token
 ./build.sh                        # tests, build, bundle, install to /Applications, launch
 ./build.sh --no-install           # build the bundle only
@@ -29,6 +30,19 @@ pkill -f DevDeck                  # quit a running instance
 The DDEV cards need the `ddev` CLI on the PATH a login shell sees; Arc, DDEV and any plain
 project marked as needing it want Docker running, and say so on the card when it is not.
 Neither is needed to build or to run the suite.
+
+## The SDK the Command Line Tools point at
+
+`scripts/toolchain.sh`, sourced by every script here, sets `SDKROOT` to the SDK matching the
+running macOS. Left alone, the Command Line Tools build against whatever their `MacOSX.sdk`
+symlink points at, and after an update that can be the beta SDK for the next macOS, in which
+SwiftUI's `@State` is a macro whose plugin only Xcode ships. The symptom is every card failing
+with `plugin for module 'SwiftUIMacros' not found`. A bare `swift build` in a terminal hits it
+too; either go through the scripts or export the same `SDKROOT` yourself.
+
+The default build system also prints a few `ld: warning: search path ... not found` lines
+about a directory the Command Line Tools do not have. They are the toolchain's, not this
+package's, and the CI warning check runs under Xcode where they do not appear.
 
 ## Tests
 

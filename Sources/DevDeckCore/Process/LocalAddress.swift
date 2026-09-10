@@ -50,7 +50,10 @@ public enum LocalAddress {
                 NI_NUMERICHOST
             )
             guard result == 0 else { continue }
-            found.append((name, String(cString: buffer)))
+            // Up to the terminator, decoded as bytes: `String(cString:)` on an array is
+            // deprecated, and the buffer is NI_MAXHOST wide whatever the address is.
+            let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
+            found.append((name, String(decoding: bytes, as: UTF8.self)))
         }
 
         // `en0` before `en1` before the rest: the first is wifi, which is what a phone is on.
