@@ -24,8 +24,10 @@ that reaches for a window cannot be covered by it.
 
 ```
 DeckController (@MainActor)
-   ├─ owns CardState<…> for each card
-   ├─ refresh loop: fetch → succeed/fail → RefreshPolicy.nextDelay → sleep
+   ├─ owns CardState<…> for each card, and one RefreshSource per remote card
+   ├─ refresh loop: RefreshCycle.run(sources) → sleep(pass.delay)
+   │     RefreshCycle asks each active source in order, keeps the one failure counter
+   │     the deck shares, and turns it into a wait through RefreshPolicy
    └─ knows which cards are active; a hidden card is never fetched
 
 GitHubWorkspace  ── one GitHubClient per configured account, fanned out concurrently
@@ -378,7 +380,10 @@ apart, off-screen ones cannot.
   window, and owns the panels, their placement, the arrangements menu, summoning and the
   menu-bar item.
 - `DeckController` owns the data every panel renders and the two loops that keep it fresh: the
-  API loop, paced by `RefreshPolicy`, and a faster local loop for Docker, stacks and projects.
+  API loop, which hands its sources to `RefreshCycle` and sleeps for what it is told, and a
+  faster local loop for Docker, stacks and projects. The parts of it that decide rather than
+  fetch live where the suite can reach them: `RefreshCycle` in Core, `ActionsWatchList` in
+  GitHubKit, `DeckStatusSummary.make` in the UI module.
 - `SettingsWindowController` owns the settings window, its list and the form for the selected
   row.
 
@@ -459,7 +464,8 @@ environment, so a stale `GITHUB_TOKEN` export cannot shadow the token set in Set
 
 1. Add a `CardDescriptor` to `CardCatalog` with `isImplemented: false`.
 2. Build the integration in its own module (or extend `GitHubKit`), with tests.
-3. Add the state to `DeckController` and fetch it only when the card is active.
+3. Add the state to `DeckController` and a `RefreshSource` for it; the cycle only asks it
+   while the card is active.
 4. Write the SwiftUI card in `DevDeckUI` against a `CardState<…>`.
 5. Wire it into `CardHostView` (view + size + dashboard URL) and flip `isImplemented`.
 6. Update `README.md`, this file and `docs/roadmap.md`.

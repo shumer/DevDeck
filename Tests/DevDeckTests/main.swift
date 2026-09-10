@@ -17,5 +17,6 @@ await runDDEVTests(run)
 await runVectorTests(run)
 await runProjectTests(run)
 await runCommandRunnerTests(run)
+await runDeckTests(run)
 
 run.finish()
