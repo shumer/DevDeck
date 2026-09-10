@@ -652,6 +652,22 @@ bill attached rather than a missing line of YAML.
 To cut a release: bump `VERSION`, commit, then create the release on GitHub with a tag like
 `v0.6`. The build number in the bundle is the commit count, so it moves on its own.
 
+### Updating
+
+From 0.11 on the app keeps itself current, by asking rather than by doing. Once after launch
+and every six hours it reads the latest release on GitHub; when that is newer than the running
+copy, the menu-bar menu opens with **Update to 0.12…** as its first line and one banner says so,
+once per version and only if notifications are on. Nothing is downloaded until that line is
+clicked. Then: download, `ditto`, a check that what unpacked is DevDeck at the promised version,
+the old copy to the Trash, the new one in its place, and a relaunch a second later with every
+panel where it was. Option-click the line to read the notes first.
+
+What the app downloads itself carries no quarantine, so an update never needs the right-click
+dance a first install does. The line is disabled while a card is mid-command, because replacing
+the bundle under a running `fusion start` is how a stack is left half up. Settings, General has
+the switch and a **Check now** button with the last answer beside it. See
+[adr/0016-self-update.md](docs/adr/0016-self-update.md).
+
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) - modules, data flow, where to add a card
@@ -677,11 +693,11 @@ Sources/
   DevDeckUI/       SwiftUI cards, the shared card pieces, the brand marks and their SVG
                    parser, and the visual language
   DevDeckApp/      AppKit shell: the controller and its loops, the panel coordinator, the
-                   menu, arrangements, the summon key, the settings window
+                   menu, arrangements, the summon key, the updater, the settings window
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (323 tests, offline)
+  DevDeckTests/    the suite (335 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

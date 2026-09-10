@@ -14,6 +14,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     private let cards: DeckCards
     private let panels: PanelCoordinator
     private let arrangements: ArrangementsController
+    private let updater: Updater
     private let openSettings: () -> Void
     private let quit: () -> Void
 
@@ -27,6 +28,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         cards: DeckCards,
         panels: PanelCoordinator,
         arrangements: ArrangementsController,
+        updater: Updater,
         openSettings: @escaping () -> Void,
         quit: @escaping () -> Void
     ) {
@@ -34,6 +36,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         self.cards = cards
         self.panels = panels
         self.arrangements = arrangements
+        self.updater = updater
         self.openSettings = openSettings
         self.quit = quit
     }
@@ -138,6 +141,10 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         // enabling is off - without this the not-built-yet cards become clickable again.
         menu.autoenablesItems = false
 
+        // A newer build, before anything else: it is the one line that is about the app
+        // rather than the deck, and the menu is the only place a person looks anyway.
+        addUpdateLine(to: menu)
+
         // Why the badge is lit, in words, before anything else. The icon can carry two states
         // and no more; the sentence is what makes them mean something.
         if let reason = controller.statusSummary.reason {
@@ -205,6 +212,56 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         let quitItem = NSMenuItem(title: "Quit DevDeck", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
+    }
+
+    /// One line about the update on offer, worded by state, and nothing at all when there is
+    /// none. Disabled while a card is mid-command: replacing the bundle and quitting under a
+    /// running `fusion start` leaves a stack half up with nothing on screen to say so.
+    private func addUpdateLine(to menu: NSMenu) {
+        guard let update = updater.available else { return }
+        let version = update.version.description
+        let item = NSMenuItem(title: "", action: #selector(installUpdate), keyEquivalent: "")
+        item.target = self
+
+        switch updater.state {
+        case .available:
+            if let working = controller.workingCardTitle {
+                item.title = "Update to \(version) (wait for \(working) to finish)"
+                item.isEnabled = false
+            } else {
+                item.title = "Update to \(version)…"
+            }
+        case .downloading(_, let fraction):
+            item.title = "Downloading \(version)… \(Int((fraction * 100).rounded()))%"
+            item.isEnabled = false
+        case .installing:
+            item.title = "Installing \(version)…"
+            item.isEnabled = false
+        case .failed(_, let reason):
+            item.title = "Update failed, try again"
+            item.toolTip = reason
+        case .idle, .checking:
+            return
+        }
+        menu.addItem(item)
+
+        // Option-click reads the notes first, which is where macOS puts the quieter twin of a
+        // menu item.
+        let notes = NSMenuItem(title: "What's new in \(version)", action: #selector(openReleaseNotes), keyEquivalent: "")
+        notes.target = self
+        notes.isAlternate = true
+        notes.keyEquivalentModifierMask = .option
+        menu.addItem(notes)
+        menu.addItem(.separator())
+    }
+
+    @objc private func installUpdate() {
+        updater.install()
+    }
+
+    @objc private func openReleaseNotes() {
+        guard let update = updater.available else { return }
+        LinkOpener.open(update.pageURL, using: .systemDefault)
     }
 
     /// A submenu rather than a run of items with a heading above them.

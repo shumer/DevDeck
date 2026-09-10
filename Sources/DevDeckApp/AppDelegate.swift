@@ -66,11 +66,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cards: cards,
         panels: panels
     )
+    private lazy var updater: Updater = Updater(preferences: preferences)
     private lazy var menu: DeckMenu = DeckMenu(
         controller: controller,
         cards: cards,
         panels: panels,
         arrangements: arrangements,
+        updater: updater,
         openSettings: { [unowned self] in self.settingsController.show() },
         quit: { [unowned self] in
             self.controller.stop()
@@ -80,9 +82,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var summoner: Summoner = Summoner(preferences: preferences) { [unowned self] raised in
         self.panels.setRaised(raised)
     }
-    private lazy var generalPage: GeneralSettingsPage = GeneralSettingsPage(preferences: preferences) { [weak self] in
-        self?.settingsChanged()
-    }
+    private lazy var generalPage: GeneralSettingsPage = GeneralSettingsPage(
+        preferences: preferences,
+        updater: updater
+    ) { [weak self] in self?.settingsChanged() }
     private lazy var settingsController: SettingsWindowController = SettingsWindowController(
         sections: [
             GitHubAccountsSection(store: accountsStore, tokenStore: tokenStore),
@@ -138,12 +141,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.updateStatusItem = { [weak self] in self?.menu.updateStatusItem() }
         notifier.refreshAuthorization()
 
+        // A newer build: one banner, and the settings page redrawn as the state moves.
+        updater.onAvailable = { [weak self] update in self?.notifier.postUpdate(update.version.description) }
+        updater.onChange = { [weak self] in self?.settingsController.reloadDetail() }
+        notifier.onUpdate = { [weak self] in self?.updater.install() }
+
         repairKeychainOnce()
 
         panels.syncPanels()
         menu.updateStatusItem()
         controller.start()
         summoner.install()
+        updater.start()
 
         generalPage.onRequestNotifications = { [weak self] completion in
             self?.notifier.requestAuthorization(completion) ?? completion(false)
@@ -171,6 +180,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {
             LoginItem.set(true)
         }
+
+        // `open -a DevDeck --args --update`: the same as choosing Update in the menu, for a
+        // terminal or a script.
+        if CommandLine.arguments.contains("--update") {
+            updater.checkAndInstall()
+        }
     }
 
     /// Anything in settings changed: a project added or removed changes the card list, not just
@@ -189,6 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyDeckPreferences() {
         panels.applyPreferences()
         summoner.applyPreferences()
+        updater.applyPreferences()
         if preferences.packsColumns {
             panels.packAllColumns()
         }

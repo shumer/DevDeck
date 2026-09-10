@@ -172,6 +172,21 @@ public final class Preferences: @unchecked Sendable {
     /// account, because one token is your own work and another is a customer's. This one exists
     /// because turning it on is what asks macOS for permission, and asking at first launch,
     /// before the app has done anything for anybody, is what people uninstall an app over.
+    /// Whether the deck asks GitHub for a newer build. On unless switched off, stored as a
+    /// string for the same reason as the summon switch: the backend's `bool` cannot tell "off"
+    /// from "never asked".
+    public var checksForUpdates: Bool {
+        get { backend.string(forKey: "updates.enabled") != "0" }
+        set { backend.set(newValue ? "1" : "0", forKey: "updates.enabled") }
+    }
+
+    /// The version last announced with a banner, so one release is one banner and not one per
+    /// launch.
+    public var announcedUpdate: String? {
+        get { backend.string(forKey: "updates.announced") }
+        set { backend.set(newValue, forKey: "updates.announced") }
+    }
+
     public var notificationsEnabled: Bool {
         // Falls back to the switch this replaced, so a deck that already had review-request
         // banners on keeps them.
