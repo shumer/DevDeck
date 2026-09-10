@@ -16,7 +16,12 @@ public struct LocalProjectCard: View {
     private let isCollapsed: Bool
     /// The same site, addressed for another device on this network. Nil unless it is running.
     private let phoneURL: URL?
-    @State private var isShowingPhone = false
+    // A stored `State` rather than `@State`; see `ClickableHighlight` for why.
+    private var _isShowingPhone = State(initialValue: false)
+    private var isShowingPhone: Bool {
+        get { _isShowingPhone.wrappedValue }
+        nonmutating set { _isShowingPhone.wrappedValue = newValue }
+    }
     private let onOpen: (URL) -> Void
     private let onAction: (LocalProjectAction) -> Void
     private let onOpenTerminal: () -> Void
