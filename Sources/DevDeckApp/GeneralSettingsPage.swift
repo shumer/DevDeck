@@ -8,6 +8,7 @@ import DevDeckCore
 @MainActor
 final class GeneralSettingsPage: NSObject, NSTextFieldDelegate {
     private let preferences: Preferences
+    private let updater: Updater
     private let onChanged: () -> Void
     /// Asks the app to put the permission question to macOS.
     var onRequestNotifications: (@escaping (Bool) -> Void) -> Void = { $0(false) }
@@ -27,8 +28,9 @@ final class GeneralSettingsPage: NSObject, NSTextFieldDelegate {
         ("10 minutes", 600),
     ]
 
-    init(preferences: Preferences, onChanged: @escaping () -> Void) {
+    init(preferences: Preferences, updater: Updater, onChanged: @escaping () -> Void) {
         self.preferences = preferences
+        self.updater = updater
         self.onChanged = onChanged
     }
 
@@ -155,6 +157,25 @@ final class GeneralSettingsPage: NSObject, NSTextFieldDelegate {
             + "accounts and GitLab instances. Nothing is announced on the first answer after a "
             + "launch, since that is the state you left things in.")
 
+        form.header("Updates")
+        form.beginGroup()
+        form.toggleRow(
+            deckSwitch(preferences.checksForUpdates, action: #selector(updatesChanged(_:))),
+            title: "Check for updates",
+            subtitle: "Once after launch and every six hours, from the releases on GitHub. "
+                + "Nothing is downloaded or installed until you ask."
+        )
+        let updateRow = updateStatus
+        let action = NSButton(title: updateRow.button, target: self, action: #selector(updateAction))
+        action.bezelStyle = .rounded
+        action.controlSize = .small
+        action.isEnabled = updateRow.isEnabled
+        form.liveRow(color: updateRow.color, title: updateRow.title, detail: updateRow.detail, accessory: action)
+        form.endGroup()
+        form.footnote("What the app downloads itself carries no quarantine, so an update never "
+            + "needs the right-click dance a first install does. The old copy goes to the Trash, "
+            + "not away, and the new one takes its place and relaunches.")
+
         form.header("System")
         form.beginGroup()
         form.toggleRow(
@@ -163,6 +184,51 @@ final class GeneralSettingsPage: NSObject, NSTextFieldDelegate {
             subtitle: "Read from macOS itself, so removing it in System Settings shows here too."
         )
         form.endGroup()
+    }
+
+    /// The one row that answers "and is there one", in the colour the card would use.
+    private var updateStatus: (color: NSColor, title: String, detail: String, button: String, isEnabled: Bool) {
+        let clock = DateFormatter()
+        clock.dateFormat = "HH:mm"
+        guard updater.isSupported else {
+            return (.tertiaryLabelColor, "Not from a bundle", "run from a terminal, nothing to replace", "Check now", false)
+        }
+        switch updater.state {
+        case .available(let update):
+            let size = ByteCountFormatter.string(fromByteCount: Int64(update.asset.size), countStyle: .file)
+            return (.systemOrange, "\(update.version) is available", size, "Update now", true)
+        case .downloading(let update, let fraction):
+            return (.systemOrange, "Downloading \(update.version)", "\(Int((fraction * 100).rounded()))%", "Update now", false)
+        case .installing(let update):
+            return (.systemOrange, "Installing \(update.version)", "", "Update now", false)
+        case .failed(_, let reason):
+            return (.systemRed, "Update failed", reason, "Try again", true)
+        case .checking:
+            return (.tertiaryLabelColor, "Checking…", "", "Check now", false)
+        case .idle:
+            if let failure = updater.lastCheckFailure {
+                return (.systemOrange, "Could not check", "\(failure), will try again later", "Check now", true)
+            }
+            if let checked = updater.lastCheckedAt {
+                return (.systemGreen, "You are on the latest", "\(updater.currentVersion ?? ""), checked at \(clock.string(from: checked))", "Check now", true)
+            }
+            return (.tertiaryLabelColor, "Not checked yet", updater.currentVersion ?? "", "Check now", true)
+        }
+    }
+
+    @objc private func updatesChanged(_ sender: NSButton) {
+        preferences.checksForUpdates = sender.state == .on
+        updater.applyPreferences()
+    }
+
+    /// Check, or install, whichever the row is offering.
+    @objc private func updateAction() {
+        switch updater.state {
+        case .available, .failed:
+            updater.install()
+        default:
+            updater.checkNow()
+        }
     }
 
     /// The switches on this page all look the same and all do the same two things: write one
