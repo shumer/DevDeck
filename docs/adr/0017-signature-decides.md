@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Waiting on the Developer ID certificate for the second half to take effect.
+Accepted. In effect from 0.12, the first release signed and notarised on the runner.
 
 ## Context
 
