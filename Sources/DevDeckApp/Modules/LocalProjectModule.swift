@@ -11,8 +11,6 @@ final class LocalProjectModule: CardModule, SettingsSection {
     private let context: ModuleContext
     private let store: LocalProjectsStore
     private var controller: DeckController { context.controller }
-    /// What the last health check said, per project, so the form can show it.
-    private var statuses: [String: LocalProjectStatus] = [:]
 
     init(context: ModuleContext, store: LocalProjectsStore) {
         self.context = context
@@ -72,51 +70,67 @@ final class LocalProjectModule: CardModule, SettingsSection {
         )
     }
 
+    func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) {
+        (.project, store.project(forCard: card)?.id)
+    }
+
     // MARK: The settings section
 
     let kind = SettingsWindowController.Section.project
-    let addTitle = "Project"
-    let emptyText = "No projects yet. Press + below the list and pick a folder. Anything with a "
-        + "folder and a command belongs here: docker compose, a dev server, a Makefile."
+    let group = SettingsListGroup.projects
+    let addTitle = "Project from a Folder…"
     weak var host: SettingsHost?
+    /// The form on screen, so an answer that comes back updates its row instead of rebuilding it.
+    private weak var form: LocalProjectForm?
 
     func listItems() -> [SettingsListItem] {
         store.projects().map { project in
-            SettingsListItem(
+            let live = controller.localStatus(for: project).state
+            return SettingsListItem(
                 id: project.id,
                 title: project.displayTitle,
                 // The command rather than the folder: with several checkouts under one parent
                 // the folder names look alike, and the command is what differs.
-                subtitle: project.startCommand.isEmpty ? "no start command" : project.startCommand,
-                state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+                detail: project.startCommand.isEmpty ? "no start command" : project.startCommand,
+                icon: SettingsIcons.mark(LocalProjectForm.glyph(for: project)),
+                dot: live == .running ? .systemGreen : (live == .starting || live == .working ? .systemOrange : nil),
+                isDimmed: !project.isEnabled
             )
         }
     }
 
-    func buildForm(for id: String, in container: FlippedContainer, width: CGFloat) -> Bool {
+    func buildForm(for id: String, in container: FlippedContainer) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }) else { return false }
-        let row = LocalProjectRowView(
-            project: project,
-            status: statuses[project.id] ?? .unavailable,
-            width: width
-        )
-        row.onChange = { [weak self] in self?.applyEdits($0) }
-        row.onTestLink = { [weak self] in self?.testLink($0) }
-        row.onChooseFolder = { [weak self] in self?.chooseFolder($0) }
-        row.onDetect = { [weak self] in self?.detect($0) }
-        row.onCheckHealth = { [weak self] in self?.checkHealth($0.editedProject) }
-        row.onOpenLink = { [weak self] row, index in
-            guard let url = row.linkURL(at: index) else { return }
-            self?.applyEdits(row)
-            LinkOpener.open(url, using: row.editedProject.browser)
+        let fold = "project:\(id):advanced"
+        let health = StatusLine(healthSummary(for: project))
+        let form = LocalProjectForm(project: project, health: health, isAdvancedOpen: host?.isOpen(fold) ?? false, width: container.bounds.width)
+        form.onChange = { [weak self] in self?.applyEdits($0) }
+        form.onChooseFolder = { form in
+            guard let url = SettingsSupport.chooseDirectory(message: "Pick the project folder: the one its start command runs in.") else { return }
+            form.setFolder(url.path)
         }
-        row.frame.origin = .zero
-        container.addSubview(row)
+        form.onDetect = { [weak self] in self?.detect($0) }
+        form.onCheckHealth = { [weak self] in self?.checkHealth($0.editedProject) }
+        form.onOpenLink = { form, index in
+            guard let url = form.linkURL(at: index) else { return }
+            LinkOpener.open(url, using: form.editedProject.browser)
+        }
+        form.onTestLink = { form in
+            let project = form.editedProject
+            guard let link = project.environmentLinks().first ?? project.toolLinks().first else {
+                form.setLinkNote("Nothing to open: set a Check URL or a link.", isError: true)
+                return
+            }
+            form.setLinkNote("", isError: false)
+            LinkOpener.open(link.url, using: project.browser)
+        }
+        form.onToggleAdvanced = { [weak self] in self?.host?.toggle(fold) }
+        container.addSubview(form)
+        self.form = form
 
-        // The form is where someone lands when a card is misconfigured, and until now it said
-        // nothing about whether the settings actually work. Checked on arrival rather than on
-        // demand, because the answer is the point of the group it sits in.
-        if statuses[project.id] == nil {
+        // Checked on arrival: the form is where someone lands when a card is wrong, and the
+        // answer is the point of the group it sits in.
+        if statuses[project.id] == nil || statuses[project.id]?.url != project.healthURL {
             checkHealth(project)
         }
         return true
@@ -124,18 +138,16 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     /// Adds a project from a folder, filling in what the folder already says about itself.
     func add() -> String? {
-        guard let url = SettingsSupport.chooseDirectory(
-            message: "Pick the project folder: the one its start command runs in."
-        ) else { return nil }
-
+        guard let url = SettingsSupport.chooseDirectory(message: "Pick the project folder: the one its start command runs in.") else {
+            return nil
+        }
         var projects = store.projects()
         let name = url.lastPathComponent
         let id = LocalProject.makeID(from: name, existing: projects.map(\.id))
         var project = LocalProject(id: id, title: name, folder: url.path)
 
         // Applied on creation only. From here on the fields belong to the user, and a later
-        // guess must never quietly replace what they typed - the Detect button is how they ask
-        // for one.
+        // guess must never quietly replace what they typed; Detect is how they ask for one.
         if let suggestion = ProjectProbe.suggestion(for: url) {
             project.subtitle = suggestion.subtitle
             project.startCommand = suggestion.startCommand
@@ -144,7 +156,6 @@ final class LocalProjectModule: CardModule, SettingsSection {
             project.requiresDocker = suggestion.requiresDocker
             project.healthURL = suggestion.healthURL
         }
-
         projects.append(project)
         store.save(projects)
         host?.changed()
@@ -153,17 +164,25 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     func remove(_ id: String) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }),
-              SettingsSupport.confirm(
-                  "Remove \(project.displayTitle)?",
-                  detail: "The card disappears from the deck. Anything it started keeps running."
-              )
+              SettingsSupport.confirm("Remove \(project.displayTitle)?", detail: "The card disappears from the deck. Anything it started keeps running.")
         else { return false }
         store.save(store.projects().filter { $0.id != id })
         return true
     }
 
-    private func applyEdits(_ row: LocalProjectRowView) {
-        let edited = row.editedProject
+    // MARK: Editing
+
+    /// What the last check said, and the address it said it about.
+    private var statuses: [String: (status: LocalProjectStatus, url: String)] = [:]
+
+    private func healthSummary(for project: LocalProject) -> CheckSummary {
+        guard let known = statuses[project.id] else { return .notChecked }
+        return known.status.summary(checkedURL: known.url, currentURL: project.healthURL)
+    }
+
+    private func applyEdits(_ form: LocalProjectForm) {
+        let before = store.projects().first { $0.id == form.project.id }
+        let edited = form.editedProject
         var projects = store.projects()
         if let index = projects.firstIndex(where: { $0.id == edited.id }) {
             projects[index] = edited
@@ -171,56 +190,39 @@ final class LocalProjectModule: CardModule, SettingsSection {
             projects.append(edited)
         }
         store.save(projects)
-        row.apply(edited)
-        row.setStatus(SettingsSupport.browserSummary(browser: edited.browser))
+        form.apply(edited)
         host?.reloadList()
         host?.changed()
-    }
 
-    private func testLink(_ row: LocalProjectRowView) {
-        applyEdits(row)
-        let project = row.editedProject
-        guard let link = project.environmentLinks().first ?? project.toolLinks().first else {
-            row.setStatus("No link to test. Set a health URL or an environment.", isError: true)
-            return
+        // A new address, folder or command is a new question; the old answer is not its answer.
+        if before?.healthURL != edited.healthURL || before?.folder != edited.folder || before?.startCommand != edited.startCommand {
+            checkHealth(edited)
         }
-        row.setStatus("Opening \(link.url.absoluteString)")
-        LinkOpener.open(link.url, using: project.browser)
     }
 
-    private func chooseFolder(_ row: LocalProjectRowView) {
-        guard let url = SettingsSupport.chooseDirectory(
-            message: "Pick the project folder: the one its start command runs in."
-        ) else { return }
-        row.setFolder(url.path)
-    }
-
-    /// Asks the project's health URL and redraws the form with the answer.
     private func checkHealth(_ project: LocalProject) {
+        form?.health.update(.checking)
         Task { [weak self] in
             guard let self else { return }
             let status = await LocalProjectService(project: project).status()
-            self.statuses[project.id] = status
-            // Only if the user is still looking at this project - the check takes a moment and
-            // they may have moved on.
-            guard self.host?.isShowing(self.kind, id: project.id) == true else { return }
-            self.host?.reloadDetail()
+            self.statuses[project.id] = (status, project.healthURL)
+            // Only into the row the answer belongs to, and only if it is still on screen.
+            guard let form = self.form, form.project.id == project.id else { return }
+            form.health.update(status.summary(checkedURL: project.healthURL, currentURL: form.editedProject.healthURL))
         }
     }
 
-    private func detect(_ row: LocalProjectRowView) {
-        guard let folder = row.editedProject.folderURL else {
-            row.setStatus("Set a folder first.", isError: true)
+    private func detect(_ form: LocalProjectForm) {
+        guard let folder = form.editedProject.folderURL else {
+            form.setDetectNote("Set a folder first.", isError: true)
             return
         }
         guard let suggestion = ProjectProbe.suggestion(for: folder) else {
-            row.setStatus(
-                "Nothing recognisable in that folder: no compose file, package.json script or Makefile target.",
-                isError: true
-            )
+            form.setDetectNote("Nothing recognisable: no compose file, package.json script or Makefile target.", isError: true)
             return
         }
-        row.applySuggestion(suggestion)
-        row.setStatus("Filled in from the folder: \(suggestion.startCommand)")
+        form.applySuggestion(suggestion)
+        let found = [suggestion.subtitle, suggestion.requiresDocker ? "needs Docker" : ""].filter { !$0.isEmpty }.joined(separator: ", ")
+        form.setDetectNote("Detected: \(found.isEmpty ? suggestion.startCommand : found)", isError: false)
     }
 }

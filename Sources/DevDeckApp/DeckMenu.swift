@@ -17,6 +17,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     private let updater: Updater
     private let preferences: Preferences
     private let openSettings: () -> Void
+    private let openCardSettings: (CardID) -> Void
     private let quit: () -> Void
 
     private var statusItem: NSStatusItem!
@@ -32,6 +33,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         updater: Updater,
         preferences: Preferences,
         openSettings: @escaping () -> Void,
+        openCardSettings: @escaping (CardID) -> Void,
         quit: @escaping () -> Void
     ) {
         self.controller = controller
@@ -41,6 +43,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         self.updater = updater
         self.preferences = preferences
         self.openSettings = openSettings
+        self.openCardSettings = openCardSettings
         self.quit = quit
     }
 
@@ -127,12 +130,18 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         hide.representedObject = card.rawValue
         menu.addItem(hide)
 
+        // Straight to this card's own form. It used to open the window on whatever page came
+        // first and leave the project to be found in a list of fifteen.
+        let settings = NSMenuItem(title: "Settings for This Card…", action: #selector(showCardSettings(_:)), keyEquivalent: "")
+        settings.target = self
+        settings.representedObject = card.rawValue
+        menu.addItem(settings)
+
         menu.addItem(.separator())
         menu.addItem(lockItem())
         for (title, selector) in [
             ("Tidy panels into columns", #selector(tidy)),
             ("Refresh now", #selector(refreshNow)),
-            ("All cards and settings…", #selector(showSettings)),
         ] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
             item.target = self
@@ -358,6 +367,11 @@ final class DeckMenu: NSObject, NSMenuDelegate {
 
     @objc private func refreshNow() {
         controller.refreshNow()
+    }
+
+    @objc private func showCardSettings(_ item: NSMenuItem) {
+        guard let raw = item.representedObject as? String else { return }
+        openCardSettings(CardID(rawValue: raw))
     }
 
     @objc private func showSettings() {

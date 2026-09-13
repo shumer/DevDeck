@@ -109,6 +109,25 @@ public struct GitLabAccount: Sendable, Equatable, Codable, Identifiable {
         host.appendingPathComponent("api").appendingPathComponent("graphql")
     }
 
+    /// A host typed by a person, turned into something that can be asked for `/api/graphql`.
+    ///
+    /// People write `gitlab.acme.io`, `https://gitlab.acme.io/` and occasionally the URL of a
+    /// project they were looking at. The scheme is added when missing and the path is dropped,
+    /// because everything below the host belongs to the API, not to the setting. Nil for what
+    /// will not parse, which a form leaves alone rather than blanking the instance over a typo.
+    public static func normalizedHost(_ text: String) -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let withScheme = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+        guard var components = URLComponents(string: withScheme), let host = components.host, !host.isEmpty else {
+            return nil
+        }
+        components.path = ""
+        components.query = nil
+        components.fragment = nil
+        return components.url
+    }
+
     /// The host as a person reads it, for the card's footer: `gitlab.com`, `git.acme.io`.
     public var displayHost: String {
         host.host ?? host.absoluteString

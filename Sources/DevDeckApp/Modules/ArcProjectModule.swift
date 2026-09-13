@@ -70,31 +70,56 @@ final class ArcProjectModule: CardModule, SettingsSection {
         )
     }
 
+    func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) {
+        (.arc, store.project(forCard: card)?.id)
+    }
+
     // MARK: The settings section
 
     let kind = SettingsWindowController.Section.arc
-    let addTitle = "Arc project"
-    let emptyText = "No Arc projects yet. Press + below the list."
+    let group = SettingsListGroup.projects
+    let addTitle = "Arc XP Project"
     weak var host: SettingsHost?
+    private weak var form: ArcProjectForm?
+    /// What the last stack check said, and the address it said it about.
+    private var checks: [String: (status: LocalStackStatus, address: String)] = [:]
 
     func listItems() -> [SettingsListItem] {
         store.projects().map { project in
-            SettingsListItem(
+            let live = controller.stackStatus(for: project).state
+            return SettingsListItem(
                 id: project.id,
                 title: project.title,
-                subtitle: project.organization.isEmpty ? "no organisation" : project.organization,
-                state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+                detail: project.organization.isEmpty ? "Arc XP" : "Arc XP · \(project.organization)",
+                icon: SettingsIcons.mark(.arc),
+                dot: live == .running ? .systemGreen : (live == .working ? .systemOrange : nil),
+                isDimmed: !project.isEnabled
             )
         }
     }
 
-    func buildForm(for id: String, in container: FlippedContainer, width: CGFloat) -> Bool {
+    func buildForm(for id: String, in container: FlippedContainer) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }) else { return false }
-        let row = ProjectRowView(project: project, width: width)
-        row.onChange = { [weak self] in self?.applyEdits($0) }
-        row.onTestLink = { [weak self] in self?.testLink($0) }
-        row.onChooseFolder = { [weak self] in self?.chooseFolder($0) }
-        row.onStructureChange = { [weak self] _, project in
+        let fold = "arc:\(id):advanced"
+        let summary = checks[project.id].map { $0.status.summary(checkedAddress: $0.address, currentAddress: Self.address(of: project)) } ?? .notChecked
+        let form = ArcProjectForm(project: project, stack: StatusLine(summary), isAdvancedOpen: host?.isOpen(fold) ?? false, width: container.bounds.width)
+        form.onChange = { [weak self] in self?.applyEdits($0) }
+        form.onChooseFolder = { form in
+            guard let url = SettingsSupport.chooseDirectory(message: "Pick the project checkout: the folder the fusion commands run in.") else { return }
+            form.setFolder(url.path)
+        }
+        form.onCheckStack = { [weak self] in self?.checkStack($0.editedProject) }
+        form.onTestLink = { form in
+            let project = form.editedProject
+            guard let link = project.resolvedLinks.first else {
+                form.setLinkNote("No enabled link to open.", isError: true)
+                return
+            }
+            form.setLinkNote("", isError: false)
+            LinkOpener.open(link.url, using: project.browser)
+        }
+        form.onToggleAdvanced = { [weak self] in self?.host?.toggle(fold) }
+        form.onStructureChange = { [weak self] _, project in
             guard let self else { return }
             var projects = self.store.projects()
             if let index = projects.firstIndex(where: { $0.id == project.id }) {
@@ -102,19 +127,22 @@ final class ArcProjectModule: CardModule, SettingsSection {
                 self.store.save(projects)
             }
             self.host?.changed()
-            // Rebuilt rather than reloaded: a link was added or removed, so the form has a
-            // different number of rows than the one on screen.
+            // Rebuilt rather than updated: a link was added or removed.
             self.host?.reloadDetail()
         }
-        row.frame.origin = .zero
-        container.addSubview(row)
+        container.addSubview(form)
+        self.form = form
+
+        if project.supportsLocalStack, checks[project.id]?.address != Self.address(of: project) {
+            checkStack(project)
+        }
         return true
     }
 
     func add() -> String? {
         var projects = store.projects()
         let id = ArcProject.makeID(from: "project", existing: projects.map(\.id))
-        projects.append(ArcProject(id: id, title: "New project", organization: ""))
+        projects.append(ArcProject(id: id, title: "New Project", organization: ""))
         store.save(projects)
         host?.changed()
         return id
@@ -128,8 +156,14 @@ final class ArcProjectModule: CardModule, SettingsSection {
         return true
     }
 
-    private func applyEdits(_ row: ProjectRowView) {
-        let edited = row.editedProject
+    /// What the stack check asks: the folder and the address it resolves to.
+    private static func address(of project: ArcProject) -> String {
+        "\(project.folder ?? "")|\(project.effectiveLocalURL)|\(project.healthPath)"
+    }
+
+    private func applyEdits(_ form: ArcProjectForm) {
+        let before = store.projects().first { $0.id == form.project.id }
+        let edited = form.editedProject
         var projects = store.projects()
         if let index = projects.firstIndex(where: { $0.id == edited.id }) {
             projects[index] = edited
@@ -137,27 +171,27 @@ final class ArcProjectModule: CardModule, SettingsSection {
             projects.append(edited)
         }
         store.save(projects)
-        row.apply(edited)
-        row.setStatus(SettingsSupport.browserSummary(browser: edited.browser))
+        form.apply(edited)
         host?.reloadList()
         host?.changed()
+        if let before, Self.address(of: before) != Self.address(of: edited), edited.supportsLocalStack {
+            checkStack(edited)
+        }
     }
 
-    private func testLink(_ row: ProjectRowView) {
-        applyEdits(row)
-        let project = row.editedProject
-        guard let link = project.resolvedLinks.first else {
-            row.setStatus("No enabled link to test.", isError: true)
+    private func checkStack(_ project: ArcProject) {
+        guard project.supportsLocalStack else {
+            form?.stack.update(CheckSummary(tone: .idle, state: "Not configured", detail: "set the project folder"))
             return
         }
-        row.setStatus("Opening \(link.url.absoluteString)")
-        LinkOpener.open(link.url, using: project.browser)
-    }
-
-    private func chooseFolder(_ row: ProjectRowView) {
-        guard let url = SettingsSupport.chooseDirectory(
-            message: "Pick the project checkout: the folder the fusion commands run in."
-        ) else { return }
-        row.setFolder(url.path)
+        form?.stack.update(.checking)
+        Task { [weak self] in
+            guard let self else { return }
+            let status = await LocalStackService(project: project).status()
+            let address = Self.address(of: project)
+            self.checks[project.id] = (status, address)
+            guard let form = self.form, form.project.id == project.id else { return }
+            form.stack.update(status.summary(checkedAddress: address, currentAddress: Self.address(of: form.editedProject)))
+        }
     }
 }

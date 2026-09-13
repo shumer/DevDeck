@@ -70,32 +70,44 @@ final class DDEVProjectModule: CardModule, SettingsSection {
         )
     }
 
+    func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) {
+        (.ddev, store.project(forCard: card)?.id)
+    }
+
     // MARK: The settings section
 
     let kind = SettingsWindowController.Section.ddev
-    let addTitle = "DDEV project"
-    let emptyText = "No DDEV projects yet. Press + below the list and pick one ddev already knows."
+    let group = SettingsListGroup.projects
+    let addTitle = "DDEV Project…"
     weak var host: SettingsHost?
 
     func listItems() -> [SettingsListItem] {
         store.projects().map { project in
-            SettingsListItem(
+            let live = controller.ddevStatus(for: project).state
+            return SettingsListItem(
                 id: project.id,
                 title: project.displayTitle,
-                subtitle: project.name,
-                state: project.isEnabled ? .systemGreen : .tertiaryLabelColor
+                detail: "DDEV · \(project.name)",
+                icon: SettingsIcons.mark(.ddev),
+                dot: live == .running ? .systemGreen : (live == .working ? .systemOrange : nil),
+                isDimmed: !project.isEnabled
             )
         }
     }
 
-    func buildForm(for id: String, in container: FlippedContainer, width: CGFloat) -> Bool {
+    func buildForm(for id: String, in container: FlippedContainer) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }) else { return false }
-        let row = DDEVProjectRowView(project: project, width: width)
-        row.onChange = { [weak self] in self?.applyEdits($0) }
-        row.onTestLink = { [weak self] in self?.testLink($0) }
-        row.onChooseFolder = { [weak self] in self?.chooseFolder($0) }
-        row.frame.origin = .zero
-        container.addSubview(row)
+        let form = DDEVProjectForm(project: project, width: container.bounds.width)
+        form.onChange = { [weak self] in self?.applyEdits($0) }
+        form.onChooseFolder = { form in
+            guard let url = SettingsSupport.chooseDirectory(message: "Pick the project checkout: the folder holding .ddev.") else { return }
+            // Said plainly rather than refused: the folder may be right and the project not set
+            // up yet, and that is the user's business.
+            form.setFolderNote(DDEVConfig.isProject(url) ? "" : "No .ddev/config.yaml in that folder.", isError: true)
+            form.setFolder(url.path)
+        }
+        form.onTestLink = { [weak self] in self?.testLink($0) }
+        container.addSubview(form)
         return true
     }
 
@@ -114,12 +126,8 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
             guard !candidates.isEmpty else {
                 let alert = NSAlert()
-                alert.messageText = entries.isEmpty
-                    ? "ddev has no projects"
-                    : "Every DDEV project is already on the deck"
-                alert.informativeText = entries.isEmpty
-                    ? "Run ddev config in a project folder first."
-                    : "Nothing left to add."
+                alert.messageText = entries.isEmpty ? "ddev has no projects" : "Every DDEV project is already on the deck"
+                alert.informativeText = entries.isEmpty ? "Run ddev config in a project folder first." : "Nothing left to add."
                 alert.addButton(withTitle: "OK")
                 alert.runModal()
                 return
@@ -151,10 +159,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     func remove(_ id: String) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }),
-              SettingsSupport.confirm(
-                  "Remove \(project.displayTitle)?",
-                  detail: "The card disappears from the deck. The project itself is untouched."
-              )
+              SettingsSupport.confirm("Remove \(project.displayTitle)?", detail: "The card disappears from the deck. The project itself is untouched.")
         else { return false }
         store.save(store.projects().filter { $0.id != id })
         return true
@@ -163,14 +168,13 @@ final class DDEVProjectModule: CardModule, SettingsSection {
     private func presentUnavailable() {
         let alert = NSAlert()
         alert.messageText = "ddev did not answer"
-        alert.informativeText = "Either DDEV is not installed, or it is not on the PATH a login "
-            + "shell sees. Running ddev list in a terminal will say which."
+        alert.informativeText = "Either DDEV is not installed, or it is not on the PATH a login shell sees. Running ddev list in a terminal will say which."
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
 
-    private func applyEdits(_ row: DDEVProjectRowView) {
-        let edited = row.editedProject
+    private func applyEdits(_ form: DDEVProjectForm) {
+        let edited = form.editedProject
         var projects = store.projects()
         if let index = projects.firstIndex(where: { $0.id == edited.id }) {
             projects[index] = edited
@@ -178,37 +182,23 @@ final class DDEVProjectModule: CardModule, SettingsSection {
             projects.append(edited)
         }
         store.save(projects)
-        row.apply(edited)
-        row.setStatus(SettingsSupport.browserSummary(browser: edited.browser))
+        form.apply(edited)
         host?.reloadList()
         host?.changed()
     }
 
-    private func testLink(_ row: DDEVProjectRowView) {
-        applyEdits(row)
-        let project = row.editedProject
-
+    private func testLink(_ form: DDEVProjectForm) {
+        let project = form.editedProject
         Task { [weak self] in
             guard let self else { return }
             let entries = await self.environment.list()
             let status = self.environment.status(for: project, entries: entries)
             guard let link = project.links(status: status).first else {
-                row.setStatus("ddev has no URL for this project yet.", isError: true)
+                form.setLinkNote("ddev has no URL for this project yet.", isError: true)
                 return
             }
-            row.setStatus("Opening \(link.url.absoluteString)")
+            form.setLinkNote("", isError: false)
             LinkOpener.open(link.url, using: project.browser)
         }
-    }
-
-    private func chooseFolder(_ row: DDEVProjectRowView) {
-        guard let url = SettingsSupport.chooseDirectory(message: "Pick the project checkout: the folder holding .ddev.")
-        else { return }
-        // Said plainly rather than refused: the folder may be right and the project not set up
-        // yet, and that is the user's business.
-        if !DDEVConfig.isProject(url) {
-            row.setStatus("No .ddev/config.yaml in that folder.", isError: true)
-        }
-        row.setFolder(url.path)
     }
 }

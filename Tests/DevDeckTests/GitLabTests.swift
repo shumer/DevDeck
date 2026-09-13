@@ -191,6 +191,16 @@ func runGitLabTests(_ run: TestRun) async {
 
     run.section("GitLab - accounts")
 
+    await run.test("a host is taken however it is typed, and a typo is not a host") {
+        try expectEqual(GitLabAccount.normalizedHost("gitlab.acme.io")?.absoluteString, "https://gitlab.acme.io")
+        try expectEqual(GitLabAccount.normalizedHost(" https://gitlab.acme.io/group/project/-/merge_requests ")?.absoluteString,
+                        "https://gitlab.acme.io", "the path belongs to the API, not the setting")
+        try expectEqual(GitLabAccount.normalizedHost("http://10.0.0.5:8080/")?.absoluteString, "http://10.0.0.5:8080")
+        try expectNil(GitLabAccount.normalizedHost(""), "empty")
+        try expectNil(GitLabAccount.normalizedHost("https://"), "no host")
+    }
+
+
     await run.test("an instance keeps its own token key and its own endpoint") {
         try expectEqual(GitLabAccount.default.tokenKey.account, "gitlab")
         try expectEqual(account.tokenKey.account, "gitlab.work")

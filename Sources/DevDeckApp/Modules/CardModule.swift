@@ -32,12 +32,17 @@ protocol CardModule: AnyObject {
     /// Where a double-click on the panel goes: the same data, on the web. Nil for a card that
     /// has no web page.
     func dashboardURL(for card: CardID) -> URL?
+
+    /// The settings page for this card, for "Settings for This Card…" on its right-click menu:
+    /// a project's own form, or the Cards page for a card that is not a project.
+    func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?)
 }
 
 extension CardModule {
     var menuGroup: String? { nil }
     func descriptors() -> [CardDescriptor] { [] }
     func dashboardURL(for card: CardID) -> URL? { nil }
+    func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) { (.cards, nil) }
 }
 
 /// What every module is built with: the controller, and the few things a card does that are

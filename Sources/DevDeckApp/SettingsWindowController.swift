@@ -1,120 +1,119 @@
 import AppKit
 import DevDeckCore
 
-/// The settings window: one list of everything configurable, grouped by kind, and the form for
-/// whichever row is selected.
+/// A page of the settings window that is not a list of things: General, Deck, Cards,
+/// Notifications.
+@MainActor
+protocol SettingsPage: AnyObject {
+    var kind: SettingsWindowController.Section { get }
+    var title: String { get }
+    var icon: NSImage { get }
+    /// The window, set when the page is added. Pages that update themselves, like General's
+    /// update row, use it to know whether they are on screen.
+    var host: SettingsHost? { get set }
+    func build(in container: FlippedContainer)
+}
+
+/// The settings window: a sidebar with the pages, the accounts and the projects, and the form
+/// for whichever row is selected.
 ///
-/// The window owns the list and the form column. What goes in them for each kind, and how one
-/// of its things is added, edited and removed, is that kind's `SettingsSection`; General is a
-/// page of its own, pinned at the top of the list.
+/// The window owns the sidebar and the form column and nothing about any kind of thing. What goes
+/// in them is each page's and each section's.
 @MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
-    /// The kinds, as the list and the `--settings` launch argument name them. Raw values are
-    /// what the argument takes, so they do not change.
+    /// Everything the sidebar can show, as the `--settings` launch argument names it. Raw values
+    /// are what the argument takes, so they do not change.
     enum Section: String, CaseIterable {
+        case general
+        case deck
+        case cards
+        case notifications
         case github
         case gitlab
         case arc
         case ddev
         case project
-        case general
-
-        var title: String {
-            switch self {
-            case .github: return "GitHub accounts"
-            case .gitlab: return "GitLab instances"
-            case .arc: return "Arc projects"
-            case .ddev: return "DDEV projects"
-            case .project: return "Projects"
-            case .general: return "General"
-            }
-        }
     }
 
+    private let pages: [SettingsPage]
     private let sections: [SettingsSection]
-    private let general: GeneralSettingsPage
     private let onChanged: () -> Void
 
     private var window: NSWindow?
     private var list: SettingsListView?
     private var detailScroll: NSScrollView?
 
-    private var section: Section = .github
-    /// Which item each section was last left on.
-    private var selection: [Section: String] = [:]
+    private var current: (section: Section, id: String?) = (.general, nil)
+    private var openFolds: Set<String> = []
 
-    /// One list column instead of a sidebar and a list. Six buttons in a column of their own
-    /// was 184 points spent on a choice a heading makes just as well, in an app with about
-    /// thirty settings in it, and the forms wanted those points more. It also puts every page
-    /// over the width where the label gutter used to change under them.
-    private static let listWidth: CGFloat = 232
+    private static let listWidth: CGFloat = 220
+    private static let defaultSize = NSSize(width: 820, height: 640)
 
-    private static let generalID = "general"
-
-    /// `sections` in the order the list shows them, which is the order the `+` offers them in.
-    init(sections: [SettingsSection], general: GeneralSettingsPage, onChanged: @escaping () -> Void) {
+    init(pages: [SettingsPage], sections: [SettingsSection], onChanged: @escaping () -> Void) {
+        self.pages = pages
         self.sections = sections
-        self.general = general
         self.onChanged = onChanged
         super.init()
+        for page in pages { page.host = self }
         for section in sections { section.host = self }
     }
 
-    private func sectionObject(_ kind: Section) -> SettingsSection? {
-        sections.first { $0.kind == kind }
-    }
+    var isVisible: Bool { window?.isVisible == true }
 
     // MARK: Window
 
-    func show(_ section: Section = .github) {
-        if let window {
-            select(section)
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-            return
-        }
+    /// Opens the window on a page, or on one account or project when `id` names it.
+    func show(_ section: Section = .general, id: String? = nil) {
+        if window == nil { makeWindow() }
+        open(section, id: id ?? (section == current.section ? current.id : nil))
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
 
+    private func makeWindow() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 880, height: 580),
-            styleMask: [.titled, .closable, .resizable],
+            contentRect: NSRect(origin: .zero, size: Self.defaultSize),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "DevDeck Settings"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
-        window.minSize = NSSize(width: 720, height: 440)
+        // The form column has a fixed width, so a narrower window only cuts into it.
+        window.minSize = NSSize(width: Self.defaultSize.width, height: 480)
         window.delegate = self
         window.center()
+        // Remembered, because at the old fixed 880 x 580 nearly every form scrolled and nobody
+        // could make it stay larger.
+        window.setFrameAutosaveName("DevDeck Settings")
 
-        let content = NSView(frame: window.contentRect(forFrameRect: window.frame))
-        content.wantsLayer = true
-        content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        let content = NSView(frame: NSRect(origin: .zero, size: Self.defaultSize))
 
-        let list = SettingsListView(
-            frame: NSRect(x: 0, y: 0, width: Self.listWidth, height: content.bounds.height)
-        )
+        let list = SettingsListView(frame: NSRect(x: 0, y: 0, width: Self.listWidth, height: content.bounds.height))
         list.autoresizingMask = [.height]
         list.onSelect = { [weak self] compound in
             guard let self, let entry = Self.parse(compound) else { return }
-            // The row says which kind it is, so choosing one is also how the section changes.
-            self.section = entry.section
-            self.selection[entry.section] = entry.id
+            self.current = (entry.section, entry.id)
+            self.list?.setRemovable(self.sectionObject(entry.section) != nil)
             self.reloadDetail()
         }
-        list.onAdd = { [weak self] title in self?.addItem(forMenuTitle: title) }
-        list.setAddOptions(sections.map(\.addTitle))
+        list.onAdd = { [weak self] title in self?.add(title) }
         list.onRemove = { [weak self] in self?.removeSelected() }
+        var addOptions = sections.filter { $0.group == .accounts }.map(\.addTitle)
+        addOptions.append("")
+        addOptions += sections.filter { $0.group == .projects }.map(\.addTitle)
+        list.setAddOptions(addOptions)
         content.addSubview(list)
         self.list = list
 
-        let scroll = NSScrollView(
-            frame: NSRect(
-                x: Self.listWidth,
-                y: 0,
-                width: content.bounds.width - Self.listWidth,
-                height: content.bounds.height
-            )
-        )
+        let scroll = NSScrollView(frame: NSRect(
+            x: Self.listWidth,
+            y: 0,
+            width: content.bounds.width - Self.listWidth,
+            height: content.bounds.height
+        ))
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.drawsBackground = false
@@ -123,36 +122,35 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
         detailScroll = scroll
 
         window.contentView = content
+        window.initialFirstResponder = list
         self.window = window
-
-        select(section)
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
     }
 
-    func windowDidResize(_ notification: Notification) {
-        // The form is laid out for a width, so it is rebuilt when the width changes. Cheap,
-        // and it keeps every field stretched to the window instead of stopping short of it.
-        reloadDetail()
+    /// Whatever was being typed is kept: ending the edit is what commits it.
+    func windowWillClose(_ notification: Notification) {
+        window?.makeFirstResponder(nil)
     }
 
-    private func select(_ item: Section) {
-        section = item
-        reloadList()
-        reloadDetail()
+    // MARK: Identity of a row
+
+    private static func entryID(_ section: Section, _ id: String?) -> String {
+        "\(section.rawValue):\(id ?? "")"
     }
 
-    /// A row's identity across the whole list: two projects of different kinds can share an id,
-    /// and the list is one column now.
-    private static func entryID(_ section: Section, _ id: String) -> String {
-        "\(section.rawValue):\(id)"
-    }
-
-    private static func parse(_ compound: String) -> (section: Section, id: String)? {
+    private static func parse(_ compound: String) -> (section: Section, id: String?)? {
         guard let separator = compound.firstIndex(of: ":"),
               let section = Section(rawValue: String(compound[compound.startIndex..<separator]))
         else { return nil }
-        return (section, String(compound[compound.index(after: separator)...]))
+        let id = String(compound[compound.index(after: separator)...])
+        return (section, id.isEmpty ? nil : id)
+    }
+
+    private func sectionObject(_ kind: Section) -> SettingsSection? {
+        sections.first { $0.kind == kind }
+    }
+
+    private func page(_ kind: Section) -> SettingsPage? {
+        pages.first { $0.kind == kind }
     }
 
     // MARK: SettingsHost
@@ -160,114 +158,123 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
     func reloadList() {
         guard let list else { return }
 
-        // Every kind at once, because the list is the sections now. General is pinned at the
-        // top as a row of its own: it is a page rather than a list, and putting it anywhere
-        // else would leave it as the one thing you reach differently from everything else.
-        var listSections: [SettingsListSection] = [
-            SettingsListSection(
-                title: "Deck",
-                items: [SettingsListItem(
-                    id: Self.entryID(.general, Self.generalID),
-                    title: "General",
-                    subtitle: "The deck, notifications, the shortcut",
-                    state: nil
-                )],
-                isAddable: false
-            ),
-        ]
-        for object in sections {
-            listSections.append(SettingsListSection(
-                title: object.kind.title,
-                items: object.listItems().map { item in
-                    SettingsListItem(
-                        id: Self.entryID(object.kind, item.id),
-                        title: item.title,
-                        subtitle: item.subtitle,
-                        state: item.state
-                    )
+        var listSections = [SettingsListSection(title: nil, items: pages.map { page in
+            SettingsListItem(id: Self.entryID(page.kind, nil), title: page.title, icon: page.icon)
+        })]
+
+        for (group, title) in [(SettingsListGroup.accounts, "Accounts"), (.projects, "Projects")] {
+            let items = sections
+                .filter { $0.group == group }
+                .flatMap { section in
+                    section.listItems().map { item in
+                        SettingsListItem(
+                            id: Self.entryID(section.kind, item.id),
+                            title: item.title,
+                            detail: item.detail,
+                            icon: item.icon,
+                            dot: item.dot,
+                            isDimmed: item.isDimmed
+                        )
+                    }
                 }
-            ))
+                .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            listSections.append(SettingsListSection(title: title, items: items))
         }
 
-        // The remembered row of this section, else its first row: opening "Projects" with
-        // nothing chosen yet should land on a project, not fall back to General because that
-        // happens to be the first row of the whole list.
-        let wanted = section == .general
-            ? Self.entryID(.general, Self.generalID)
-            : selection[section].map { Self.entryID(section, $0) }
-                ?? listSections.first { $0.title == section.title }?.items.first?.id
+        // The remembered row if it still exists, otherwise the first of its kind, otherwise the
+        // page it belongs under: removing the last project should land somewhere that makes sense.
         let ids = listSections.flatMap { $0.items.map(\.id) }
-        let valid = ids.contains(where: { $0 == wanted }) ? wanted : ids.first
-        if let valid, let entry = Self.parse(valid) {
-            section = entry.section
-            if entry.section != .general { selection[entry.section] = entry.id }
+        var wanted = Self.entryID(current.section, current.id)
+        if !ids.contains(wanted) {
+            wanted = ids.first { Self.parse($0)?.section == current.section } ?? Self.entryID(.general, nil)
+            current = Self.parse(wanted) ?? (.general, nil)
         }
-        list.show(listSections, selecting: valid)
+        list.show(listSections, selecting: wanted)
+        list.setRemovable(sectionObject(current.section) != nil)
     }
 
     func reloadDetail() {
         guard let detailScroll else { return }
-
-        let width = max(detailScroll.contentSize.width, 320)
-        let container = FlippedContainer(frame: NSRect(x: 0, y: 0, width: width, height: 10))
-
-        if section == .general {
-            general.build(in: container, width: width)
-        } else if let object = sectionObject(section) {
-            let built = selection[section].map { object.buildForm(for: $0, in: container, width: width) } ?? false
-            if !built {
-                emptyState(object.emptyText, in: container, width: width)
-            }
+        // Ends an edit in the form being replaced, so what was typed is saved rather than lost.
+        if let responder = window?.firstResponder as? NSView, responder.isDescendant(of: detailScroll) {
+            window?.makeFirstResponder(list)
         }
 
-        container.frame.size.height = max(
-            container.subviews.map { $0.frame.maxY }.max() ?? 0,
-            detailScroll.contentSize.height
-        )
+        let container = FlippedContainer(frame: NSRect(x: 0, y: 0, width: detailScroll.contentSize.width, height: 10))
+        container.autoresizingMask = [.width]
+
+        if let page = page(current.section) {
+            page.build(in: container)
+        } else if let section = sectionObject(current.section), let id = current.id {
+            if !section.buildForm(for: id, in: container) {
+                emptyState("Nothing is selected.", in: container)
+            }
+        } else {
+            emptyState("Nothing here yet. Press + below the list to add one.", in: container)
+        }
+
+        let needed = (container.subviews.map(\.frame.maxY).max() ?? 0) + 28
+        container.frame.size.height = max(needed, detailScroll.contentSize.height)
+        detailScroll.hasVerticalScroller = needed > detailScroll.contentSize.height
         detailScroll.documentView = container
+        container.scroll(.zero)
     }
 
-    func select(_ kind: Section, id: String) {
-        section = kind
-        selection[kind] = id
+    private func open(_ kind: Section, id: String?) {
+        current = (kind, id)
         reloadList()
         reloadDetail()
     }
 
+    func select(_ kind: Section, id: String) {
+        open(kind, id: id)
+    }
+
     func isShowing(_ kind: Section, id: String) -> Bool {
-        section == kind && selection[kind] == id
+        isVisible && current.section == kind && current.id == id
+    }
+
+    /// Rebuilds a page only when it is the one on screen, for a page that changes by itself.
+    func reloadIfShowing(_ kind: Section) {
+        guard isVisible, current.section == kind else { return }
+        reloadDetail()
+    }
+
+    func isOpen(_ fold: String) -> Bool {
+        openFolds.contains(fold)
+    }
+
+    func toggle(_ fold: String) {
+        if openFolds.contains(fold) { openFolds.remove(fold) } else { openFolds.insert(fold) }
+        reloadDetail()
     }
 
     func changed() {
         onChanged()
     }
 
-    private func emptyState(_ text: String, in container: FlippedContainer, width: CGFloat) {
-        let label = NSTextField(wrappingLabelWithString: text)
-        label.font = NSFont.systemFont(ofSize: 12)
-        label.textColor = NSColor.secondaryLabelColor
-        label.frame = NSRect(x: 20, y: 20, width: width - 40, height: 40)
+    private func emptyState(_ text: String, in container: FlippedContainer) {
+        let label = SettingsForm.label(text, size: 13, color: .secondaryLabelColor)
+        label.frame = NSRect(x: SettingsForm.sideInset, y: 24, width: container.bounds.width - 56, height: 18)
         container.addSubview(label)
     }
 
     // MARK: Adding and removing
 
-    private func addItem(forMenuTitle title: String) {
-        guard let object = sections.first(where: { $0.addTitle == title }) else { return }
-        section = object.kind
-        // Nil means either nothing was added or the section will select the result itself once
-        // it has asked whatever it needs to ask.
-        guard let id = object.add() else { return }
-        select(object.kind, id: id)
+    private func add(_ title: String) {
+        guard let section = sections.first(where: { $0.addTitle == title }) else { return }
+        // Nil means either nothing was added or the section selects the result itself once it
+        // has asked what it needs to ask.
+        guard let id = section.add() else { return }
+        select(section.kind, id: id)
     }
 
     private func removeSelected() {
-        guard section != .general,
-              let object = sectionObject(section),
-              let id = selection[section],
-              object.remove(id)
+        guard let section = sectionObject(current.section),
+              let id = current.id,
+              section.remove(id)
         else { return }
-        selection[section] = nil
+        current = (current.section, nil)
         reloadList()
         reloadDetail()
         onChanged()

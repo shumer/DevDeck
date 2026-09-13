@@ -52,8 +52,8 @@ final class MergeRequestsModule: CardModule {
 @MainActor
 final class GitLabInstancesSection: SettingsSection {
     let kind = SettingsWindowController.Section.gitlab
-    let addTitle = "GitLab instance"
-    let emptyText = "No GitLab instances yet. Press + below the list, then paste a token with read_api."
+    let group = SettingsListGroup.accounts
+    let addTitle = "GitLab Instance"
     weak var host: SettingsHost?
 
     private let store: GitLabAccountsStore
@@ -72,24 +72,28 @@ final class GitLabInstancesSection: SettingsSection {
             return SettingsListItem(
                 id: account.id,
                 title: account.label,
-                subtitle: hasToken ? account.displayHost : "no token yet",
-                state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
+                detail: hasToken ? account.displayHost : "\(account.displayHost) · no token",
+                icon: SettingsIcons.mark(.gitlab),
+                dot: hasToken ? nil : .systemOrange,
+                isDimmed: !account.isEnabled
             )
         }
     }
 
-    func buildForm(for id: String, in container: FlippedContainer, width: CGFloat) -> Bool {
+    func buildForm(for id: String, in container: FlippedContainer) -> Bool {
         guard let account = store.accounts().first(where: { $0.id == id }) else { return false }
-        let row = GitLabAccountRowView(
+        let form = GitLabAccountForm(
             account: account,
             hasToken: SettingsSupport.hasToken(account.tokenKey, in: tokenStore),
-            width: width
+            width: container.bounds.width
         )
-        row.onChange = { [weak self] in self?.applyEdits($0) }
-        row.onSave = { [weak self] in self?.save($0) }
-        row.onTestLink = { [weak self] in self?.testLink($0) }
-        row.frame.origin = .zero
-        container.addSubview(row)
+        form.onChange = { [weak self] in self?.applyEdits($0) }
+        form.onSave = { [weak self] in self?.save($0) }
+        form.onTestLink = { form in
+            let account = form.editedAccount
+            LinkOpener.open(account.host.appendingPathComponent("dashboard").appendingPathComponent("merge_requests"), using: account.browser)
+        }
+        container.addSubview(form)
         return true
     }
 
@@ -116,24 +120,12 @@ final class GitLabInstancesSection: SettingsSection {
         return true
     }
 
-    // MARK: Editing
-
-    private func applyEdits(_ row: GitLabAccountRowView) {
-        let edited = row.editedAccount
+    private func applyEdits(_ form: GitLabAccountForm) {
+        let edited = form.editedAccount
         persist(edited)
-        row.apply(edited)
-        row.setStatus(SettingsSupport.browserSummary(browser: edited.browser))
+        form.apply(edited)
         host?.reloadList()
         host?.changed()
-    }
-
-    private func testLink(_ row: GitLabAccountRowView) {
-        applyEdits(row)
-        let account = row.editedAccount
-        LinkOpener.open(
-            account.host.appendingPathComponent("dashboard").appendingPathComponent("merge_requests"),
-            using: account.browser
-        )
     }
 
     private func persist(_ account: GitLabAccount) {
@@ -143,62 +135,30 @@ final class GitLabInstancesSection: SettingsSection {
         store.save(accounts)
     }
 
-    /// Verified before it is stored, the same as a GitHub token: a rejected token that lands in
-    /// the Keychain anyway turns into a card that fails for reasons nobody can see.
-    private func save(_ row: GitLabAccountRowView) {
-        let edited = row.editedAccount
-        let token = row.enteredToken
+    /// Verified before it is stored, the same as a GitHub token.
+    private func save(_ form: GitLabAccountForm) {
+        let edited = form.editedAccount
+        let token = form.token.entered
+        persist(edited)
+        form.apply(edited)
+        form.token.checking()
 
-        guard !token.isEmpty else {
-            persist(edited)
-            row.apply(edited)
-            verifyStoredToken(for: edited, row: row)
-            host?.changed()
-            return
-        }
-
-        row.setStatus("Checking…")
-        Task { [weak self] in
-            guard let self else { return }
-            let probe = GitLabClient.makeDefault(
-                account: edited,
-                tokenStore: InMemoryTokenStore(tokens: [edited.tokenKey: token])
-            )
-            do {
-                let snapshot = try await MergeRequestsService(client: probe, accountID: edited.id).fetch()
-                try self.tokenStore.setToken(token, for: edited.tokenKey)
-                self.persist(edited)
-                row.apply(edited)
-                row.clearTokenField()
-                row.setStatus("Saved. \(snapshot.totalCount) open merge requests on \(edited.displayHost).")
-                self.host?.reloadList()
-                self.host?.changed()
-            } catch let error as APIError {
-                row.setStatus("Rejected: \(error.displayMessage)", isError: true)
-            } catch {
-                row.setStatus("Rejected: \(error.localizedDescription)", isError: true)
-            }
-        }
-    }
-
-    private func verifyStoredToken(for account: GitLabAccount, row: GitLabAccountRowView) {
-        guard SettingsSupport.hasToken(account.tokenKey, in: tokenStore) else {
-            row.setStatus("No token yet. Paste one above.", isError: true)
-            return
-        }
-        row.setStatus("Checking the stored token…")
+        let probeStore: any TokenStore = token.isEmpty ? tokenStore : InMemoryTokenStore(tokens: [edited.tokenKey: token])
         Task { [weak self] in
             guard let self else { return }
             do {
                 let snapshot = try await MergeRequestsService(
-                    client: GitLabClient.makeDefault(account: account, tokenStore: self.tokenStore),
-                    accountID: account.id
+                    client: GitLabClient.makeDefault(account: edited, tokenStore: probeStore),
+                    accountID: edited.id
                 ).fetch()
-                row.setStatus("Token works. \(snapshot.totalCount) open merge requests.")
+                if !token.isEmpty { try self.tokenStore.setToken(token, for: edited.tokenKey) }
+                form.token.works("\(snapshot.totalCount) open merge requests")
+                self.host?.reloadList()
+                self.host?.changed()
             } catch let error as APIError {
-                row.setStatus("Stored token: \(error.displayMessage)", isError: true)
+                form.token.refused(error.displayMessage)
             } catch {
-                row.setStatus("Stored token: \(error.localizedDescription)", isError: true)
+                form.token.refused(error.localizedDescription)
             }
         }
     }
