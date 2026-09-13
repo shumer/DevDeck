@@ -59,7 +59,10 @@ jobs:
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
           CERTIFICATE="$RUNNER_TEMP/certificate.p12"
-          printf '%s' "$P12_BASE64" | base64 --decode > "$CERTIFICATE"
+          # A secret pasted with a trailing newline is the commonest way a right password is
+          # wrong, and `security` reports it as a wrong passphrase with no further hint.
+          P12_PASSWORD="$(printf '%s' "$P12_PASSWORD" | tr -d '\r\n')"
+          printf '%s' "$P12_BASE64" | tr -d '\r\n ' | base64 --decode > "$CERTIFICATE"
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
