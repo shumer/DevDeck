@@ -15,6 +15,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     private let panels: PanelCoordinator
     private let arrangements: ArrangementsController
     private let updater: Updater
+    private let preferences: Preferences
     private let openSettings: () -> Void
     private let quit: () -> Void
 
@@ -29,6 +30,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         panels: PanelCoordinator,
         arrangements: ArrangementsController,
         updater: Updater,
+        preferences: Preferences,
         openSettings: @escaping () -> Void,
         quit: @escaping () -> Void
     ) {
@@ -37,6 +39,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         self.panels = panels
         self.arrangements = arrangements
         self.updater = updater
+        self.preferences = preferences
         self.openSettings = openSettings
         self.quit = quit
     }
@@ -125,6 +128,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         menu.addItem(hide)
 
         menu.addItem(.separator())
+        menu.addItem(lockItem())
         for (title, selector) in [
             ("Tidy panels into columns", #selector(tidy)),
             ("Refresh now", #selector(refreshNow)),
@@ -198,6 +202,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         arrangementsItem.submenu = arrangements.submenu()
         menu.addItem(arrangementsItem)
 
+        menu.addItem(lockItem())
         for (title, selector) in [
             ("Tidy panels into columns", #selector(tidy)),
             ("Refresh now", #selector(refreshNow)),
@@ -264,6 +269,18 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         LinkOpener.open(update.pageURL, using: .systemDefault)
     }
 
+    /// The lock, as a checkmark, in both menus. It left for Settings in 0.4 with the rest of
+    /// what the deck *is*, and came back: it is toggled in the middle of arranging cards, and
+    /// a trip to a settings window for that is the one interruption the deck should not cost.
+    /// Settings keeps its switch too; both write the same preference.
+    private func lockItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Lock positions", action: #selector(toggleLock), keyEquivalent: "")
+        item.target = self
+        item.state = preferences.isLocked ? .on : .off
+        item.toolTip = "Stops a stray drag moving a panel. It does not stop the deck packing a column."
+        return item
+    }
+
     /// A submenu rather than a run of items with a heading above them.
     ///
     /// Ten projects made thirteen lines of a menu whose other five are the things you actually
@@ -328,6 +345,11 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         controller.powerOffDDEV()
+    }
+
+    @objc private func toggleLock() {
+        preferences.isLocked.toggle()
+        panels.applyPreferences()
     }
 
     @objc private func tidy() {

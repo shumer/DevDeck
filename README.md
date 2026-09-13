@@ -451,7 +451,9 @@ Its menu holds what you do:
 What the deck *is* rather than what you do with it lives in Settings, under General: where the
 panels sit, whether they are locked, whether a column packs itself, the summon shortcut and its
 dimming, and start-at-login. A menu that mixes the two grows until the thing you came for is
-somewhere in the middle of it.
+somewhere in the middle of it. The one exception is the lock, which is also a checkmark in both
+menus: it gets toggled in the middle of arranging cards, and a trip to a settings window for that
+is the one interruption the deck should not cost.
 
 Right-click a panel and the menu is about that card: fold it to a row, show or hide its log,
 take it off the deck, and then the two or three things you might want next. The card list and the
@@ -497,8 +499,8 @@ Three at once become one line rather than three banners. A click opens the pull 
 in the browser profile of the account that owns it, and **Send a test** posts one immediately so
 the whole chain can be checked without waiting for somebody to ask for a review.
 
-The menu-bar menu holds what you *do*: which cards are on the deck, Tidy, Refresh now, Power off
-all DDEV, Settings and Quit. What the deck *is* lives in Settings under General: where the panels
+The menu-bar menu holds what you *do*: which cards are on the deck, Lock positions, Tidy, Refresh
+now, Power off all DDEV, Settings and Quit. What the deck *is* lives in Settings under General: where the panels
 sit, whether they are locked, whether the column packs itself, the summon shortcut and its
 dimming, and start-at-login. While the display a card belongs to is unplugged the
 card is parked somewhere visible and still remembers where it lives - but if you tidy or drag it

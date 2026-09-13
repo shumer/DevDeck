@@ -73,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panels: panels,
         arrangements: arrangements,
         updater: updater,
+        preferences: preferences,
         openSettings: { [unowned self] in self.settingsController.show() },
         quit: { [unowned self] in
             self.controller.stop()

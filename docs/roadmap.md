@@ -46,6 +46,9 @@
 - **The phone and the work in flight** - the running site as a QR code addressed to this Mac on
   the wifi, offered only while the project is up; and one card for every checkout at once, showing
   what is uncommitted, unpushed or behind. Shipped as 0.8.
+- **The lock is back in the menus** - a checkmark in the menu-bar menu and in a card's own
+  right-click menu, next to Tidy, because it is toggled in the middle of arranging cards.
+  Settings keeps its switch; both write the same preference.
 - **The app updates itself** - a check against the latest GitHub release after launch and
   every six hours, one line at the top of the menu and one banner when there is a newer build,
   and an install only on a click: download, `ditto`, the unpacked bundle checked against the
