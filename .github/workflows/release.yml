@@ -94,7 +94,11 @@ jobs:
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
         run: |
           KEY="$RUNNER_TEMP/notary.p8"
-          printf '%s' "$NOTARY_KEY_P8" | base64 --decode > "$KEY"
+          # The same trailing-newline trap as the certificate password: an issuer id with a
+          # newline on the end is "not a valid UUID", and the message does not say why.
+          NOTARY_KEY_ID="$(printf '%s' "$NOTARY_KEY_ID" | tr -d '\r\n ')"
+          NOTARY_ISSUER_ID="$(printf '%s' "$NOTARY_ISSUER_ID" | tr -d '\r\n ')"
+          printf '%s' "$NOTARY_KEY_P8" | tr -d '\r\n ' | base64 --decode > "$KEY"
           ditto -c -k --keepParent DevDeck.app "$RUNNER_TEMP/notarise.zip"
           xcrun notarytool submit "$RUNNER_TEMP/notarise.zip" \
             --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
