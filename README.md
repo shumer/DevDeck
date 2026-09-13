@@ -91,6 +91,7 @@ cannot work:
 | Arc XP · one card per project | working | added per project |
 | DDEV · one card per project | working | added per project |
 | Project · one card per project | working | added per project |
+| Work in flight · every checkout at once | working | no |
 | Arc XP · deployed bundle versions | planned - needs an org token | - |
 
 **The card carries both halves of "what do I owe today."** Your own open pull requests, and
@@ -122,14 +123,14 @@ the project cards that run something in containers - Arc's Fusion stack, DDEV, a
 project marked as needing it - and the deck says plainly when it is not running.
 
 ```bash
-git clone git@github.com:shumer/DesktopWidgets.git widgets && cd widgets
+git clone git@github.com:shumer/DevDeck.git widgets && cd widgets
 ./run-tests.sh          # offline suite, ~15s, must be green
 ./build.sh              # tests, build, bundle, install to /Applications, launch
 ```
 
 **`./build.sh` installs by default.** In order it: runs the suite and stops if anything fails,
-builds the release binary, assembles `DevDeck.app` in the repository, ad-hoc signs it, then
-quits any running copy, replaces `/Applications/DevDeck.app` and launches the new one. Nothing
+builds the release binary, assembles `DevDeck.app` in the repository, signs it with the Developer
+ID it finds in your Keychain (ad-hoc when there is none), then quits any running copy, replaces `/Applications/DevDeck.app` and launches the new one. Nothing
 is left for you to drag anywhere.
 
 The copy in `/Applications` is the one that matters. macOS registers a login item **by path**,
@@ -142,19 +143,23 @@ only works for the installed copy.
 | `./build.sh --no-install` | builds `./DevDeck.app` only; open it yourself with `open ./DevDeck.app` |
 | `./build.sh --skip-tests` | skips the suite; fine for a quick loop, never in CI |
 | `./build.sh --skip-tests --no-install` | both, in that order |
+| `./run-tests.sh projects docker` | only the test sections whose names contain those words |
+| `CODESIGN_IDENTITY=- ./build.sh` | ad-hoc on purpose, even on a machine that has a certificate |
 | `swift run DevDeck` | runs from the terminal without bundling - handy for `print` debugging |
+| `open -a DevDeck --args --settings project` | opens Settings on a section: `general`, `github`, `gitlab`, `arc`, `ddev`, `project` |
+| `open -a DevDeck --args --update` | checks for a newer release and installs it, the same as the menu line |
 | `pkill -f DevDeck` | quits every running copy |
 
-**Settings → General shows the running version** - `DevDeck 0.3 (build 31)` - and which bundle
+**Settings → General shows the running version** - `DevDeck 0.12 (build 115)` - and which bundle
 it came from. The marketing number lives in `VERSION` and is bumped by hand when a release
 earns a name; the build number is the commit count, so it moves on every rebuild. That is the
 quickest way to tell whether the copy in front of you is the change you just made or the one
 that was already running.
 
-**After every rebuild macOS asks for the login keychain once.** Ad-hoc signing gives the app a
-new identity each build, so "Always Allow" holds only until the next `./build.sh`. See
-[docs/development.md](docs/development.md) for the details and the permanent fix if it ever
-becomes worth it.
+**A rebuild does not ask for the Keychain.** With a Developer ID in your Keychain every build has
+the same identity, so the tokens stay readable; without one, the tokens are stored so that any
+build can read them. [The Keychain](#the-keychain-and-the-password-prompt) below says what each
+costs.
 
 ### First run
 
@@ -177,8 +182,6 @@ keeps the un-suffixed Keychain key. The token is checked against the API before 
 a rejected one never lands in the Keychain to fail invisibly later.
 
 Without a token the app opens its settings window on first launch; paste one there instead.
-It is verified against the API before it is stored, and it only ever lives in the login
-Keychain.
 
 Settings live in the `com.shumer.devdeck` preferences domain. To start over:
 `defaults delete com.shumer.devdeck` (tokens survive that - they are in the Keychain).
@@ -434,6 +437,8 @@ Being an agent app, it appears in Finder and in Login Items rather than in the D
 
 Its menu holds what you do:
 
+- **Update to …**, as the first line and only when a newer release exists; see
+  [Updating](#updating).
 - **Cards** - show or hide each card; a hidden card is not fetched at all. Projects get their own
   group per kind, below the built-in cards.
 - **Tidy panels into columns** - close up gaps without resetting where you put them. It anchors
@@ -445,7 +450,8 @@ Its menu holds what you do:
   arrangement is which cards are on the deck, which are folded to one row, and where each one
   sits; the tick shows which one you are in, compared rather than remembered, so it cannot claim
   an arrangement you have since dragged your way out of. Alt-click one to forget it.
-- **Power off all DDEV**, which now asks first, **Open pull requests in browser**, **Refresh
+- **Lock positions** - a checkmark; while it is on, a stray drag moves nothing.
+- **Power off all DDEV**, which asks first, **Open pull requests in browser**, **Refresh
   now**, **Settings…**, **Quit**
 
 What the deck *is* rather than what you do with it lives in Settings, under General: where the
@@ -456,23 +462,21 @@ menus: it gets toggled in the middle of arranging cards, and a trip to a setting
 is the one interruption the deck should not cost.
 
 Right-click a panel and the menu is about that card: fold it to a row, show or hide its log,
-take it off the deck, and then the two or three things you might want next. The card list and the
-deck-wide switches stay in the menu-bar menu, where they belong.
+take it off the deck, and under a separator the deck-wide few: Lock positions, Tidy, Refresh now
+and All cards and settings.
 
 Cut, copy and paste work in the settings window. That is not as obvious as it sounds for an
 agent app: with no Dock icon there is no menu bar of its own, ⌘V is routed through the main menu,
 and with no Edit menu there was nothing to route it to, so pasting a token was impossible.
 
-The settings window is two columns: everything you can configure in one list, grouped by kind
-with General pinned at the top, and the form for whichever row is selected. Only one
-account or project has a form on screen at a time, which is what keeps two similarly named
-projects apart, and the form stretches with the window. Add and remove are the `+` and `−` under
-the list; the `+` is a pull-down, since with every kind in one list it has to ask which kind.
-
-The sections used to have a column of their own, 184 points of it, which is a lot to spend on a
-choice a heading makes just as well in an app with about thirty settings in it. Those points went
-to the forms, and with them the label gutter stopped changing width from page to page. Everything applies as you change it; only a token waits for **Verify token**,
-because it is checked against the API before being stored.
+The settings window is two columns: everything you can configure in one list, and the form for
+whichever row is selected. The list is grouped as **General**, pinned at the top, then **GitHub
+accounts**, **GitLab instances**, **Arc projects**, **DDEV projects** and **Projects**. General
+holds About, Fetching, Where the panels sit, Summoning, Notifications, Updates and System. Only one
+account or project has a form on screen at a time, and the form stretches with the window. Add and
+remove are the `+` and `−` under the list; the `+` is a pull-down, since it has to ask which kind.
+Everything applies as you change it; only a token waits for **Verify token**, because it is
+checked against the API before being stored.
 
 Drag a panel anywhere; the position is remembered per card - **against the display it is on**,
 not as a point on the desktop. Unplug the external monitor and the cards that live on it are
@@ -499,12 +503,8 @@ Three at once become one line rather than three banners. A click opens the pull 
 in the browser profile of the account that owns it, and **Send a test** posts one immediately so
 the whole chain can be checked without waiting for somebody to ask for a review.
 
-The menu-bar menu holds what you *do*: which cards are on the deck, Lock positions, Tidy, Refresh
-now, Power off all DDEV, Settings and Quit. What the deck *is* lives in Settings under General: where the panels
-sit, whether they are locked, whether the column packs itself, the summon shortcut and its
-dimming, and start-at-login. While the display a card belongs to is unplugged the
-card is parked somewhere visible and still remembers where it lives - but if you tidy or drag it
-while it is parked, that is where it now lives, and it stays there. Click a row to open that pull
+While the display a card belongs to is unplugged, if you tidy or drag the parked card, that is
+where it now lives, and it stays there. Click a row to open that pull
 request, double-click the panel background to open the list on github.com, right-click a
 panel for the same menu.
 
@@ -527,9 +527,10 @@ Every project card is the same six things, in the same order, so one glance answ
 question on all of them:
 
 1. **A mark and the title**, with the time of the last check on the right. The mark says what
-   kind of project it is - the octocat, Arc's A, DDEV's mark, Node's hexagon, Next's disc,
-   Nest's cat, Bun, Docker's whale, a hammer for a Makefile. They are the real logos, drawn from the vendors' own SVG path data
-   rather than shipped as images: this toolchain has no asset catalog, and a hand-drawn
+   kind of project it is - the octocat, GitLab's tanuki, Arc's A, DDEV's mark, Node's hexagon,
+   Next's disc, Nest's cat, Bun, Docker's whale, a hammer for a Makefile and a box for anything
+   else. The vendors' marks are the real logos, drawn from their own SVG path data rather than
+   shipped as images: this toolchain has no asset catalog, and a hand-drawn
    impression of the octocat at fifteen points looks exactly like what it is.
 2. **The state, at 17 points** - one vocabulary on every card: `running`, `stopped`,
    `starting…`, `paused`, `unknown`, `not configured`, and `Docker is not running` when that is
@@ -563,8 +564,8 @@ question on all of them:
 **Hold ⌥Space** and the deck comes up over your windows; let go and it drops back. A tap keeps it
 up until the next press. Nothing moves and nothing is redrawn: they are the same panels at a
 different window level, which is why this costs almost nothing. The screen dims 45% while they are
-up, because dark glass over a white editor is unreadable otherwise. Both of those are switches in
-the menu-bar menu, and the combination itself is in Settings under General. It needs no
+up, because dark glass over a white editor is unreadable otherwise. Both switches and the
+combination itself are in Settings, General, under Summoning. It needs no
 permission: the shortcut is a Carbon hot key, not a global key monitor, so macOS has nothing to
 ask you about.
 
@@ -609,16 +610,20 @@ the app is signed, and the code finds that out for itself at launch:
   in Keychain Access, the Keychain does what it does by default: the item is bound to this
   application, and any other process gets a password prompt. Updates do not prompt, because the
   identity is the same.
-- **Ad-hoc signed**, which is what a local build and the current releases are, the items are
-  written with an access list that names no application. A Keychain item is normally bound to
+- **Ad-hoc signed**, a build made on a machine with no certificate, the items are written with
+  an access list that names no application. A Keychain item is normally bound to
   the exact binary that wrote it, and an ad-hoc signature is different for every build, so the
   alternative is one password prompt per token per update. The trade is worth stating plainly:
   any process running as you can then read those tokens without a prompt.
 
-The first launch after the signature changes rewrites the stored items once, one prompt each,
-and remembers the mode. To bind your own tokens today, before a Developer ID: make a
-code-signing certificate in Keychain Access (Certificate Assistant, Create a Certificate, type
-Code Signing) and build with `CODESIGN_IDENTITY="its name" ./build.sh`. See
+Releases are signed with a Developer ID, and `./build.sh` uses the one in your Keychain when there
+is one, so on the author's machine and on every machine that installed a release the tokens are
+bound. The first launch after the signature changes rewrites the stored items once, one prompt
+each, and remembers the mode. It never goes the other way by itself: a copy without an identity,
+`swift run` or a build with `CODESIGN_IDENTITY=-`, leaves bound tokens bound and asks for the
+password on each read rather than opening them to every process. Without a Developer ID, a
+certificate made in Keychain Access (Certificate Assistant, Create a Certificate, type Code
+Signing) and `CODESIGN_IDENTITY="its name" ./build.sh` binds your own tokens the same way. See
 [adr/0017-signature-decides.md](docs/adr/0017-signature-decides.md).
 
 ## Releases
@@ -630,42 +635,37 @@ because a build nobody asked for is a build nobody checks. `.github/workflows/te
 suite on every push and pull request and fails on a compiler warning, which is the one place
 nobody is in a hurry.
 
-**With the signing secrets in the repository the build is signed with a Developer ID, hardened,
-notarised and stapled on the runner**, and macOS opens it as it is. Without them it is ad-hoc
-signed, macOS quarantines it on download and refuses to open it, and every release says so and
-carries the line that installs it anyway, which unpacks the download into Applications, clears
-the flag and starts it:
+**Releases are signed with a Developer ID, hardened, notarised by Apple and stapled on the
+runner**, from 0.12 on. macOS opens the download as it is: unzip, drag into Applications, open.
+Five repository secrets switch that path on, `DEVELOPER_ID_P12`, `DEVELOPER_ID_P12_PASSWORD`,
+`NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` and `NOTARY_KEY_P8`; [docs/development.md](docs/development.md)
+says where each comes from. Notarisation is Apple's queue and takes minutes, occasionally most of
+an hour.
+
+Without the secrets the workflow builds the ad-hoc release it always did, and macOS quarantines
+that download. The notes then carry two routes: Finder (unzip, drag into Applications,
+right-click and Open, which needs no permissions), and a line for a terminal that may read
+Downloads:
 
 ```
-pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-0.8-80.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app
+pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-<version>-<build>.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app
 ```
 
-Each release also carries the Finder route, which needs no permissions at all: unzip, drag into
-Applications, right-click and Open. That one matters more than it looks, because `ditto` answers
-**Operation not permitted** on a Mac whose terminal has not been given access to the Downloads
-folder, or whose user is not an administrator, and neither has anything to do with the archive.
-
-That block is written by the workflow rather than typed into the notes, so it always names the
-file that was actually built: a version number typed by hand is one release away from being
-wrong, and wrong here means somebody's download does not open and they do not know why.
-
-`ditto` rather than `unzip`, to match how it was packed and keep the bundle's extended
-attributes; the `pkill` matters when it is an update rather than a first install, since a running
-copy would otherwise be overwritten underneath itself. Notarising properly needs a paid Apple
-Developer account and its certificates in the repository's secrets, which is a decision with a
-bill attached rather than a missing line of YAML.
+The workflow writes the install section itself, naming the file it actually built and saying
+which of the two builds it is, so a version number is never typed by hand into the notes.
 
 To cut a release: bump `VERSION`, commit, then create the release on GitHub with a tag like
-`v0.6`. The build number in the bundle is the commit count, so it moves on its own.
+`v0.13`. The build number in the bundle is the commit count, so it moves on its own. A manual
+run of the workflow against an existing tag builds that tag's commit and replaces its asset.
 
 ### Updating
 
-From 0.11 on the app keeps itself current, by asking rather than by doing. Once after launch
-and every six hours it reads the latest release on GitHub; when that is newer than the running
-copy, the menu-bar menu opens with **Update to 0.12…** as its first line and one banner says so,
+From 0.11 on the app keeps itself current, by asking rather than by doing. Thirty seconds after
+launch and every six hours it reads the latest release on GitHub; when that is newer than the
+running copy, the menu-bar menu opens with **Update to …** as its first line and one banner says so,
 once per version and only if notifications are on. Nothing is downloaded until that line is
-clicked. Then: download, `ditto`, a check that what unpacked is DevDeck at the promised version,
-the old copy to the Trash, the new one in its place, and a relaunch a second later with every
+clicked. Then: download, `ditto`, a check that what unpacked is DevDeck at the promised version and,
+from a signed copy, signed by the same Developer ID, the old copy to the Trash, the new one in its place, and a relaunch a second later with every
 panel where it was. Option-click the line to read the notes first.
 
 What the app downloads itself carries no quarantine, so an update never needs the right-click
@@ -680,11 +680,13 @@ the switch and a **Check now** button with the last answer beside it. See
 - [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
-- [docs/adr/](docs/adr/) - twelve decisions and what they cost: why native, why SwiftPM only,
+- [docs/adr/](docs/adr/) - seventeen decisions and what they cost: why native, why SwiftPM only,
   why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
   shares one call, how a plain project is started, why Docker is checked first, how a card is
-  laid out, why the deck is quieter than it was, why a card has two sizes and only two, and why
-  the deck moves a card only when it was asked to, and why GitLab is a card of its own
+  laid out, why the deck is quieter than it was, why a card has two sizes, why the deck moves a
+  card only when asked, why GitLab is a card of its own, how a monorepo is read, why the
+  application layer is in pieces, how the app updates itself, and why the signature decides how
+  tokens are kept
 
 ## Layout
 
@@ -692,7 +694,9 @@ the switch and a **Check now** button with the last answer beside it. See
 Sources/
   DevDeckCore/     configuration, cards, HTTP transport, tokens, policies, command runner,
                    git branch, browser choice, the Docker probe
+  KeychainACL/     the C shim for the one deprecated Keychain call Swift cannot silence
   GitHubKit/       GraphQL and REST clients, models, per-account fan-out
+  GitLabKit/       GitLab accounts per host, the merge requests query, models
   ArcKit/          Arc projects, link templates, local Fusion stack, .env port
   DDEVKit/         DDEV projects, ddev list, .ddev/config.yaml, composer.lock version
   ProjectKit/      plain projects: folder probe, detached start, log and pid, health check
@@ -703,9 +707,10 @@ Sources/
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (335 tests, offline)
+  DevDeckTests/    the suite (342 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
+  AppIconExport/   renders the application icon at all ten sizes for build.sh
   GlyphPreview/    renders every card mark at the size a card draws it
 ```
