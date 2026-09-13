@@ -389,3 +389,24 @@ public struct LocalStackService: Sendable {
         }
     }
 }
+
+public extension LocalStackStatus {
+    /// How the form reports the stack. The address is part of the answer, for the same reason as
+    /// a plain project's: an answer next to an address it was not the answer for is worse than none.
+    func summary(checkedAddress: String, currentAddress: String) -> CheckSummary {
+        guard checkedAddress == currentAddress else {
+            return CheckSummary(tone: .idle, state: "Not checked", detail: "the address changed, check again")
+        }
+        let when = CheckSummary.time(checkedAt)
+        switch state {
+        case .running:
+            return CheckSummary(tone: .good, state: "Running", detail: detail ?? "answered at \(when)")
+        case .working:
+            return CheckSummary(tone: .busy, state: "Working", detail: detail ?? "")
+        case .stopped:
+            return CheckSummary(tone: .idle, state: "Stopped", detail: detail ?? "nothing answered at \(when)")
+        case .unavailable:
+            return CheckSummary(tone: .idle, state: "Not configured", detail: "set the project folder")
+        }
+    }
+}

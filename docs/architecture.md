@@ -404,9 +404,9 @@ itself that one of them could do.
   `ditto`, a check of the unpacked bundle, the old copy to the Trash, the new one in its place,
   relaunch. What counts as an update and whether the unpacked bundle is trusted is
   `UpdateCheck` in Core, under tests. See [adr/0016-self-update.md](adr/0016-self-update.md).
-- `SettingsWindowController` owns the settings window, its list and the form column. Each
-  section fills its own rows and form and adds and removes its own things; `GeneralSettingsPage`
-  is the one page that lists nothing.
+- `SettingsWindowController` owns the settings window, its sidebar and the form column. The
+  four pages at the top are `SettingsPage`s; each kind of account or project is a
+  `SettingsSection`. See [The settings window](#the-settings-window).
 
 All of them are `@MainActor`. The panels themselves are `PanelWindow`, a borderless `NSWindow`
 hosting `CardHostView`, which is the one place that maps a card identifier onto its SwiftUI
@@ -414,57 +414,58 @@ view and its size.
 
 ## The settings window
 
-Two columns: everything configurable in one list, grouped by kind, and the form for whichever row
-is selected.
+A sidebar and a form column, built the way System Settings is built.
 
 ```
-list                        form
-DECK                        ┌ Name        [ Governance        ] ┐
-  General                   │ Folder      [ /Users/…  ][Choose] │
-GITHUB ACCOUNTS             └────────────────────────────────────┘
-● GitHub                    Links on the card …
-DDEV PROJECTS
-● Governance
-○ nasdaqir
+sidebar                     form column (fixed 544 points)
+⌕ Search                    [mark] agrica-qdd                 Show on deck ●
+⚙ General                   Start
+▦ Deck                      ┌ Folder         [~/Projects/…   ] [Choose…] ┐
+▤ Cards                     │ Start command  [bun run dev    ] [Detect ] │
+◉ Notifications             │ Long-running command                   ●  │
+Accounts                    └───────────────────────────────────────────┘
+  GitHub, GitLab, Notified  Health check (?)
+Projects                    ┌ Check URL …  ● Running  answered at …  [Check Now] ┐
+  agrica-qdd  ●             Links …
+  Governance                › Advanced  Name, caption, stop command, Docker, browser
 [+ ⌄] [−]
 ```
 
-The sections had a column of their own until the window was drawn at true scale and looked at:
-184 points for six buttons, in an app with about thirty settings in it, is a column spent on a
-choice a heading makes just as well. Deleting it also put every page over the width at which
-`FormLayout` used to change the label gutter, so the gutter stopped depending on which page you
-were on.
+**Four pages, then accounts, then projects.** General, Deck, Cards and Notifications are
+`SettingsPage`s. Accounts of both services sit under one heading and projects of every kind under
+another, alphabetical, because a person looks for a project by its name, not by its tooling. Each
+kind is still its own `SettingsSection`, which fills its rows and its form and adds and removes
+its own things; the window knows no kind by name. The `+` menu lists the kinds.
 
-The list column is the answer to a real problem: with every project's fields stacked down one
-page, it was impossible to see where one ended and the next began. Only the selected item has a
-form, and the list carries the identity - name, what tells it apart, and a state dot.
+**A row's dot means something or is absent.** On a project it is the live state from the deck,
+green running, orange starting; on an account, orange when there is no token. A thing that is not
+on the deck is dimmed. Every row used to wear a green dot meaning "enabled", which is the opposite
+of what green means everywhere else in the app.
 
-Forms are built by `FormLayout`, which has five row shapes rather than one, because the fields
-in these forms are not all the same kind of thing:
+**Forms are built by `SettingsForm`**, with four row shapes: `settingRow` (a title, an optional
+one-sentence subtitle, a control at the trailing edge), `fieldRow` (a label in a 130-point column
+and fields to the edge), `statusRow` (a dot, a state and a detail, updated in place) and `linkRow`
+(a toggle, a tag in the card's colours, an address, an open button). Above them `pageHeader`,
+`section` with an optional help button, `footnote` of one line, `textButton` and `disclosure` for
+Advanced. The column has a fixed width, so the form is never rebuilt on a resize, which is what
+used to throw away whatever field had focus.
 
-- `row` - a label in the gutter and controls beside it, for short fields like a name;
-- `commandRow` - the caption above the field instead of beside it, for the long ones (a start
-  command, a health URL). The 110-point gutter was spending a third of the row on a word;
-  without it the field is about 1.6 times wider;
-- `toggleRow` - a switch with its own one-line explanation, which is what replaced four
-  paragraphs of footnote: the sentence about a switch belongs under that switch;
-- `liveRow` - the health check's actual answer, tinted like the card, in the group that asks
-  how the app knows a project is up. The form is where someone lands when a card is
-  misconfigured, and it used to say nothing about whether the settings worked;
-- `linkRow` - a checkbox, the environment's tag in the colour its chip has on the card, then
-  the URL. The tag is what ties the row to the chip without a word of explanation.
+**An answer goes where the question was asked.** A health check or a token check updates its
+status row in place. A button's answer, Detect or Test, appears in a popover at that button
+(`ButtonAnswer`). Nothing reserves an empty line for an answer that may never come, and nothing
+says "Saved.": settings apply as they change, and on a Mac that needs no announcement.
 
-Above them, `formHeader` carries the name, the path and the one switch that is about the card
-rather than the project. All of them place from the top down and move the cursor by what was
-actually placed; a control passed a `nil` width shares whatever is left over. That is both
-halves of what was wrong before: labels drawn over the controls above them, and a fixed-width
-form leaving dead space down the right of the window. The form is rebuilt on resize, which is
-cheap and keeps every field stretched to the window.
+**An answer is only shown next to the address it answered for.** `CheckSummary` in Core, built
+by `LocalProjectStatus.summary` and `LocalStackStatus.summary`, drops a result whose address has
+since changed, and a change of address, folder or command starts a new check.
 
-`General` has nothing to list, so its page takes the list column's width as well.
+**The form is rebuilt only for a change of shape**: a link added, a fold opened. Before it is,
+the edit in progress is ended, which is what saves it. Answers arriving and live state changing
+touch a row or the sidebar, never the form.
 
-Everything applies as it is edited. Only a token waits for a button, because it is verified
-against the API before being stored.
+"Settings for This Card…" on a card's right-click menu opens its own form, through
+`CardModule.settingsTarget`; `open -a DevDeck --args --settings project agrica-qdd` does the same
+from a terminal. See [adr/0018-settings-like-system-settings.md](adr/0018-settings-like-system-settings.md).
 
 ## Concurrency
 

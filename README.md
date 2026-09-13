@@ -146,7 +146,7 @@ only works for the installed copy.
 | `./run-tests.sh projects docker` | only the test sections whose names contain those words |
 | `CODESIGN_IDENTITY=- ./build.sh` | ad-hoc on purpose, even on a machine that has a certificate |
 | `swift run DevDeck` | runs from the terminal without bundling - handy for `print` debugging |
-| `open -a DevDeck --args --settings project` | opens Settings on a section: `general`, `github`, `gitlab`, `arc`, `ddev`, `project` |
+| `open -a DevDeck --args --settings project agrica-qdd` | opens Settings on a page, `general`, `deck`, `cards`, `notifications`, or on one account or project by kind and id |
 | `open -a DevDeck --args --update` | checks for a newer release and installs it, the same as the menu line |
 | `pkill -f DevDeck` | quits every running copy |
 
@@ -462,21 +462,29 @@ menus: it gets toggled in the middle of arranging cards, and a trip to a setting
 is the one interruption the deck should not cost.
 
 Right-click a panel and the menu is about that card: fold it to a row, show or hide its log,
-take it off the deck, and under a separator the deck-wide few: Lock positions, Tidy, Refresh now
-and All cards and settings.
+take it off the deck, open **Settings for This Card…**, which lands on that card's own form, and
+under a separator the deck-wide few: Lock positions, Tidy and Refresh now.
 
 Cut, copy and paste work in the settings window. That is not as obvious as it sounds for an
 agent app: with no Dock icon there is no menu bar of its own, ⌘V is routed through the main menu,
 and with no Edit menu there was nothing to route it to, so pasting a token was impossible.
 
-The settings window is two columns: everything you can configure in one list, and the form for
-whichever row is selected. The list is grouped as **General**, pinned at the top, then **GitHub
-accounts**, **GitLab instances**, **Arc projects**, **DDEV projects** and **Projects**. General
-holds About, Fetching, Where the panels sit, Summoning, Notifications, Updates and System. Only one
-account or project has a form on screen at a time, and the form stretches with the window. Add and
-remove are the `+` and `−` under the list; the `+` is a pull-down, since it has to ask which kind.
-Everything applies as you change it; only a token waits for **Verify token**, because it is
-checked against the API before being stored.
+The settings window looks and behaves like System Settings: a sidebar, and a form for whatever is
+selected in it. At the top of the sidebar are four pages. **General** is start at login, updates
+and the version. **Deck** is where the cards sit, the lock, closing gaps and the summon shortcut.
+**Cards** switches the cards that are not an account or a project on and off, with the refresh
+interval and the Actions repositories. **Notifications** is the master switch and one table of
+what each account may interrupt you about. Under them come **Accounts**, GitHub and GitLab
+together, and **Projects** of every kind, alphabetical, each with the mark its card wears and a
+dot only while it is running or starting. Search narrows the list, the arrow keys move through it
+and Delete removes the selected thing. The window remembers its size.
+
+A project's form is in the order you fill it in: folder and start command, then the health check
+with its live answer, then the links on the card; name, caption, stop command, Docker and browser
+are under **Advanced**. The answer to **Detect** or **Test** appears next to the button, and a
+health check reruns by itself when the address changes. An account's form is its token, one line
+saying whether it is stored and whether it works, a field for a new one where Return saves it, and
+a link to create one. Everything else applies as you change it.
 
 Drag a panel anywhere; the position is remembered per card - **against the display it is on**,
 not as a point on the desktop. Unplug the external monitor and the cards that live on it are
@@ -707,7 +715,7 @@ Sources/
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (342 tests, offline)
+  DevDeckTests/    the suite (346 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

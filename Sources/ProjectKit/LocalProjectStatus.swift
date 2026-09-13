@@ -1,3 +1,4 @@
+import DevDeckCore
 import Foundation
 
 /// What a plain project is doing.
@@ -76,6 +77,29 @@ public enum LocalProjectAction: String, Sendable, CaseIterable {
         case .start: return "starting…"
         case .stop: return "stopping…"
         case .restart: return "restarting…"
+        }
+    }
+}
+
+public extension LocalProjectStatus {
+    /// How the form reports this answer. `checkedURL` is the address the answer came from and
+    /// `currentURL` the one in the field now; when they differ the answer is not shown at all.
+    func summary(checkedURL: String, currentURL: String) -> CheckSummary {
+        guard checkedURL == currentURL else {
+            return CheckSummary(tone: .idle, state: "Not checked", detail: "the address changed, check again")
+        }
+        let when = CheckSummary.time(checkedAt)
+        switch state {
+        case .running:
+            return CheckSummary(tone: .good, state: "Running", detail: detail ?? "answered at \(when)")
+        case .starting:
+            return CheckSummary(tone: .busy, state: "Starting", detail: detail ?? "process up, not answering yet")
+        case .working:
+            return CheckSummary(tone: .busy, state: "Working", detail: detail ?? "")
+        case .stopped:
+            return CheckSummary(tone: .idle, state: "Stopped", detail: detail ?? (currentURL.isEmpty ? "nothing started from here" : "nothing answered at \(when)"))
+        case .unavailable:
+            return CheckSummary(tone: .idle, state: "Not configured", detail: "set a folder and a start command")
         }
     }
 }

@@ -75,6 +75,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updater: updater,
         preferences: preferences,
         openSettings: { [unowned self] in self.settingsController.show() },
+        openCardSettings: { [unowned self] card in
+            let target = CardHostView.module(for: card)?.settingsTarget(for: card) ?? (.cards, nil)
+            self.settingsController.show(target.section, id: target.id)
+        },
         quit: { [unowned self] in
             self.controller.stop()
             NSApp.terminate(nil)
@@ -83,19 +87,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var summoner: Summoner = Summoner(preferences: preferences) { [unowned self] raised in
         self.panels.setRaised(raised)
     }
-    private lazy var generalPage: GeneralSettingsPage = GeneralSettingsPage(
+    private lazy var generalPage = GeneralSettingsPage(preferences: preferences, updater: updater)
+    private lazy var notificationsPage = NotificationsSettingsPage(
         preferences: preferences,
-        updater: updater
-    ) { [weak self] in self?.settingsChanged() }
+        githubStore: accountsStore,
+        gitlabStore: gitlabAccountsStore
+    )
     private lazy var settingsController: SettingsWindowController = SettingsWindowController(
+        pages: [
+            generalPage,
+            DeckSettingsPage(preferences: preferences),
+            CardsSettingsPage(preferences: preferences),
+            notificationsPage,
+        ],
         sections: [
             GitHubAccountsSection(store: accountsStore, tokenStore: tokenStore),
             GitLabInstancesSection(store: gitlabAccountsStore, tokenStore: tokenStore, preferences: preferences),
             arcModule,
             ddevModule,
             localModule,
-        ],
-        general: generalPage
+        ]
     ) { [weak self] in self?.settingsChanged() }
 
     private let notifier = Notifier()
@@ -126,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         .sink { [weak self] _ in
             self?.menu.updateStatusItem()
             self?.panels.syncPanelSizes()
+            // The dots in the settings list are the projects' live state. Only the list is
+            // redrawn, never the form, so nothing being typed is disturbed.
+            if self?.settingsController.isVisible == true { self?.settingsController.reloadList() }
         }
         .store(in: &cancellables)
 
@@ -144,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // A newer build: one banner, and the settings page redrawn as the state moves.
         updater.onAvailable = { [weak self] update in self?.notifier.postUpdate(update.version.description) }
-        updater.onChange = { [weak self] in self?.settingsController.reloadDetail() }
+        updater.onChange = { [weak self] in self?.generalPage.refreshUpdateRow() }
         notifier.onUpdate = { [weak self] in self?.updater.install() }
 
         alignKeychainAccess()
@@ -155,10 +169,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         summoner.install()
         updater.start()
 
-        generalPage.onRequestNotifications = { [weak self] completion in
+        notificationsPage.onRequestAuthorization = { [weak self] completion in
             self?.notifier.requestAuthorization(completion) ?? completion(false)
         }
-        generalPage.onTestNotification = { [weak self] in self?.notifier.postTest() }
+        notificationsPage.onTest = { [weak self] in self?.notifier.postTest() }
 
         // No token on any account means nothing can load; open the one window that fixes that.
         let hasAnyToken = accountsStore.accounts().contains { account in
@@ -172,10 +186,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // hunting through a menu bar that has no window of its own. An optional section after
         // it opens that page.
         if let index = CommandLine.arguments.firstIndex(of: "--settings") {
-            let named = CommandLine.arguments.count > index + 1
-                ? SettingsWindowController.Section(rawValue: CommandLine.arguments[index + 1])
-                : nil
-            settingsController.show(named ?? .github)
+            // `--settings project agrica-qdd` opens that project's form; `--settings deck` a page.
+            let arguments = CommandLine.arguments
+            let named = arguments.count > index + 1 ? SettingsWindowController.Section(rawValue: arguments[index + 1]) : nil
+            let id = arguments.count > index + 2 && !arguments[index + 2].hasPrefix("-") ? arguments[index + 2] : nil
+            settingsController.show(named ?? .general, id: id)
         }
 
         if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {

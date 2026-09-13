@@ -20,5 +20,6 @@ await runCommandRunnerTests(run)
 await runDeckTests(run)
 await runUpdateTests(run)
 await runIdentityTests(run)
+await runCheckSummaryTests(run)
 
 run.finish()

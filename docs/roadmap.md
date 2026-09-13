@@ -52,6 +52,12 @@
   timestamp, notarises, staples and only then packages, all behind five secrets. Tokens are
   bound to the app on every machine, and a first install opens without the right-click dance.
   Shipped as 0.12. See [adr/0017-signature-decides.md](adr/0017-signature-decides.md).
+- **Settings like System Settings** - four pages instead of one General three screens long,
+  accounts and projects in one sidebar with their marks and a dot only when it means something,
+  search and the keyboard in the list, forms in the order they are filled in with the rarely
+  touched fields under Advanced, answers next to the button that asked, a health check that reruns
+  when the address changes, and "Settings for This Card…" on every card. See
+  [adr/0018-settings-like-system-settings.md](adr/0018-settings-like-system-settings.md).
 - **The lock is back in the menus** - a checkmark in the menu-bar menu and in a card's own
   right-click menu, next to Tidy, because it is toggled in the middle of arranging cards.
   Settings keeps its switch; both write the same preference.

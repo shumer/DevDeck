@@ -85,10 +85,13 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   a wrapper left behind keeps the port.
 - **Project ids are card identifiers** (`arc.project.<id>`, `ddev.project.<id>`,
   `project.<id>`) and are never renamed.
-- **Settings forms are built with `FormLayout`**, never with hand-computed frames. A label
-  placed over the control above it is what hand-computed `y` values produce. Controls that
-  should stretch pass a `nil` width; nothing in a settings form is a fixed number of points
-  wide.
+- **Settings forms are built with `SettingsForm`**, never with hand-computed frames, and with
+  its four row shapes only: `settingRow`, `fieldRow`, `statusRow`, `linkRow`. An explanation is
+  one line under a group or behind a section's help button, never a paragraph. A switch is an
+  `NSSwitch`, not a checkbox, except in a link row.
+- **An answer updates the row it belongs to.** A check coming back calls `StatusLine.update`, a
+  button's answer is `ButtonAnswer` at that button. `reloadDetail` is for a change of shape only,
+  and never while something is being typed; nothing says "Saved.".
 - **Panel positions anchor on the top-left corner**, and a shift caused by a card growing is
   never persisted - that pair is what stops the deck creeping apart between launches.
 - **Menus are populated by `menuNeedsUpdate`, never built and handed to a view.** A menu built

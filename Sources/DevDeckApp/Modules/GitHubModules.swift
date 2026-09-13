@@ -127,8 +127,8 @@ extension ModuleContext {
 @MainActor
 final class GitHubAccountsSection: SettingsSection {
     let kind = SettingsWindowController.Section.github
-    let addTitle = "GitHub account"
-    let emptyText = "No accounts yet. Press + below the list."
+    let group = SettingsListGroup.accounts
+    let addTitle = "GitHub Account"
     weak var host: SettingsHost?
 
     private let store: GitHubAccountsStore
@@ -145,31 +145,35 @@ final class GitHubAccountsSection: SettingsSection {
             return SettingsListItem(
                 id: account.id,
                 title: account.label,
-                subtitle: hasToken ? "token stored" : "no token yet",
-                state: account.isEnabled ? (hasToken ? .systemGreen : .systemOrange) : .tertiaryLabelColor
+                detail: hasToken ? "GitHub" : "GitHub · no token",
+                icon: SettingsIcons.mark(.github),
+                dot: hasToken ? nil : .systemOrange,
+                isDimmed: !account.isEnabled
             )
         }
     }
 
-    func buildForm(for id: String, in container: FlippedContainer, width: CGFloat) -> Bool {
+    func buildForm(for id: String, in container: FlippedContainer) -> Bool {
         guard let account = store.accounts().first(where: { $0.id == id }) else { return false }
-        let row = AccountRowView(
+        let fold = "github:\(id):advanced"
+        let form = GitHubAccountForm(
             account: account,
             hasToken: SettingsSupport.hasToken(account.tokenKey, in: tokenStore),
-            width: width
+            isAdvancedOpen: host?.isOpen(fold) ?? false,
+            width: container.bounds.width
         )
-        row.onChange = { [weak self] in self?.applyEdits($0) }
-        row.onSave = { [weak self] in self?.save($0) }
-        row.onTestLink = { [weak self] in self?.testLink($0) }
-        row.frame.origin = .zero
-        container.addSubview(row)
+        form.onChange = { [weak self] in self?.applyEdits($0) }
+        form.onSave = { [weak self] in self?.save($0) }
+        form.onTestLink = { LinkOpener.open(URL(string: "https://github.com/pulls")!, using: $0.editedAccount.browser) }
+        form.onToggleAdvanced = { [weak self] in self?.host?.toggle(fold) }
+        container.addSubview(form)
         return true
     }
 
     func add() -> String? {
         var accounts = store.accounts()
         let id = GitHubAccount.makeID(from: "account", existing: accounts.map(\.id))
-        accounts.append(GitHubAccount(id: id, label: "New account"))
+        accounts.append(GitHubAccount(id: id, label: "New Account"))
         store.save(accounts)
         return id
     }
@@ -185,87 +189,41 @@ final class GitHubAccountsSection: SettingsSection {
 
     // MARK: Editing
 
-    private func applyEdits(_ row: AccountRowView) {
-        let edited = row.editedAccount
+    private func applyEdits(_ form: GitHubAccountForm) {
+        let edited = form.editedAccount
         persist(edited)
-        row.apply(edited)
-        row.setStatus(SettingsSupport.browserSummary(browser: edited.browser))
+        form.apply(edited)
         host?.reloadList()
         host?.changed()
     }
 
-    private func testLink(_ row: AccountRowView) {
-        applyEdits(row)
-        guard let url = URL(string: "https://github.com/pulls") else { return }
-        LinkOpener.open(url, using: row.editedAccount.browser)
-    }
+    /// Verified before it is stored: a rejected token that lands in the Keychain turns into a
+    /// card that fails for reasons nobody can see. The answer goes on the token's own line.
+    private func save(_ form: GitHubAccountForm) {
+        let edited = form.editedAccount
+        let token = form.token.entered
+        persist(edited)
+        form.apply(edited)
+        form.token.checking()
 
-    private func save(_ row: AccountRowView) {
-        let edited = row.editedAccount
-        let token = row.enteredToken
-
-        guard !token.isEmpty else {
-            persist(edited)
-            row.apply(edited)
-            verifyStoredToken(for: edited, row: row)
-            host?.changed()
-            return
-        }
-
-        row.setStatus("Checking…")
+        let probeStore: any TokenStore = token.isEmpty ? tokenStore : InMemoryTokenStore(tokens: [edited.tokenKey: token])
         Task { [weak self] in
             guard let self else { return }
-            // Verify before storing: a rejected token that silently lands in the Keychain turns
-            // into a card that fails for reasons nobody can see.
-            let probe = GitHubClient.makeDefault(
-                tokenStore: InMemoryTokenStore(tokens: [edited.tokenKey: token]),
-                settings: edited.settings(basedOn: .default),
-                tokenKey: edited.tokenKey
-            )
             do {
+                let settings = edited.settings(basedOn: .default)
                 let snapshot = try await PullRequestsService(
-                    client: probe,
-                    settings: edited.settings(basedOn: .default),
+                    client: GitHubClient.makeDefault(tokenStore: probeStore, settings: settings, tokenKey: edited.tokenKey),
+                    settings: settings,
                     accountID: edited.id
                 ).fetch()
-                try self.tokenStore.setToken(token, for: edited.tokenKey)
-                self.persist(edited)
-                row.apply(edited)
-                row.clearTokenField()
-                row.setStatus("Saved. \(snapshot.totalCount) open pull requests.")
+                if !token.isEmpty { try self.tokenStore.setToken(token, for: edited.tokenKey) }
+                form.token.works("\(snapshot.totalCount) open pull requests")
                 self.host?.reloadList()
                 self.host?.changed()
             } catch let error as APIError {
-                row.setStatus("Rejected: \(error.displayMessage)", isError: true)
+                form.token.refused(token.isEmpty && !SettingsSupport.hasToken(edited.tokenKey, in: self.tokenStore) ? "paste a token first" : error.displayMessage)
             } catch {
-                row.setStatus("Rejected: \(error.localizedDescription)", isError: true)
-            }
-        }
-    }
-
-    private func verifyStoredToken(for account: GitHubAccount, row: AccountRowView) {
-        guard SettingsSupport.hasToken(account.tokenKey, in: tokenStore) else {
-            row.setStatus("No token yet. Paste one above.", isError: true)
-            return
-        }
-        row.setStatus("Checking the stored token…")
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                let snapshot = try await PullRequestsService(
-                    client: GitHubClient.makeDefault(
-                        tokenStore: self.tokenStore,
-                        settings: account.settings(basedOn: .default),
-                        tokenKey: account.tokenKey
-                    ),
-                    settings: account.settings(basedOn: .default),
-                    accountID: account.id
-                ).fetch()
-                row.setStatus("Token works. \(snapshot.totalCount) open pull requests.")
-            } catch let error as APIError {
-                row.setStatus("Stored token: \(error.displayMessage)", isError: true)
-            } catch {
-                row.setStatus("Stored token: \(error.localizedDescription)", isError: true)
+                form.token.refused(error.localizedDescription)
             }
         }
     }
