@@ -53,7 +53,9 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   dotfile, a log line or a commit. A stored token is never written back into a text field -
   the settings row says one exists, and typing replaces it. How an item is protected follows
   from `CodeIdentity.current()` through `KeychainAccessPolicy`, never from a build flag: open
-  for an ad-hoc build, bound to the app for a signed one.
+  for an ad-hoc build, bound to the app for a signed one. Never downgraded by itself: a copy
+  without an identity leaves bound tokens bound. `build.sh` signs with the Developer ID it
+  finds, so a local rebuild does not install a copy that cannot read them.
 - **Account ids are Keychain filenames.** `GitHubAccount.id` is never renamed, and the first
   account keeps the un-suffixed key `github`.
 - **A card fails only when every account fails.** Partial failures go on the snapshot as

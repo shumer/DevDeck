@@ -189,9 +189,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
             ))
         }
 
+        // The remembered row of this section, else its first row: opening "Projects" with
+        // nothing chosen yet should land on a project, not fall back to General because that
+        // happens to be the first row of the whole list.
         let wanted = section == .general
             ? Self.entryID(.general, Self.generalID)
             : selection[section].map { Self.entryID(section, $0) }
+                ?? listSections.first { $0.title == section.title }?.items.first?.id
         let ids = listSections.flatMap { $0.items.map(\.id) }
         let valid = ids.contains(where: { $0 == wanted }) ? wanted : ids.first
         if let valid, let entry = Self.parse(valid) {

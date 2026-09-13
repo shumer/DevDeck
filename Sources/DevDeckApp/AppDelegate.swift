@@ -220,17 +220,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// once, one prompt each, and the mode is remembered so it is not done again.
     private func alignKeychainAccess() {
         let wanted = KeychainAccessPolicy.mode(for: CodeIdentity.current())
-        guard preferences.keychainAccessMode != wanted else { return }
+        let stored = preferences.keychainAccessMode
+        guard KeychainAccessPolicy.shouldRewrite(storedMode: stored, wantedMode: wanted) else {
+            if stored != wanted {
+                Log.app.info("Keychain stays \(stored ?? "unset", privacy: .public): this copy would open it, and that is not done by itself")
+            }
+            return
+        }
 
         let keys = accountsStore.accounts().map(\.tokenKey)
             + gitlabAccountsStore.accounts().map(\.tokenKey)
-        var rewritten = 0
-        for key in keys {
-            guard let token = (try? tokenStore.token(for: key)) ?? nil else { continue }
-            try? tokenStore.setToken(token, for: key)
-            rewritten += 1
+        let result = KeychainAccessPolicy.rewrite(keys: keys, in: tokenStore)
+        guard result.isComplete else {
+            // Left unrecorded, so the next launch tries again rather than trusting a half done job.
+            Log.app.error("Keychain rewrite for \(wanted, privacy: .public) incomplete: \(result.failed, privacy: .public) item(s) failed")
+            return
         }
         preferences.keychainAccessMode = wanted
-        Log.app.info("Rewrote \(rewritten, privacy: .public) Keychain item(s) for access mode \(wanted, privacy: .public)")
+        Log.app.info("Rewrote \(result.rewritten, privacy: .public) Keychain item(s) for access mode \(wanted, privacy: .public)")
     }
 }

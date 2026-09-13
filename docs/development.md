@@ -74,8 +74,9 @@ Rules:
 
 ## Signing
 
-A local build is ad-hoc signed unless `CODESIGN_IDENTITY` names an identity in the Keychain, and
-the code reads which it got: an ad-hoc build writes tokens with an open access list, a signed
+A local build is signed with the Developer ID it finds in the Keychain, or with whatever
+`CODESIGN_IDENTITY` names, and is ad-hoc only when there is neither or when
+`CODESIGN_IDENTITY=-` asks for it. The code reads which it got: an ad-hoc build writes tokens with an open access list, a signed
 one lets the Keychain bind them to the app and the updater check what it downloads. See
 [adr/0017-signature-decides.md](adr/0017-signature-decides.md).
 
@@ -87,8 +88,12 @@ CODESIGN_IDENTITY="DevDeck Local" ./build.sh
 ```
 
 The first launch rewrites the stored tokens once, one password prompt each, and after that
-neither updates nor rebuilds prompt again, because the identity is the same. Leave the
-variable unset and the build is ad-hoc as before; nothing else changes.
+neither updates nor rebuilds prompt again, because the identity is the same.
+
+**Never the other way by itself.** Once tokens are bound to an identity, a copy without one,
+`swift run DevDeck` or an ad-hoc build, leaves them bound and asks for the password on each
+read rather than opening them to every process. If a prompt is dismissed during a rewrite,
+the mode is not recorded and the next launch tries again.
 
 **Releases, once the Developer ID exists.** The workflow signs, notarises and staples on the
 runner, never here: `notarytool` ships with Xcode, which the runner has. It needs five

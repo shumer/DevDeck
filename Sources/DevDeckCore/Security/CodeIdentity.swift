@@ -87,3 +87,52 @@ public enum KeychainAccessPolicy {
         !identity.survivesRebuild
     }
 }
+
+public extension KeychainAccessPolicy {
+    /// What one pass over the stored tokens did.
+    struct Rewrite: Sendable, Equatable {
+        /// Items read and written back in the wanted mode.
+        public let rewritten: Int
+        /// Items that could not be read or written: a prompt refused, a Keychain error.
+        public let failed: Int
+
+        public init(rewritten: Int, failed: Int) {
+            self.rewritten = rewritten
+            self.failed = failed
+        }
+
+        /// Whether the mode may be written down. Only when nothing failed: a mode recorded over
+        /// items still in the old mode is a record that lies, and it stops the next launch from
+        /// finishing the job.
+        public var isComplete: Bool { failed == 0 }
+    }
+
+    /// Whether the stored tokens should be rewritten for the signature this copy runs under.
+    ///
+    /// Never from a bound mode down to the open one. A copy without an identity, `swift run`
+    /// or a build made without the certificate, would otherwise ask for the Keychain password
+    /// once per token and, given it, open every token to every process on the machine. That
+    /// is a decision to take on purpose, not a side effect of which binary happened to start.
+    static func shouldRewrite(storedMode: String?, wantedMode: String) -> Bool {
+        guard storedMode != wantedMode else { return false }
+        if let storedMode, storedMode.hasPrefix("app:"), wantedMode == "open" { return false }
+        return true
+    }
+
+    /// Reads every token and writes it back, which is what applies the current access list.
+    /// A key with nothing stored is not a failure; a read the Keychain refused is.
+    static func rewrite(keys: [TokenKey], in store: any TokenStore) -> Rewrite {
+        var rewritten = 0
+        var failed = 0
+        for key in keys {
+            do {
+                guard let token = try store.token(for: key) else { continue }
+                try store.setToken(token, for: key)
+                rewritten += 1
+            } catch {
+                failed += 1
+            }
+        }
+        return Rewrite(rewritten: rewritten, failed: failed)
+    }
+}

@@ -60,3 +60,9 @@ Apple.
   loads no unsigned code and asks no entitlement.
 - A hand-made certificate binds tokens on one machine and does nothing for Gatekeeper; that is
   the Developer ID's job, and both go through the same code.
+- Learned the first day: a local rebuild without the certificate installed an ad-hoc copy
+  over the signed one, and it asked for the Keychain password to open the tokens the signed
+  copy had bound. Two rules came out of it. The rewrite never goes from a bound mode to the
+  open one by itself, and it records the mode only when every item was rewritten. And
+  `build.sh` looks for the Developer ID in the Keychain when nothing is named, so the
+  ordinary build on a machine that has the certificate is the signed one.

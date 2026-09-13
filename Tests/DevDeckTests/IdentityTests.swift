@@ -2,6 +2,26 @@ import DevDeckCore
 import Foundation
 import TestHarness
 
+/// A Keychain that refuses some reads, the way it does when a prompt is dismissed.
+private final class RefusingTokenStore: TokenStore, @unchecked Sendable {
+    private let inner: InMemoryTokenStore
+    private let refused: Set<String>
+
+    init(tokens: [TokenKey: String], refusing refused: Set<String>) {
+        inner = InMemoryTokenStore(tokens: tokens)
+        self.refused = refused
+    }
+
+    func token(for key: TokenKey) throws -> String? {
+        if refused.contains(key.account) { throw TokenStoreError.keychain(-128) }
+        return try inner.token(for: key)
+    }
+
+    func setToken(_ token: String?, for key: TokenKey) throws {
+        try inner.setToken(token, for: key)
+    }
+}
+
 func runIdentityTests(_ run: TestRun) async {
     run.section("Code identity - who signed this")
 
@@ -25,6 +45,37 @@ func runIdentityTests(_ run: TestRun) async {
                         "named, so a different identity later is a different mode")
         try expect(KeychainAccessPolicy.opensAccess(for: .adHoc))
         try expect(!KeychainAccessPolicy.opensAccess(for: .signed(identity: "ABCDE12345")))
+    }
+
+    await run.test("tokens are rewritten when the signature changes, and never opened by a copy without one") {
+        try expect(KeychainAccessPolicy.shouldRewrite(storedMode: nil, wantedMode: "open"), "first launch of an ad-hoc build")
+        try expect(KeychainAccessPolicy.shouldRewrite(storedMode: "open", wantedMode: "app:ABCDE12345"),
+                   "the first signed build binds what an ad-hoc one left open")
+        try expect(KeychainAccessPolicy.shouldRewrite(storedMode: "app:ABCDE12345", wantedMode: "app:ZZZZZ99999"),
+                   "a different identity binds to itself")
+        try expect(!KeychainAccessPolicy.shouldRewrite(storedMode: "app:ABCDE12345", wantedMode: "app:ABCDE12345"))
+        try expect(!KeychainAccessPolicy.shouldRewrite(storedMode: "app:ABCDE12345", wantedMode: "open"),
+                   "an unsigned copy must not open tokens a signed one bound, even with the password")
+    }
+
+    await run.test("a rewrite counts what it could not read, and a missing token is not a failure") {
+        let github = TokenKey(account: "github")
+        let gitlab = TokenKey(account: "gitlab")
+        let nothing = TokenKey(account: "github.unused")
+
+        let clean = KeychainAccessPolicy.rewrite(
+            keys: [github, gitlab, nothing],
+            in: InMemoryTokenStore(tokens: [github: "ghp_x", gitlab: "glpat_y"])
+        )
+        try expectEqual(clean, KeychainAccessPolicy.Rewrite(rewritten: 2, failed: 0))
+        try expect(clean.isComplete)
+
+        let refused = KeychainAccessPolicy.rewrite(
+            keys: [github, gitlab],
+            in: RefusingTokenStore(tokens: [github: "ghp_x", gitlab: "glpat_y"], refusing: ["gitlab"])
+        )
+        try expectEqual(refused, KeychainAccessPolicy.Rewrite(rewritten: 1, failed: 1))
+        try expect(!refused.isComplete, "a dismissed prompt leaves the mode unrecorded, so the next launch finishes")
     }
 
     await run.test("a signed app accepts only a build signed by the same hand") {

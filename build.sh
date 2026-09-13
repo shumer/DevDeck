@@ -65,6 +65,17 @@ chmod +x "$MACOS/DevDeck"
 # timestamp go with the identity: notarisation requires both, and Apple's timestamp server
 # answers for any signature, whoever issued the certificate. The identity may be a name or a
 # SHA-1, which is what the release runner passes, so nothing here reads the string.
+#
+# Unset, it looks for a Developer ID in the Keychain and uses that. A machine that has the
+# certificate has tokens bound to it, and an ad-hoc build installed over the signed one is a
+# copy that cannot read them. CODESIGN_IDENTITY=- asks for ad-hoc on purpose.
+if [ -z "${CODESIGN_IDENTITY:-}" ]; then
+  CODESIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+    | awk '/"Developer ID Application:/ { print $2; exit }')"
+fi
+if [ "${CODESIGN_IDENTITY:-}" = "-" ]; then
+  CODESIGN_IDENTITY=""
+fi
 if [ -n "${CODESIGN_IDENTITY:-}" ]; then
   codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$APP"
   codesign --verify --strict --verbose=1 "$APP"
