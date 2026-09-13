@@ -61,14 +61,12 @@ chmod +x "$MACOS/DevDeck"
 # or the SHA-1 of a code-signing identity in the Keychain: a Developer ID on the release
 # runner, or a certificate made by hand in Keychain Access here. With an identity the
 # Keychain can bind the tokens to the app and the updater can check what it downloads; ad-hoc,
-# neither is possible, and the code knows which it got. Hardened runtime goes with the
-# identity, because notarisation requires it and nothing here needs an exception. The
-# timestamp only with a Developer ID: Apple's timestamp server has no opinion on a
-# certificate it did not issue.
+# neither is possible, and the code knows which it got. Hardened runtime and a secure
+# timestamp go with the identity: notarisation requires both, and Apple's timestamp server
+# answers for any signature, whoever issued the certificate. The identity may be a name or a
+# SHA-1, which is what the release runner passes, so nothing here reads the string.
 if [ -n "${CODESIGN_IDENTITY:-}" ]; then
-  TIMESTAMP="--timestamp=none"
-  case "$CODESIGN_IDENTITY" in *"Developer ID"*) TIMESTAMP="--timestamp" ;; esac
-  codesign --force --options runtime "$TIMESTAMP" --sign "$CODESIGN_IDENTITY" "$APP"
+  codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$APP"
   codesign --verify --strict --verbose=1 "$APP"
   echo "Signed with: $CODESIGN_IDENTITY"
 else

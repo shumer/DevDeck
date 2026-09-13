@@ -101,7 +101,19 @@ jobs:
           printf '%s' "$NOTARY_KEY_P8" | tr -d '\r\n ' | base64 --decode > "$KEY"
           ditto -c -k --keepParent DevDeck.app "$RUNNER_TEMP/notarise.zip"
           xcrun notarytool submit "$RUNNER_TEMP/notarise.zip" \
-            --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
+            --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
+            --wait --output-format json > "$RUNNER_TEMP/submission.json" || true
+          cat "$RUNNER_TEMP/submission.json"
+          ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("id",""))' "$RUNNER_TEMP/submission.json")"
+          STATUS="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("status",""))' "$RUNNER_TEMP/submission.json")"
+          if [ "$STATUS" != "Accepted" ]; then
+            # Apple says why in a separate log, and "Invalid" on its own is not a reason.
+            [ -n "$ID" ] && xcrun notarytool log "$ID" \
+              --key "$KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" || true
+            rm -f "$KEY"
+            echo "::error::notarisation ended with status '$STATUS'; the log above says why"
+            exit 1
+          fi
           rm "$KEY"
           xcrun stapler staple DevDeck.app
           spctl --assess --type execute --verbose=2 DevDeck.app
