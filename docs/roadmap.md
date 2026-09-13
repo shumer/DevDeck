@@ -46,6 +46,12 @@
 - **The phone and the work in flight** - the running site as a QR code addressed to this Mac on
   the wifi, offered only while the project is up; and one card for every checkout at once, showing
   what is uncommitted, unpushed or behind. Shipped as 0.8.
+- **Signed and notarised releases** - the Keychain mode and the updater's check follow the
+  signature the app finds itself under, `build.sh` signs with whatever `CODESIGN_IDENTITY`
+  names, and the release workflow imports the Developer ID, signs with hardened runtime and a
+  timestamp, notarises, staples and only then packages, all behind five secrets. Tokens are
+  bound to the app on every machine, and a first install opens without the right-click dance.
+  Shipped as 0.12. See [adr/0017-signature-decides.md](adr/0017-signature-decides.md).
 - **The lock is back in the menus** - a checkmark in the menu-bar menu and in a card's own
   right-click menu, next to Tidy, because it is toggled in the middle of arranging cards.
   Settings keeps its switch; both write the same preference.
@@ -128,11 +134,6 @@
 3. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
    Tailscale for the rest. The QR code covers the same network; this covers the customer on a
    call.
-4. **A code identity that survives a rebuild** - the code and the workflow are ready: the
-   Keychain mode and the updater's check follow the signature, `build.sh` signs with whatever
-   `CODESIGN_IDENTITY` names, and the release workflow signs, notarises and staples behind five
-   secrets. Waiting on the Developer ID certificate from the Apple Developer Program, bought
-   on 2026-09-10. See [adr/0017-signature-decides.md](adr/0017-signature-decides.md).
 
 ## Not planned
 
