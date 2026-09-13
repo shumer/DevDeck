@@ -56,7 +56,7 @@
   accounts and projects in one sidebar with their marks and a dot only when it means something,
   search and the keyboard in the list, forms in the order they are filled in with the rarely
   touched fields under Advanced, answers next to the button that asked, a health check that reruns
-  when the address changes, and "Settings for This Card…" on every card. See
+  when the address changes, and "Settings for This Card…" on every card. Shipped as 0.13. See
   [adr/0018-settings-like-system-settings.md](adr/0018-settings-like-system-settings.md).
 - **The lock is back in the menus** - a checkmark in the menu-bar menu and in a card's own
   right-click menu, next to Tidy, because it is toggled in the middle of arranging cards.
