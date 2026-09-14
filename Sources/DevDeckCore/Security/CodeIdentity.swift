@@ -83,8 +83,19 @@ public enum KeychainAccessPolicy {
     }
 
     /// Whether items are written with the access list that names no application.
-    public static func opensAccess(for identity: CodeIdentity.Kind) -> Bool {
-        !identity.survivesRebuild
+    ///
+    /// Only by a copy with no identity, and only while the stored tokens are not bound. Once a
+    /// signed copy has bound them, a token saved from `swift run` or an ad-hoc build keeps the
+    /// default access list, bound to the binary that wrote it: the signed copy asks for it once
+    /// rather than every process on the machine reading it without asking.
+    public static func opensAccess(for identity: CodeIdentity.Kind, storedMode: String?) -> Bool {
+        guard !identity.survivesRebuild else { return false }
+        return !isBound(storedMode)
+    }
+
+    /// Whether a remembered mode binds the tokens to an application.
+    public static func isBound(_ mode: String?) -> Bool {
+        mode?.hasPrefix("app:") == true
     }
 }
 
@@ -115,7 +126,7 @@ public extension KeychainAccessPolicy {
     /// is a decision to take on purpose, not a side effect of which binary happened to start.
     static func shouldRewrite(storedMode: String?, wantedMode: String) -> Bool {
         guard storedMode != wantedMode else { return false }
-        if let storedMode, storedMode.hasPrefix("app:"), wantedMode == "open" { return false }
+        if isBound(storedMode), wantedMode == "open" { return false }
         return true
     }
 

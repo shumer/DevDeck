@@ -34,6 +34,12 @@ final class Updater {
     var onChange: (() -> Void)?
     /// A newer build has just been found, for the banner. Once per version.
     var onAvailable: ((AvailableUpdate) -> Void)?
+    /// The card whose command is still running, by title, or nil. Asked before every install,
+    /// whichever way it was asked for: the menu, the banner, the settings page or `--update`.
+    var workingCard: (() -> String?)?
+    /// The card an install someone asked for is waiting on, while it waits.
+    private(set) var waitingFor: String?
+    private var waitTask: Task<Void, Never>?
 
     private let preferences: Preferences
     private let http: any HTTPClient
@@ -158,14 +164,49 @@ final class Updater {
 
     // MARK: Installing
 
+    /// Looks again every few seconds until no card is working, then installs.
+    private func waitForCommands() {
+        guard waitTask == nil else { return }
+        waitTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard let self, !Task.isCancelled else { return }
+                if let working = self.workingCard?() {
+                    if working != self.waitingFor {
+                        self.waitingFor = working
+                        self.onChange?()
+                    }
+                    continue
+                }
+                self.waitTask = nil
+                self.install()
+                return
+            }
+        }
+    }
+
     /// The whole sequence, in order, with the running copy untouched until the new one has
     /// been unpacked and checked.
+    ///
+    /// Waits while a card is mid-command, because replacing the bundle and quitting under a
+    /// running `fusion start` leaves a stack half up with nothing on screen to say so. The
+    /// install was asked for, so it goes ahead by itself once the command is done.
     func install() {
         guard let update = available, let bundleURL else { return }
         switch state {
         case .downloading, .installing: return
         default: break
         }
+        if let working = workingCard?() {
+            waitingFor = working
+            Log.app.info("Update to \(update.version.description, privacy: .public) waits for \(working, privacy: .public)")
+            onChange?()
+            waitForCommands()
+            return
+        }
+        waitTask?.cancel()
+        waitTask = nil
+        waitingFor = nil
         state = .downloading(update, fraction: 0)
 
         Task { [weak self] in

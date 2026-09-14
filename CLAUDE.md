@@ -35,7 +35,8 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
 - `swift test` does not work: no `XCTest`, no `swift-testing`. The suite is the executable
   target `Tests/DevDeckTests` using `Tests/TestHarness`. Do not add an XCTest target.
 - No `.xcodeproj`, no WidgetKit extension. Panels are borderless `NSWindow`s hosting SwiftUI.
-- `./build.sh` assembles and ad-hoc signs `DevDeck.app` by hand.
+- `./build.sh` assembles `DevDeck.app` by hand and signs it with the Developer ID it finds, ad-hoc
+  otherwise.
 - **No `@State` in `DevDeckUI`.** From the macOS 27 SDK on, that attribute resolves to a macro
   whose plugin only Xcode ships, so it does not compile here. Write the storage out instead, a
   stored `State(initialValue:)` and a computed property over it; `ClickableHighlight` shows
@@ -54,12 +55,13 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   the settings row says one exists, and typing replaces it. How an item is protected follows
   from `CodeIdentity.current()` through `KeychainAccessPolicy`, never from a build flag: open
   for an ad-hoc build, bound to the app for a signed one. Never downgraded by itself: a copy
-  without an identity leaves bound tokens bound. `build.sh` signs with the Developer ID it
-  finds, so a local rebuild does not install a copy that cannot read them.
+  without an identity leaves bound tokens bound, and never writes a new token open once they are.
+  `scripts/seed-token.sh` follows the same recorded mode. `build.sh` signs with the Developer ID
+  it finds, so a local rebuild does not install a copy that cannot read them.
 - **Account ids are Keychain filenames.** `GitHubAccount.id` is never renamed, and the first
   account keeps the un-suffixed key `github`.
 - **A card fails only when every account fails.** Partial failures go on the snapshot as
-  `[AccountFailure]` and are drawn in the footer.
+  `[AccountFailure]` and are drawn in the footer of the list cards.
 - **Cache keys are namespaced per account**, or two tokens polling one endpoint share an
   `ETag` and serve each other's data.
 - **A hidden card fetches nothing.** New cards must respect `DeckController.setActiveCards`.

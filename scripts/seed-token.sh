@@ -13,15 +13,17 @@
 # Examples:
 #   scripts/seed-token.sh                                   # the default account, GITHUB_TOKEN
 #   scripts/seed-token.sh --var SHUMER_GITHUB_TOKEN         # a differently named token
-#   scripts/seed-token.sh --account work --var WORK_TOKEN   # a second account
+#   scripts/seed-token.sh --account account-2 --var WORK_TOKEN   # a second account
 #
 # One token per account is the whole point: a fine-grained token is approved per organisation,
 # so no single one covers every employer. The deck asks each account in turn and merges what
 # comes back.
 #
-# The token is never echoed and never written into the repository. `-A` is deliberate: the app
-# is ad-hoc signed, so its signature changes on every build and a strict ACL would make macOS
-# prompt for the Keychain after each rebuild.
+# The token is never echoed and never written into the repository. How the item is protected
+# follows what the app has recorded, the same rule as KeychainAccessPolicy: while its tokens are
+# open (an ad-hoc build) the item is written with `-A`, because an ad-hoc signature changes on
+# every build; once a signed copy has bound them, the item trusts the installed app instead and
+# every other process has to ask.
 set -euo pipefail
 
 SERVICE="com.shumer.devdeck"
@@ -71,6 +73,22 @@ if [ -z "$LOGIN" ]; then
   exit 1
 fi
 
-security add-generic-password -U -A -s "$SERVICE" -a "$ACCOUNT" -w "$TOKEN"
+MODE="$(defaults read "$SERVICE" keychain.acl 2>/dev/null || true)"
+APP="/Applications/DevDeck.app"
+if [[ "$MODE" == app:* ]]; then
+  if [ -d "$APP" ]; then
+    ACCESS=(-T "$APP")
+  else
+    # No app to name: bound to `security` itself, and DevDeck asks once for it.
+    ACCESS=()
+  fi
+else
+  ACCESS=(-A)
+fi
+
+# Deleted first: `-U` on an existing item keeps its old access list, which is the part that
+# decides who may read it.
+security delete-generic-password -s "$SERVICE" -a "$ACCOUNT" >/dev/null 2>&1 || true
+security add-generic-password ${ACCESS[@]+"${ACCESS[@]}"} -s "$SERVICE" -a "$ACCOUNT" -w "$TOKEN"
 echo "Stored the token of $LOGIN for $SERVICE/$ACCOUNT in the login Keychain."
 echo "Verify with: scripts/smoke-test.sh"

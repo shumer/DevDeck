@@ -33,9 +33,16 @@ public struct KeychainTokenStore: TokenStore {
     /// Who signed the running app, which decides how an item is protected. See
     /// `KeychainAccessPolicy`.
     private let identity: CodeIdentity.Kind
+    /// The mode the stored tokens were last written in, asked at every write, since a rewrite
+    /// at launch changes it after this store was made.
+    private let storedMode: @Sendable () -> String?
 
-    public init(identity: CodeIdentity.Kind = CodeIdentity.current()) {
+    public init(
+        identity: CodeIdentity.Kind = CodeIdentity.current(),
+        storedMode: @escaping @Sendable () -> String? = { Preferences().keychainAccessMode }
+    ) {
         self.identity = identity
+        self.storedMode = storedMode
     }
 
     public func token(for key: TokenKey) throws -> String? {
@@ -80,9 +87,10 @@ public struct KeychainTokenStore: TokenStore {
         insert[kSecValueData as String] = data
         // Tokens are only needed while the user is logged in and the machine is unlocked.
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
-        // Only for a build with no identity to bind to. Signed, the default access list is
-        // the right one: this application, and a prompt for anybody else.
-        if KeychainAccessPolicy.opensAccess(for: identity), let access = Self.openAccess() {
+        // Only for a build with no identity to bind to, on a machine where nothing is bound yet.
+        // Otherwise the default access list is the right one: this application, and a prompt for
+        // anybody else.
+        if KeychainAccessPolicy.opensAccess(for: identity, storedMode: storedMode()), let access = Self.openAccess() {
             insert[kSecAttrAccess as String] = access
         }
         let addStatus = SecItemAdd(insert as CFDictionary, nil)

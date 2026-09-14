@@ -66,3 +66,8 @@ Apple.
   open one by itself, and it records the mode only when every item was rewritten. And
   `build.sh` looks for the Developer ID in the Keychain when nothing is named, so the
   ordinary build on a machine that has the certificate is the signed one.
+- Found in the 0.13 documentation audit: the no-downgrade rule covered the rewrite but not a
+  new token. An ad-hoc copy on a bound machine wrote it open, and `seed-token.sh` always used
+  `-A`, and since the recorded mode already said bound, no later launch closed them. Both now
+  read the recorded mode: an ad-hoc copy writes the default access list, the script trusts the
+  installed app.

@@ -43,8 +43,19 @@ func runIdentityTests(_ run: TestRun) async {
         try expectEqual(KeychainAccessPolicy.mode(for: .unsigned), "open")
         try expectEqual(KeychainAccessPolicy.mode(for: .signed(identity: "ABCDE12345")), "app:ABCDE12345",
                         "named, so a different identity later is a different mode")
-        try expect(KeychainAccessPolicy.opensAccess(for: .adHoc))
-        try expect(!KeychainAccessPolicy.opensAccess(for: .signed(identity: "ABCDE12345")))
+        try expect(KeychainAccessPolicy.opensAccess(for: .adHoc, storedMode: nil))
+        try expect(KeychainAccessPolicy.opensAccess(for: .adHoc, storedMode: "open"))
+        try expect(!KeychainAccessPolicy.opensAccess(for: .signed(identity: "ABCDE12345"), storedMode: "open"),
+                   "a signed copy binds even while it rewrites what an ad-hoc one left open")
+    }
+
+    await run.test("a token saved by a copy without an identity stays closed once tokens are bound") {
+        try expect(!KeychainAccessPolicy.opensAccess(for: .adHoc, storedMode: "app:ABCDE12345"),
+                   "otherwise swift run on a signed machine writes a new token every process can read")
+        try expect(!KeychainAccessPolicy.opensAccess(for: .unsigned, storedMode: "app:ABCDE12345"))
+        try expect(KeychainAccessPolicy.isBound("app:ABCDE12345"))
+        try expect(!KeychainAccessPolicy.isBound("open"))
+        try expect(!KeychainAccessPolicy.isBound(nil))
     }
 
     await run.test("tokens are rewritten when the signature changes, and never opened by a copy without one") {
