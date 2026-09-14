@@ -64,7 +64,7 @@
   local link dims again while the project is down, no install starts under a running command
   whichever way it was asked for, a copy without an identity and `seed-token.sh` no longer write
   a token open on a machine where tokens are bound, and the update banner obeys the app's own
-  notifications switch.
+  notifications switch. Shipped as 0.14.
 - **The lock is back in the menus** - a checkmark in the menu-bar menu and in a card's own
   right-click menu, next to Tidy, because it is toggled in the middle of arranging cards.
   Settings keeps its switch; both write the same preference.
