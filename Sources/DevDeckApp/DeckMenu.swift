@@ -239,7 +239,10 @@ final class DeckMenu: NSObject, NSMenuDelegate {
 
         switch updater.state {
         case .available:
-            if let working = controller.workingCardTitle {
+            if let working = updater.waitingFor {
+                item.title = "Updating to \(version) once \(working) finishes"
+                item.isEnabled = false
+            } else if let working = controller.workingCardTitle {
                 item.title = "Update to \(version) (wait for \(working) to finish)"
                 item.isEnabled = false
             } else {

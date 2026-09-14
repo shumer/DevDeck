@@ -74,6 +74,9 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
         }
         switch updater.state {
         case .available(let update):
+            if let working = updater.waitingFor {
+                return (.busy, "\(update.version) waits", "installs once \(working) finishes", "Update Now", false)
+            }
             let size = ByteCountFormatter.string(fromByteCount: Int64(update.asset.size), countStyle: .file)
             return (.busy, "\(update.version) is available", size, "Update Now", true)
         case .downloading(let update, let fraction):

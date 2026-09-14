@@ -45,12 +45,12 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
-        // The AppKit shell: borderless panels, menu bar, placement and locking.
         .target(
             name: "GitLabKit",
             dependencies: ["DevDeckCore"]
         ),
 
+        // The AppKit shell: borderless panels, menu bar, placement and locking.
         .executableTarget(
             name: "DevDeckApp",
             dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI"],

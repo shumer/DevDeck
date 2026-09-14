@@ -54,6 +54,9 @@ account happens to be first. Sixty requests an hour is plenty for one every six.
   signature with its own, and that becomes a real check.
 - The open Keychain access list, which is a problem in its own right, is what makes an update
   passwordless: a new ad-hoc build would otherwise cost one prompt per token.
+- No install starts while a card is mid-command, from the menu, the banner, the settings page
+  or `--update` alike; one that was asked for waits and then goes ahead. Until 0.13 only the menu
+  line checked, which the documentation audit caught.
 - Under `swift run` there is no bundle and no version, and the updater stays idle. The
   settings page says so rather than offering a check that cannot mean anything.
 - A deck built from a commit past the last tag runs a version the tag also names, and is not
