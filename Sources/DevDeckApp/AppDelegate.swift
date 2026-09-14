@@ -157,7 +157,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notifier.refreshAuthorization()
 
         // A newer build: one banner, and the settings page redrawn as the state moves.
-        updater.onAvailable = { [weak self] update in self?.notifier.postUpdate(update.version.description) }
+        updater.onAvailable = { [weak self] update in
+            guard let self, self.preferences.notificationsEnabled else { return }
+            self.notifier.postUpdate(update.version.description)
+        }
+        updater.workingCard = { [weak self] in self?.controller.workingCardTitle }
         updater.onChange = { [weak self] in self?.generalPage.refreshUpdateRow() }
         notifier.onUpdate = { [weak self] in self?.updater.install() }
 

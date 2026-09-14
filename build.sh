@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build DevDeck.app (ad-hoc signed) from the SwiftPM package.
+# Build DevDeck.app from the SwiftPM package, signed with a Developer ID when there is one.
 #
 # The suite runs first: shipping a build with broken core logic is worse than not building.
 # Pass --skip-tests to bypass that (CI should not).

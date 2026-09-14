@@ -60,6 +60,19 @@ public enum LocalAddress {
         return found.sorted { $0.name < $1.name }.map(\.address)
     }
 
+    /// Whether the site behind this URL is served by this machine, whatever name it goes by.
+    ///
+    /// Wider than `isLoopback`: DDEV serves `*.ddev.site`, which public DNS points back at
+    /// 127.0.0.1, and `*.localhost` never leaves the machine either. Such a link goes nowhere
+    /// while the project is down, which is what the card needs to know. It is not the question
+    /// the phone asks, since a router that picks the project by name cannot be reached by an
+    /// address instead.
+    public static func isServedHere(_ url: URL?) -> Bool {
+        if isLoopback(url) { return true }
+        guard let host = url?.host?.lowercased() else { return false }
+        return host.hasSuffix(".localhost") || host == "ddev.site" || host.hasSuffix(".ddev.site")
+    }
+
     /// Whether this URL is this machine talking to itself.
     public static func isLoopback(_ url: URL?) -> Bool {
         guard let host = url?.host?.lowercased() else { return false }

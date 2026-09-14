@@ -10,7 +10,8 @@ That single fact shapes the project:
   is an executable target with a tiny framework in `Tests/TestHarness`.
 - There is no `.xcodeproj`, no widget extension and no WidgetKit. Panels are borderless
   `NSWindow`s hosting SwiftUI views - see [adr/0002-spm-only-toolchain.md](adr/0002-spm-only-toolchain.md).
-- `build.sh` assembles `DevDeck.app` by hand and ad-hoc signs it.
+- `build.sh` assembles `DevDeck.app` by hand and signs it: with a Developer ID when the Keychain
+  has one, ad-hoc otherwise.
 
 ## Commands
 
@@ -97,7 +98,8 @@ the mode is not recorded and the next launch tries again.
 
 **Releases, once the Developer ID exists.** The workflow signs, notarises and staples on the
 runner, never here: `notarytool` ships with Xcode, which the runner has. It needs five
-repository secrets, and with any of them missing it builds the ad-hoc release it always did.
+repository secrets. Without `DEVELOPER_ID_P12` or `NOTARY_KEY_P8` it builds the ad-hoc release it
+always did; with those two set, a missing or wrong other secret fails the release.
 
 | secret | what it is |
 |---|---|
