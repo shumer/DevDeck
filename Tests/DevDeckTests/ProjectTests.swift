@@ -589,6 +589,18 @@ func runProjectTests(_ run: TestRun) async {
                       "and neither does a name that already resolves off this machine")
     }
 
+    await run.test("a site served by this machine is local by any of its names") {
+        try expect(LocalAddress.isServedHere(URL(string: "http://localhost:3000")))
+        try expect(LocalAddress.isServedHere(URL(string: "https://acme.ddev.site")),
+                   "DDEV's own names point back here, so the chip dims while the project is down")
+        try expect(LocalAddress.isServedHere(URL(string: "https://shop.acme.ddev.site:8443/admin")))
+        try expect(LocalAddress.isServedHere(URL(string: "http://api.localhost:8080")))
+        try expect(!LocalAddress.isServedHere(URL(string: "https://staging.acme.io")),
+                   "a deployed environment is reachable whether or not anything runs here")
+        try expect(!LocalAddress.isServedHere(URL(string: "https://notddev.site")))
+        try expect(!LocalAddress.isServedHere(nil))
+    }
+
     await run.test("the address offered is one a phone could reach") {
         // Nothing is asserted about the value: a build machine may have no network at all. What
         // matters is that anything returned is a real address on a real interface, never a

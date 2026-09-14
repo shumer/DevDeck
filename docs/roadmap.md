@@ -23,7 +23,8 @@
   window, and a menu-bar icon that says which app it belongs to.
 - **Settings as one list and a form** - grouped by kind with General pinned at the top, one item
   edited at a time, forms
-  built by `FormLayout` so they stretch with the window instead of leaving dead space.
+  built by `FormLayout` so they stretch with the window instead of leaving dead space (since
+  replaced by `SettingsForm`, see [adr/0018](adr/0018-settings-like-system-settings.md)).
 
 - **DDEV projects** - one card each, fed by a single `ddev list` for the whole deck, with PHP
   and database versions read from the checkout, paused treated as its own state, and a global
@@ -58,6 +59,12 @@
   touched fields under Advanced, answers next to the button that asked, a health check that reruns
   when the address changes, and "Settings for This Card…" on every card. Shipped as 0.13. See
   [adr/0018-settings-like-system-settings.md](adr/0018-settings-like-system-settings.md).
+- **What the documentation audit after 0.13 found** - the README checked line by line against the
+  code and brought up to date, and four places where the code had drifted from it: a DDEV site's
+  local link dims again while the project is down, no install starts under a running command
+  whichever way it was asked for, a copy without an identity and `seed-token.sh` no longer write
+  a token open on a machine where tokens are bound, and the update banner obeys the app's own
+  notifications switch.
 - **The lock is back in the menus** - a checkmark in the menu-bar menu and in a card's own
   right-click menu, next to Tidy, because it is toggled in the middle of arranging cards.
   Settings keeps its switch; both write the same preference.
@@ -86,7 +93,8 @@
   same way, a project can carry a link of its own, an inbox row can be marked read, and the deck
   can be saved as a named arrangement and put back. Shipped as 0.7.
 - **The Keychain stops asking** - tokens are stored with an access list that a rebuild does not
-  invalidate, so an update no longer costs one password prompt per token.
+  invalidate, so an update no longer costs one password prompt per token (for ad-hoc builds;
+  signed builds bind tokens to the app since 0.12).
 - **A release builds itself** - publishing a release on GitHub runs the suite, builds the bundle
   and attaches it to the tag, and every push runs the tests. Shipped as 0.6.
 - **Notifications** - a banner when somebody asks for your review, and optionally when something
@@ -99,7 +107,8 @@
   rendered at all ten sizes by `AppIconExport` and packed by `build.sh`; and a menu-bar icon with
   three states instead of a red glyph that meant three different things at once. Shipped as 0.5.
 - **The menu is for doing, Settings is for deciding** - placement, locking, packing, summoning
-  and start-at-login moved out of the menu-bar menu into Settings under General. Shipped as 0.4,
+  and start-at-login moved out of the menu-bar menu into Settings under General (placement and
+  summoning are on the Deck page since 0.13). Shipped as 0.4,
   together with the log tray, the collapsed card, summoning and the placement fixes.
 - **The deck stops moving cards nobody asked it to move** - restarting reproduces a layout
   exactly, and closing up a column is a switch rather than a habit. See

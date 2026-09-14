@@ -8,12 +8,15 @@ DevDeckApp     AppKit shell - windows, menu bar, placement, settings
 DevDeckUI      SwiftUI cards - pure rendering of a CardState
     │
 GitHubKit      one integration: GraphQL documents, models, services
+GitLabKit      one integration: accounts per host, the merge requests query
 ArcKit         one integration: projects, link templates, local Fusion stack
 DDEVKit        one integration: projects, ddev list, .ddev/config.yaml
 ProjectKit     one integration: plain projects - folder probe, detached start, health check
     │
-DevDeckCore    no AppKit, no integration specifics: config, HTTP, tokens, policies,
-               command runner, the Docker probe
+DevDeckCore    no AppKit, no integration specifics: config, HTTP, tokens, code identity,
+               policies, command runner, the Docker probe, the update check
+    │
+KeychainACL    C shim for the one deprecated Keychain call Swift cannot silence
 ```
 
 The rule that keeps this honest: **`DevDeckCore` and every integration module must build and
@@ -176,7 +179,7 @@ token lives in the Keychain under the account's own key.
 
 `GitHubWorkspace` fans a card's fetch out over every enabled account and merges the results.
 The rule everywhere: **a card fails only when every account fails.** A partial failure is
-carried on the snapshot as `[AccountFailure]` and drawn in the card footer, because blanking a
+carried on the snapshot as `[AccountFailure]` and drawn in the footer of the list cards, because blanking a
 card over one expired token is how a deck stops being trusted.
 
 Two details worth keeping in mind when adding a card:
@@ -252,7 +255,7 @@ matching whole words in the start command and the caption, framework ahead of ru
 have to agree on it exactly: the SwiftUI card drawing the rows and the AppKit panel being
 resized around them. A disagreement shows up as a clipped last row or a strip of empty glass.
 
-Expansion state lives on `DeckController` and is published, so `AppDelegate.syncPanelSizes()`
+Expansion state lives on `DeckController` and is published, so `PanelCoordinator.syncPanelSizes()`
 resizes the window whenever either the data or the expansion changes - keeping the top edge
 fixed and shifting the rest of the column out of the way.
 
@@ -469,8 +472,9 @@ from a terminal. See [adr/0018-settings-like-system-settings.md](adr/0018-settin
 
 ## Concurrency
 
-`DevDeckCore`, `GitHubKit` and the tests build in Swift 6 language mode with strict
-concurrency. `DevDeckUI` and `DevDeckApp` build in Swift 5 mode - see
+Every target except `DevDeckUI`, `DevDeckApp` and the three render tools (`IconPreview`,
+`GlyphPreview`, `AppIconExport`) builds in Swift 6 language mode with strict concurrency. Those
+build in Swift 5 mode - see
 [adr/0002-spm-only-toolchain.md](adr/0002-spm-only-toolchain.md).
 
 Shared mutable state uses actors (`HTTPCache`, `APITransport`, `FakeHTTPClient`) rather than
@@ -487,7 +491,10 @@ How an item is protected follows from the signature the app finds itself under.
 a mode: an ad-hoc build writes the open access list, because binding to a signature that
 changes every build costs a prompt per token per update, and a signed build lets the Keychain
 bind the item to the application. The mode is remembered, and the first launch under a
-different signature rewrites the items once. The same identity is what the updater compares a
+different signature rewrites the items once, but never from a bound mode down to the open one: a
+copy without an identity leaves bound tokens bound, and a token it saves gets the default access
+list rather than the open one (`KeychainAccessPolicy.opensAccess(for:storedMode:)`). If a prompt is dismissed during a rewrite,
+the mode is not recorded and the next launch tries again. The same identity is what the updater compares a
 downloaded build against. See [adr/0017-signature-decides.md](adr/0017-signature-decides.md).
 
 ## Adding a card

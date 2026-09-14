@@ -87,7 +87,7 @@ cannot work:
 | GitHub · pull requests | working | yes |
 | GitHub · inbox (notifications) | working | yes |
 | GitHub · Actions | working | no |
-| GitLab · merge requests | working | added per instance |
+| GitLab · merge requests | working | switched on when you add an instance |
 | Arc XP · one card per project | working | added per project |
 | DDEV · one card per project | working | added per project |
 | Project · one card per project | working | added per project |
@@ -97,8 +97,8 @@ cannot work:
 **The card carries both halves of "what do I owe today."** Your own open pull requests, and
 the ones somebody has asked you to review - two searches in one GraphQL request, because
 GitHub's search cannot OR those qualifiers. A review someone is waiting on sorts just under the
-blocked rows, wears an eye and the code `RV`, and leaves the card the moment you review it. Turn
-it off with `includesReviewRequests` if you would rather the card stayed only about your work.
+blocked rows, wears an eye and the code `RV`, and leaves the card the moment you review it. There
+is no setting to leave them out yet.
 
 **The same card again, for GitLab.** Merge requests you have open and the ones waiting on your
 review, in the same layout, the same row order and the same three health words, because the
@@ -106,13 +106,13 @@ question is the same one. It is a card of its own rather than more rows on the G
 two refresh against different servers and fail independently, and a row that had to say which
 host it came from would need a column the GitHub card does not have. One GraphQL request per
 instance covers both halves, since GitLab's `currentUser` answers "mine" and "waiting on me"
-without a search string. Add an instance under **Settings → GitLab instances**: a host, a token
-with `read_api`, and the browser profile it opens in. The host lives on the account because
+without a search string. Add one with **+** under the Settings sidebar, then **GitLab Instance**:
+an address, a token with `read_api`, and the browser profile it opens in. The host lives on the account because
 GitLab is routinely self-hosted, so gitlab.com and a customer's own instance are two accounts on
 one card. Nothing appears until you add one.
 
 The Actions card follows the repositories your open pull requests are in, up to five per
-account, unless you name them yourself under Settings → General → Fetching, where the refresh
+account, unless you name them yourself under **Settings → Cards → Fetching**, where the refresh
 interval lives too.
 
 ## Build and run
@@ -146,12 +146,12 @@ only works for the installed copy.
 | `./run-tests.sh projects docker` | only the test sections whose names contain those words |
 | `CODESIGN_IDENTITY=- ./build.sh` | ad-hoc on purpose, even on a machine that has a certificate |
 | `swift run DevDeck` | runs from the terminal without bundling - handy for `print` debugging |
-| `open -a DevDeck --args --settings project agrica-qdd` | opens Settings on a page, `general`, `deck`, `cards`, `notifications`, or on one account or project by kind and id |
+| `open -a DevDeck --args --settings project agrica-qdd` | opens Settings on a page, `general`, `deck`, `cards`, `notifications`, or on one item by kind (`github`, `gitlab`, `arc`, `ddev`, `project`) and id |
 | `open -a DevDeck --args --update` | checks for a newer release and installs it, the same as the menu line |
 | `pkill -f DevDeck` | quits every running copy |
 
-**Settings → General shows the running version** - `DevDeck 0.12 (build 115)` - and which bundle
-it came from. The marketing number lives in `VERSION` and is bumped by hand when a release
+**Settings → General shows the running version** under its heading, `DevDeck 0.13 (build 119)`,
+and which bundle it came from in the note at the bottom. The marketing number lives in `VERSION` and is bumped by hand when a release
 earns a name; the build number is the commit count, so it moves on every rebuild. That is the
 quickest way to tell whether the copy in front of you is the change you just made or the one
 that was already running.
@@ -164,7 +164,7 @@ costs.
 ### First run
 
 ```bash
-scripts/seed-token.sh        # optional: copies a token from env.local into the Keychain
+scripts/seed-token.sh        # optional: copies a token from ~/Projects/CodeStore/AIData/env.local into the Keychain
 scripts/smoke-test.sh        # optional: real GitHub and GitLab calls, prints counts, never a token
 ```
 
@@ -174,14 +174,21 @@ employer:
 
 ```bash
 scripts/seed-token.sh --var SHUMER_GITHUB_TOKEN          # a differently named variable
-scripts/seed-token.sh --account work --var WORK_TOKEN    # the second account's own token
+scripts/seed-token.sh --account account-2 --var WORK_TOKEN    # another account's own token
 ```
 
-The account id is the one in **Settings → GitHub accounts**; `default` is the first account and
-keeps the un-suffixed Keychain key. The token is checked against the API before it is stored, so
+It protects the item the way the app would: open while the app's tokens are open, and trusting
+only `/Applications/DevDeck.app` once a signed copy has bound them.
+
+The account id is not shown in Settings. `default` is the account the app starts with and keeps
+the un-suffixed Keychain key; accounts added later are `account`, `account-2` and so on, and
+`defaults read com.shumer.devdeck` lists them. The token is checked against the API before it is stored, so
 a rejected one never lands in the Keychain to fail invisibly later.
 
-Without a token the app opens its settings window on first launch; paste one there instead.
+While no GitHub account has a token, the app opens its settings window at launch; paste one
+there instead. The first GitHub account and the first GitLab instance also read
+`DEVDECK_GITHUB_TOKEN` or `GITHUB_TOKEN`, and `DEVDECK_GITLAB_TOKEN` or `GITLAB_TOKEN`, from the
+environment when the Keychain has nothing for them.
 
 Settings live in the `com.shumer.devdeck` preferences domain. To start over:
 `defaults delete com.shumer.devdeck` (tokens survive that - they are in the Keychain).
@@ -189,12 +196,13 @@ Settings live in the `com.shumer.devdeck` preferences domain. To start over:
 ### Several accounts
 
 One token rarely covers everything: a fine-grained token is approved per organisation, and
-some organisations sit behind SAML SSO. **Settings → GitHub accounts** manages a list - each
-account has its own label, its own organisations and its own token in the Keychain.
+some organisations sit behind SAML SSO. **Accounts** in the Settings sidebar holds the list
+(**+**, then **GitHub Account**): each account has its own name, its own token in the Keychain
+and, under **Advanced**, the organisations it is limited to.
 
 All accounts feed the same cards. Pull requests visible to two accounts are shown once. When
 one account fails, the others still render and the card footer says which one is missing;
-a card only fails outright when every account fails. With more than one account configured,
+a card only fails outright when every account fails. With more than one account switched on,
 every row carries a chip saying which one it came from.
 
 ### Links open as the right identity
@@ -206,8 +214,8 @@ profile as well, listed by the names you gave them. Clicking a row then lands in
 that is signed in as that account.
 
 The pickers apply the moment you change them - there is a **Test** button beside them that
-opens one page so you can see where it lands. Only the token needs an explicit **Verify
-token** press, because it is checked against the API before being stored.
+opens one page so you can see where it lands. Only the token needs an explicit **Save Token**
+(or Return), because it is checked against the API before being stored.
 
 Safari has profiles but no way to choose one from outside the app, and Firefox's `-P` depends
 on what is already running; both are offered without a profile picker rather than with one
@@ -235,21 +243,23 @@ catch people out:
   there, and until then the API answers with an empty result rather than an error;
 - under SAML SSO, a classic token must be **authorised for each organisation** as well.
 
-`scripts/smoke-test.sh` prints how many organisations the token can actually see, which is
-the fastest way to tell "no open pull requests" from "cannot see the organisation". It does
-the same for every GitLab instance in Settings, with the token each one has in the Keychain.
+`scripts/smoke-test.sh` checks the `default` account's token and prints how many repositories
+and organisations its open pull requests span; zero organisations where you know there are pull
+requests is the fastest way to tell "no open pull requests" from "cannot see the organisation".
+It also checks every enabled GitLab instance, with the token each one has in the Keychain.
 
 ## Arc XP projects
 
-**Settings → Arc projects → Add project.** Each project becomes its own card with the links
+**Settings, +, Arc XP Project.** Each project becomes its own card with the links
 you use, the browser they open in, and control of its local Fusion stack.
 
 - **Links** are templates with `{org}` and `{site}` substituted. **The organisation field
   carries the environment**: type `sandbox.acme` for the sandbox and `acme` for
   production, and the templates add nothing of their own - PageBuilder becomes
   `https://sandbox.acme.arcpublishing.com/home/`. PageBuilder, Composer and Deployer are
-  confirmed against a real organisation; Site Service and Delivery API are guesses, so press
-  **Test** on each and edit the field in place when it is wrong.
+  confirmed against a real organisation; Site Service and Delivery API are guesses and ship
+  switched off, so open them from the card once and edit the field in place when it is wrong.
+  **Add Link** puts your own beside them, and those can be removed again.
 - **Sandbox and Prod ship empty**: a published site lives on its own domain and there is
   nothing to derive it from. Paste the URLs in and switch them on.
 - **Two rows.** Arc's tooling on top - PageBuilder, Composer, Deployer, all in blue - and the
@@ -258,19 +268,22 @@ you use, the browser they open in, and control of its local Fusion stack.
   amber: production is the one worth a beat of hesitation, so it is the one that is not calm.
 - **Local stack** buttons run the Arc CLI in the project folder: **Start** is `npx fusion
   daemon` (the CLI's background mode - `fusion start` runs in the foreground and would hold
-  the app hostage), **Stop** is `npx fusion stop`, **Restart** is one then the other. All three
-  are editable per project.
+  the app hostage), **Stop** is `npx fusion stop`, **Restart** is one then the other. Start and
+  Stop are editable per project, Stop under **Advanced**. After a stop the card checks for up to
+  thirty seconds that the engine really went away, and says so when it is still answering.
 - **Running or not** is answered by asking the engine, not by watching processes: the card
-  requests `/release` and shows the engine version it reports. A stack you started by hand in
+  requests `/release` to decide it is up, and shows the engine version from the fusion-engine
+  container's image tag, with how many containers are running. A stack you started by hand in
   a terminal therefore shows as running too - the card reports what is actually serving.
 - **The port comes from the project's `.env`.** Fusion defaults to 80, but `PORT` in the
   checkout overrides it, and that file is the only honest source. Leave **Local URL** empty
-  and the card follows it; fill it in only for a stack that does not. The chip says
+  and the card follows it; fill it in only for a stack that does not. **Check path** is what is
+  asked, `/release` by default. The chip says
   **Local site** and greys out while the stack is down; the address it opens is in its
   tooltip, along with every other link's.
 - **After a start the card waits.** `fusion daemon` returns as soon as the containers exist,
-  while the engine needs longer to serve, so the card polls for up to a minute before
-  concluding anything - and if nothing ever answers it names the URL it tried.
+  while the engine needs longer to serve, so the card polls every three seconds for up to three
+  minutes before concluding anything - and if nothing ever answers it names the URL it tried.
 - **The branch is on the card, and clicking it opens the repository.** Both come from the files
   in `.git` - `HEAD` for the branch, `config` for origin - read directly rather than by running
   `git` every ten seconds. So the card shows what the running stack is actually serving,
@@ -290,7 +303,7 @@ from a machine that plainly has it.
 
 ## DDEV projects
 
-**Settings → DDEV projects → Add project** offers what `ddev list` found, so there is no
+**Settings, +, DDEV Project…** offers what `ddev list` found, so there is no
 folder to go hunting for - DDEV already knows every project on the machine.
 
 - **One `ddev list -j` answers for the whole deck.** Six cards cost the same as one, which is
@@ -298,7 +311,8 @@ folder to go hunting for - DDEV already knows every project on the machine.
 - **The framework version comes from `composer.lock`.** DDEV's own `type:` is a setting
   nobody updates after an upgrade - two projects here still said `drupal9` while running
   Drupal 11.4.4 and 10.6.11 - so the footer reads the lock file, which cannot drift that way,
-  and falls back to the DDEV type only when there is no lock file at all.
+  and falls back to the DDEV type when there is no lock file or it names none of Drupal, TYPO3,
+  Laravel or Symfony.
 - **PHP and database versions come from `.ddev/config.yaml`.** `ddev list` does not carry
   them and `ddev describe` is a process per project, while the file is right there in the
   checkout - the same trick as Arc's `PORT` and the git branch.
@@ -308,23 +322,27 @@ folder to go hunting for - DDEV already knows every project on the machine.
   so: edits stop reaching the container and nothing else on screen would hint at why.
 - **Two rows of links.** Mailpit and xhgui on top, straight from DDEV - Mailpit on by
   default, xhgui not. Below them the environments: the local site, which DDEV reports, then
-  **Test, UAT and Prod**, which ship empty for you to paste addresses into. Local is green,
+  **Test, UAT and Prod**, which ship empty for you to paste addresses into. Local, a
+  `*.ddev.site` address like any `localhost` one, is green,
   test and UAT violet, production amber.
 - **Only the local link waits on the container.** It is dimmed while the project is down,
   because a link into a stopped project lands on a connection error that reads as a broken
   app; a deployed site is reachable either way.
+- **Start, Stop and Restart** are `ddev start`, `ddev stop` and `ddev restart`; a project
+  `ddev list` does not know is `unknown`, in red.
 - **Power off all DDEV** in the menu runs `ddev poweroff` - every project and the router, for
   when the laptop needs its memory back.
 
 ## Plain projects
 
 Everything that is neither Arc nor DDEV: a compose stack, a dev server, a Makefile, a
-Next and Nest monorepo. **Settings → Projects → +** asks for a folder and then reads it - a
-compose file, a `dev` script in `package.json`, a `up:` target in a Makefile - and fills the
-commands in for you. The **Detect** button does the same again later, and nothing is ever
-guessed over something you typed.
+Next and Nest monorepo. **Settings, +, Project from a Folder…** asks for a folder and then reads
+it, in this order: a compose file, a `dev` script in `package.json`, an `up`, `start` or `dev`
+target in a Makefile, a `start` script. It fills the commands in for you once, when the project is
+added. **Detect** asks again later and replaces the start and stop commands and both switches,
+but keeps a caption or Check URL you already filled in.
 
-- **One checkbox decides how the command is run.** *The command keeps running* is on for
+- **One switch decides how the command is run.** *Long-running command* is on for
   `npm run dev` and off for `docker compose up -d`. A command that holds its process is started
   detached with `nohup`, its output goes to a log under `~/Library/Application
   Support/DevDeck/projects`, and its process id is written down beside it; the card's log tray
@@ -334,15 +352,15 @@ guessed over something you typed.
   wrapper, and killing it alone leaves the server it spawned holding the port - which then makes
   the next start fail for a reason nothing on screen would explain.
 - **The health URL decides whether it is running**, exactly as the Arc card asks the engine - so
-  a stack you started yourself in a terminal reads as running too. Up means 2xx, 3xx, 401 or 403;
+  a stack you started yourself in a terminal reads as running too. Without one, running means the
+  process it started is still alive. Up means 2xx, 3xx, 401 or 403;
   a 404 or a 500 does not count. A local port is a shared resource, and the first version of this
   rule counted any answer at all: a Docker container from another project held 8080, answered the
   configured `/health` with a 404, and the card reported a backend nobody had started as running.
 - **Live process, silent URL, is `starting…`** rather than stopped - that is a dev server
   compiling, and it resolves itself within seconds.
-- **Test, UAT and Prod ship empty**, next to the local site, the same as everywhere else. Extra
-  tooling links may use `{site}` to avoid repeating the port.
-- **Needs Docker** puts the card behind the Docker check below. It is ticked for you when the
+- **Test, UAT and Prod ship empty**, next to the local site, the same as everywhere else.
+- **Needs Docker** (under **Advanced**) puts the card behind the Docker check below. It is ticked for you when the
   folder is a compose project, and also when the `dev` script reaches Docker through another
   script of its own: `bun run dev` being `bun run db:up && turbo run dev` is a stack that cannot
   start without a daemon, and a card that does not know it offers a Start that cannot work.
@@ -377,25 +395,27 @@ hour on a Monday morning.
 └────────────────────────────────────────────┘
 ```
 
-Unpushed work leads, because it is the only thing on the card that a dead disk takes with it.
+Unpushed work and branches with no remote lead, because they are the only things on the card
+that a dead disk takes with it.
 A clean checkout level with its remote is not a row: listing those is how a card becomes a wall
 of green nobody reads. It needs no token and no network, since `git status --porcelain=v2
 --branch` answers all four questions in one command per checkout, and clicking a row opens that
-folder in a terminal. Off by default; turn it on in the menu.
+folder in a terminal. Off by default; turn it on in the menu or under **Settings → Cards**.
 
 ## Docker
 
 Every local project sits on a container runtime, and a Start pressed without one produces a wall
 of shell output the card has nowhere to put. So the deck asks first, once for the whole deck, on
-the same ten-second loop: `docker version --format '{{.Server.Version}}'`.
+the same ten-second loop, which runs only while a project card is on the deck:
+`docker version --format '{{.Server.Version}}'`.
 
 - **The daemon is asked, not the process table.** Colima, OrbStack, Rancher and a remote context
   all serve `docker` with no Docker Desktop anywhere, and looking for a running app would call
   every one of them "not running".
-- **A card that needs Docker says so** - the pill reads `docker off`, the state line says why,
-  and the Start button becomes **▶ Start Docker**, which opens Docker Desktop (or OrbStack,
-  Rancher, Podman Desktop) without stealing focus. The card then says `docker starting…` until
-  the daemon answers.
+- **A card that needs Docker says so** on its state line, *Docker is not running, start it
+  first*, and the Start button becomes **Start Docker**, which opens Docker Desktop (or OrbStack,
+  Rancher, Podman Desktop) without stealing focus. The card then says `starting Docker…` until
+  the daemon answers, for up to three minutes.
 - **A running project is never gated.** Something is clearly serving it, and no probe beats that.
 - **Not having asked yet blocks nothing**, so the first second of a launch does not grey out
   every button.
@@ -404,14 +424,18 @@ the same ten-second loop: `docker version --format '{{.Server.Version}}'`.
 
 ### Status codes
 
-Rows end in a two-character code so the width goes to the title. Hovering a row spells it out.
+GitHub rows end in a two-character code so the width goes to the title. Hovering a row spells it out.
 
 | | | | |
 |---|---|---|---|
 | `RV` | waiting for **your** review | `CP` | checks running |
 | `CF` | checks failed | `DR` | draft |
 | `CR` | changes requested | `AP` | approved |
-| `T3` | three unresolved threads | `WR` | waiting for review |
+| `T3` | three unresolved threads, up to `T9` | `WR` | waiting for review |
+
+GitLab rows have their own: `CF` conflicts, `CI` pipeline failed, `DR` draft, `··` pipeline
+running, `2ap` two approvals left, `3th` three unresolved threads, `ok` ready to merge. Only
+GitHub's blocked rows light the menu-bar badge.
 
 The coloured dot says the same thing at a glance: red is blocked, amber needs someone, green
 is done.
@@ -438,9 +462,11 @@ Being an agent app, it appears in Finder and in Login Items rather than in the D
 Its menu holds what you do:
 
 - **Update to …**, as the first line and only when a newer release exists; see
-  [Updating](#updating).
-- **Cards** - show or hide each card; a hidden card is not fetched at all. Projects get their own
-  group per kind, below the built-in cards.
+  [Updating](#updating). Under it, when the badge is lit, the reason in words.
+- **Cards** - show or hide each card; a hidden card is not fetched at all. Projects get a submenu
+  per kind below the built-in cards, with how many are shown in its title, and **Power off all
+  DDEV** follows when there is a DDEV project.
+- **Open pull requests in browser**.
 - **Tidy panels into columns** - close up gaps without resetting where you put them. It anchors
   on the topmost panel and stacks downwards, starting a new column beside it whenever the next
   card would hang below the screen, so a deck of six cannot push its last card under the bottom
@@ -451,12 +477,11 @@ Its menu holds what you do:
   sits; the tick shows which one you are in, compared rather than remembered, so it cannot claim
   an arrangement you have since dragged your way out of. Alt-click one to forget it.
 - **Lock positions** - a checkmark; while it is on, a stray drag moves nothing.
-- **Power off all DDEV**, which asks first, **Open pull requests in browser**, **Refresh
-  now**, **Settings…**, **Quit**
+- **Tidy panels into columns**, **Refresh now**, **Settings…** and **Quit DevDeck**.
 
-What the deck *is* rather than what you do with it lives in Settings, under General: where the
-panels sit, whether they are locked, whether a column packs itself, the summon shortcut and its
-dimming, and start-at-login. A menu that mixes the two grows until the thing you came for is
+What the deck *is* rather than what you do with it lives in Settings: start at login under
+**General**, and where the panels sit, the lock, closing gaps, the summon shortcut and its dimming
+under **Deck**. A menu that mixes the two grows until the thing you came for is
 somewhere in the middle of it. The one exception is the lock, which is also a checkmark in both
 menus: it gets toggled in the middle of arranging cards, and a trip to a settings window for that
 is the one interruption the deck should not cost.
@@ -477,14 +502,20 @@ interval and the Actions repositories. **Notifications** is the master switch an
 what each account may interrupt you about. Under them come **Accounts**, GitHub and GitLab
 together, and **Projects** of every kind, alphabetical, each with the mark its card wears and a
 dot only while it is running or starting. Search narrows the list, the arrow keys move through it
-and Delete removes the selected thing. The window remembers its size.
+and Delete removes the selected thing after asking; ⌘F goes to the search field. The window
+remembers its size.
 
-A project's form is in the order you fill it in: folder and start command, then the health check
-with its live answer, then the links on the card; name, caption, stop command, Docker and browser
-are under **Advanced**. The answer to **Detect** or **Test** appears next to the button, and a
-health check reruns by itself when the address changes. An account's form is its token, one line
-saying whether it is stored and whether it works, a field for a new one where Return saves it, and
-a link to create one. Everything else applies as you change it.
+Every form has **Show on deck** in its header. A plain project's form is in the order you fill
+it in: folder and start command, then the health check with its live answer, then the links on
+the card; name, caption, stop command, Docker and browser are under **Advanced**. An Arc form
+starts with the local stack, then the organisation and site ID, then the links, where you add
+and remove your own; name, stop command and browser are under **Advanced**. A DDEV form is the
+folder and name, which tools the card shows, the links and the browser. The answer to **Detect**
+or **Test** appears next to the button, and a check reruns by itself when the address changes.
+An account's form is its token, one line saying whether it is stored and whether it works, a
+field for a new one where Return or **Save Token** saves it, and a button to create one; then its
+name and browser, for GitLab its address, and for GitHub the organisations under **Advanced**.
+Everything else applies as you change it.
 
 Drag a panel anywhere; the position is remembered per card - **against the display it is on**,
 not as a point on the desktop. Unplug the external monitor and the cards that live on it are
@@ -494,27 +525,29 @@ This is why a deck kept on the laptop screen no longer scatters when an external
 happens to be the main one comes and goes, and why quitting and reopening puts every panel back
 exactly where it was rather than a little further down each time. The deck moves a card only when
 you asked it to: collapsing one, opening a log, expanding a list. Data arriving never moves
-anything. **Keep the column packed**, in Settings and off by default, closes the gaps in a column whenever
+anything. **Close gaps automatically**, under Settings → Deck and off by default, closes the gaps in a column whenever
 a card changes height, at the price of any gap you left in it on purpose.
 
-**Being told.** One master switch under Settings → General → Notifications, off until you turn it
-on, because asking for notification permission before an app has done anything for you is what
-people say no to and never revisit. *What* you are told about belongs to each account, in its own
-form under GitHub accounts and GitLab instances: a banner when somebody asks for your review, and
-one when something of yours there is blocked. So a customer's instance can stay quiet while your
+**Being told.** One switch, **Allow notifications** on the Notifications page of Settings, off
+until you turn it on, because asking for notification permission before an app has done anything
+for you is what people say no to and never revisit. *What* you are told about is set per account
+on the same page, in one table with **Review requests** and **My work blocked** for every GitHub
+account and GitLab instance: a banner when somebody asks for your review, and one when something
+of yours there is blocked. So a customer's instance can stay quiet while your
 own does not, per token, per kind.
 
 The banner carries the service's own mark rather than the app's icon, so who is asking is
 answered before the words are read. Nothing is announced on the first answer after a launch,
 since that is the state you left things in, and nothing is announced twice, even across restarts.
 Three at once become one line rather than three banners. A click opens the pull or merge request
-in the browser profile of the account that owns it, and **Send a test** posts one immediately so
+in the browser profile of the account that owns it, and **Send Test Notification** posts one immediately so
 the whole chain can be checked without waiting for somebody to ask for a review.
 
-While the display a card belongs to is unplugged, if you tidy or drag the parked card, that is
-where it now lives, and it stays there. Click a row to open that pull
-request, double-click the panel background to open the list on github.com, right-click a
-panel for the same menu.
+While the display a card belongs to is unplugged, tidying or dragging the parked card makes that
+its new home.
+
+Click a row to open that pull request, and double-click a list card's background to open the same
+list on the web.
 
 Buttons work on the first click even though the deck sits behind your windows and is never the
 frontmost app - which is not what AppKit does by default, and is why they used to need pressing
@@ -573,7 +606,8 @@ question on all of them:
 up until the next press. Nothing moves and nothing is redrawn: they are the same panels at a
 different window level, which is why this costs almost nothing. The screen dims 45% while they are
 up, because dark glass over a white editor is unreadable otherwise. Both switches and the
-combination itself are in Settings, General, under Summoning. It needs no
+combination itself are in Settings, Deck, under Shortcut, with a **Default** button that puts
+⌥Space back. It needs no
 permission: the shortcut is a Carbon hot key, not a global key monitor, so macOS has nothing to
 ask you about.
 
@@ -629,7 +663,8 @@ is one, so on the author's machine and on every machine that installed a release
 bound. The first launch after the signature changes rewrites the stored items once, one prompt
 each, and remembers the mode. It never goes the other way by itself: a copy without an identity,
 `swift run` or a build with `CODESIGN_IDENTITY=-`, leaves bound tokens bound and asks for the
-password on each read rather than opening them to every process. Without a Developer ID, a
+password on each read rather than opening them to every process, and a token it saves is bound
+to that copy rather than open, so the signed app asks for it once. Without a Developer ID, a
 certificate made in Keychain Access (Certificate Assistant, Create a Certificate, type Code
 Signing) and `CODESIGN_IDENTITY="its name" ./build.sh` binds your own tokens the same way. See
 [adr/0017-signature-decides.md](docs/adr/0017-signature-decides.md).
@@ -640,17 +675,18 @@ Publishing a release on GitHub builds the app and attaches it: `.github/workflow
 runs the suite, builds the bundle and uploads `DevDeck-<version>-<build>.zip` to the tag, so the
 tag and the download cannot disagree about what is in it. Nothing is built on an ordinary push,
 because a build nobody asked for is a build nobody checks. `.github/workflows/tests.yml` runs the
-suite on every push and pull request and fails on a compiler warning, which is the one place
+suite on every push to main and on every pull request and fails on a compiler warning, which is the one place
 nobody is in a hurry.
 
 **Releases are signed with a Developer ID, hardened, notarised by Apple and stapled on the
 runner**, from 0.12 on. macOS opens the download as it is: unzip, drag into Applications, open.
-Five repository secrets switch that path on, `DEVELOPER_ID_P12`, `DEVELOPER_ID_P12_PASSWORD`,
+It takes five repository secrets, `DEVELOPER_ID_P12`, `DEVELOPER_ID_P12_PASSWORD`,
 `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` and `NOTARY_KEY_P8`; [docs/development.md](docs/development.md)
-says where each comes from. Notarisation is Apple's queue and takes minutes, occasionally most of
+says where each comes from. `DEVELOPER_ID_P12` and `NOTARY_KEY_P8` decide the path, so with those
+two set a missing or wrong other secret fails the release rather than quietly shipping ad-hoc. Notarisation is Apple's queue and takes minutes, occasionally most of
 an hour.
 
-Without the secrets the workflow builds the ad-hoc release it always did, and macOS quarantines
+Without those two the workflow builds the ad-hoc release it always did, and macOS quarantines
 that download. The notes then carry two routes: Finder (unzip, drag into Applications,
 right-click and Open, which needs no permissions), and a line for a terminal that may read
 Downloads:
@@ -671,15 +707,20 @@ run of the workflow against an existing tag builds that tag's commit and replace
 From 0.11 on the app keeps itself current, by asking rather than by doing. Thirty seconds after
 launch and every six hours it reads the latest release on GitHub; when that is newer than the
 running copy, the menu-bar menu opens with **Update to …** as its first line and one banner says so,
-once per version and only if notifications are on. Nothing is downloaded until that line is
-clicked. Then: download, `ditto`, a check that what unpacked is DevDeck at the promised version and,
-from a signed copy, signed by the same Developer ID, the old copy to the Trash, the new one in its place, and a relaunch a second later with every
-panel where it was. Option-click the line to read the notes first.
+once per version and only if notifications are on. Nothing is downloaded until you ask:
+that line, the banner, **Update Now** in Settings, or `open -a DevDeck --args --update`. Then:
+download, `ditto`, a check that what unpacked is DevDeck at the promised version and, from a
+signed copy, signed by the same identity as the running one, the old copy to the Trash, the new
+one in its place, and a relaunch a second later with every panel where it was. Option-click the
+line to read the notes first. A copy signed with a certificate of your own therefore does not
+update itself to a release, which is signed with the Developer ID.
 
 What the app downloads itself carries no quarantine, so an update never needs the right-click
-dance a first install does. The line is disabled while a card is mid-command, because replacing
-the bundle under a running `fusion start` is how a stack is left half up. Settings, General has
-the switch and a **Check now** button with the last answer beside it. See
+dance a first install does. No install starts while a card is mid-command, however it was asked
+for, because replacing the bundle under a running `fusion start` is how a stack is left half up:
+the menu line says what it waits for, and an install already asked for goes ahead by itself once
+the command is done. Settings,
+General has the switch and a **Check Now** button with the last answer beside it. See
 [adr/0016-self-update.md](docs/adr/0016-self-update.md).
 
 ## Documentation
@@ -688,20 +729,21 @@ the switch and a **Check now** button with the last answer beside it. See
 - [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
-- [docs/adr/](docs/adr/) - seventeen decisions and what they cost: why native, why SwiftPM only,
+- [docs/adr/](docs/adr/) - eighteen decisions and what they cost: why native, why SwiftPM only,
   why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
   shares one call, how a plain project is started, why Docker is checked first, how a card is
   laid out, why the deck is quieter than it was, why a card has two sizes, why the deck moves a
   card only when asked, why GitLab is a card of its own, how a monorepo is read, why the
-  application layer is in pieces, how the app updates itself, and why the signature decides how
-  tokens are kept
+  application layer is in pieces, how the app updates itself, why the signature decides how
+  tokens are kept, and why the settings window is built like System Settings
 
 ## Layout
 
 ```
 Sources/
-  DevDeckCore/     configuration, cards, HTTP transport, tokens, policies, command runner,
-                   git branch, browser choice, the Docker probe
+  DevDeckCore/     configuration, cards, HTTP transport, tokens and code identity, policies,
+                   command runner, git branch, browser choice, the Docker probe, log tail,
+                   the refresh cycle, the update check
   KeychainACL/     the C shim for the one deprecated Keychain call Swift cannot silence
   GitHubKit/       GraphQL and REST clients, models, per-account fan-out
   GitLabKit/       GitLab accounts per host, the merge requests query, models
@@ -715,10 +757,12 @@ Sources/
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (346 tests, offline)
+  DevDeckTests/    the suite (348 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
   AppIconExport/   renders the application icon at all ten sizes for build.sh
   GlyphPreview/    renders every card mark at the size a card draws it
+scripts/           seed-token.sh, smoke-test.sh
+docs/              architecture, development, GitHub API, roadmap, adr/
 ```
