@@ -65,7 +65,7 @@
   token no longer calm; projects on this Mac that stopped on their own, did not start, stopped
   answering or lost their file sync, and Docker quitting under them as one row; workflows failing
   on a main branch; commits only on this Mac for more than three days; banners that say what
-  happened, per project switches, and one set of row codes for both services. See
+  happened, per project switches, and one set of row codes for both services. Shipped as 0.15. See
   [adr/0019-attention-in-tiers.md](adr/0019-attention-in-tiers.md).
 - **What the documentation audit after 0.13 found** - the README checked line by line against the
   code and brought up to date, and four places where the code had drifted from it: a DDEV site's
