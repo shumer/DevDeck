@@ -408,7 +408,8 @@ itself that one of them could do.
   not a layout event. See [Placement](#placement).
 - `DeckMenu` owns the menu-bar item and every menu, all filled in as they open.
 - `ArrangementsController` owns saved decks: naming one, applying one, offering them.
-- `Summoner` owns the key that raises the deck, the tap-to-latch rule and the veils; what
+- `Summoner` owns the key that raises the deck, the tap-to-latch rule, the veils, and the click
+  or Esc that puts back a deck raised from the menu or a banner; what
   "raised" does to the panels is the coordinator's.
 - `Updater` asks GitHub for the latest release and, when told to, installs it: download,
   `ditto`, a check of the unpacked bundle, the old copy to the Trash, the new one in its place,

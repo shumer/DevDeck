@@ -464,7 +464,8 @@ tooltip counts by tier, `DevDeck: 2 waiting on you, 1 to fix`, and VoiceOver rea
 happened and to what, `Review: Fix cache invalidation on publish`, with where, who and why under
 it, `acme/arc-web #482 · anna asked`, and how long ago on the right. Clicking it goes there: the
 pull request in the browser of its account, the account's form for a token, the deck raised with
-a project's log open, Docker started, a terminal in a checkout. ⌥ turns a project's row into
+a project's log open, Docker started, a terminal in a checkout. A deck raised from the menu or a
+banner goes back down with a click anywhere outside the cards, Esc, or the shortcut. ⌥ turns a project's row into
 **Dismiss** and an inbox row into **Mark as Read**. Three rows show per tier, the rest are in a
 submenu under them, and a review that is also an inbox notification is one row. With nothing to
 say the menu opens on **Nothing needs you** and when the deck last checked. It used to open on a
@@ -742,6 +743,12 @@ signed copy, signed by the same identity as the running one, the old copy to the
 one in its place, and a relaunch a second later with every panel where it was. Option-click the
 row to read the notes first. A copy signed with a certificate of your own therefore does not
 update itself to a release, which is signed with the Developer ID.
+
+A copy opened straight from Downloads without being moved to Applications runs from a read-only
+folder macOS makes for it, and cannot be replaced where it is. Its update goes into
+`/Applications/DevDeck.app` instead (`~/Applications` without the right to write there), the old
+copy in Downloads goes to the Trash, and General in Settings says why the copy is read-only rather
+than showing the random folder it runs from.
 
 What the app downloads itself carries no quarantine, so an update never needs the right-click
 dance a first install does. No install starts while a card is mid-command, however it was asked
