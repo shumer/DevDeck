@@ -59,6 +59,14 @@
   touched fields under Advanced, answers next to the button that asked, a health check that reruns
   when the address changes, and "Settings for This Card…" on every card. Shipped as 0.13. See
   [adr/0018-settings-like-system-settings.md](adr/0018-settings-like-system-settings.md).
+- **What needs you, named** - the menu-bar badge in four shapes for four tiers, waiting on you,
+  needs fixing, your work is stuck and good to know; the menu listing the things themselves with
+  where, who and how long, one click from each; GitLab counted, a review counted once, a rejected
+  token no longer calm; projects on this Mac that stopped on their own, did not start, stopped
+  answering or lost their file sync, and Docker quitting under them as one row; workflows failing
+  on a main branch; commits only on this Mac for more than three days; banners that say what
+  happened, per project switches, and one set of row codes for both services. See
+  [adr/0019-attention-in-tiers.md](adr/0019-attention-in-tiers.md).
 - **What the documentation audit after 0.13 found** - the README checked line by line against the
   code and brought up to date, and four places where the code had drifted from it: a DDEV site's
   local link dims again while the project is down, no install starts under a running command

@@ -25,6 +25,7 @@ scripts/smoke-test.sh             # real GitHub and GitLab calls using the store
 swift run DevDeck                 # run from the terminal without bundling
 swift run IconPreview out.png     # draw the menu-bar icon at menu-bar size, at 2×
 swift run GlyphPreview out.png    # draw every card mark at 15 points and blown up
+open -a DevDeck --args --menu sample   # the installed app's menu, with a row of every tier
 pkill -f DevDeck                  # quit a running instance
 ```
 

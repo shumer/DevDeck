@@ -17,7 +17,10 @@ public enum NotificationArtwork {
     /// difference between a logo and a smudge.
     private static let size: CGFloat = 128
 
+    /// Nil for the app's own news, which the application icon macOS puts on every banner
+    /// already says.
     public static func fileURL(for source: DeckAlert.Source) -> URL? {
+        guard source != .devdeck else { return nil }
         let directory = FileManager.default
             .urls(for: .cachesDirectory, in: .userDomainMask)
             .first?
@@ -37,7 +40,6 @@ public enum NotificationArtwork {
     /// Not a bare transparent logo: GitHub's mark is white, which disappears on a light banner,
     /// and the tile is what makes both marks read the same way in both appearances.
     private static func render(_ source: DeckAlert.Source) -> Data? {
-        let vector = source == .github ? BrandMark.github : BrandMark.gitlab
         let bounds = NSRect(x: 0, y: 0, width: size, height: size)
 
         guard let rep = NSBitmapImageRep(
@@ -63,16 +65,60 @@ public enum NotificationArtwork {
         // The mark at 60% of the tile, which is the usual optical margin for a logo in a square.
         let inset = size * 0.2
         let markRect = bounds.insetBy(dx: inset, dy: inset)
-        let path = SVGPath.path(vector.paths[0], viewBox: vector.viewBox, in: markRect)
-        NSColor(vector.color).setFill()
-        let bezier = NSBezierPath(cgPath: path.cgPath)
-        // The vector is authored with y pointing down, which is the opposite of what AppKit
-        // draws in, so the mark arrives upside down unless it is flipped back here.
+        // The vectors are authored with y pointing down, which is the opposite of what AppKit
+        // draws in, so every mark arrives upside down unless it is flipped back here.
         let flip = NSAffineTransform()
         flip.translateX(by: 0, yBy: bounds.height)
         flip.scaleX(by: 1, yBy: -1)
-        bezier.transform(using: flip as AffineTransform)
-        bezier.fill()
+
+        switch source {
+        case .github, .gitlab, .ddev, .docker:
+            let vector: BrandMark.Vector = {
+                switch source {
+                case .gitlab: return BrandMark.gitlab
+                case .ddev: return BrandMark.ddev
+                case .docker: return BrandMark.docker
+                default: return BrandMark.github
+                }
+            }()
+            NSColor(vector.color).setFill()
+            for data in vector.paths {
+                let bezier = NSBezierPath(cgPath: SVGPath.path(data, viewBox: vector.viewBox, in: markRect).cgPath)
+                bezier.windingRule = vector.isEvenOdd ? .evenOdd : .nonZero
+                bezier.transform(using: flip as AffineTransform)
+                bezier.fill()
+            }
+        case .arc:
+            // The two strokes of Arc's A, as the card draws them, on a 100-unit square.
+            let unit = markRect.width / 100
+            func polygon(_ points: [(CGFloat, CGFloat)]) -> NSBezierPath {
+                let path = NSBezierPath()
+                for (index, point) in points.enumerated() {
+                    let scaled = NSPoint(x: markRect.minX + point.0 * unit, y: markRect.minY + point.1 * unit)
+                    index == 0 ? path.move(to: scaled) : path.line(to: scaled)
+                }
+                path.close()
+                path.transform(using: flip as AffineTransform)
+                return path
+            }
+            NSColor.white.setFill()
+            polygon([(44, 14), (64, 14), (34, 86), (8, 86)]).fill()
+            NSColor(srgbRed: 0.25, green: 0.71, blue: 0.75, alpha: 1).setFill()
+            polygon([(64, 14), (92, 86), (62, 86), (48, 50)]).fill()
+        case .project, .devdeck:
+            let configuration = NSImage.SymbolConfiguration(pointSize: markRect.height * 0.8, weight: .semibold)
+                .applying(.init(paletteColors: [.white]))
+            if let symbol = NSImage(systemSymbolName: "shippingbox.fill", accessibilityDescription: nil)?
+                .withSymbolConfiguration(configuration) {
+                let glyph = symbol.size
+                symbol.draw(in: NSRect(
+                    x: bounds.midX - glyph.width / 2,
+                    y: bounds.midY - glyph.height / 2,
+                    width: glyph.width,
+                    height: glyph.height
+                ))
+            }
+        }
 
         return rep.representation(using: .png, properties: [:])
     }

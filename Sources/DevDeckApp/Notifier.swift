@@ -9,9 +9,9 @@ import UserNotifications
 /// feature actually lives. This is the part that talks to macOS.
 @MainActor
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
-    /// Where a clicked banner goes. The account comes with it, so a pull request opens in the
-    /// browser profile signed in as the identity that owns it.
-    var onOpen: ((URL, String) -> Void)?
+    /// Where a clicked banner goes. An address comes with its account, so a pull request opens in
+    /// the browser profile signed in as the identity that owns it.
+    var onTarget: ((DeckAlert.Target) -> Void)?
     /// A banner about a newer build was clicked: start the update.
     var onUpdate: (() -> Void)?
 
@@ -53,29 +53,29 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// for a review. Permission, delivery and the click are the three things that can be wrong,
     /// and the first two are exactly what this exercises.
     func postTest() {
-        deliver(
-            identifier: "devdeck.test.\(UUID().uuidString)",
-            title: "DevDeck",
-            body: "Notifications are working. This is what a review request will look like.",
-            url: nil,
-            accountID: nil,
-            source: .github
-        )
+        deliver(DeckAlert(
+            id: "test.\(UUID().uuidString)",
+            kind: .reviewRequest,
+            source: .github,
+            title: "DevDeck test notification",
+            subtitle: "Notifications work",
+            body: "A real one names the pull request or the project, and opens it when clicked.",
+            subject: "test",
+            target: .menu,
+            isQuiet: false
+        ))
     }
 
-    /// A newer build exists. Carries no service mark: this one is the app's own news, and the
-    /// application icon macOS puts on every banner is exactly right for it.
+    /// A newer build exists. Carries no mark: this one is the app's own news, and the application
+    /// icon macOS puts on every banner is exactly right for it.
     func postUpdate(_ version: String) {
         guard isAuthorized else { return }
-        deliver(
-            identifier: "devdeck.update.\(version)",
-            title: "DevDeck \(version) is available",
-            body: "Click to update, or choose Update in the menu-bar menu whenever it suits.",
-            url: nil,
-            accountID: nil,
-            source: nil,
-            action: "update"
-        )
+        let content = UNMutableNotificationContent()
+        content.title = "DevDeck \(version) is available"
+        content.body = "Click to install it now, or later from the DevDeck menu."
+        content.userInfo = ["action": "update"]
+        content.threadIdentifier = "devdeck.update"
+        add(content, identifier: "devdeck.update.\(version)")
     }
 
     func post(_ alerts: [DeckAlert]) {
@@ -85,63 +85,77 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         // Many at once become one line. Three banners stacked up the corner of the screen is a
         // wall, and a wall gets swept away without being read.
         if let summary = NotificationDigest.summary(for: alerts) {
-            deliver(
-                identifier: "devdeck.summary.\(alerts.map(\.id).joined().hashValue)",
+            let sources = Set(alerts.map(\.source))
+            deliver(DeckAlert(
+                id: "summary.\(alerts.map(\.id).joined().hashValue)",
+                kind: alerts[0].kind,
+                // One mark only when they share it; a mixed summary keeps the app's own icon.
+                source: sources.count == 1 ? alerts[0].source : .devdeck,
                 title: summary.title,
+                subtitle: "",
                 body: summary.body,
-                url: alerts.first?.url,
-                accountID: alerts.first?.accountID,
-                // A summary that spans both services shows the one it has most of; a mark is
-                // better than no mark, and a summary is already saying "several things".
-                source: alerts.filter { $0.source == .gitlab }.count > alerts.count / 2 ? .gitlab : .github
-            )
+                subject: "",
+                target: .menu,
+                isQuiet: alerts.allSatisfy(\.isQuiet)
+            ))
             return
         }
 
         for alert in alerts {
-            deliver(
-                identifier: "devdeck.\(alert.id)",
-                title: alert.title,
-                body: alert.body,
-                url: alert.url,
-                accountID: alert.accountID,
-                source: alert.source
-            )
+            deliver(alert)
         }
     }
 
-    private func deliver(
-        identifier: String,
-        title: String,
-        body: String,
-        url: URL?,
-        accountID: String?,
-        source: DeckAlert.Source?,
-        action: String? = nil
-    ) {
+    private func deliver(_ alert: DeckAlert) {
         let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = .default
-        if let url, let accountID {
-            content.userInfo = ["url": url.absoluteString, "account": accountID]
-        }
-        if let action {
-            content.userInfo["action"] = action
-        }
+        content.title = alert.title
+        content.subtitle = alert.subtitle
+        content.body = alert.body
+        // A person waiting on you is worth a sound. Your own stuck work and a project on this Mac
+        // are worth a banner and no more.
+        content.sound = alert.isQuiet ? nil : .default
+        // Stacked by kind in Notification Center, so reviews, stuck work and this Mac read as
+        // three piles rather than one long one.
+        content.threadIdentifier = "devdeck.\(alert.kind.rawValue)"
+        content.userInfo = Self.userInfo(for: alert.target)
         // macOS puts the application icon on every banner and will not be talked out of it, but
-        // an attachment is drawn beside the text: that is where the service's own mark goes, so
+        // an attachment is drawn beside the text: that is where the source's own mark goes, so
         // "who is asking" is answered before the words are read.
-        if let source, let artwork = NotificationArtwork.fileURL(for: source),
-           let attachment = try? UNNotificationAttachment(identifier: source.rawValue, url: artwork) {
+        if let artwork = NotificationArtwork.fileURL(for: alert.source),
+           let attachment = try? UNNotificationAttachment(identifier: alert.source.rawValue, url: artwork) {
             content.attachments = [attachment]
         }
+        add(content, identifier: "devdeck.\(alert.id)")
+    }
 
+    private func add(_ content: UNMutableNotificationContent, identifier: String) {
         center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil)) { error in
             if let error {
                 Log.app.error("Notification not delivered: \(error.localizedDescription, privacy: .public)")
             }
         }
+    }
+
+    /// The target as plain values, because that is all a notification can carry.
+    nonisolated static func userInfo(for target: DeckAlert.Target) -> [String: String] {
+        switch target {
+        case .url(let url, let account): return ["url": url.absoluteString, "account": account]
+        case .card(let card): return ["card": card.rawValue]
+        case .accountSettings(let service, let account): return ["settings": service, "account": account]
+        case .menu: return ["action": "menu"]
+        }
+    }
+
+    nonisolated static func target(from info: [AnyHashable: Any]) -> DeckAlert.Target? {
+        if let address = info["url"] as? String, let url = URL(string: address) {
+            return .url(url, account: info["account"] as? String ?? "")
+        }
+        if let card = info["card"] as? String { return .card(CardID(rawValue: card)) }
+        if let service = info["settings"] as? String {
+            return .accountSettings(service: service, account: info["account"] as? String ?? "")
+        }
+        if info["action"] as? String == "menu" { return .menu }
+        return nil
     }
 
     // MARK: Delegate
@@ -163,14 +177,13 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let info = response.notification.request.content.userInfo
-        let address = info["url"] as? String
-        let account = info["account"] as? String
-        let action = info["action"] as? String
+        let isUpdate = info["action"] as? String == "update"
+        let target = Self.target(from: info)
         Task { @MainActor in
-            if action == "update" {
+            if isUpdate {
                 self.onUpdate?()
-            } else if let address, let url = URL(string: address) {
-                self.onOpen?(url, account ?? "")
+            } else if let target {
+                self.onTarget?(target)
             }
             completionHandler()
         }

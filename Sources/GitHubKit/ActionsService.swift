@@ -79,9 +79,23 @@ public struct ActionsService: Sendable {
             ],
             cacheKey: "github.actions.\(accountID).\(name)"
         )
+        // Asked after the runs, and allowed to fail: without it the card still draws, and the
+        // menu falls back to the usual names for a main branch.
+        let defaultBranch = try? await self.defaultBranch(of: name)
         return result.value.workflowRuns.map {
-            Self.run(from: $0, repository: name, accountID: accountID)
+            Self.run(from: $0, repository: name, accountID: accountID, defaultBranch: defaultBranch)
         }
+    }
+
+    /// The branch a red run matters on. Cached with its own `ETag`, so after the first pass it
+    /// costs a 304.
+    private func defaultBranch(of name: String) async throws -> String? {
+        let result: RESTResult<RepositoryPayload> = try await client.get(
+            path: "repos/\(name)",
+            query: [],
+            cacheKey: "github.repository.\(accountID).\(name)"
+        )
+        return result.value.defaultBranch
     }
 
     /// GitHub's `created` filter takes a plain date, in UTC.
@@ -97,21 +111,33 @@ public struct ActionsService: Sendable {
     static func run(
         from payload: WorkflowRunsPayload.Run,
         repository: String,
-        accountID: String = GitHubAccount.defaultID
+        accountID: String = GitHubAccount.defaultID,
+        defaultBranch: String? = nil
     ) -> WorkflowRun {
-        WorkflowRun(
+        let branch = payload.headBranch ?? ""
+        return WorkflowRun(
             id: payload.id,
             name: payload.name ?? "workflow",
             repository: repository,
-            branch: payload.headBranch ?? "",
+            branch: branch,
             status: RunStatus(apiValue: payload.status),
             conclusion: RunConclusion(apiValue: payload.conclusion),
             // `run_started_at` is absent on older runs; `created_at` is the next best anchor.
             startedAt: payload.runStartedAt ?? payload.createdAt,
             updatedAt: payload.updatedAt,
             url: payload.htmlURL,
-            accountID: accountID
+            accountID: accountID,
+            isOnDefaultBranch: WorkflowRun.isMainBranch(branch, defaultBranch: defaultBranch)
+                && payload.event != "pull_request"
         )
+    }
+}
+
+struct RepositoryPayload: Decodable, Sendable {
+    let defaultBranch: String?
+
+    enum CodingKeys: String, CodingKey {
+        case defaultBranch = "default_branch"
     }
 }
 
@@ -131,9 +157,10 @@ public struct WorkflowRunsPayload: Decodable, Sendable {
         let runStartedAt: Date?
         let updatedAt: Date
         let htmlURL: URL?
+        let event: String?
 
         enum CodingKeys: String, CodingKey {
-            case id, name, status, conclusion
+            case id, name, status, conclusion, event
             case headBranch = "head_branch"
             case createdAt = "created_at"
             case runStartedAt = "run_started_at"

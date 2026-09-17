@@ -2,11 +2,17 @@ import Foundation
 
 /// Something worth interrupting somebody for.
 public struct DeckAlert: Sendable, Equatable, Identifiable {
-    /// Who is asking. The banner carries the service's own mark rather than the app's, because
-    /// "somebody wants a review" is a different thought from "which of the two is it".
+    /// Who is asking. The banner carries the source's own mark rather than the app's, because
+    /// "somebody wants a review" is a different thought from "a project stopped".
     public enum Source: String, Sendable, Equatable {
         case github
         case gitlab
+        case arc
+        case ddev
+        case project
+        case docker
+        /// The app itself: a token it cannot use, a new version.
+        case devdeck
     }
 
     public enum Kind: String, Sendable, Equatable {
@@ -15,6 +21,23 @@ public struct DeckAlert: Sendable, Equatable, Identifiable {
         /// Something of yours cannot move: checks failed, changes were requested, a branch
         /// conflicts.
         case blocked
+        /// A workflow on a repository's main branch failed and is still failing.
+        case failedRun
+        /// A project that was running stopped without anyone pressing Stop.
+        case wentDown
+        /// A start pressed from the card did not bring the project up.
+        case startFailed
+        /// A token stopped working, so a whole account went quiet.
+        case cantCheck
+    }
+
+    /// Where a click on the banner goes.
+    public enum Target: Sendable, Equatable {
+        case url(URL, account: String)
+        case card(CardID)
+        case accountSettings(service: String, account: String)
+        /// A summary of several: the menu lists them all.
+        case menu
     }
 
     /// Stable across refreshes, and different for the same item in two different states: a
@@ -23,30 +46,39 @@ public struct DeckAlert: Sendable, Equatable, Identifiable {
     public let id: String
     public let kind: Kind
     public let source: Source
-    /// The line the banner leads with.
+    /// What happened: `Your review is requested`.
     public let title: String
-    /// The line under it.
+    /// Where: `acme/portal #142 · Work`.
+    public let subtitle: String
+    /// Which thing, and what a click does: `PROJ-142 Add the article feed. Click to open it.`
     public let body: String
-    public let url: URL
-    /// Which account it belongs to, so a click opens it in the right browser profile.
-    public let accountID: String
+    /// The thing's own name, for a summary that names what it is summarising.
+    public let subject: String
+    public let target: Target
+    /// Without a sound: your own work and this machine are worth a banner, only a person
+    /// waiting on you is worth a noise.
+    public let isQuiet: Bool
 
     public init(
         id: String,
         kind: Kind,
         source: Source,
         title: String,
+        subtitle: String,
         body: String,
-        url: URL,
-        accountID: String
+        subject: String,
+        target: Target,
+        isQuiet: Bool
     ) {
         self.id = id
         self.kind = kind
         self.source = source
         self.title = title
+        self.subtitle = subtitle
         self.body = body
-        self.url = url
-        self.accountID = accountID
+        self.subject = subject
+        self.target = target
+        self.isQuiet = isQuiet
     }
 }
 
@@ -92,14 +124,28 @@ public enum NotificationDigest {
     }
 
     /// One banner when there are a few, one summary when there are many.
+    ///
+    /// The summary counts things by what they are and names the first of them, because
+    /// "DevDeck: 3 waiting" named nothing, and a click on it opened whichever happened to be first.
+    /// A click on this one opens the menu, which lists all of them.
     public static func summary(for alerts: [DeckAlert]) -> (title: String, body: String)? {
         guard alerts.count >= summaryThreshold else { return nil }
-        let reviews = alerts.filter { $0.kind == .reviewRequest }.count
-        let blocked = alerts.count - reviews
+
+        func count(_ kind: DeckAlert.Kind) -> Int { alerts.filter { $0.kind == kind }.count }
+        func plural(_ count: Int, _ one: String, _ many: String) -> String { "\(count) \(count == 1 ? one : many)" }
 
         var parts: [String] = []
-        if reviews > 0 { parts.append("\(reviews) waiting for your review") }
-        if blocked > 0 { parts.append("\(blocked) of yours blocked") }
-        return ("DevDeck", parts.joined(separator: ", "))
+        if count(.reviewRequest) > 0 { parts.append(plural(count(.reviewRequest), "review waiting", "reviews waiting")) }
+        if count(.cantCheck) > 0 { parts.append(plural(count(.cantCheck), "account can't be checked", "accounts can't be checked")) }
+        if count(.wentDown) > 0 { parts.append(plural(count(.wentDown), "project went down", "projects went down")) }
+        if count(.startFailed) > 0 { parts.append(plural(count(.startFailed), "project didn't start", "projects didn't start")) }
+        if count(.blocked) > 0 { parts.append("\(count(.blocked)) stuck") }
+        if count(.failedRun) > 0 { parts.append(plural(count(.failedRun), "run failing", "runs failing")) }
+
+        let names = alerts.map(\.subject)
+        let named = names.count > 2
+            ? "\(names[0]), \(names[1]) and \(names.count - 2) more"
+            : names.joined(separator: " and ")
+        return (parts.joined(separator: ", "), "\(named). Click to see them in the menu.")
     }
 }

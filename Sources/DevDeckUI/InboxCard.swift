@@ -75,7 +75,7 @@ public struct InboxCard: View {
     /// Unread is the number, and what is waiting on you is the part worth colour.
     private var collapsedNote: String? {
         guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
-        if snapshot.actionableCount > 0 { return "\(snapshot.actionableCount) on you · \(snapshot.unreadCount) unread" }
+        if snapshot.actionableCount > 0 { return "\(snapshot.actionableCount) for you · \(snapshot.unreadCount) unread" }
         return snapshot.unreadCount == 0 ? "clear" : "\(snapshot.unreadCount) unread"
     }
 
@@ -101,9 +101,9 @@ public struct InboxCard: View {
         }
         guard let snapshot = state.value else { return nil }
         if snapshot.actionableCount > 0 {
-            return ("\(snapshot.actionableCount) for me", DeckTheme.violet)
+            return ("\(snapshot.actionableCount) for you", DeckTheme.violet)
         }
-        return snapshot.unreadCount == 0 ? ("clear", DeckTheme.green) : ("fyi", DeckTheme.label)
+        return snapshot.unreadCount == 0 ? ("clear", DeckTheme.green) : ("nothing for you", DeckTheme.label)
     }
 
     @ViewBuilder
@@ -141,7 +141,7 @@ public struct InboxCard: View {
 
         CardFooter(
             leading: snapshot.failures.summary ?? (snapshot.items.isEmpty
-                ? "nothing waiting"
+                ? "inbox empty"
                 : "\(snapshot.repositoryCount) repo\(snapshot.repositoryCount == 1 ? "" : "s")"),
             trailing: CardFreshness.text(for: state),
             isStale: state.failure != nil

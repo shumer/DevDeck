@@ -56,10 +56,8 @@ public struct GitLabWorkspace: Sendable {
                             limit: limit
                         ).fetch()
                         return .value(snapshot)
-                    } catch let error as APIError {
-                        return .failure(AccountFailure(account: account.label, message: error.displayMessage))
                     } catch {
-                        return .failure(AccountFailure(account: account.label, message: error.localizedDescription))
+                        return .failure(AccountFailure(account: account.label, accountID: account.id, error: error))
                     }
                 }
             }
@@ -71,10 +69,9 @@ public struct GitLabWorkspace: Sendable {
             }
         }
 
-        if values.isEmpty, let first = failures.first {
-            throw APIError.forbidden(
-                accounts.count == 1 ? first.message : "\(failures.count) accounts failed: \(first.message)"
-            )
+        // Thrown whole, so the card says which instance and why instead of "Forbidden".
+        if values.isEmpty, !failures.isEmpty {
+            throw APIError.accounts(failures)
         }
         return MergeRequestsSnapshot.merging(values, failures: failures)
     }
