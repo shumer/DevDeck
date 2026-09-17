@@ -55,6 +55,9 @@ public struct WorkflowRun: Sendable, Equatable, Codable, Identifiable {
     public let updatedAt: Date
     public let url: URL?
     public let accountID: String
+    /// Ran on the repository's main branch rather than for a pull request, which is the only
+    /// place a red run is somebody's problem rather than work in progress.
+    public let isOnDefaultBranch: Bool
 
     public init(
         id: Int,
@@ -66,9 +69,11 @@ public struct WorkflowRun: Sendable, Equatable, Codable, Identifiable {
         startedAt: Date,
         updatedAt: Date,
         url: URL?,
-        accountID: String = GitHubAccount.defaultID
+        accountID: String = GitHubAccount.defaultID,
+        isOnDefaultBranch: Bool = false
     ) {
         self.accountID = accountID
+        self.isOnDefaultBranch = isOnDefaultBranch
         self.id = id
         self.name = name
         self.repository = repository
@@ -86,6 +91,13 @@ public struct WorkflowRun: Sendable, Equatable, Codable, Identifiable {
         guard status == .completed else { return nil }
         let duration = updatedAt.timeIntervalSince(startedAt)
         return duration > 0 ? duration : nil
+    }
+
+    /// The repository's own answer when there is one, and the names a main branch usually has
+    /// when the repository could not be asked.
+    public static func isMainBranch(_ branch: String, defaultBranch: String?) -> Bool {
+        if let defaultBranch { return branch == defaultBranch }
+        return ["main", "master", "trunk", "develop"].contains(branch)
     }
 
     public var shortRepository: String {

@@ -16,6 +16,7 @@ costs one round trip rather than two.
 
 ```graphql
 query DevDeckPullRequests($q: String!, $r: String!, $limit: Int!) {
+  viewer { login }
   mine:      search(query: $q, type: ISSUE, first: $limit) { ...pullRequests }
   reviewing: search(query: $r, type: ISSUE, first: $limit) { ...pullRequests }
 }
@@ -27,6 +28,14 @@ fragment pullRequests on SearchResultItemConnection {
         id number title url isDraft updatedAt
         repository { nameWithOwner owner { login } }
         reviewDecision
+        mergeable
+        author { login }
+        timelineItems(itemTypes: [REVIEW_REQUESTED_EVENT], last: 10) {
+          nodes { ... on ReviewRequestedEvent {
+            createdAt actor { login }
+            requestedReviewer { __typename ... on User { login } }
+          } }
+        }
         reviewThreads(first: 100) { nodes { isResolved } }
         commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
       }
@@ -51,6 +60,12 @@ Notes that are easy to get wrong:
   checks", not "failing".
 - `ERROR` and `FAILURE` both mean the PR will not merge as it stands, so they collapse into
   `CheckState.failure`.
+- **Who asked for your review** is the newest `ReviewRequestedEvent` naming the viewer or a team.
+  A request for somebody else says nothing about who asked you.
+- **Never ask for a team's `name` or `slug`.** Those need the `read:org` scope, and a token
+  without it fails the whole query rather than that field. A team is told apart by `__typename`.
+- `mergeable` is `CONFLICTING`, `MERGEABLE` or `UNKNOWN` while GitHub is still computing it; only
+  the first counts as a conflict.
 
 ## Health
 
@@ -58,7 +73,8 @@ Notes that are easy to get wrong:
 
 | Condition | Health |
 |---|---|
-| checks failed, or changes requested | `blocked` (red) |
+| a review somebody is waiting on you for | `attention` (amber), whatever else is true |
+| merge conflict, checks failed, or changes requested | `blocked` (red) |
 | approved, not pending, no unresolved threads | `ready` (green) |
 | anything else | `attention` (amber) |
 
@@ -161,6 +177,10 @@ concurrently.
   `-` rather than a red zero.
 - `run_started_at` is absent on older runs, so `created_at` is the fallback anchor for the
   duration.
+- **`GET /repos/{owner}/{repo}`** is asked after the runs, cached per account and repository,
+  for `default_branch`. A workflow counts as failing for the menu only while its latest decisive
+  run on that branch, not triggered by a pull request, is red. Without an answer the usual names
+  (`main`, `master`, `trunk`, `develop`) stand in.
 
 
 ## Review requests

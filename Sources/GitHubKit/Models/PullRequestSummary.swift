@@ -63,6 +63,14 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     public let accountID: String
     /// Somebody else's pull request, waiting on a review from you.
     public let isReviewRequest: Bool
+    /// Who opened it.
+    public let author: String?
+    /// Who asked for your review, and when. Nil when GitHub does not say, which is also the
+    /// case for your own pull requests.
+    public let requestedBy: String?
+    public let requestedAt: Date?
+    /// The branch will not merge as it stands.
+    public let hasConflicts: Bool
 
     public init(
         id: String,
@@ -77,10 +85,18 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
         checks: CheckState,
         unresolvedThreads: Int,
         accountID: String = GitHubAccount.defaultID,
-        isReviewRequest: Bool = false
+        isReviewRequest: Bool = false,
+        author: String? = nil,
+        requestedBy: String? = nil,
+        requestedAt: Date? = nil,
+        hasConflicts: Bool = false
     ) {
         self.accountID = accountID
         self.isReviewRequest = isReviewRequest
+        self.author = author
+        self.requestedBy = requestedBy
+        self.requestedAt = requestedAt
+        self.hasConflicts = hasConflicts
         self.id = id
         self.number = number
         self.title = title
@@ -98,7 +114,7 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
         // A review someone is waiting on is never "ready" and never "blocked": whatever the
         // checks say, the thing outstanding is you.
         if isReviewRequest { return .attention }
-        if checks == .failure || reviewDecision == .changesRequested { return .blocked }
+        if checks == .failure || hasConflicts || reviewDecision == .changesRequested { return .blocked }
         if reviewDecision == .approved, checks != .pending, unresolvedThreads == 0 { return .ready }
         return .attention
     }
@@ -106,6 +122,8 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     /// The single most useful thing to say about this PR, in the order it matters.
     public var statusLine: String {
         if isReviewRequest { return "waiting for your review" }
+        // A conflict first: until it is resolved the checks ran on code that will not be merged.
+        if hasConflicts { return "merge conflict" }
         if checks == .failure { return "checks failed" }
         if reviewDecision == .changesRequested { return "changes requested" }
         if isDraft { return "draft" }
@@ -123,10 +141,14 @@ public struct PullRequestSummary: Sendable, Equatable, Codable, Identifiable {
     ///
     ///     RV  waiting for your review                   CP  checks running
     ///     CF  checks failed        CR  changes requested   T3  three unresolved threads
-    ///     AP  approved             DR  draft               WR  waiting for review
+    ///     MC  merge conflict       DR  draft               WR  waiting for review
+    ///     AP  approved
+    ///
+    /// The GitLab card uses the same codes for the same facts.
     public var statusCode: String {
         // Yours to do, so it comes before anything the pull request itself is doing.
         if isReviewRequest { return "RV" }
+        if hasConflicts { return "MC" }
         if checks == .failure { return "CF" }
         if reviewDecision == .changesRequested { return "CR" }
         if isDraft { return "DR" }

@@ -128,10 +128,10 @@ func runAccountsTests(_ run: TestRun) async {
     }
 
     await run.test("failure summaries read as a sentence") {
-        let one = [AccountFailure(account: "Work", message: "Token rejected")]
-        try expectEqual(one.summary, "Work: Token rejected")
-        let two = one + [AccountFailure(account: "Personal", message: "Rate limited")]
-        try expectEqual(two.summary, "2 accounts failed")
+        let one = [AccountFailure(account: "Work", message: "Token rejected", kind: .rejected)]
+        try expectEqual(one.summary, "Work: token rejected, replace it in Settings", "who, what, and the next step")
+        let two = one + [AccountFailure(account: "Personal", message: "Rate limit reached", kind: .rateLimited)]
+        try expectEqual(two.summary, "Work, Personal can't load, hover for why", "every account named, not a count")
         try expectNil([AccountFailure]().summary)
     }
 
@@ -206,7 +206,12 @@ func runAccountsTests(_ run: TestRun) async {
         let error = try await expectThrows {
             _ = try await workspace.pullRequests()
         }
-        try expectEqual(error as? APIError, .forbidden("Token rejected"))
+        guard case .accounts(let failures) = error as? APIError else {
+            try expect(false, "expected the accounts carried whole, got \(error)")
+            return
+        }
+        try expectEqual(failures.map(\.kind), [.rejected], "the card knows it was the token, not \"Forbidden\"")
+        try expectEqual(failures.first?.accountID, "work", "and whose, so the menu can open its form")
     }
 
     await run.test("actions ask only the accounts that own repositories") {

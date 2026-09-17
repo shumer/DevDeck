@@ -286,24 +286,30 @@ sorting, which is what separates it from `tidy`. Why all of this, with the measu
 **The icons are code.** No asset catalog exists here and no Xcode to build one, so `AppIcon`
 draws the application icon on a 1024 grid and `Tools/AppIconExport` renders the ten sizes an
 `.icns` holds, each one from the drawing rather than resampled from the largest. `DeckIcon` draws
-the menu-bar glyph and its three states. Two of those are real template images so the menu bar
-tints them; the one carrying red cannot be, so it draws itself in `labelColor`, which resolves
-against the appearance drawing it - a menu-bar icon painted in plain black is invisible on a dark
-bar. Which state is showing comes from `DeckStatusSummary`, which keeps "your own queue is
-blocked" apart from "a person is waiting on you" and hands the menu a sentence to open with.
+the menu-bar glyph and its four states: calm, a ring for stuck work, a dot for something to fix, a
+red dot for a person waiting. All but the red one are real template images so the menu bar tints
+them; the one carrying red cannot be, so it draws itself in `labelColor`, which resolves against
+the appearance drawing it - a menu-bar icon painted in plain black is invisible on a dark bar.
+Which state is showing comes from the attention digest's most urgent tier. See
+[Attention](#attention).
 
 **Deciding whether to interrupt somebody is the feature; posting the banner is four lines.**
 `NotificationDigest` in `DevDeckCore` holds the rules and is where the tests are: the first
 answer after a launch is never announced, nothing is announced twice, what was *seen* is
-remembered rather than only what was said, and three at once become one summary. The Kits turn a
-snapshot into `DeckAlert`s, so what counts as worth interrupting for lives beside the model it is
-derived from, and a blocked item carries its state in its identity - broken, fixed and broken
-again is news twice. `Notifier` in the app is the only part that talks to
+remembered rather than only what was said, and three at once become one summary that counts them
+by kind and names the first two. The attention builders turn the same facts that make the menu's
+rows into `DeckAlert`s, so a banner and a row cannot disagree, and a stuck item carries its state
+in its identity - broken, fixed and broken again is news twice. An alert has a title for what
+happened, a subtitle for where, a body for what a click does, a target (a page, a card, an
+account's form, or the menu) and whether it is quiet: only a person waiting on you makes a sound. `Notifier` in the app is the only part that talks to
 `UNUserNotificationCenter`, asks for permission at the moment the switch is turned on rather than
-at launch, and opens a clicked banner in the browser profile of the account that owns it. Whether
+at launch, and opens what a clicked banner is about: a page in the browser profile of the account
+that owns it, a project's card with its log, an account's form, or the menu. Whether
 a given alert is wanted is a property of the account it came from, per kind, because one token is
-your own work and another is a customer's. The mark on the banner comes from
-`NotificationArtwork`, which draws the service's logo onto a dark tile in the caches directory:
+your own work and another is a customer's, and of the project it is about, stored as the
+exceptions so a project added later is covered without asking. The mark on the banner comes from
+`NotificationArtwork`, which draws the source's mark, a service, Arc, DDEV or Docker, onto a dark
+tile in the caches directory:
 macOS puts the application icon on every notification and will not be talked out of it, and an
 attachment is the only place left to say who is asking.
 
@@ -384,8 +390,9 @@ itself that one of them could do.
 - `DeckController` owns the data every panel renders and the two loops that keep it fresh: the
   API loop, which hands its sources to `RefreshCycle` and sleeps for what it is told, and a
   faster local loop for Docker, stacks and projects. The parts of it that decide rather than
-  fetch live where the suite can reach them: `RefreshCycle` in Core, `ActionsWatchList` in
-  GitHubKit, `DeckStatusSummary.make` in the UI module.
+  fetch live where the suite can reach them: `RefreshCycle` and `ProjectWatch` in Core,
+  `ActionsWatchList` and `GitHubAttention` in GitHubKit, `DeckAttention` in the UI module. See
+  [Attention](#attention).
 - The modules, one per kind of card, under `Modules/`: `PullRequestsModule`, `InboxModule`,
   `ActionsModule`, `MergeRequestsModule`, `WorkInFlightModule`, `ArcProjectModule`,
   `DDEVProjectModule` and `LocalProjectModule`. A `CardModule` says which cards it owns and
@@ -414,6 +421,40 @@ itself that one of them could do.
 All of them are `@MainActor`. The panels themselves are `PanelWindow`, a borderless `NSWindow`
 hosting `CardHostView`, which is the one place that maps a card identifier onto its SwiftUI
 view and its size.
+
+## Attention
+
+What the menu-bar badge, the menu's rows and the banners say all comes from one place, so they
+cannot disagree about what needs you. See [adr/0019-attention-in-tiers.md](adr/0019-attention-in-tiers.md).
+
+- **`AttentionItem`** in Core is one thing that wants a person: a tier, a mark, a title that
+  says what happened to what, a subtitle with where and who, when it started, and what choosing
+  it does. **`AttentionDigest`** deduplicates by id, sorts by tier and age, cuts sections to three
+  rows with the rest in a submenu, and counts for the tooltip.
+- **The tiers** are `waiting`, `needsFixing`, `stuck` and `goodToKnow`, in the order the menu
+  lists them. The icon wears the most urgent tier that lights it: a red dot, a dot in the bar's
+  ink, a ring. Good to know never lights it.
+- **Builders per source**, pure and under tests: `GitHubAttention` for pull requests, the inbox
+  and Actions, `GitLabAttention` for merge requests, `AccountAttention` for accounts that could
+  not be read, `ProjectAttention` for the projects on this Mac and Docker, `CheckoutAttention`
+  for work only on this Mac, `UpdateAttention` for a new version. Each also builds the banners for
+  the same facts, as `DeckAlert`s.
+- **`ProjectWatch`** remembers what a card stops saying a poll later: that a project was running
+  and nobody pressed Stop, why a start failed, since when a health check has been silent. It is
+  fed only what `StateSettler` let through and what a button did, and reports nothing about the
+  state a launch found.
+- **`DeckAttention.digest`** in the UI module puts it together from the controller's state, one
+  input struct, so the suite checks what lights the icon without a controller. A hidden card
+  contributes nothing.
+- **`AccountFailure`** carries its kind, rejected, forbidden, rate limited, unreachable or other,
+  and a card whose every account failed throws `APIError.accounts` with them whole, so the menu
+  says which account and what to do rather than "Forbidden".
+
+The controller keeps the history (`ProjectWatch`, when Docker went down, when each account
+started failing) and announces per channel through `NotificationDigest`, which keeps the rule
+that the first answer after a launch is never news. `DeckMenu` renders the digest as native menu
+items: section headers, a subtitle under each row (a tooltip before macOS 14.4), the age as a
+badge, ⌥ twins for Dismiss and Mark as Read.
 
 ## The settings window
 
@@ -508,7 +549,10 @@ downloaded build against. See [adr/0017-signature-decides.md](adr/0017-signature
    view, the size and the dashboard, add it to the list in `AppDelegate`, and flip
    `isImplemented`. A kind with things to configure is a `SettingsSection` too, and goes in
    the settings window's list in the same place.
-6. Update `README.md`, this file and `docs/roadmap.md`.
+6. If the card can need somebody, give it an attention builder next to its model, returning
+   `AttentionItem`s and the `DeckAlert`s for the same facts, add it to `DeckAttention.digest`,
+   and test the wording. See [Attention](#attention).
+7. Update `README.md`, this file and `docs/roadmap.md`.
 
 What is still per kind by name is inside `DeckController`: the status dictionaries, the local
 refresh loop and the three `perform` functions. That is the data plumbing, and it is the next

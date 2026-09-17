@@ -148,6 +148,7 @@ only works for the installed copy.
 | `swift run DevDeck` | runs from the terminal without bundling - handy for `print` debugging |
 | `open -a DevDeck --args --settings project agrica-qdd` | opens Settings on a page, `general`, `deck`, `cards`, `notifications`, or on one item by kind (`github`, `gitlab`, `arc`, `ddev`, `project`) and id |
 | `open -a DevDeck --args --update` | checks for a newer release and installs it, the same as the menu line |
+| `open -a DevDeck --args --menu sample` | opens the menu-bar menu filled with made-up rows of every tier, for judging or screenshotting it; `--menu` alone opens it with the deck's own |
 | `pkill -f DevDeck` | quits every running copy |
 
 **Settings → General shows the running version** under its heading, `DevDeck 0.14 (build 122)`,
@@ -400,7 +401,9 @@ that a dead disk takes with it.
 A clean checkout level with its remote is not a row: listing those is how a card becomes a wall
 of green nobody reads. It needs no token and no network, since `git status --porcelain=v2
 --branch` answers all four questions in one command per checkout, and clicking a row opens that
-folder in a terminal. Off by default; turn it on in the menu or under **Settings → Cards**.
+folder in a terminal. Off by default; turn it on in the menu or under **Settings → Cards**. With
+it on, commits that have been only on this Mac for more than three days show under Good to know in
+the menu-bar menu, dated by the oldest of them.
 
 ## Docker
 
@@ -424,32 +427,53 @@ the same ten-second loop, which runs only while a project card is on the deck:
 
 ### Status codes
 
-GitHub rows end in a two-character code so the width goes to the title. Hovering a row spells it out.
+Rows end in a two-character code so the width goes to the title, the same codes on the GitHub
+and the GitLab card. Hovering a row spells it out.
 
 | | | | |
 |---|---|---|---|
-| `RV` | waiting for **your** review | `CP` | checks running |
-| `CF` | checks failed | `DR` | draft |
-| `CR` | changes requested | `AP` | approved |
-| `T3` | three unresolved threads, up to `T9` | `WR` | waiting for review |
+| `RV` | waiting for **your** review | `CP` | checks or pipeline running |
+| `MC` | merge conflict | `DR` | draft |
+| `CF` | checks or pipeline failed | `AP` | approved, or ready to merge |
+| `CR` | changes requested (GitHub) | `WR` | waiting for review (GitHub) |
+| `T3` | three unresolved threads, up to `T9` | `A2` | two approvals left (GitLab) |
 
-GitLab rows have their own: `CF` conflicts, `CI` pipeline failed, `DR` draft, `··` pipeline
-running, `2ap` two approvals left, `3th` three unresolved threads, `ok` ready to merge. Only
-GitHub's blocked rows light the menu-bar badge.
+A conflict is named before a failed check, because until it is resolved the checks ran on code
+that will not be merged.
 
 The coloured dot says the same thing at a glance: red is blocked, amber needs someone, green
 is done.
 
 ## Using it
 
-The menu-bar item is a stack of cards with the app's initials cut out of the front one. It has
-three states, and the difference between the last two is the point: nothing, a badge in the bar's
-own ink when a pull request of yours is blocked, and a red badge when a **person** is waiting on
-you - a review request, or something actionable in the inbox. Red is kept for the one thing that
-costs somebody else time, and it is 4.5 points of badge rather than the whole glyph, which used
-to go red for any of the three and so meant "something" and nothing about what. The first line of
-the menu says which it is in words, and the numbers are in the tooltip rather than in the menu
-bar, where a bare count belongs to no app in particular.
+The menu-bar item is a stack of cards with the app's initials cut out of the front one, and a
+badge that says which kind of attention is wanted. The kinds differ in shape as well as colour,
+so they read without colour vision and on a bar tinted by the wallpaper:
+
+| Badge | Tier | What puts it there |
+|---|---|---|
+| red dot | **Waiting on you** | a review on GitHub or GitLab, a mention, an assignment, a security alert |
+| dot in the bar's ink | **Needs fixing** | a token that stopped working, a project on this Mac that stopped on its own, did not start, is up but not answering, or has a broken file sync, Docker quitting under running projects |
+| ring | **Your work is stuck** | your pull request or merge request with a conflict, failed checks, a failed pipeline or requested changes; a workflow still failing on a main branch |
+| none | **Good to know** | a new version, commits that have been only on this Mac for more than three days, Docker off while a project needs it, a rate limit or a network blip |
+
+The most urgent tier wins. Red is kept for the one thing that costs somebody else time. The
+tooltip counts by tier, `DevDeck: 2 waiting on you, 1 to fix`, and VoiceOver reads the same.
+
+**The menu lists the things themselves**, one row each, under a header per tier. A row says what
+happened and to what, `Review: Fix cache invalidation on publish`, with where, who and why under
+it, `acme/arc-web #482 · anna asked`, and how long ago on the right. Clicking it goes there: the
+pull request in the browser of its account, the account's form for a token, the deck raised with
+a project's log open, Docker started, a terminal in a checkout. ⌥ turns a project's row into
+**Dismiss** and an inbox row into **Mark as Read**. Three rows show per tier, the rest are in a
+submenu under them, and a review that is also an inbox notification is one row. With nothing to
+say the menu opens on **Nothing needs you** and when the deck last checked. It used to open on a
+greyed-out `1 waiting on you`, which named nothing and could not be clicked.
+
+A project that stops is only news if nobody pressed Stop: the deck remembers what it saw and what
+you pressed, reports nothing about a project that was already stopped at launch, and folds every
+project that went down with Docker into one **Start Docker** row. Silence from a health check is
+only said after two minutes, and a network error only becomes something to fix after fifteen.
 
 Both icons are drawn in code rather than shipped as images, because there is no asset catalog and
 no Xcode to build one, and because an icon that is drawn can be judged at 32 points by rendering
@@ -461,8 +485,8 @@ Being an agent app, it appears in Finder and in Login Items rather than in the D
 
 Its menu holds what you do:
 
-- **Update to …**, as the first line and only when a newer release exists; see
-  [Updating](#updating). Under it, when the badge is lit, the reason in words.
+- **What needs you**, the rows above, with a new version under Good to know; see
+  [Updating](#updating).
 - **Cards** - show or hide each card; a hidden card is not fetched at all. Projects get a submenu
   per kind below the built-in cards, with how many are shown in its title, and **Power off all
   DDEV** follows when there is a DDEV project.
@@ -477,7 +501,7 @@ Its menu holds what you do:
   sits; the tick shows which one you are in, compared rather than remembered, so it cannot claim
   an arrangement you have since dragged your way out of. Alt-click one to forget it.
 - **Lock positions** - a checkmark; while it is on, a stray drag moves nothing.
-- **Tidy panels into columns**, **Refresh now**, **Settings…** and **Quit DevDeck**.
+- **Refresh now**, **Settings…** and **Quit DevDeck**.
 
 What the deck *is* rather than what you do with it lives in Settings: start at login under
 **General**, and where the panels sit, the lock, closing gaps, the summon shortcut and its dimming
@@ -498,8 +522,8 @@ The settings window looks and behaves like System Settings: a sidebar, and a for
 selected in it. At the top of the sidebar are four pages. **General** is start at login, updates
 and the version. **Deck** is where the cards sit, the lock, closing gaps and the summon shortcut.
 **Cards** switches the cards that are not an account or a project on and off, with the refresh
-interval and the Actions repositories. **Notifications** is the master switch and one table of
-what each account may interrupt you about. Under them come **Accounts**, GitHub and GitLab
+interval and the Actions repositories. **Notifications** is the master switch and two tables:
+what each account and what each project may interrupt you about. Under them come **Accounts**, GitHub and GitLab
 together, and **Projects** of every kind, alphabetical, each with the mark its card wears and a
 dot only while it is running or starting. Search narrows the list, the arrow keys move through it
 and Delete removes the selected thing after asking; ⌘F goes to the search field. The window
@@ -530,18 +554,22 @@ a card changes height, at the price of any gap you left in it on purpose.
 
 **Being told.** One switch, **Allow notifications** on the Notifications page of Settings, off
 until you turn it on, because asking for notification permission before an app has done anything
-for you is what people say no to and never revisit. *What* you are told about is set per account
-on the same page, in one table with **Review requests** and **My work blocked** for every GitHub
-account and GitLab instance: a banner when somebody asks for your review, and one when something
-of yours there is blocked. So a customer's instance can stay quiet while your
-own does not, per token, per kind.
+for you is what people say no to and never revisit. *What* you are told about is set on the same
+page. Per account: **Review requests**, **My work stuck**, and for GitHub **Failed runs**, a
+workflow failing on a main branch, which needs the Actions card on. Per project: **Went down**,
+stopped without anyone pressing Stop or stopped answering, and **Start failed**. And **New
+versions of DevDeck**. So a customer's instance can stay quiet while your own does not, per token,
+per kind. A token that stops working is always said, once.
 
-The banner carries the service's own mark rather than the app's icon, so who is asking is
-answered before the words are read. Nothing is announced on the first answer after a launch,
-since that is the state you left things in, and nothing is announced twice, even across restarts.
-Three at once become one line rather than three banners. A click opens the pull or merge request
-in the browser profile of the account that owns it, and **Send Test Notification** posts one immediately so
-the whole chain can be checked without waiting for somebody to ask for a review.
+A banner's title says what happened, `anna asked for your review`, its subtitle where,
+`acme/portal #142 · Work`, and its body which thing and what a click does. It carries the source's
+own mark, the octocat, the tanuki, Arc's A, DDEV or Docker, so who is asking is answered before the
+words are read. Only a person waiting on you makes a sound. Nothing is announced on the first
+answer after a launch, since that is the state you left things in, and nothing is announced twice,
+even across restarts. Three at once become one banner that counts them by kind and names the first
+two, and a click on it opens the menu that lists them all. A start that failed while you watched
+it is not announced, and neither is a stop that did not take: you are looking at that card.
+**Send Test Notification** posts one immediately so the whole chain can be checked.
 
 While the display a card belongs to is unplugged, tidying or dragging the parked card makes that
 its new home.
@@ -706,21 +734,20 @@ run of the workflow against an existing tag builds that tag's commit and replace
 
 From 0.11 on the app keeps itself current, by asking rather than by doing. Thirty seconds after
 launch and every six hours it reads the latest release on GitHub; when that is newer than the
-running copy, the menu-bar menu opens with **Update to …** as its first line and one banner says so,
-once per version and only if notifications are on. Nothing is downloaded until you ask:
+running copy, the menu-bar menu has an **Update to …** row under Good to know and one banner says
+so, once per version and only if notifications and **New versions of DevDeck** are on. Nothing is downloaded until you ask:
 that line, the banner, **Update Now** in Settings, or `open -a DevDeck --args --update`. Then:
 download, `ditto`, a check that what unpacked is DevDeck at the promised version and, from a
 signed copy, signed by the same identity as the running one, the old copy to the Trash, the new
 one in its place, and a relaunch a second later with every panel where it was. Option-click the
-line to read the notes first. A copy signed with a certificate of your own therefore does not
+row to read the notes first. A copy signed with a certificate of your own therefore does not
 update itself to a release, which is signed with the Developer ID.
 
 What the app downloads itself carries no quarantine, so an update never needs the right-click
 dance a first install does. No install starts while a card is mid-command, however it was asked
 for, because replacing the bundle under a running `fusion start` is how a stack is left half up:
-the menu line says what it waits for, and an install already asked for goes ahead by itself once
-the command is done. Settings,
-General has the switch and a **Check Now** button with the last answer beside it. See
+the row says what it waits for, and an install already asked for goes ahead by itself once the
+command is done. Settings, General has the switch and a **Check Now** button with the last answer beside it. See
 [adr/0016-self-update.md](docs/adr/0016-self-update.md).
 
 ## Documentation
@@ -729,19 +756,21 @@ General has the switch and a **Check Now** button with the last answer beside it
 - [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
-- [docs/adr/](docs/adr/) - eighteen decisions and what they cost: why native, why SwiftPM only,
+- [docs/adr/](docs/adr/) - nineteen decisions and what they cost: why native, why SwiftPM only,
   why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
   shares one call, how a plain project is started, why Docker is checked first, how a card is
   laid out, why the deck is quieter than it was, why a card has two sizes, why the deck moves a
   card only when asked, why GitLab is a card of its own, how a monorepo is read, why the
   application layer is in pieces, how the app updates itself, why the signature decides how
-  tokens are kept, and why the settings window is built like System Settings
+  tokens are kept, why the settings window is built like System Settings, and why the menu names
+  what needs you in four tiers
 
 ## Layout
 
 ```
 Sources/
-  DevDeckCore/     configuration, cards, HTTP transport, tokens and code identity, policies,
+  DevDeckCore/     attention tiers, rows and project history, configuration, cards, HTTP
+                   transport, tokens and code identity, policies,
                    command runner, git branch, browser choice, the Docker probe, log tail,
                    the refresh cycle, the update check
   KeychainACL/     the C shim for the one deprecated Keychain call Swift cannot silence
@@ -757,7 +786,7 @@ Sources/
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (348 tests, offline)
+  DevDeckTests/    the suite (372 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

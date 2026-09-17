@@ -352,31 +352,19 @@ func runPresentationTests(_ run: TestRun) async {
 
     run.section("The menu-bar icon")
 
-    await run.test("somebody waiting on you outranks your own queue being stuck") {
-        // The old icon went red for either, plus a third thing, and said which only in a
-        // tooltip. One of the two costs another person time; that is the one worth colour.
-        let waiting = DeckStatusSummary(tooltip: "", blockedCount: 3, waitingCount: 1)
-        try expectEqual(waiting.state, .waiting, "a person is waiting, whatever else is true")
-        try expectEqual(DeckStatusSummary(tooltip: "", blockedCount: 2, waitingCount: 0).state, .blocked)
-        try expectEqual(DeckStatusSummary(tooltip: "", blockedCount: 0, waitingCount: 0).state, .calm)
-    }
-
-    await run.test("the reason is a sentence, so the menu can answer why") {
-        try expectEqual(
-            DeckStatusSummary(tooltip: "", blockedCount: 2, waitingCount: 1).reason,
-            "1 waiting on you, 2 of yours blocked",
-            "the person first, since that is what the colour is about"
-        )
-        try expectEqual(DeckStatusSummary(tooltip: "", blockedCount: 2, waitingCount: 0).reason,
-                        "2 of yours blocked")
-        try expectNil(DeckStatusSummary(tooltip: "", blockedCount: 0, waitingCount: 0).reason,
-                      "and nothing to say when nothing wants you")
+    await run.test("the icon wears the most urgent tier that lights it") {
+        try expectEqual(DeckIconState(tier: .waiting), .waiting, "a person is waiting, whatever else is true")
+        try expectEqual(DeckIconState(tier: .needsFixing), .needsFixing)
+        try expectEqual(DeckIconState(tier: .stuck), .stuck)
+        try expectEqual(DeckIconState(tier: .goodToKnow), .calm, "good to know is never a badge")
+        try expectEqual(DeckIconState(tier: nil), .calm)
     }
 
     await run.test("only the state that carries red opts out of being a template") {
         try expect(DeckIcon.statusItemImage(.calm).isTemplate)
-        try expect(DeckIcon.statusItemImage(.blocked).isTemplate,
-                   "blocked is the bar's own ink, so the bar keeps tinting it")
+        try expect(DeckIcon.statusItemImage(.stuck).isTemplate,
+                   "the ring is the bar's own ink, so the bar keeps tinting it")
+        try expect(DeckIcon.statusItemImage(.needsFixing).isTemplate)
         try expect(!DeckIcon.statusItemImage(.waiting).isTemplate, "a template image has no colour")
         try expectEqual(DeckIcon.statusItemImage(.calm).size, DeckIcon.size,
                         "every state occupies the same slot, so the tray does not reshuffle")
@@ -479,13 +467,16 @@ func runPresentationTests(_ run: TestRun) async {
     run.section("Being told")
 
     let review = DeckAlert(
-        id: "review:1", kind: .reviewRequest, source: .gitlab, title: "Review requested",
-        body: "acme/web!41 Drop the poller",
-        url: URL(string: "https://git.acme.io/acme/web/-/merge_requests/41")!, accountID: "work"
+        id: "review:1", kind: .reviewRequest, source: .gitlab, title: "Your review is requested",
+        subtitle: "acme/web !41", body: "Drop the poller. Click to open it.", subject: "Drop the poller",
+        target: .url(URL(string: "https://git.acme.io/acme/web/-/merge_requests/41")!, account: "work"),
+        isQuiet: false
     )
     let blocked = DeckAlert(
-        id: "blocked:2:CI", kind: .blocked, source: .gitlab, title: "Pipeline failed",
-        body: "acme/web!42 Rebase", url: URL(string: "https://git.acme.io")!, accountID: "work"
+        id: "blocked:2:CF", kind: .blocked, source: .gitlab, title: "Pipeline failed on your merge request",
+        subtitle: "acme/web !42", body: "Rebase. Click to see the failed jobs.", subject: "Rebase",
+        target: .url(URL(string: "https://git.acme.io")!, account: "work"),
+        isQuiet: true
     )
 
     await run.test("the first answer after a launch is never announced") {
@@ -504,7 +495,7 @@ func runPresentationTests(_ run: TestRun) async {
             seen: ["review:1"],
             isFirstPass: false
         )
-        try expectEqual(fresh.map(\.id), ["blocked:2:CI"])
+        try expectEqual(fresh.map(\.id), ["blocked:2:CF"])
     }
 
     await run.test("what was seen is remembered, and the memory has a floor and a ceiling") {
@@ -517,27 +508,28 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(trimmed.last, String(NotificationDigest.memory + 50), "the newest survive")
     }
 
-    await run.test("a handful becomes one line rather than a wall of banners") {
+    await run.test("a handful becomes one line that counts them by kind and names them") {
         try expectNil(NotificationDigest.summary(for: [review, blocked]), "two are just two banners")
         let summary = try expectNotNil(
             NotificationDigest.summary(for: [review, review, blocked]),
             "summary"
         )
-        try expectEqual(summary.body, "2 waiting for your review, 1 of yours blocked")
+        try expectEqual(summary.title, "2 reviews waiting, 1 stuck")
+        try expectEqual(summary.body, "Drop the poller, Drop the poller and 1 more. Click to see them in the menu.")
     }
 
-    await run.test("only the two things worth interrupting somebody for become alerts") {
+    await run.test("only the two things worth interrupting somebody for become merge request banners") {
         let snapshot = MergeRequestsSnapshot(totalCount: 3, mergeRequests: [
             sampleRequest(id: "1", isReviewRequest: true, pipeline: .success),
             sampleRequest(id: "2", isReviewRequest: false, pipeline: .failed),
             sampleRequest(id: "3", isReviewRequest: false, pipeline: .success),
         ])
-        try expectEqual(snapshot.alerts(includeBlocked: false).map(\.id), ["review:1"],
-                        "a review request is somebody waiting on you")
-        try expectEqual(snapshot.alerts(includeBlocked: true).map(\.kind), [.reviewRequest, .blocked],
-                        "and a red pipeline of your own, when you asked for it")
-        try expect(!snapshot.alerts(includeBlocked: true).contains { $0.id.contains(":3") },
-                   "a merge request that is simply fine is not news")
+        let alerts = GitLabAttention.alerts(mergeRequests: snapshot, labels: [:])
+        try expectEqual(alerts.map(\.kind), [.reviewRequest, .blocked],
+                        "a review request is somebody waiting on you, a red pipeline of yours is stuck work")
+        try expect(!alerts.contains { $0.id.contains(":3") }, "a merge request that is simply fine is not news")
+        try expect(!alerts[0].isQuiet, "a person waiting is worth a sound")
+        try expect(alerts[1].isQuiet, "your own stuck work is worth a banner and no more")
     }
 
     await run.test("something broken, fixed and broken again is said twice") {
@@ -548,8 +540,8 @@ func runPresentationTests(_ run: TestRun) async {
             updatedAt: Date(timeIntervalSince1970: 0), pipeline: .success,
             approvalsLeft: 0, unresolvedThreads: 0
         )
-        let before = MergeRequestsSnapshot(totalCount: 1, mergeRequests: [first]).alerts(includeBlocked: true)
-        let after = MergeRequestsSnapshot(totalCount: 1, mergeRequests: [later]).alerts(includeBlocked: true)
+        let before = GitLabAttention.alerts(mergeRequests: MergeRequestsSnapshot(totalCount: 1, mergeRequests: [first]), labels: [:])
+        let after = GitLabAttention.alerts(mergeRequests: MergeRequestsSnapshot(totalCount: 1, mergeRequests: [later]), labels: [:])
         try expect(before.first?.id != after.first?.id,
                    "the state is part of the identity, so the second failure is news again")
     }
@@ -557,7 +549,7 @@ func runPresentationTests(_ run: TestRun) async {
     await run.test("a banner carries the service's own mark, not the app's") {
         // macOS puts the application icon on every notification and will not be talked out of
         // it. The attachment is the only place "who is asking" can be answered.
-        for source in [DeckAlert.Source.github, .gitlab] {
+        for source in [DeckAlert.Source.github, .gitlab, .arc, .ddev, .docker, .project] {
             let url = try expectNotNil(NotificationArtwork.fileURL(for: source), "artwork")
             let data = try expectNotNil(try? Data(contentsOf: url), "png")
             try expect(data.count > 500, "a real drawing rather than an empty tile")

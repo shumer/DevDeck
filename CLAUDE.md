@@ -70,7 +70,12 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
 - **Links open through `LinkOpener` with the row's account**, never `NSWorkspace.open` directly
   - that is what puts a work pull request in the work browser profile.
 - **`statusCode` and `statusLine` mirror each other case for case.** The code is on the row,
-  the wording is in its tooltip; the two drifting apart is worse than either alone.
+  the wording is in its tooltip; the two drifting apart is worse than either alone. A code means
+  the same on every card: `MC` conflict, `CF` checks or pipeline failed, `RV` your review.
+- **Everything that asks for attention is an `AttentionItem`.** The icon, the tooltip, the
+  menu's rows and the banners are built from the same items by the builders in the kits and
+  `DeckAttention`, never assembled separately in the app. A new signal gets a tier, a builder and
+  a test, and one thing is counted once.
 - **Local commands run through `ShellCommandRunner`** (a login shell) in the project folder.
   A bare `Process` with `npx` cannot find node when the app is launched from Finder.
 - **Local stack state comes from the health URL**, never from the process table - the stack is
@@ -102,6 +107,12 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   before the new one is unpacked and verified.** The check runs by itself; the download and
   the swap wait for a person, and the old bundle goes to the Trash, not away. `UpdateCheck`
   decides, `Updater` does; keep it that way so the deciding stays under tests.
+- **Attention messages answer three questions: what happened, to what, and what a click does.**
+  A bare number is not a message. Name the thing (`2 reviews`), not the category (`2 waiting`).
+  One idea has one phrase in the menu, the tooltip, the card, the banner and Settings. A greyed
+  menu item is only a header or a status; anything naming a thing is clickable. An error names
+  the account or project, what is wrong and the next step, never an HTTP class, and never
+  `GitHub` on a GitLab card. A banner's title says what happened in about 40 characters.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it
   is verified first. A control that silently does nothing until some other button is pressed
   is how the browser choice failed to take effect at all.

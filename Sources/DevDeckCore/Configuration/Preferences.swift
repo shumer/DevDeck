@@ -168,12 +168,6 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue, forKey: "keychain.acl") }
     }
 
-    /// Whether DevDeck may notify you at all.
-    ///
-    /// The master switch, and nothing more: *what* you are told about is a property of each
-    /// account, because one token is your own work and another is a customer's. This one exists
-    /// because turning it on is what asks macOS for permission, and asking at first launch,
-    /// before the app has done anything for anybody, is what people uninstall an app over.
     /// Whether the deck asks GitHub for a newer build. On unless switched off, stored as a
     /// string for the same reason as the summon switch: the backend's `bool` cannot tell "off"
     /// from "never asked".
@@ -189,11 +183,48 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue, forKey: "updates.announced") }
     }
 
+    /// Whether DevDeck may notify you at all.
+    ///
+    /// The master switch, and nothing more: *what* you are told about is a property of each
+    /// account and each project, because one token is your own work and another is a customer's.
+    /// This one exists because turning it on is what asks macOS for permission, and asking at
+    /// first launch, before the app has done anything for anybody, is what people uninstall an
+    /// app over.
     public var notificationsEnabled: Bool {
         // Falls back to the switch this replaced, so a deck that already had review-request
         // banners on keeps them.
         get { backend.string(forKey: "notify.enabled").map { $0 == "1" } ?? backend.bool(forKey: "notify.reviews") }
         set { backend.set(newValue ? "1" : "0", forKey: "notify.enabled") }
+    }
+
+    /// Whether a new version of DevDeck gets a banner. On unless switched off.
+    public var notifiesUpdates: Bool {
+        get { backend.string(forKey: "notify.updates") != "0" }
+        set { backend.set(newValue ? "1" : "0", forKey: "notify.updates") }
+    }
+
+    /// Projects that may not interrupt you when they go down or stop answering, by card id.
+    /// Stored as the exceptions, so a project added later is covered without asking.
+    public var projectsQuietWhenDown: Set<String> {
+        get { stringSet(forKey: "notify.projects.down.off") }
+        set { setStringSet(newValue, forKey: "notify.projects.down.off") }
+    }
+
+    /// Projects that may not interrupt you when a start fails, by card id.
+    public var projectsQuietWhenStartFails: Set<String> {
+        get { stringSet(forKey: "notify.projects.start.off") }
+        set { setStringSet(newValue, forKey: "notify.projects.start.off") }
+    }
+
+    private func stringSet(forKey key: String) -> Set<String> {
+        guard let data = backend.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([String].self, from: data)
+        else { return [] }
+        return Set(decoded)
+    }
+
+    private func setStringSet(_ value: Set<String>, forKey key: String) {
+        backend.set(try? JSONEncoder().encode(value.sorted()), forKey: key)
     }
 
     /// What has already been announced, so a restart does not repeat it. Ids, newest last.

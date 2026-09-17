@@ -79,6 +79,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let target = CardHostView.module(for: card)?.settingsTarget(for: card) ?? (.cards, nil)
             self.settingsController.show(target.section, id: target.id)
         },
+        openAccountSettings: { [unowned self] service, id in
+            self.settingsController.show(service == .github ? .github : .gitlab, id: id)
+        },
+        showCard: { [unowned self] card in self.showCard(card) },
         quit: { [unowned self] in
             self.controller.stop()
             NSApp.terminate(nil)
@@ -91,7 +95,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var notificationsPage = NotificationsSettingsPage(
         preferences: preferences,
         githubStore: accountsStore,
-        gitlabStore: gitlabAccountsStore
+        gitlabStore: gitlabAccountsStore,
+        arcStore: projectsStore,
+        ddevStore: ddevProjectsStore,
+        localStore: localProjectsStore
     )
     private lazy var settingsController: SettingsWindowController = SettingsWindowController(
         pages: [
@@ -131,7 +138,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.$localStatuses.map { _ in () }.eraseToAnyPublisher(),
             // A tray opening or filling changes the card's height, so the panel has to follow.
             controller.$logTails.map { _ in () }.eraseToAnyPublisher(),
-            controller.$collapsedCards.map { _ in () }.eraseToAnyPublisher()
+            controller.$collapsedCards.map { _ in () }.eraseToAnyPublisher(),
+            // The rest of what the menu-bar badge is made of: GitLab, Docker, the projects'
+            // history and the checkouts.
+            controller.$mergeRequests.map { _ in () }.eraseToAnyPublisher(),
+            controller.$docker.map { _ in () }.eraseToAnyPublisher(),
+            controller.$watch.map { _ in () }.eraseToAnyPublisher(),
+            controller.$checkouts.map { _ in () }.eraseToAnyPublisher()
         )
         .receive(on: RunLoop.main)
         .sink { [weak self] _ in
@@ -143,26 +156,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         .store(in: &cancellables)
 
-        // A banner opens what it is about, in the browser profile of the account that owns it.
-        notifier.onOpen = { [weak self] url, accountID in
-            guard let self else { return }
-            let isGitLab = self.controller.gitlabAccountLabels[accountID] != nil
-            LinkOpener.open(
-                url,
-                using: isGitLab ? self.controller.gitlabBrowser(for: accountID) : self.controller.browser(for: accountID)
-            )
-        }
+        // A banner opens what it is about: a page in the browser profile of the account that owns
+        // it, a project's card, an account's settings, or the menu that lists a summary's items.
+        notifier.onTarget = { [weak self] target in self?.open(target) }
         controller.onAlerts = { [weak self] alerts in self?.notifier.post(alerts) }
         controller.updateStatusItem = { [weak self] in self?.menu.updateStatusItem() }
         notifier.refreshAuthorization()
 
         // A newer build: one banner, and the settings page redrawn as the state moves.
         updater.onAvailable = { [weak self] update in
-            guard let self, self.preferences.notificationsEnabled else { return }
+            guard let self, self.preferences.notificationsEnabled, self.preferences.notifiesUpdates else { return }
             self.notifier.postUpdate(update.version.description)
         }
         updater.workingCard = { [weak self] in self?.controller.workingCardTitle }
-        updater.onChange = { [weak self] in self?.generalPage.refreshUpdateRow() }
+        updater.onChange = { [weak self] in
+            self?.generalPage.refreshUpdateRow()
+            self?.menu.updateStatusItem()
+        }
         notifier.onUpdate = { [weak self] in self?.updater.install() }
 
         alignKeychainAccess()
@@ -197,6 +207,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsController.show(named ?? .general, id: id)
         }
 
+        // `open -a DevDeck --args --menu` opens the menu-bar menu once the first answers are in,
+        // for looking at it, and for a screenshot of it, without a hand on the mouse. `--menu
+        // sample` fills it with made-up rows of every tier.
+        if let index = CommandLine.arguments.firstIndex(of: "--menu") {
+            let arguments = CommandLine.arguments
+            menu.showsSamples = arguments.count > index + 1 && arguments[index + 1] == "sample"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.menu.open() }
+        }
+
         if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {
             LoginItem.set(true)
         }
@@ -206,6 +225,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--update") {
             updater.checkAndInstall()
         }
+    }
+
+    /// Where a clicked banner goes.
+    private func open(_ target: DeckAlert.Target) {
+        switch target {
+        case .url(let url, let accountID):
+            let isGitLab = controller.gitlabAccountLabels[accountID] != nil
+            LinkOpener.open(url, using: isGitLab ? controller.gitlabBrowser(for: accountID) : controller.browser(for: accountID))
+        case .card(let card):
+            showCard(card)
+        case .accountSettings(let service, let accountID):
+            settingsController.show(service == "gitlab" ? .gitlab : .github, id: accountID.isEmpty ? nil : accountID)
+        case .menu:
+            menu.open()
+        }
+    }
+
+    /// Brings the deck up with this card's log open: what a row about a project promises.
+    private func showCard(_ card: CardID) {
+        if !cards.isEnabled(card) {
+            cards.setEnabled(true, for: card)
+            panels.syncPanels()
+        }
+        if controller.hasLogSource(card), !controller.isCollapsed(card), !controller.isExpanded(card) {
+            controller.toggleLogs(for: card)
+        }
+        summoner.present()
     }
 
     /// Anything in settings changed: a project added or removed changes the card list, not just

@@ -2,6 +2,9 @@ import AppKit
 import DevDeckCore
 import GitHubKit
 import GitLabKit
+import ArcKit
+import DDEVKit
+import ProjectKit
 
 // The four pages at the top of the settings sidebar. They were one General page of seven groups,
 // three screens long, with the switch you came for two scrolls down; now each fits the window.
@@ -319,9 +322,9 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
 
 // MARK: - Notifications
 
-/// The master switch and, in one table, what each account may interrupt you about. It used to
-/// be a switch under General and two more at the bottom of every account form, each pointing at
-/// the other.
+/// The master switch and, in two tables, what each account and each project may interrupt you
+/// about. It used to be a switch under General and two more at the bottom of every account form,
+/// each pointing at the other.
 @MainActor
 final class NotificationsSettingsPage: NSObject, SettingsPage {
     let kind = SettingsWindowController.Section.notifications
@@ -337,18 +340,37 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
     private let preferences: Preferences
     private let githubStore: GitHubAccountsStore
     private let gitlabStore: GitLabAccountsStore
-    private var reviewSwitches: [NSSwitch: (service: String, id: String)] = [:]
-    private var blockedSwitches: [NSSwitch: (service: String, id: String)] = [:]
+    private let arcStore: ArcProjectsStore
+    private let ddevStore: DDEVProjectsStore
+    private let localStore: LocalProjectsStore
 
-    init(preferences: Preferences, githubStore: GitHubAccountsStore, gitlabStore: GitLabAccountsStore) {
+    private enum Column { case review, stuck, runs, down, start }
+    private var switches: [NSSwitch: (column: Column, service: String, id: String)] = [:]
+
+    init(
+        preferences: Preferences,
+        githubStore: GitHubAccountsStore,
+        gitlabStore: GitLabAccountsStore,
+        arcStore: ArcProjectsStore,
+        ddevStore: DDEVProjectsStore,
+        localStore: LocalProjectsStore
+    ) {
         self.preferences = preferences
         self.githubStore = githubStore
         self.gitlabStore = gitlabStore
+        self.arcStore = arcStore
+        self.ddevStore = ddevStore
+        self.localStore = localStore
     }
 
     func build(in container: FlippedContainer) {
         let form = SettingsForm(in: container)
-        form.pageHeader(icon: SettingsIcons.tile("bell.badge.fill", color: .systemRed, size: 32), title: title, subtitle: "A banner when somebody is waiting on you")
+        form.pageHeader(
+            icon: SettingsIcons.tile("bell.badge.fill", color: .systemRed, size: 32),
+            title: title,
+            subtitle: "A banner when somebody waits on you, your work gets stuck or a project goes down"
+        )
+        switches = [:]
 
         form.beginGroup()
         form.settingRow(
@@ -356,39 +378,79 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
             subtitle: "macOS asks for permission the first time.",
             control: SettingsForm.makeSwitch(isOn: preferences.notificationsEnabled, title: "Allow notifications", target: self, action: #selector(masterChanged(_:)))
         )
+        form.settingRow(
+            "New versions of DevDeck",
+            control: SettingsForm.makeSwitch(isOn: preferences.notifiesUpdates, title: "New versions of DevDeck", target: self, action: #selector(updatesChanged(_:)))
+        )
         form.settingRow("Check it", control: SettingsForm.button("Send Test Notification", target: self, action: #selector(sendTest)))
         form.endGroup()
 
-        let accounts: [(service: String, id: String, label: String, glyph: NSImage, review: Bool, blocked: Bool)] =
-            githubStore.accounts().map { ("github", $0.id, $0.label, SettingsIcons.mark(.github), $0.notifiesReviewRequests, $0.notifiesBlocked) }
-            + gitlabStore.accounts().map { ("gitlab", $0.id, $0.label, SettingsIcons.mark(.gitlab), $0.notifiesReviewRequests, $0.notifiesBlocked) }
-
-        guard !accounts.isEmpty else { return }
-        form.section("Per account")
-        form.beginGroup()
-        form.settingRow("", control: Self.columns(Self.columnLabel("Review requests"), Self.columnLabel("My work blocked")))
-        reviewSwitches = [:]
-        blockedSwitches = [:]
-        for account in accounts {
-            let review = SettingsForm.makeSwitch(isOn: account.review, title: "\(account.label) review requests", target: self, action: #selector(accountChanged(_:)))
-            let blocked = SettingsForm.makeSwitch(isOn: account.blocked, title: "\(account.label) blocked work", target: self, action: #selector(accountChanged(_:)))
-            reviewSwitches[review] = (account.service, account.id)
-            blockedSwitches[blocked] = (account.service, account.id)
-            form.settingRow(account.label, control: Self.columns(review, blocked))
+        let github = githubStore.accounts()
+        let gitlab = gitlabStore.accounts()
+        if !github.isEmpty || !gitlab.isEmpty {
+            form.section("Accounts")
+            form.beginGroup()
+            form.settingRow("", control: Self.columns([
+                Self.columnLabel("Review requests"), Self.columnLabel("My work stuck"), Self.columnLabel("Failed runs"),
+            ]))
+            for account in github {
+                form.settingRow(account.label, subtitle: "GitHub", control: Self.columns([
+                    toggle(.review, "github", account.id, isOn: account.notifiesReviewRequests, title: "\(account.label) review requests"),
+                    toggle(.stuck, "github", account.id, isOn: account.notifiesBlocked, title: "\(account.label) stuck work"),
+                    toggle(.runs, "github", account.id, isOn: account.notifiesFailedRuns, title: "\(account.label) failed runs"),
+                ]))
+            }
+            for account in gitlab {
+                form.settingRow(account.label, subtitle: "GitLab", control: Self.columns([
+                    toggle(.review, "gitlab", account.id, isOn: account.notifiesReviewRequests, title: "\(account.label) review requests"),
+                    toggle(.stuck, "gitlab", account.id, isOn: account.notifiesBlocked, title: "\(account.label) stuck work"),
+                    // GitLab has no Actions card, so there is nothing to switch here.
+                    NSView(),
+                ]))
+            }
+            form.endGroup()
+            form.footnote("Failed runs means a workflow failing on a main branch, and needs the Actions card on.")
         }
-        form.endGroup()
-        form.footnote("Nothing is announced on the first check after a launch.")
+
+        let projects: [(id: String, title: String, kind: String)] =
+            arcStore.projects().map { ($0.cardID.rawValue, $0.title, "Arc XP") }
+            + ddevStore.projects().map { ($0.cardID.rawValue, $0.displayTitle, "DDEV") }
+            + localStore.projects().map { ($0.cardID.rawValue, $0.displayTitle, "Project") }
+        if !projects.isEmpty {
+            form.section("Projects")
+            form.beginGroup()
+            form.settingRow("", control: Self.columns([Self.columnLabel("Went down"), Self.columnLabel("Start failed"), NSView()]))
+            let quietDown = preferences.projectsQuietWhenDown
+            let quietStart = preferences.projectsQuietWhenStartFails
+            for project in projects.sorted(by: { $0.title.localizedStandardCompare($1.title) == .orderedAscending }) {
+                form.settingRow(project.title, subtitle: project.kind, control: Self.columns([
+                    toggle(.down, "project", project.id, isOn: !quietDown.contains(project.id), title: "\(project.title) went down"),
+                    toggle(.start, "project", project.id, isOn: !quietStart.contains(project.id), title: "\(project.title) start failed"),
+                    NSView(),
+                ]))
+            }
+            form.endGroup()
+            form.footnote("Went down means it stopped without anyone pressing Stop, or stopped answering. Nothing is announced on the first check after a launch.")
+        } else {
+            form.footnote("Nothing is announced on the first check after a launch.")
+        }
     }
 
-    /// Two controls centred in two fixed columns, so the switches line up under their headings.
-    private static func columns(_ first: NSView, _ second: NSView) -> NSView {
+    private func toggle(_ column: Column, _ service: String, _ id: String, isOn: Bool, title: String) -> NSSwitch {
+        let control = SettingsForm.makeSwitch(isOn: isOn, title: title, target: self, action: #selector(switchChanged(_:)))
+        switches[control] = (column, service, id)
+        return control
+    }
+
+    /// Controls centred in fixed columns, so the switches line up under their headings.
+    private static func columns(_ views: [NSView]) -> NSView {
         let row = NSStackView()
         row.orientation = .horizontal
         row.spacing = 0
-        for view in [first, second] {
+        for view in views {
             let cell = NSStackView(views: [view])
             cell.alignment = .centerX
-            cell.widthAnchor.constraint(equalToConstant: 120).isActive = true
+            cell.widthAnchor.constraint(equalToConstant: 96).isActive = true
             row.addArrangedSubview(cell)
         }
         return row
@@ -418,35 +480,45 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
         }
     }
 
+    @objc private func updatesChanged(_ sender: NSSwitch) {
+        preferences.notifiesUpdates = sender.state == .on
+    }
+
     @objc private func sendTest() {
         onTest()
     }
 
-    @objc private func accountChanged(_ sender: NSSwitch) {
+    @objc private func switchChanged(_ sender: NSSwitch) {
+        guard let target = switches[sender] else { return }
         let isOn = sender.state == .on
-        if let target = reviewSwitches[sender] {
-            update(target) { github in github.notifiesReviewRequests = isOn } gitlab: { gitlab in gitlab.notifiesReviewRequests = isOn }
-        } else if let target = blockedSwitches[sender] {
-            update(target) { github in github.notifiesBlocked = isOn } gitlab: { gitlab in gitlab.notifiesBlocked = isOn }
+        switch (target.column, target.service) {
+        case (.review, "github"): updateGitHub(target.id) { $0.notifiesReviewRequests = isOn }
+        case (.stuck, "github"): updateGitHub(target.id) { $0.notifiesBlocked = isOn }
+        case (.runs, "github"): updateGitHub(target.id) { $0.notifiesFailedRuns = isOn }
+        case (.review, "gitlab"): updateGitLab(target.id) { $0.notifiesReviewRequests = isOn }
+        case (.stuck, "gitlab"): updateGitLab(target.id) { $0.notifiesBlocked = isOn }
+        case (.down, _):
+            // Stored as the exceptions, so a project added later is covered without asking.
+            if isOn { preferences.projectsQuietWhenDown.remove(target.id) } else { preferences.projectsQuietWhenDown.insert(target.id) }
+        case (.start, _):
+            if isOn { preferences.projectsQuietWhenStartFails.remove(target.id) } else { preferences.projectsQuietWhenStartFails.insert(target.id) }
+        default:
+            break
         }
         host?.changed()
     }
 
-    private func update(
-        _ target: (service: String, id: String),
-        github: (inout GitHubAccount) -> Void,
-        gitlab: (inout GitLabAccount) -> Void
-    ) {
-        if target.service == "github" {
-            var accounts = githubStore.accounts()
-            guard let index = accounts.firstIndex(where: { $0.id == target.id }) else { return }
-            github(&accounts[index])
-            githubStore.save(accounts)
-        } else {
-            var accounts = gitlabStore.accounts()
-            guard let index = accounts.firstIndex(where: { $0.id == target.id }) else { return }
-            gitlab(&accounts[index])
-            gitlabStore.save(accounts)
-        }
+    private func updateGitHub(_ id: String, _ change: (inout GitHubAccount) -> Void) {
+        var accounts = githubStore.accounts()
+        guard let index = accounts.firstIndex(where: { $0.id == id }) else { return }
+        change(&accounts[index])
+        githubStore.save(accounts)
+    }
+
+    private func updateGitLab(_ id: String, _ change: (inout GitLabAccount) -> Void) {
+        var accounts = gitlabStore.accounts()
+        guard let index = accounts.firstIndex(where: { $0.id == id }) else { return }
+        change(&accounts[index])
+        gitlabStore.save(accounts)
     }
 }

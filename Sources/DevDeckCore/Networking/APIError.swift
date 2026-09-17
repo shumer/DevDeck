@@ -15,11 +15,15 @@ public enum APIError: Error, Sendable, Equatable {
     /// GraphQL answers 200 with an `errors` array; those are surfaced separately.
     case graphQL([String])
     case missingToken(String)
+    /// Every account behind a card failed. Carried whole, so the card and the menu can say which
+    /// account and why rather than a class of HTTP error.
+    case accounts([AccountFailure])
 
     /// Whether retrying the same request could plausibly succeed.
     public var isRetryable: Bool {
         switch self {
         case .server, .transport: return true
+        case .accounts(let failures): return failures.contains { $0.kind == .unreachable }
         case .rateLimited: return false
         case .unauthorized, .forbidden, .notFound, .decoding, .graphQL, .missingToken: return false
         }
@@ -31,25 +35,27 @@ public enum APIError: Error, Sendable, Equatable {
         case .unauthorized:
             return "Token rejected"
         case .forbidden(let detail):
-            return detail.map { "Forbidden: \($0)" } ?? "Forbidden"
+            return detail ?? "Not allowed"
         case .rateLimited(let resetAt):
-            guard let resetAt else { return "Rate limited" }
+            guard let resetAt else { return "Rate limit reached" }
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.dateFormat = "HH:mm"
-            return "Rate limited until \(formatter.string(from: resetAt))"
+            return "Rate limit, back at \(formatter.string(from: resetAt))"
         case .notFound:
             return "Not found"
         case .server(let status, _):
-            return "GitHub error \(status)"
+            return "Server error \(status)"
         case .transport:
-            return "Network unavailable"
+            return "Offline"
         case .decoding:
-            return "Unexpected response"
+            return "A response DevDeck can't read"
         case .graphQL(let messages):
             return messages.first ?? "GraphQL error"
         case .missingToken(let name):
-            return "No \(name) token"
+            return "No \(name) token yet"
+        case .accounts(let failures):
+            return failures.summary ?? "Every account failed"
         }
     }
 }

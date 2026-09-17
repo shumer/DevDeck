@@ -10,6 +10,7 @@ enum Fixtures {
     static let pullRequestSearch = """
     {
       "data": {
+        "viewer": { "login": "shumer" },
         "mine": {
           "issueCount": 7,
           "nodes": [
@@ -76,6 +77,14 @@ enum Fixtures {
               "updatedAt": "2026-07-28T07:00:00Z",
               "repository": { "nameWithOwner": "editoria/ledwall", "owner": { "login": "editoria" } },
               "reviewDecision": "APPROVED",
+              "author": { "login": "marta" },
+              "mergeable": "MERGEABLE",
+              "timelineItems": { "nodes": [
+                { "createdAt": "2026-07-27T08:00:00Z", "actor": { "login": "lead" }, "requestedReviewer": { "__typename": "Team" } },
+                { "createdAt": "2026-07-27T09:00:00Z", "actor": { "login": "anna" }, "requestedReviewer": { "login": "shumer" } },
+                { "createdAt": "2026-07-27T10:00:00Z", "actor": { "login": "marta" }, "requestedReviewer": { "login": "someone-else" } },
+                {}
+              ] },
               "reviewThreads": { "nodes": [] },
               "commits": { "nodes": [{ "commit": { "statusCheckRollup": { "state": "SUCCESS" } } }] }
             }

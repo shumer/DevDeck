@@ -75,6 +75,7 @@ public struct PullRequestsService: Sendable {
     /// conversations than that is already the most blocked thing on the card.
     static let query = """
     query DevDeckPullRequests($q: String!, $r: String!, $limit: Int!) {
+      viewer { login }
       mine: search(query: $q, type: ISSUE, first: $limit) {
         ...pullRequests
       }
@@ -98,6 +99,20 @@ public struct PullRequestsService: Sendable {
               owner { login }
             }
             reviewDecision
+            mergeable
+            author { login }
+            timelineItems(itemTypes: [REVIEW_REQUESTED_EVENT], last: 10) {
+              nodes {
+                ... on ReviewRequestedEvent {
+                  createdAt
+                  actor { login }
+                  requestedReviewer {
+                    __typename
+                    ... on User { login }
+                  }
+                }
+              }
+            }
             reviewThreads(first: 100) {
               nodes { isResolved }
             }
@@ -117,14 +132,15 @@ public struct PullRequestsService: Sendable {
         from payload: SearchPayload,
         accountID: String = GitHubAccount.defaultID
     ) -> PullRequestsSnapshot {
+        let viewer = payload.viewer?.login
         let mine = payload.mine.nodes.compactMap {
-            Self.summary(from: $0, accountID: accountID, isReviewRequest: false)
+            Self.summary(from: $0, accountID: accountID, isReviewRequest: false, viewer: viewer)
         }
         // Yours wins a tie: you cannot be asked to review your own pull request, but a fork or a
         // team rule can produce one that answers both searches, and it is yours first.
         var seen = Set(mine.map(\.id))
         let reviewing = payload.reviewing.nodes.compactMap {
-            Self.summary(from: $0, accountID: accountID, isReviewRequest: true)
+            Self.summary(from: $0, accountID: accountID, isReviewRequest: true, viewer: viewer)
         }.filter { seen.insert($0.id).inserted }
 
         return PullRequestsSnapshot(
@@ -137,7 +153,8 @@ public struct PullRequestsService: Sendable {
     static func summary(
         from node: SearchPayload.Node,
         accountID: String = GitHubAccount.defaultID,
-        isReviewRequest: Bool = false
+        isReviewRequest: Bool = false,
+        viewer: String? = nil
     ) -> PullRequestSummary? {
         guard
             let id = node.id,
@@ -150,6 +167,7 @@ public struct PullRequestsService: Sendable {
 
         let unresolved = (node.reviewThreads?.nodes ?? []).filter { !$0.isResolved }.count
         let rollup = node.commits?.nodes.first?.commit.statusCheckRollup?.state
+        let request = isReviewRequest ? Self.latestRequest(in: node, for: viewer) : nil
 
         return PullRequestSummary(
             id: id,
@@ -164,14 +182,34 @@ public struct PullRequestsService: Sendable {
             checks: CheckState(apiValue: rollup),
             unresolvedThreads: unresolved,
             accountID: accountID,
-            isReviewRequest: isReviewRequest
+            isReviewRequest: isReviewRequest,
+            author: node.author?.login,
+            requestedBy: request?.actor?.login,
+            requestedAt: request?.createdAt,
+            hasConflicts: node.mergeable == "CONFLICTING"
         )
+    }
+
+    /// The request that put this pull request in front of you: the newest one naming you, or a
+    /// team, since a team request is how most reviews reach a person. A request for somebody
+    /// else says nothing about who asked you.
+    static func latestRequest(
+        in node: SearchPayload.Node,
+        for viewer: String?
+    ) -> SearchPayload.TimelineItems.Event? {
+        let events = (node.timelineItems?.nodes ?? []).compactMap { $0 }
+        return events.last { event in
+            guard let reviewer = event.requestedReviewer else { return false }
+            if reviewer.typename == "Team" { return true }
+            return viewer != nil && reviewer.login == viewer
+        }
     }
 }
 
 // MARK: - Wire format
 
 struct SearchPayload: Decodable, Sendable {
+    let viewer: Viewer?
     let mine: Search
     let reviewing: Search
 
@@ -191,6 +229,35 @@ struct SearchPayload: Decodable, Sendable {
         let reviewDecision: String?
         let reviewThreads: ReviewThreads?
         let commits: Commits?
+        let mergeable: String?
+        let author: Viewer?
+        let timelineItems: TimelineItems?
+    }
+
+    struct Viewer: Decodable, Sendable {
+        let login: String?
+    }
+
+    struct TimelineItems: Decodable, Sendable {
+        let nodes: [Event?]
+
+        struct Event: Decodable, Sendable {
+            let createdAt: Date?
+            let actor: Viewer?
+            let requestedReviewer: Reviewer?
+        }
+
+        /// A user has a login. A team is told apart by its type name alone: asking for a team's
+        /// name needs the `read:org` scope, and a token without it failed the whole query.
+        struct Reviewer: Decodable, Sendable {
+            let typename: String?
+            let login: String?
+
+            enum CodingKeys: String, CodingKey {
+                case typename = "__typename"
+                case login
+            }
+        }
     }
 
     struct Repository: Decodable, Sendable {

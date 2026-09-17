@@ -30,6 +30,9 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
     /// The last line the running command printed. A start takes a minute and says plenty on the
     /// way; showing none of it is what made the card look asleep.
     public var progressLine: String?
+    /// The status the health URL answered with when it answered and was not a success: the
+    /// engine is up and unwell, which is a different thing from nothing answering.
+    public var healthStatusCode: Int?
 
     public init(
         state: LocalStackState,
@@ -40,8 +43,10 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
         siteURL: URL? = nil,
         branch: String? = nil,
         repositoryURL: URL? = nil,
-        progressLine: String? = nil
+        progressLine: String? = nil,
+        healthStatusCode: Int? = nil
     ) {
+        self.healthStatusCode = healthStatusCode
         self.state = state
         self.engineVersion = engineVersion
         self.containers = containers
@@ -203,7 +208,8 @@ public struct LocalStackService: Sendable {
                     checkedAt: clock.now,
                     siteURL: siteURL,
                     branch: branch,
-                    repositoryURL: repositoryURL
+                    repositoryURL: repositoryURL,
+                    healthStatusCode: response.statusCode
                 )
             }
             // Asked once and read twice: how many containers are up, and which Fusion the engine

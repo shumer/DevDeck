@@ -115,10 +115,8 @@ public struct GitHubWorkspace: Sendable {
                 group.addTask {
                     do {
                         return .value(try await work(account, client, accountSettings))
-                    } catch let error as APIError {
-                        return .failure(AccountFailure(account: account.label, message: error.displayMessage))
                     } catch {
-                        return .failure(AccountFailure(account: account.label, message: error.localizedDescription))
+                        return .failure(AccountFailure(account: account.label, accountID: account.id, error: error))
                     }
                 }
             }
@@ -130,10 +128,10 @@ public struct GitHubWorkspace: Sendable {
             }
         }
 
-        // Every account failed: this is a real card failure, not a partial one. The first
-        // account's error is representative - they are almost always the same cause.
-        if values.isEmpty, let first = failures.first {
-            throw APIError.forbidden(accounts.count == 1 ? first.message : "\(failures.count) accounts failed: \(first.message)")
+        // Every account failed: this is a real card failure, not a partial one. Thrown whole, so
+        // the card says which account and why instead of "Forbidden".
+        if values.isEmpty, !failures.isEmpty {
+            throw APIError.accounts(failures)
         }
 
         return Gathered(values: values, failures: failures)
