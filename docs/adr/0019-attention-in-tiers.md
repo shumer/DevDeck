@@ -82,5 +82,8 @@ on you, and a summary that names the first two and opens the menu.
 - Work in flight runs one more `git log` for a checkout with unpushed work, and none for a clean
   one.
 - The Notifications page grew a Failed runs column, a Projects table and New versions.
+- A row about a project raises the deck the way a tap of the shortcut does. Somebody who came
+  from the menu does not know the shortcut is the way back, and a colleague was left with a
+  dimmed screen, so a deck raised this way also goes down on a click outside the cards or Esc.
 - `open -a DevDeck --args --menu sample` opens the menu with made-up rows of every tier, for judging
   its layout at real size.
