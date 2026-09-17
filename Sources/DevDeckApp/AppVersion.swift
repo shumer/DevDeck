@@ -24,4 +24,10 @@ enum AppVersion {
         let path = Bundle.main.bundleURL.path
         return path.hasSuffix(".app") ? path : "not running from a bundle"
     }
+
+    /// Whether macOS is running a read-only copy of an app that was opened from Downloads
+    /// without being moved to Applications first.
+    static var isTranslocated: Bool {
+        Bundle.main.bundleURL.path.contains("/AppTranslocation/")
+    }
 }

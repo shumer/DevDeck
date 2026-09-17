@@ -229,8 +229,17 @@ final class Updater {
                 guard UpdateCheck.trusts(update: CodeIdentity.kind(ofBundleAt: fresh), running: CodeIdentity.current()) else {
                     throw UpdateFailure("the download is not signed by the same identity as this copy")
                 }
-                try await self.swap(fresh, for: bundleURL)
-                self.relaunch(at: bundleURL)
+                let target = UpdateCheck.installTarget(
+                    running: bundleURL,
+                    isFolderWritable: FileManager.default.isWritableFile(atPath: bundleURL.deletingLastPathComponent().path),
+                    applications: Self.applicationsFolder
+                )
+                try await self.swap(fresh, for: target.bundle)
+                if !target.replacesRunningCopy {
+                    Log.app.info("Installed to \(target.bundle.path, privacy: .public) instead of the read-only \(bundleURL.path, privacy: .public)")
+                    await self.retireOriginal(of: bundleURL, installedAt: target.bundle)
+                }
+                self.relaunch(at: target.bundle)
             } catch {
                 let reason = (error as? UpdateFailure)?.reason ?? error.localizedDescription
                 Log.app.error("Update failed: \(reason, privacy: .public)")
@@ -284,8 +293,18 @@ final class Updater {
     }
 
     /// The old bundle to the Trash, the new one to where the old one was. The Trash rather
-    /// than deletion: an update that turns out wrong is one drag away from being undone.
+    /// than deletion: an update that turns out wrong is one drag away from being undone. When
+    /// nothing is there yet, as for a first move into Applications, the new one simply goes in.
     private func swap(_ fresh: URL, for current: URL) async throws {
+        guard FileManager.default.fileExists(atPath: current.path) else {
+            do {
+                try FileManager.default.moveItem(at: fresh, to: current)
+                return
+            } catch {
+                throw UpdateFailure("could not put DevDeck into \(current.deletingLastPathComponent().path): \(error.localizedDescription). "
+                    + "Drag DevDeck into Applications by hand and open it from there.")
+            }
+        }
         do {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 NSWorkspace.shared.recycle([current]) { _, error in
@@ -301,6 +320,49 @@ final class Updater {
         } catch {
             throw UpdateFailure("could not put the new copy at \(current.path): \(error.localizedDescription)")
         }
+    }
+
+    /// The copy in Downloads that macOS was running a read-only shadow of, to the Trash, so the
+    /// next double-click does not open the old version again from there.
+    ///
+    /// Asked of Security through its C symbol, looked up at run time: the call has been there
+    /// since macOS 10.12 but is not in the public headers. If it is not found, or the Trash
+    /// refuses, the old copy simply stays where it was and the log says so.
+    private func retireOriginal(of translocated: URL, installedAt target: URL) async {
+        guard translocated.path.contains("/AppTranslocation/"),
+              let original = Self.originalURL(ofTranslocated: translocated),
+              original.standardizedFileURL != target.standardizedFileURL,
+              FileManager.default.fileExists(atPath: original.path)
+        else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            NSWorkspace.shared.recycle([original]) { _, error in
+                if let error {
+                    Log.app.error("Left the old copy at \(original.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                } else {
+                    Log.app.info("Moved the old copy at \(original.path, privacy: .public) to the Trash")
+                }
+                continuation.resume()
+            }
+        }
+    }
+
+    /// `/Applications` when this user may write there, and their own `~/Applications` when not,
+    /// which is where macOS itself puts apps for a user who is not an administrator.
+    private static var applicationsFolder: URL {
+        let shared = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        if FileManager.default.isWritableFile(atPath: shared.path) { return shared }
+        let own = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true)
+        try? FileManager.default.createDirectory(at: own, withIntermediateDirectories: true)
+        return own
+    }
+
+    private static func originalURL(ofTranslocated url: URL) -> URL? {
+        typealias Original = @convention(c) (CFURL, UnsafeMutablePointer<Unmanaged<CFError>?>?) -> Unmanaged<CFURL>?
+        guard let handle = dlopen("/System/Library/Frameworks/Security.framework/Security", RTLD_LAZY),
+              let symbol = dlsym(handle, "SecTranslocateCreateOriginalPathForURL")
+        else { return nil }
+        let function = unsafeBitCast(symbol, to: Original.self)
+        return function(url as CFURL, nil)?.takeRetainedValue() as URL?
     }
 
     /// Leaves a shell behind that opens the new bundle once this process is gone, then quits.

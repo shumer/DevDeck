@@ -195,6 +195,34 @@ public enum UpdateCheck {
     /// A shell that waits for the old process to be gone and then opens the new bundle at the
     /// same path. Waiting rather than sleeping a fixed time: quitting takes as long as it takes,
     /// and opening the bundle while the old process still holds it launches the old one.
+    /// Where an update goes, and whether that is the copy that is running.
+    public struct InstallTarget: Sendable, Equatable {
+        public let bundle: URL
+        /// False when the running copy cannot be replaced where it is and the update goes to
+        /// Applications instead.
+        public let replacesRunningCopy: Bool
+
+        public init(bundle: URL, replacesRunningCopy: Bool) {
+            self.bundle = bundle
+            self.replacesRunningCopy = replacesRunningCopy
+        }
+    }
+
+    /// The running copy's own place, unless macOS will not let it be replaced there.
+    ///
+    /// A copy opened straight from Downloads while still quarantined runs from a randomised,
+    /// read-only folder macOS makes for it (App Translocation), and a copy opened from a disk
+    /// image is read-only too. Replacing either fails with "the disk is write protected", which
+    /// is what a colleague saw. Those go to Applications, under the app's own name rather than
+    /// whatever Finder called the copy (`DevDeck 2.app`), and the update is what moves them there.
+    public static func installTarget(running: URL, isFolderWritable: Bool, applications: URL) -> InstallTarget {
+        let translocated = running.path.contains("/AppTranslocation/")
+        guard translocated || !isFolderWritable else {
+            return InstallTarget(bundle: running, replacesRunningCopy: true)
+        }
+        return InstallTarget(bundle: applications.appendingPathComponent("DevDeck.app"), replacesRunningCopy: false)
+    }
+
     public static func relaunchScript(waitingFor pid: Int32, appPath: String) -> String {
         let quoted = "'" + appPath.replacingOccurrences(of: "'", with: "'\\''") + "'"
         return "while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done; open \(quoted)"

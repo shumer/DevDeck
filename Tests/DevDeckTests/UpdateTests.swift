@@ -130,6 +130,27 @@ func runUpdateTests(_ run: TestRun) async {
 
     run.section("Updates - coming back up")
 
+    await run.test("a copy macOS runs read-only is updated into Applications instead") {
+        let applications = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        let installed = UpdateCheck.installTarget(
+            running: URL(fileURLWithPath: "/Applications/DevDeck.app"), isFolderWritable: true, applications: applications
+        )
+        try expectEqual(installed, UpdateCheck.InstallTarget(bundle: URL(fileURLWithPath: "/Applications/DevDeck.app"), replacesRunningCopy: true))
+
+        let translocated = UpdateCheck.installTarget(
+            running: URL(fileURLWithPath: "/private/var/folders/x1/T/AppTranslocation/00E1/d/DevDeck 2.app"),
+            isFolderWritable: false,
+            applications: applications
+        )
+        try expectEqual(translocated.bundle.path, "/Applications/DevDeck.app", "under the app's own name, not Finder's copy name")
+        try expect(!translocated.replacesRunningCopy)
+
+        let diskImage = UpdateCheck.installTarget(
+            running: URL(fileURLWithPath: "/Volumes/DevDeck/DevDeck.app"), isFolderWritable: false, applications: applications
+        )
+        try expectEqual(diskImage.bundle.path, "/Applications/DevDeck.app")
+    }
+
     await run.test("the relaunch waits for the old process and opens the same path") {
         let script = UpdateCheck.relaunchScript(waitingFor: 4242, appPath: "/Applications/DevDeck.app")
         try expectEqual(script, "while kill -0 4242 2>/dev/null; do sleep 0.2; done; open '/Applications/DevDeck.app'")
