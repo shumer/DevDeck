@@ -56,7 +56,10 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
         updateLine = line
         updateButton = button
 
-        form.footnote("Running from \(AppVersion.location)")
+        // Said in words: the path of a translocated copy is a random folder nobody recognises.
+        form.footnote(AppVersion.isTranslocated
+            ? "Running from a read-only copy macOS made because DevDeck was opened without being moved to Applications. The next update installs it into Applications."
+            : "Running from \(AppVersion.location)")
     }
 
     /// Called when the updater moves, so the row changes where it stands without the page
