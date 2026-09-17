@@ -60,6 +60,7 @@ public struct MergeRequestsService: Sendable {
         conflicts
         updatedAt
         approvalsLeft
+        author { username }
         project { fullPath }
         headPipeline { status }
         discussions(first: 100) {
@@ -123,7 +124,8 @@ public struct MergeRequestsService: Sendable {
                 .filter { $0.resolvable == true && $0.resolved != true }
                 .count ?? 0,
             accountID: accountID,
-            isReviewRequest: isReviewRequest
+            isReviewRequest: isReviewRequest,
+            author: node.author?.username
         )
     }
 
@@ -155,6 +157,11 @@ public struct MergeRequestsService: Sendable {
             let project: Project?
             let headPipeline: Pipeline?
             let discussions: Discussions?
+            let author: Author?
+        }
+
+        struct Author: Decodable, Sendable {
+            let username: String?
         }
 
         struct Project: Decodable, Sendable {

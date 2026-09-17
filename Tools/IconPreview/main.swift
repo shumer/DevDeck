@@ -7,8 +7,8 @@ import DevDeckUI
 
 let path = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "icon-preview.png"
 
-let width: CGFloat = 520
-let height: CGFloat = 150
+let width: CGFloat = 560
+let height: CGFloat = 230
 
 // Rendered at 2×, because that is what a Retina menu bar shows. Judging a 15-point drawing
 // from a 1× render makes it look blobbier than it will ever be in use.
@@ -34,10 +34,10 @@ NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
 NSColor.white.setFill()
 NSRect(x: 0, y: 0, width: width, height: height).fill()
 
-func label(_ text: String, at point: NSPoint) {
+func label(_ text: String, at point: NSPoint, color: NSColor = NSColor.black.withAlphaComponent(0.55)) {
     (text as NSString).draw(at: point, withAttributes: [
         .font: NSFont.systemFont(ofSize: 10, weight: .medium),
-        .foregroundColor: NSColor.black.withAlphaComponent(0.55),
+        .foregroundColor: color,
     ])
 }
 
@@ -54,43 +54,41 @@ func tinted(_ image: NSImage, color: NSColor) -> NSImage {
     }
 }
 
-let icon = DeckIcon.statusItemImage()
-let blocked = DeckIcon.statusItemImage(.blocked)
-let alert = DeckIcon.statusItemImage(.waiting)
+/// Draws a state the way the menu bar would: templates tinted, the red one in its own ink under
+/// the bar's appearance.
+func draw(_ state: DeckIconState, in rect: NSRect, dark: Bool) {
+    let image = DeckIcon.statusItemImage(state)
+    if image.isTemplate {
+        tinted(image, color: dark ? .white : .black).draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+    } else {
+        NSAppearance(named: dark ? .darkAqua : .aqua)?.performAsCurrentDrawingAppearance {
+            image.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+        }
+    }
+}
 
-// Light bar.
-NSColor(white: 0.95, alpha: 1).setFill()
-NSRect(x: 20, y: 90, width: 220, height: 40).fill()
-tinted(icon, color: .black).draw(at: NSPoint(x: 40, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
-label("светлая полоса", at: NSPoint(x: 70, y: 105))
+let states: [(DeckIconState, String)] = [(.calm, "calm"), (.stuck, "stuck"), (.needsFixing, "fix"), (.waiting, "waiting")]
 
-// Dark bar.
-NSColor(white: 0.15, alpha: 1).setFill()
-NSRect(x: 270, y: 90, width: 230, height: 40).fill()
-tinted(icon, color: .white).draw(at: NSPoint(x: 290, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
-("тёмная полоса" as NSString).draw(at: NSPoint(x: 320, y: 105), withAttributes: [
-    .font: NSFont.systemFont(ofSize: 10, weight: .medium),
-    .foregroundColor: NSColor.white.withAlphaComponent(0.6),
-])
-tinted(blocked, color: .white).draw(at: NSPoint(x: 410, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
-// The waiting icon draws itself in `labelColor`, so the preview has to ask for the appearance
-// it will actually be drawn in rather than the tool's own.
-NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
-    alert.draw(at: NSPoint(x: 450, y: 102), from: NSRect.zero, operation: .sourceOver, fraction: 1)
+// Real size, on a light and a dark bar.
+for (row, dark) in [(0, false), (1, true)] {
+    let y = 190 - CGFloat(row) * 40
+    NSColor(white: dark ? 0.15 : 0.95, alpha: 1).setFill()
+    NSRect(x: 20, y: y - 12, width: 520, height: 36).fill()
+    for (index, entry) in states.enumerated() {
+        let x = 40 + CGFloat(index) * 125
+        draw(entry.0, in: NSRect(origin: NSPoint(x: x, y: y - 2), size: DeckIcon.size), dark: dark)
+        label(entry.1, at: NSPoint(x: x + 26, y: y), color: dark ? NSColor.white.withAlphaComponent(0.6) : NSColor.black.withAlphaComponent(0.55))
+    }
 }
 
 // Magnified, to judge the drawing itself.
-label("крупно ×6", at: NSPoint(x: 20, y: 60))
-let large = NSRect(x: 20, y: 10, width: DeckIcon.size.width * 6, height: DeckIcon.size.height * 6)
-NSColor(white: 0.15, alpha: 1).setFill()
-NSRect(x: 10, y: 4, width: large.width + 20, height: large.height + 12).fill()
-tinted(icon, color: .white).draw(in: large, from: NSRect.zero, operation: .sourceOver, fraction: 1)
-
-let alertLarge = NSRect(x: 180, y: 10, width: DeckIcon.size.width * 6, height: DeckIcon.size.height * 6)
-NSColor(white: 0.15, alpha: 1).setFill()
-NSRect(x: 170, y: 4, width: alertLarge.width + 20, height: alertLarge.height + 12).fill()
-NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
-    alert.draw(in: alertLarge, from: NSRect.zero, operation: .sourceOver, fraction: 1)
+label("крупно ×6", at: NSPoint(x: 20, y: 112))
+for (index, entry) in states.enumerated() {
+    let x = 20 + CGFloat(index) * 135
+    let large = NSRect(x: x + 10, y: 12, width: DeckIcon.size.width * 6, height: DeckIcon.size.height * 6)
+    NSColor(white: 0.15, alpha: 1).setFill()
+    NSRect(x: x, y: 4, width: large.width + 20, height: large.height + 12).fill()
+    draw(entry.0, in: large, dark: true)
 }
 
 NSGraphicsContext.restoreGraphicsState()

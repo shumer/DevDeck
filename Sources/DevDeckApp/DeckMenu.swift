@@ -18,7 +18,13 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     private let preferences: Preferences
     private let openSettings: () -> Void
     private let openCardSettings: (CardID) -> Void
+    private let openAccountSettings: (AttentionService, String?) -> Void
+    private let showCard: (CardID) -> Void
     private let quit: () -> Void
+    /// Shows the sample rows instead of the deck's own, for `--menu sample`.
+    var showsSamples = false
+    /// The rows of the menu that is open, by id, so a click can find what it was about.
+    private var attentionItems: [String: AttentionItem] = [:]
 
     private var statusItem: NSStatusItem!
     /// Which panel a context menu belongs to, so a right-click can offer something about *this*
@@ -34,8 +40,12 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         preferences: Preferences,
         openSettings: @escaping () -> Void,
         openCardSettings: @escaping (CardID) -> Void,
+        openAccountSettings: @escaping (AttentionService, String?) -> Void,
+        showCard: @escaping (CardID) -> Void,
         quit: @escaping () -> Void
     ) {
+        self.openAccountSettings = openAccountSettings
+        self.showCard = showCard
         self.controller = controller
         self.cards = cards
         self.panels = panels
@@ -51,10 +61,20 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     /// object before the status item exists, and the status item needs nothing back.
     func install() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.toolTip = "DevDeck, open pull requests"
+        statusItem.button?.toolTip = "DevDeck: checking…"
+        statusItem.button?.setAccessibilityLabel("DevDeck")
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
+    }
+
+    /// Opens the menu-bar menu, for a summary banner that promises the list.
+    func open() {
+        // Popped up under the item rather than clicked: a synthetic click on a status item does
+        // not open its menu while the app is not the one in front, which an agent app never is.
+        guard let button = statusItem?.button, let menu = statusItem?.menu else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 5), in: button)
     }
 
     /// An empty menu with this object as its delegate: `menuNeedsUpdate` fills it in every
@@ -67,13 +87,14 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     }
 
     /// A stack of cards with the app's initials cut out of the front one - the shape says
-    /// "deck", the letters say whose. Numbers go in the tooltip: a bare "8" in the menu bar
-    /// belongs to nothing in particular.
+    /// "deck", the letters say whose, and the badge says which kind of attention is wanted. The
+    /// counts go in the tooltip and to VoiceOver: a bare "8" in the menu bar belongs to nothing
+    /// in particular.
     func updateStatusItem() {
         guard let button = statusItem?.button else { return }
-        let summary = controller.statusSummary
+        let summary = DeckStatusSummary(digest: controller.attention(update: nil))
 
-        // Calm and blocked are templates, so they follow the menu bar's own light and dark
+        // Every state but one is a template, so it follows the menu bar's own light and dark
         // appearance; only the one that means a person is waiting on you opts out, because there
         // red is the message.
         button.image = DeckIcon.statusItemImage(summary.state)
@@ -81,6 +102,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         button.imagePosition = .imageOnly
         button.attributedTitle = NSAttributedString(string: "")
         button.toolTip = summary.tooltip
+        button.setAccessibilityValue(summary.digest.summary)
     }
 
     // MARK: Filling the menus
@@ -154,22 +176,12 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         // enabling is off - without this the not-built-yet cards become clickable again.
         menu.autoenablesItems = false
 
-        // A newer build, before anything else: it is the one line that is about the app
-        // rather than the deck, and the menu is the only place a person looks anyway.
-        addUpdateLine(to: menu)
+        // What the badge is about, first, as the things themselves: each row names what
+        // happened and to what, and clicking it goes there. The line this replaced said
+        // "1 waiting on you" in grey, which in a menu reads as "nothing to do here".
+        addAttention(to: menu)
 
-        // Why the badge is lit, in words, before anything else. The icon can carry two states
-        // and no more; the sentence is what makes them mean something.
-        if let reason = controller.statusSummary.reason {
-            let item = NSMenuItem(title: reason, action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            menu.addItem(item)
-            menu.addItem(.separator())
-        }
-
-        let header = NSMenuItem(title: "Cards", action: nil, keyEquivalent: "")
-        header.isEnabled = false
-        menu.addItem(header)
+        menu.addItem(NSMenuItem.sectionHeader(title: "Cards"))
 
         let resolved = cards.resolved
         for card in resolved where cards.menuGroup(of: card.id) == nil {
@@ -228,52 +240,139 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         menu.addItem(quitItem)
     }
 
-    /// One line about the update on offer, worded by state, and nothing at all when there is
-    /// none. Disabled while a card is mid-command: replacing the bundle and quitting under a
-    /// running `fusion start` leaves a stack half up with nothing on screen to say so.
-    private func addUpdateLine(to menu: NSMenu) {
-        guard let update = updater.available else { return }
+    /// The update, as a row of its own tier, or nothing when there is none.
+    private var updateItem: AttentionItem? {
+        guard let update = updater.available else { return nil }
         let version = update.version.description
-        let item = NSMenuItem(title: "", action: #selector(installUpdate), keyEquivalent: "")
-        item.target = self
-
         switch updater.state {
         case .available:
             if let working = updater.waitingFor {
-                item.title = "Updating to \(version) once \(working) finishes"
-                item.isEnabled = false
-            } else if let working = controller.workingCardTitle {
-                item.title = "Update to \(version) (wait for \(working) to finish)"
-                item.isEnabled = false
-            } else {
-                item.title = "Update to \(version)…"
+                return UpdateAttention.item(version: version, phase: .waiting(card: working))
             }
+            return UpdateAttention.item(version: version, phase: .available)
         case .downloading(_, let fraction):
-            item.title = "Downloading \(version)… \(Int((fraction * 100).rounded()))%"
-            item.isEnabled = false
+            return UpdateAttention.item(version: version, phase: .downloading(fraction: fraction))
         case .installing:
-            item.title = "Installing \(version)…"
-            item.isEnabled = false
+            return UpdateAttention.item(version: version, phase: .installing)
         case .failed(_, let reason):
-            item.title = "Update failed, try again"
-            item.toolTip = reason
+            return UpdateAttention.item(version: version, phase: .failed(reason: reason))
         case .idle, .checking:
+            return nil
+        }
+    }
+
+    private func addAttention(to menu: NSMenu) {
+        let digest = showsSamples
+            ? AttentionDigest(items: AttentionSamples.items(now: Date()))
+            : controller.attention(update: updateItem)
+        attentionItems = Dictionary(digest.items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let now = Date()
+
+        guard !digest.isEmpty else {
+            // Said rather than left out, so an empty menu is a confirmation and not a question.
+            let calm = NSMenuItem(title: "Nothing needs you", action: nil, keyEquivalent: "")
+            calm.isEnabled = false
+            calm.image = AttentionImages.calm
+            setSubtitle("Checked at \(AttentionDigest.clock(controller.lastCheckedAt ?? now))", on: calm)
+            menu.addItem(calm)
+            menu.addItem(.separator())
             return
         }
-        menu.addItem(item)
 
-        // Option-click reads the notes first, which is where macOS puts the quieter twin of a
-        // menu item.
-        let notes = NSMenuItem(title: "What's new in \(version)", action: #selector(openReleaseNotes), keyEquivalent: "")
-        notes.target = self
-        notes.isAlternate = true
-        notes.keyEquivalentModifierMask = .option
-        menu.addItem(notes)
+        for section in digest.sections {
+            menu.addItem(NSMenuItem.sectionHeader(title: section.tier.title))
+            for item in section.visible {
+                addRow(item, to: menu, now: now)
+            }
+            if let title = section.overflowTitle {
+                // The rest in a submenu of the same rows, rather than "see the card": the rows
+                // come from several cards, and some of them from none.
+                let more = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                more.image = AttentionImages.more
+                let submenu = NSMenu()
+                submenu.autoenablesItems = false
+                for item in section.overflow {
+                    addRow(item, to: submenu, now: now)
+                }
+                more.submenu = submenu
+                menu.addItem(more)
+            }
+        }
         menu.addItem(.separator())
     }
 
-    @objc private func installUpdate() {
-        updater.install()
+    /// One row, and its ⌥ twin when it has one.
+    private func addRow(_ item: AttentionItem, to menu: NSMenu, now: Date) {
+        let row = NSMenuItem(title: item.title, action: #selector(chooseAttention(_:)), keyEquivalent: "")
+        row.target = self
+        row.representedObject = item.id
+        row.isEnabled = item.isEnabled && item.action != .none
+        row.image = AttentionImages.image(for: item.mark)
+        // One line: a menu wraps a long subtitle, and a server's error message is long.
+        setSubtitle(AttentionWords.trimmed(item.subtitle, to: 72), on: row)
+        if let age = AttentionDigest.age(since: item.since, now: now) {
+            row.badge = NSMenuItemBadge(string: age)
+        }
+        menu.addItem(row)
+
+        let alternate: (title: String, action: Selector)? = {
+            if item.inboxThreadID != nil { return ("Mark as Read: \(item.title)", #selector(markAttentionRead(_:))) }
+            if item.isDismissible { return ("Dismiss: \(item.title)", #selector(dismissAttention(_:))) }
+            if item.action == .installUpdate, let version = updater.available?.version.description {
+                return ("What's new in \(version)", #selector(openReleaseNotes))
+            }
+            return nil
+        }()
+        if let alternate {
+            let twin = NSMenuItem(title: alternate.title, action: alternate.action, keyEquivalent: "")
+            twin.target = self
+            twin.representedObject = item.id
+            twin.isAlternate = true
+            twin.keyEquivalentModifierMask = .option
+            twin.image = row.image
+            setSubtitle(AttentionWords.trimmed(item.subtitle, to: 72), on: twin)
+            menu.addItem(twin)
+        }
+    }
+
+    /// The second line under a row. Before macOS 14.4 a menu item has no subtitle, and the words
+    /// go into the tooltip rather than being lost.
+    private func setSubtitle(_ text: String, on item: NSMenuItem) {
+        if #available(macOS 14.4, *) {
+            item.subtitle = text
+        } else {
+            item.toolTip = text
+        }
+    }
+
+    @objc private func chooseAttention(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let item = attentionItems[id] else { return }
+        switch item.action {
+        case .open(let url, let service, let account):
+            LinkOpener.open(url, using: service == .github ? controller.browser(for: account) : controller.gitlabBrowser(for: account))
+        case .accountSettings(let service, let account):
+            openAccountSettings(service, account.isEmpty ? nil : account)
+        case .showCard(let card):
+            showCard(card)
+        case .startDocker:
+            controller.startDockerRuntime()
+        case .openTerminal(let folder):
+            LocalFolder.openTerminal(folder)
+        case .installUpdate:
+            updater.install()
+        case .none:
+            break
+        }
+    }
+
+    @objc private func dismissAttention(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let item = attentionItems[id] else { return }
+        controller.dismiss(item)
+    }
+
+    @objc private func markAttentionRead(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let thread = attentionItems[id]?.inboxThreadID else { return }
+        controller.markRead(threadID: thread)
     }
 
     @objc private func openReleaseNotes() {
@@ -383,7 +482,8 @@ final class DeckMenu: NSObject, NSMenuDelegate {
 
     @objc private func openDashboard() {
         guard let url = CardHostView.dashboardURL(for: .githubPullRequests) else { return }
-        NSWorkspace.shared.open(url)
+        // Through the account's browser, like every other GitHub link on the deck.
+        LinkOpener.open(url, using: controller.firstGitHubBrowser)
     }
 
     @objc private func quitApp() {

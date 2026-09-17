@@ -71,11 +71,12 @@ public struct CardPlaceholder<Value: Sendable & Equatable>: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Spacer(minLength: 8)
-            Text(state.failure?.displayMessage ?? "Loading…")
+            Text(state.failure?.displayMessage ?? "Checking…")
                 .font(.system(size: 13))
                 .foregroundStyle(state.failure == nil ? DeckTheme.label : DeckTheme.red)
-            if case .missingToken = state.failure {
-                Text("Add a GitHub token in Settings")
+            if case .missingToken(let service) = state.failure {
+                // A GitLab card has no token of its own until there is an instance to hold one.
+                Text(service == "GitLab" ? "Add a GitLab instance in Settings" : "Add a \(service) token in Settings")
                     .font(.system(size: 11))
                     .foregroundStyle(DeckTheme.label)
             }
@@ -141,6 +142,16 @@ public enum CardFreshness {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "HH:mm:ss"
         return formatter.string(from: updatedAt)
+    }
+
+    /// `as of 14:05`, for a card whose data has stopped moving. It says since when, which a bare
+    /// "stale" did not.
+    public static func asOf<Value: Sendable & Equatable>(_ state: CardState<Value>) -> String {
+        guard let updatedAt = state.updatedAt else { return "not loaded yet" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm"
+        return "as of \(formatter.string(from: updatedAt))"
     }
 }
 

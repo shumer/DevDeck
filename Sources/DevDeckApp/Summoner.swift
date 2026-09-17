@@ -64,6 +64,14 @@ final class Summoner {
         }
     }
 
+    /// Raises the deck and latches it, as a tap would: for a menu row or a banner that is about
+    /// a card. Nothing happens with summoning off, because then there is no key to put it back.
+    func present() {
+        guard preferences.summonEnabled, !isSummoned else { return }
+        isLatched = true
+        setSummoned(true)
+    }
+
     private func pressed() {
         // A press while latched puts the deck back down. Otherwise it raises it, and the
         // release decides whether that was a hold or a tap.

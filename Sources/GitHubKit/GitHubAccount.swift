@@ -25,6 +25,9 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
     public var notifiesReviewRequests: Bool
     /// Whether this account may interrupt you when something of yours is blocked.
     public var notifiesBlocked: Bool
+    /// Whether this account may interrupt you when a workflow on a main branch starts failing.
+    /// Off by default: it only means anything with the Actions card on.
+    public var notifiesFailedRuns: Bool
     /// Where this account's links open. One signed-in GitHub identity per browser profile is
     /// the whole reason accounts need their own browser.
     public var browser: BrowserChoice
@@ -37,8 +40,10 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         isEnabled: Bool = true,
         notifiesReviewRequests: Bool = true,
         notifiesBlocked: Bool = false,
+        notifiesFailedRuns: Bool = false,
         browser: BrowserChoice = .systemDefault
     ) {
+        self.notifiesFailedRuns = notifiesFailedRuns
         self.id = id
         self.label = label
         self.apiBaseURL = apiBaseURL
@@ -60,6 +65,7 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         case isEnabled
         case notifiesReviewRequests
         case notifiesBlocked
+        case notifiesFailedRuns
         case browser
         case notifies
     }
@@ -77,6 +83,7 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         try container.encode(isEnabled, forKey: .isEnabled)
         try container.encode(notifiesReviewRequests, forKey: .notifiesReviewRequests)
         try container.encode(notifiesBlocked, forKey: .notifiesBlocked)
+        try container.encode(notifiesFailedRuns, forKey: .notifiesFailedRuns)
         try container.encode(browser, forKey: .browser)
     }
 
@@ -95,6 +102,7 @@ public struct GitHubAccount: Sendable, Equatable, Codable, Identifiable {
         notifiesReviewRequests = try container.decodeIfPresent(Bool.self, forKey: .notifiesReviewRequests)
             ?? wasNotifying
         notifiesBlocked = try container.decodeIfPresent(Bool.self, forKey: .notifiesBlocked) ?? false
+        notifiesFailedRuns = try container.decodeIfPresent(Bool.self, forKey: .notifiesFailedRuns) ?? false
         browser = try container.decodeIfPresent(BrowserChoice.self, forKey: .browser) ?? .systemDefault
     }
 

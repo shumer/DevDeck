@@ -1,17 +1,28 @@
 import AppKit
+import DevDeckCore
 
-/// What the menu-bar item is saying.
+/// What the menu-bar item is saying, one state per attention tier that lights it.
 ///
-/// Three states rather than two, because the old red glyph meant three unrelated things at once
-/// and the reason was only in the tooltip: "it is red and I have no idea why" is a fair
-/// complaint about an icon that says something is wrong and nothing about what.
+/// The states differ in shape as well as colour, so they read without colour vision and on a
+/// tinted bar: a ring for your stuck work, a dot for something to fix, a red dot for a person.
 public enum DeckIconState: Sendable, Equatable {
     /// Nothing wants you.
     case calm
-    /// Your own queue is stuck: a pull request of yours is blocked.
-    case blocked
-    /// A person is waiting on you: a review request, or something actionable in the inbox.
+    /// Your own work cannot move. A hollow ring.
+    case stuck
+    /// Something to fix from here: a token, a project, Docker. A solid dot in the bar's ink.
+    case needsFixing
+    /// A person is waiting on you. A red dot.
     case waiting
+
+    public init(tier: AttentionTier?) {
+        switch tier {
+        case .waiting: self = .waiting
+        case .needsFixing: self = .needsFixing
+        case .stuck: self = .stuck
+        case .goodToKnow, .none: self = .calm
+        }
+    }
 }
 
 /// The menu-bar icon: a stack of panels with the app's initials cut out of the front one.
@@ -28,9 +39,9 @@ public enum DeckIcon {
     /// The badge, and the whole of the colour on this icon.
     ///
     /// 4.5 points across with a 0.9 clear ring knocked out around it, which is 16 square points
-    /// of the glyph's 270 rather than all of it. In the bar's own ink it means your queue is
-    /// blocked; in red it means somebody is waiting on you. Red is worth having only if it is
-    /// kept for the one thing that costs another person time.
+    /// of the glyph's 270 rather than all of it. A ring in the bar's own ink means your work is
+    /// stuck, a dot means something to fix, and red means somebody is waiting on you. Red is worth
+    /// having only if it is kept for the one thing that costs another person time.
     private static let badgeCenter = CGPoint(x: 14.9, y: 11.7)
     private static let badgeRadius: CGFloat = 2.25
     private static let badgeClearance: CGFloat = 3.15
@@ -106,12 +117,26 @@ public enum DeckIcon {
         )).fill()
         NSGraphicsContext.current?.compositingOperation = .sourceOver
 
-        (state == .waiting ? NSColor.systemRed : tint).setFill()
-        NSBezierPath(ovalIn: NSRect(
+        let badge = NSRect(
             x: badgeCenter.x - badgeRadius,
             y: badgeCenter.y - badgeRadius,
             width: badgeRadius * 2,
             height: badgeRadius * 2
-        )).fill()
+        )
+        switch state {
+        case .stuck:
+            // A ring rather than a paler dot: at 1x a pale dot fills in, and the difference has to
+            // survive a bar tinted by the wallpaper.
+            tint.setStroke()
+            let ring = NSBezierPath(ovalIn: badge.insetBy(dx: 0.55, dy: 0.55))
+            ring.lineWidth = 1.1
+            ring.stroke()
+        case .waiting:
+            NSColor.systemRed.setFill()
+            NSBezierPath(ovalIn: badge).fill()
+        case .needsFixing, .calm:
+            tint.setFill()
+            NSBezierPath(ovalIn: badge).fill()
+        }
     }
 }

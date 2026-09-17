@@ -21,5 +21,6 @@ await runDeckTests(run)
 await runUpdateTests(run)
 await runIdentityTests(run)
 await runCheckSummaryTests(run)
+await runAttentionTests(run)
 
 run.finish()
