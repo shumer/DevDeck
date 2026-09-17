@@ -186,7 +186,7 @@ public struct PullRequestsCard: View {
         // accounts came back empty, and whether what is on screen is still fresh.
         CardFooter(
             leading: snapshot.failures.summary ?? footerLeading(snapshot),
-            trailing: state.isStale(now: now, maxAge: 600) ? "stale" : nil,
+            trailing: state.isStale(now: now, maxAge: 600) ? CardFreshness.asOf(state) : nil,
             isStale: state.failure != nil || !snapshot.failures.isEmpty
         )
     }

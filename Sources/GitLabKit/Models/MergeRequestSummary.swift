@@ -55,6 +55,9 @@ public struct MergeRequestSummary: Sendable, Equatable, Codable, Identifiable {
     public let accountID: String
     /// Somebody else's merge request, waiting on a review from you.
     public let isReviewRequest: Bool
+    /// Who opened it. GitLab does not say who asked for a review, so the author is who a
+    /// review request is from.
+    public let author: String?
 
     public init(
         id: String,
@@ -69,8 +72,10 @@ public struct MergeRequestSummary: Sendable, Equatable, Codable, Identifiable {
         approvalsLeft: Int,
         unresolvedThreads: Int,
         accountID: String = GitLabAccount.defaultID,
-        isReviewRequest: Bool = false
+        isReviewRequest: Bool = false,
+        author: String? = nil
     ) {
+        self.author = author
         self.id = id
         self.iid = iid
         self.title = title
@@ -93,7 +98,12 @@ public struct MergeRequestSummary: Sendable, Equatable, Codable, Identifiable {
 
     /// Nothing can move it: a red pipeline or a branch that will not merge. A draft is not
     /// blocked, it is unfinished, and those are different rows to look at.
+    ///
+    /// A review somebody is waiting on is never blocked, whatever its pipeline says: the thing
+    /// outstanding is you, which is how the GitHub card has always read it. Calling it blocked
+    /// put somebody else's red build into your count of stuck work.
     public var health: MergeRequestHealth {
+        if isReviewRequest { return .attention }
         if hasConflicts || pipeline == .failed { return .blocked }
         if isDraft || pipeline == .running || approvalsLeft > 0 || unresolvedThreads > 0 {
             return .attention
@@ -101,21 +111,30 @@ public struct MergeRequestSummary: Sendable, Equatable, Codable, Identifiable {
         return .ready
     }
 
-    /// Two or three characters at the end of the row, the way the GitHub card does it. The most
-    /// blocking fact wins, because there is only room for one.
+    /// Two characters at the end of the row, in the GitHub card's vocabulary, because the two
+    /// cards sit side by side and `CF` meaning conflicts on one and failed checks on the other
+    /// was a code that had to be learned twice. The most blocking fact wins.
+    ///
+    ///     RV  waiting for your review    CF  pipeline failed     MC  merge conflict
+    ///     DR  draft                      CP  pipeline running    A2  two approvals left
+    ///     T3  three unresolved threads   AP  ready to merge
     public var statusCode: String {
-        if hasConflicts { return "CF" }
-        if pipeline == .failed { return "CI" }
+        if isReviewRequest { return "RV" }
+        // A conflict first: until it is resolved a pipeline result is about code that will not
+        // be merged.
+        if hasConflicts { return "MC" }
+        if pipeline == .failed { return "CF" }
         if isDraft { return "DR" }
-        if pipeline == .running { return "··" }
-        if approvalsLeft > 0 { return "\(approvalsLeft)ap" }
-        if unresolvedThreads > 0 { return "\(unresolvedThreads)th" }
-        return "ok"
+        if pipeline == .running { return "CP" }
+        if approvalsLeft > 0 { return "A\(min(approvalsLeft, 9))" }
+        if unresolvedThreads > 0 { return "T\(min(unresolvedThreads, 9))" }
+        return "AP"
     }
 
     /// The whole row in one sentence, for the tooltip.
     public var statusLine: String {
         var parts: [String] = []
+        if isReviewRequest { parts.append("waiting for your review") }
         if isDraft { parts.append("draft") }
         if hasConflicts { parts.append("conflicts") }
         switch pipeline {

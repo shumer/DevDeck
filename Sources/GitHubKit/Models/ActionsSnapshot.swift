@@ -68,6 +68,31 @@ public struct ActionsSnapshot: Sendable, Equatable, Codable {
         return Array(failures.prefix(limit))
     }
 
+    /// A workflow whose latest finished run on the main branch failed, with how many in a row.
+    public struct Failing: Sendable, Equatable {
+        /// The newest failed run, which is the one to open.
+        public let latest: WorkflowRun
+        /// The first failure of the current streak, which is when it started.
+        public let firstFailure: WorkflowRun
+        public let streak: Int
+    }
+
+    /// Workflows still red on their repository's main branch.
+    ///
+    /// Only the latest decisive run of each workflow counts, so a failure that the next run fixed
+    /// is not reported, and a red run on a pull request branch is left to the pull request.
+    public var failingOnMainBranch: [Failing] {
+        let decisive = runs.filter { $0.isOnDefaultBranch && $0.status == .completed && $0.conclusion.countsTowardSuccessRate }
+        let groups = Dictionary(grouping: decisive) { "\($0.accountID)|\($0.repository)|\($0.name)|\($0.branch)" }
+        return groups.values.compactMap { group -> Failing? in
+            let newestFirst = group.sorted { $0.startedAt > $1.startedAt }
+            guard let latest = newestFirst.first, latest.conclusion == .failure else { return nil }
+            let streak = newestFirst.prefix { $0.conclusion == .failure }
+            return Failing(latest: latest, firstFailure: streak.last ?? latest, streak: streak.count)
+        }
+        .sorted { $0.latest.startedAt > $1.latest.startedAt }
+    }
+
     /// Runs in flight, newest first.
     public func active(limit: Int? = nil) -> [WorkflowRun] {
         let active = runs

@@ -14,6 +14,10 @@ public struct CheckoutState: Sendable, Equatable, Identifiable {
     public let behind: Int
     /// Nil when the branch has no upstream at all, which is not the same as being level with it.
     public let hasUpstream: Bool
+    /// Commits that are on no remote at all, and when the oldest of them was made. Read only for
+    /// a checkout that has unpushed work, by `WorkInFlight.localCommitsCommand`.
+    public var localCommits: Int
+    public var oldestLocalCommitAt: Date?
 
     public init(
         id: String,
@@ -22,8 +26,12 @@ public struct CheckoutState: Sendable, Equatable, Identifiable {
         dirtyFiles: Int,
         ahead: Int,
         behind: Int,
-        hasUpstream: Bool
+        hasUpstream: Bool,
+        localCommits: Int = 0,
+        oldestLocalCommitAt: Date? = nil
     ) {
+        self.localCommits = localCommits
+        self.oldestLocalCommitAt = oldestLocalCommitAt
         self.id = id
         self.title = title
         self.branch = branch
@@ -63,6 +71,17 @@ public struct CheckoutState: Sendable, Equatable, Identifiable {
 /// makes the fans spin.
 public enum WorkInFlight {
     public static let command = "git status --porcelain=v2 --branch --untracked-files=normal"
+
+    /// Commits reachable from HEAD that no remote has, one commit time per line. Covers both
+    /// halves of "only on this Mac": unpushed commits on a tracked branch and every commit of a
+    /// branch nobody pushed. Run only for a checkout `git status` already called urgent.
+    public static let localCommitsCommand = "git log --format=%ct HEAD --not --remotes"
+
+    /// How many commits, and the oldest one's time.
+    public static func parseLocalCommits(_ output: String) -> (count: Int, oldest: Date?) {
+        let times = output.split(separator: "\n").compactMap { TimeInterval($0.trimmingCharacters(in: .whitespaces)) }
+        return (times.count, times.min().map { Date(timeIntervalSince1970: $0) })
+    }
 
     /// Parses the porcelain v2 output. Pure, because this is the part worth being sure about.
     public static func parse(_ output: String, id: String, title: String) -> CheckoutState? {

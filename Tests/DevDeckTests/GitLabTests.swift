@@ -147,12 +147,12 @@ func runGitLabTests(_ run: TestRun) async {
         try expectEqual(failing.unresolvedThreads, 1,
                         "resolved threads do not count, and neither do unresolvable ones")
         try expectEqual(failing.health, .blocked)
-        try expectEqual(failing.statusCode, "CI")
+        try expectEqual(failing.statusCode, "CF", "the GitHub card's code for the same fact")
         try expectEqual(failing.ticket.key, "IR-6257", "the ticket key gets its own column")
 
         let conflicted = try expectNotNil(byID["gid://gitlab/MergeRequest/2"], "conflicted")
         try expectEqual(conflicted.health, .blocked, "a green pipeline does not rescue a conflict")
-        try expectEqual(conflicted.statusCode, "CF")
+        try expectEqual(conflicted.statusCode, "MC")
 
         let draft = try expectNotNil(byID["gid://gitlab/MergeRequest/3"], "draft")
         try expectEqual(draft.health, .attention, "a draft is unfinished, not stuck")
@@ -160,13 +160,13 @@ func runGitLabTests(_ run: TestRun) async {
 
         let ready = try expectNotNil(byID["gid://gitlab/MergeRequest/4"], "ready")
         try expectEqual(ready.health, .ready)
-        try expectEqual(ready.statusCode, "ok")
+        try expectEqual(ready.statusCode, "AP")
         try expectEqual(ready.shortLabel, "acme/tools!8", "GitLab writes it with a bang")
 
         let reviewing = try expectNotNil(byID["gid://gitlab/MergeRequest/6"], "review request")
         try expect(reviewing.isReviewRequest)
-        try expectEqual(reviewing.statusCode, "2ap")
-        try expectEqual(reviewing.statusLine, "pipeline passed, 2 approvals left")
+        try expectEqual(reviewing.statusCode, "RV", "yours to do comes before anything the request is doing")
+        try expectEqual(reviewing.statusLine, "waiting for your review, pipeline passed, 2 approvals left")
     }
 
     await run.test("rows are ordered worst first, with a review request just under them") {

@@ -96,6 +96,22 @@ func runGitHubTests(_ run: TestRun) async {
         try expectEqual(review.health, .attention, "approved and green, but you still owe it")
         try expectEqual(snapshot.reviewRequestCount, 1)
         try expectEqual(review.ticket.key, "IW-164", "the ticket key is split out as on any row")
+        try expectEqual(review.author, "marta")
+        try expectEqual(review.requestedBy, "anna",
+                        "the request naming you, not the newer one for somebody else")
+        try expectEqual(review.requestedAt, ISO8601DateFormatter().date(from: "2026-07-27T09:00:00Z"))
+        try expect(!review.hasConflicts)
+    }
+
+    await run.test("a conflict is the first thing said about a pull request of yours") {
+        let conflicted = PullRequestSummary(
+            id: "c", number: 3, title: "Rebase me", repository: "acme/web", organization: "acme",
+            url: URL(string: "https://github.com/acme/web/pull/3")!, isDraft: false, updatedAt: Date(),
+            reviewDecision: .none, checks: .failure, unresolvedThreads: 0, hasConflicts: true
+        )
+        try expectEqual(conflicted.health, .blocked)
+        try expectEqual(conflicted.statusCode, "MC", "until it is resolved the checks ran on code that will not merge")
+        try expectEqual(conflicted.statusLine, "merge conflict")
     }
 
     await run.test("rows are ordered worst first, and a review owed outranks my own work") {

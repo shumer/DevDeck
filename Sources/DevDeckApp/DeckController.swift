@@ -45,6 +45,15 @@ final class DeckController: ObservableObject {
     /// The container runtime every local project sits on. One answer for the whole deck.
     @Published private(set) var docker = DockerStatus(state: .unknown)
 
+    /// What happened to the projects on this Mac between polls, for the menu and the banners.
+    /// See `ProjectWatch`.
+    @Published private(set) var watch = ProjectWatch()
+    /// When Docker stopped answering, for the row that says so.
+    private var dockerDownSince: Date?
+    /// When each account started failing, keyed `service:id`. A network blip is not news, and a
+    /// banner about a token is said once per episode.
+    private var accountFailingSince: [String: Date] = [:]
+
     private let preferences: Preferences
     private let tokenStore: any TokenStore
     private let accountsStore: GitHubAccountsStore
@@ -98,6 +107,7 @@ final class DeckController: ObservableObject {
 
     func setActiveCards(_ cards: Set<CardID>) {
         activeCards = cards
+        watch.keep(only: Set(watchedProjects.map(\.id)))
         collapsedCards = cards.filter { preferences.isCollapsed($0) }
         restart()
         restartStackLoop()
@@ -146,6 +156,7 @@ final class DeckController: ObservableObject {
                 await self.refreshStacks()
                 await self.refreshDDEV()
                 await self.refreshLocalProjects()
+                self.announceProjects()
                 do {
                     try await Task.sleep(nanoseconds: 10_000_000_000)
                 } catch {
@@ -170,7 +181,20 @@ final class DeckController: ObservableObject {
                 for: "arc.\(project.id)"
             ) else { continue }
             stackStatuses[project.id] = probed
+            observe(project, probed)
         }
+    }
+
+    /// An engine that answers its health URL with an error is up and unwell, not stopped.
+    private func observe(_ project: ArcProject, _ status: LocalStackStatus) {
+        let unwell = status.healthStatusCode != nil ? (status.detail ?? "health check failing") : nil
+        watch.observe(
+            project.id,
+            running: status.isRunning || unwell != nil,
+            notAnswering: unwell,
+            dockerDown: !docker.isReady && docker.state != .unknown,
+            at: Date()
+        )
     }
 
     /// Runs a stack command and keeps the card honest while it does.
@@ -178,6 +202,7 @@ final class DeckController: ObservableObject {
         // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
         settler.reset("arc.\(project.id)")
         guard project.supportsLocalStack else { return }
+        watch.noteAction(project.id, isStop: action == .stop || action == .teardown, at: Date())
         stackStatuses[project.id] = LocalStackStatus(
             state: .working,
             detail: action.progressText,
@@ -197,11 +222,15 @@ final class DeckController: ObservableObject {
             if let result, !result.succeeded {
                 // Show why rather than silently flipping back to "stopped": a failed start is
                 // the moment the card is most worth reading.
+                let line = result.failureLine ?? "\(action.title.lowercased()) failed"
                 self.stackStatuses[project.id] = LocalStackStatus(
                     state: .stopped,
-                    detail: result.failureLine ?? "\(action.title.lowercased()) failed",
+                    detail: line,
                     checkedAt: Date()
                 )
+                if action != .stop, action != .teardown {
+                    self.watch.noteStartFailed(project.id, line: line, at: Date())
+                }
                 return
             }
 
@@ -219,16 +248,28 @@ final class DeckController: ObservableObject {
                 // `fusion daemon` reports "ports are not available … address already in use" and
                 // then exits zero, so the failure is in what it said rather than in how it
                 // ended. Carried here, that line is what the card shows instead of a shrug.
-                self.stackStatuses[project.id] = await service.waitUntilRunning(
-                    hint: result?.failureLine
-                )
+                let started = await service.waitUntilRunning(hint: result?.failureLine)
+                self.stackStatuses[project.id] = started
+                if started.isRunning {
+                    self.observe(project, started)
+                } else {
+                    self.watch.noteStartFailed(project.id, line: started.detail ?? "the engine never answered", at: Date())
+                }
             case .stop, .teardown:
                 // Verified rather than assumed. `fusion stop` returns before the containers are
                 // down, and a stop that silently did nothing used to be repainted green by the
                 // next poll as though the button had never been pressed.
-                self.stackStatuses[project.id] = await service.waitUntilStopped()
+                let stopped = await service.waitUntilStopped()
+                self.stackStatuses[project.id] = stopped
+                if stopped.isRunning {
+                    self.watch.noteStopDidNotTakeEffect(project.id, at: Date())
+                } else {
+                    self.observe(project, stopped)
+                }
             case .rebuild:
-                self.stackStatuses[project.id] = await service.status()
+                let rebuilt = await service.status()
+                self.stackStatuses[project.id] = rebuilt
+                self.observe(project, rebuilt)
             }
             // A start that failed is exactly when the lines matter, and the next scheduled pass
             // is two minutes away.
@@ -282,6 +323,13 @@ final class DeckController: ObservableObject {
                 for: "ddev.\(project.id)"
             ) else { continue }
             ddevStatuses[project.id] = probed
+            watch.observe(
+                project.id,
+                running: probed.isRunning,
+                syncBroken: probed.mutagenWarning,
+                dockerDown: !docker.isReady && docker.state != .unknown,
+                at: Date()
+            )
         }
     }
 
@@ -297,6 +345,7 @@ final class DeckController: ObservableObject {
         // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
         settler.reset("ddev.\(project.id)")
         guard project.folderURL != nil else { return }
+        watch.noteAction(project.id, isStop: action == .stop, at: Date())
         ddevStatuses[project.id] = DDEVStatus(
             state: .working,
             entry: ddevStatuses[project.id]?.entry,
@@ -320,11 +369,20 @@ final class DeckController: ObservableObject {
                     detail: result.failureLine ?? "\(action.title.lowercased()) failed",
                     checkedAt: Date()
                 )
+                if action != .stop {
+                    self.watch.noteStartFailed(project.id, line: result.failureLine ?? "ddev \(action.rawValue) failed", at: Date())
+                }
                 await self.refreshLogsIfOpen(project.cardID)
                 return
             }
 
             await self.refreshDDEV(finished: [project.id])
+            let isRunning = self.ddevStatuses[project.id]?.isRunning == true
+            if action == .stop, isRunning {
+                self.watch.noteStopDidNotTakeEffect(project.id, at: Date())
+            } else if action != .stop, !isRunning {
+                self.watch.noteStartFailed(project.id, line: "ddev \(action.rawValue) finished, but the project is not running", at: Date())
+            }
             await self.refreshLogsIfOpen(project.cardID)
         }
     }
@@ -332,6 +390,7 @@ final class DeckController: ObservableObject {
     /// Stops every DDEV project and the router at once.
     func powerOffDDEV() {
         for project in activeDDEVProjects {
+            watch.noteAction(project.id, isStop: true, at: Date())
             ddevStatuses[project.id] = DDEVStatus(
                 state: .working,
                 entry: ddevStatuses[project.id]?.entry,
@@ -381,6 +440,11 @@ final class DeckController: ObservableObject {
             return
         }
         docker = probed
+        if probed.state == .notRunning || probed.state == .notInstalled {
+            dockerDownSince = dockerDownSince ?? Date()
+        } else if probed.isReady {
+            dockerDownSince = nil
+        }
     }
 
     // MARK: Plain projects
@@ -416,7 +480,20 @@ final class DeckController: ObservableObject {
                 for: "project.\(project.id)"
             ) else { continue }
             localStatuses[project.id] = probed
+            observe(project, probed)
         }
+    }
+
+    /// A process that is alive while its health URL is silent is up, and not answering.
+    private func observe(_ project: LocalProject, _ status: LocalProjectStatus) {
+        let silent = status.state == .starting ? (status.detail ?? "running, but not answering") : nil
+        watch.observe(
+            project.id,
+            running: status.isRunning || silent != nil,
+            notAnswering: silent,
+            dockerDown: project.requiresDocker && !docker.isReady && docker.state != .unknown,
+            at: Date()
+        )
     }
 
     private func isLocalBusyAndFresh(_ projectID: String) -> Bool {
@@ -429,6 +506,7 @@ final class DeckController: ObservableObject {
         // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
         settler.reset("project.\(project.id)")
         guard project.supportsCommands else { return }
+        watch.noteAction(project.id, isStop: action == .stop, at: Date())
         let previous = localStatuses[project.id]
         localStatuses[project.id] = LocalProjectStatus(
             state: .working,
@@ -446,13 +524,17 @@ final class DeckController: ObservableObject {
             if let result, !result.succeeded {
                 // A failed start is the moment the card is most worth reading, so the reason
                 // stays on it rather than being replaced by a bare "stopped".
+                let line = result.failureLine ?? "\(action.title.lowercased()) failed"
                 self.localStatuses[project.id] = LocalProjectStatus(
                     state: .stopped,
-                    detail: result.failureLine ?? "\(action.title.lowercased()) failed",
+                    detail: line,
                     checkedAt: Date(),
                     branch: previous?.branch,
                     hasLog: true
                 )
+                if action != .stop {
+                    self.watch.noteStartFailed(project.id, line: line, at: Date())
+                }
                 return
             }
 
@@ -468,9 +550,21 @@ final class DeckController: ObservableObject {
                     branch: previous?.branch,
                     hasLog: true
                 )
-                self.localStatuses[project.id] = await service.waitUntilRunning()
+                let started = await service.waitUntilRunning()
+                self.localStatuses[project.id] = started
+                if started.isRunning {
+                    self.observe(project, started)
+                } else {
+                    self.watch.noteStartFailed(project.id, line: started.detail ?? "the site never answered", at: Date())
+                }
             case .stop:
-                self.localStatuses[project.id] = await service.status()
+                let stopped = await service.status()
+                self.localStatuses[project.id] = stopped
+                if stopped.isRunning {
+                    self.watch.noteStopDidNotTakeEffect(project.id, at: Date())
+                } else {
+                    self.observe(project, stopped)
+                }
             }
             await self.refreshLogsIfOpen(project.cardID)
         }
@@ -538,8 +632,17 @@ final class DeckController: ObservableObject {
         for folder in folders where seen.insert(folder.url.standardizedFileURL.path).inserted {
             guard let result = try? await commandRunner.run(WorkInFlight.command, in: folder.url, timeout: 20),
                   result.succeeded,
-                  let state = WorkInFlight.parse(result.standardOutput, id: folder.id, title: folder.title)
+                  var state = WorkInFlight.parse(result.standardOutput, id: folder.id, title: folder.title)
             else { continue }
+            // How old the work that exists only here is, asked only where there is some: one more
+            // process for the checkouts that matter, none for the clean ones.
+            if state.isUrgent,
+               let local = try? await commandRunner.run(WorkInFlight.localCommitsCommand, in: folder.url, timeout: 20),
+               local.succeeded {
+                let parsed = WorkInFlight.parseLocalCommits(local.standardOutput)
+                state.localCommits = parsed.count
+                state.oldestLocalCommitAt = parsed.oldest
+            }
             states.append(state)
         }
 
@@ -579,28 +682,31 @@ final class DeckController: ObservableObject {
     /// controller's. Nil means notifications are off and nothing is even assembled.
     var onAlerts: (([DeckAlert]) -> Void)?
 
-    /// Whether a card has answered at least once in this run. The first answer is not news: it
-    /// is the state of the world as you left it, and announcing it means every restart tells you
-    /// about eight things you already knew.
-    private var hasAnnouncedOnce: Set<CardID> = []
+    /// Which kinds of banner have had their first look in this run. The first answer is not news:
+    /// it is the state of the world as you left it, and announcing it means every restart tells
+    /// you about eight things you already knew.
+    private var hasAnnouncedOnce: Set<String> = []
 
     /// Works out what is new since the last pass, hands it over, and writes down everything it
     /// saw so the next pass and the next launch stay quiet about it.
-    private func announce(_ candidates: [DeckAlert], for card: CardID) {
+    private func announce(_ candidates: [DeckAlert], channel: String) {
         guard preferences.notificationsEnabled else { return }
 
-        let isFirstPass = hasAnnouncedOnce.insert(card).inserted
+        let isFirstPass = hasAnnouncedOnce.insert(channel).inserted
         let seen = preferences.announcedAlerts
         let fresh = NotificationDigest.newAlerts(
             from: candidates,
             seen: Set(seen),
             isFirstPass: isFirstPass
         )
-        // Everything on the card is remembered, not only what was announced: a first pass says
-        // nothing and must still record what it saw, or the second pass announces all of it. The
-        // same goes for an account whose notifications are off, which is why the filtering
-        // happens before this and the remembering happens after.
-        preferences.announcedAlerts = NotificationDigest.remembering(candidates.map(\.id), in: seen)
+        // Everything seen is remembered, not only what was announced: a first pass says nothing
+        // and must still record what it saw, or the second pass announces all of it. The same
+        // goes for an account whose notifications are off, which is why the filtering happens
+        // before this and the remembering happens after.
+        // Only written when it changed: the local loop asks every ten seconds, and nearly always
+        // about things it has already seen.
+        let remembered = NotificationDigest.remembering(candidates.map(\.id), in: seen)
+        if remembered != seen { preferences.announcedAlerts = remembered }
         guard !fresh.isEmpty else { return }
         onAlerts?(fresh)
     }
@@ -610,25 +716,84 @@ final class DeckController: ObservableObject {
     /// Per account rather than per app, and per kind rather than one switch: which of your
     /// tokens is allowed to interrupt you, and about what, is not one question.
     private func alerts(from snapshot: PullRequestsSnapshot) -> [DeckAlert] {
-        let wants = Dictionary(
-            accountsStore.accounts().map { ($0.id, (review: $0.notifiesReviewRequests, blocked: $0.notifiesBlocked)) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        return snapshot.alerts(includeBlocked: true).filter { alert in
-            guard let want = wants[alert.accountID] else { return false }
-            return alert.kind == .reviewRequest ? want.review : want.blocked
+        let accounts = Dictionary(accountsStore.accounts().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return GitHubAttention.alerts(pullRequests: snapshot, labels: githubLabels).filter { alert in
+            guard case .url(_, let accountID) = alert.target, let account = accounts[accountID] else { return false }
+            return alert.kind == .reviewRequest ? account.notifiesReviewRequests : account.notifiesBlocked
+        }
+    }
+
+    private func alerts(from snapshot: ActionsSnapshot) -> [DeckAlert] {
+        let accounts = Dictionary(accountsStore.accounts().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return GitHubAttention.alerts(actions: snapshot, labels: githubLabels).filter { alert in
+            guard case .url(_, let accountID) = alert.target else { return false }
+            return accounts[accountID]?.notifiesFailedRuns == true
         }
     }
 
     private func alerts(from snapshot: MergeRequestsSnapshot) -> [DeckAlert] {
-        let wants = Dictionary(
-            gitlabAccountsStore.accounts().map { ($0.id, (review: $0.notifiesReviewRequests, blocked: $0.notifiesBlocked)) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        return snapshot.alerts(includeBlocked: true).filter { alert in
-            guard let want = wants[alert.accountID] else { return false }
-            return alert.kind == .reviewRequest ? want.review : want.blocked
+        let accounts = Dictionary(gitlabAccountsStore.accounts().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return GitLabAttention.alerts(mergeRequests: snapshot, labels: gitlabLabels).filter { alert in
+            guard case .url(_, let accountID) = alert.target, let account = accounts[accountID] else { return false }
+            return alert.kind == .reviewRequest ? account.notifiesReviewRequests : account.notifiesBlocked
         }
+    }
+
+    /// Banners for the projects on this Mac, after each pass of the local loop, kept to the
+    /// projects that may interrupt you.
+    private func announceProjects() {
+        let quietDown = preferences.projectsQuietWhenDown
+        let quietStart = preferences.projectsQuietWhenStartFails
+        let projects = watchedProjects
+        let candidates = ProjectAttention.alerts(
+            projects: projects,
+            watch: watch,
+            docker: docker,
+            dockerDownSince: dockerDownSince,
+            source: { project in
+                switch project.mark {
+                case .arc: return .arc
+                case .ddev: return .ddev
+                default: return .project
+                }
+            },
+            now: Date()
+        ).filter { alert in
+            guard case .card(let card) = alert.target else { return true }
+            let quiet = alert.kind == .startFailed ? quietStart : quietDown
+            return !quiet.contains(card.rawValue)
+        }
+        announce(candidates, channel: "projects")
+    }
+
+    /// Notes when each account started and stopped failing, and announces a token that stopped
+    /// working. Called after every pass of the remote cards.
+    private func trackAccounts() {
+        let input = attentionInput(update: nil)
+        let github = DeckAttention.githubFailures(input)
+        let gitlab = activeCards.contains(.gitlabMergeRequests)
+            ? DeckAttention.failures(of: mergeRequests, snapshot: mergeRequests.value?.failures)
+            : []
+        let now = Date()
+        var failing: [String: Date] = [:]
+        for (service, failures) in [(AttentionService.github, github), (.gitlab, gitlab)] {
+            for failure in failures {
+                let key = "\(service.rawValue):\(failure.accountID ?? failure.account)"
+                failing[key] = accountFailingSince[key] ?? now
+            }
+        }
+        accountFailingSince = failing
+
+        var candidates: [DeckAlert] = []
+        for (service, failures) in [(AttentionService.github, github), (.gitlab, gitlab)] {
+            for failure in failures {
+                let key = "\(service.rawValue):\(failure.accountID ?? failure.account)"
+                if let alert = AccountAttention.alert(for: failure, service: service, since: failing[key]) {
+                    candidates.append(alert)
+                }
+            }
+        }
+        announce(candidates, channel: "accounts")
     }
 
     /// Cancels the pending wait and refetches immediately.
@@ -830,6 +995,8 @@ final class DeckController: ObservableObject {
     private func refreshOnce() async -> TimeInterval {
         let pass = await cycle.run(remoteSources, active: activeCards, policy: refreshPolicy, now: Date())
 
+        trackAccounts()
+
         // After the projects, because a tray reads what the state it just reported came from.
         await refreshOpenLogs()
         await refreshCheckouts()
@@ -851,7 +1018,7 @@ final class DeckController: ObservableObject {
             RefreshSource(card: .githubPullRequests) { @MainActor [weak self] in
                 guard let self else { return nil }
                 let snapshot = try await self.fetch(into: \.pullRequests) { try await self.workspace.pullRequests() }
-                self.announce(self.alerts(from: snapshot), for: .githubPullRequests)
+                self.announce(self.alerts(from: snapshot), channel: "github.pulls")
                 return nil
             },
             RefreshSource(card: .githubInbox) { @MainActor [weak self] in
@@ -864,14 +1031,15 @@ final class DeckController: ObservableObject {
             RefreshSource(card: .gitlabMergeRequests) { @MainActor [weak self] in
                 guard let self else { return nil }
                 let snapshot = try await self.fetch(into: \.mergeRequests) { try await self.gitlab.mergeRequests() }
-                self.announce(self.alerts(from: snapshot), for: .gitlabMergeRequests)
+                self.announce(self.alerts(from: snapshot), channel: "gitlab")
                 return nil
             },
             RefreshSource(card: .githubActions) { @MainActor [weak self] in
                 guard let self else { return nil }
-                _ = try await self.fetch(into: \.actions) {
+                let snapshot = try await self.fetch(into: \.actions) {
                     try await self.workspace.actions(repositoriesByAccount: self.actionsRepositoriesByAccount)
                 }
+                self.announce(self.alerts(from: snapshot), channel: "github.actions")
                 return nil
             },
         ]
@@ -915,28 +1083,91 @@ final class DeckController: ObservableObject {
         return nil
     }
 
-    // MARK: Menu bar summary
+    // MARK: Attention
 
-    /// What the menu-bar item conveys.
-    ///
-    /// The icon carries the identity and one bit of state - is anything wrong. The numbers
-    /// live in the tooltip: a bare count in the menu bar says nothing about which app it
-    /// belongs to, which is exactly the complaint it earned.
-    var statusSummary: DeckStatusSummary {
-        var projectLines: [String] = []
-        for project in activeProjects {
-            projectLines.append("\(project.title): local stack \(stackStatus(for: project).state.rawValue)")
+    /// Labels by account id, only when there is more than one account to tell apart: with one,
+    /// naming it on every row is noise.
+    var githubLabels: [String: String] {
+        accountLabels.count > 1 ? accountLabels : [:]
+    }
+
+    var gitlabLabels: [String: String] {
+        gitlabAccountLabels.count > 1 ? gitlabAccountLabels : [:]
+    }
+
+    /// The projects on the deck, in the words the attention rows name them with.
+    var watchedProjects: [WatchedProject] {
+        activeProjects.map {
+            WatchedProject(id: $0.id, cardID: $0.cardID, title: $0.title, kind: "Arc XP", mark: .arc, needsDocker: $0.supportsLocalStack)
         }
-        for project in activeLocalProjects {
-            projectLines.append("\(project.displayTitle): \(localStatus(for: project).state.rawValue)")
+        + activeDDEVProjects.map {
+            WatchedProject(id: $0.id, cardID: $0.cardID, title: $0.displayTitle, kind: "DDEV", mark: .ddev, needsDocker: true)
         }
-        return DeckStatusSummary.make(
+        + activeLocalProjects.map {
+            WatchedProject(
+                id: $0.id,
+                cardID: $0.cardID,
+                title: $0.displayTitle,
+                // The caption the card wears, `bun · next + nest`, when there is one.
+                kind: $0.subtitle.isEmpty ? "Project" : $0.subtitle,
+                mark: .project($0.kind.rawValue),
+                needsDocker: $0.requiresDocker
+            )
+        }
+    }
+
+    private func attentionInput(update: AttentionItem?) -> DeckAttention.Input {
+        var folders: [String: URL] = [:]
+        for checkout in checkouts {
+            if let url = folder(forCheckout: checkout) { folders[checkout.id] = url }
+        }
+        return DeckAttention.Input(
             activeCards: activeCards,
-            pullRequests: pullRequests.value,
-            inbox: inbox.value,
-            projectLines: projectLines,
-            hasLocalCards: !activeProjects.isEmpty || !activeDDEVProjects.isEmpty || !activeLocalProjects.isEmpty,
-            docker: docker
+            pullRequests: pullRequests,
+            inbox: inbox,
+            actions: actions,
+            mergeRequests: mergeRequests,
+            githubLabels: githubLabels,
+            gitlabLabels: gitlabLabels,
+            accountFailingSince: accountFailingSince,
+            projects: watchedProjects,
+            watch: watch,
+            docker: docker,
+            dockerDownSince: dockerDownSince,
+            checkouts: checkouts,
+            checkoutFolders: folders,
+            update: update
         )
+    }
+
+    /// Everything the deck wants attention for, with the update row the updater supplies.
+    func attention(update: AttentionItem?) -> AttentionDigest {
+        DeckAttention.digest(attentionInput(update: update), now: Date())
+    }
+
+    /// When the deck last heard from anything, for the calm menu's "Checked at".
+    var lastCheckedAt: Date? {
+        [pullRequests.updatedAt, inbox.updatedAt, actions.updatedAt, mergeRequests.updatedAt, checkoutsCheckedAt, docker.checkedAt]
+            .compactMap { $0 }
+            .max()
+    }
+
+    /// Where "Open pull requests in browser" opens: the first account's browser.
+    var firstGitHubBrowser: BrowserChoice {
+        accountsStore.enabledAccounts().first?.browser ?? .systemDefault
+    }
+
+    /// ⌥ on a row: forget what was reported about a project until something new happens to it.
+    func dismiss(_ item: AttentionItem) {
+        let parts = item.id.split(separator: ":")
+        guard parts.count >= 2, parts[0] == "project" else { return }
+        watch.dismiss(String(parts[1]))
+        updateStatusItem?()
+    }
+
+    /// ⌥ on an inbox row.
+    func markRead(threadID: String) {
+        guard let item = inbox.value?.items.first(where: { $0.id == threadID }) else { return }
+        markRead(item)
     }
 }
