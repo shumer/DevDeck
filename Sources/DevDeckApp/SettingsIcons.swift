@@ -11,7 +11,7 @@ import SwiftUI
 enum SettingsIcons {
     private static var cache: [String: NSImage] = [:]
 
-    static func tile(_ symbol: String, color: NSColor, size: CGFloat = 20) -> NSImage {
+    static func tile(_ symbol: String, color: NSColor, size: CGFloat = SidebarMetrics.iconSize) -> NSImage {
         let key = "tile:\(symbol):\(color):\(size)"
         if let cached = cache[key] { return cached }
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
@@ -37,7 +37,7 @@ enum SettingsIcons {
     }
 
     /// A card's own mark, at the size asked for. Rendered once per glyph and size.
-    static func mark(_ glyph: CardGlyph, size: CGFloat = 20) -> NSImage {
+    static func mark(_ glyph: CardGlyph, size: CGFloat = SidebarMetrics.iconSize) -> NSImage {
         let key = "mark:\(glyph.rawValue):\(size)"
         if let cached = cache[key] { return cached }
         let renderer = ImageRenderer(content: CardGlyphView(glyph, size: size * 0.8)
@@ -49,8 +49,10 @@ enum SettingsIcons {
         return image
     }
 
-    static let general = tile("gearshape.fill", color: .systemGray)
-    static let deck = tile("rectangle.stack.fill", color: .systemBlue)
-    static let cards = tile("square.grid.2x2.fill", color: .systemIndigo)
-    static let notifications = tile("bell.badge.fill", color: .systemRed)
+    // Computed rather than stored: the size follows the Mac's own sidebar icon size, which can
+    // change while the app is running.
+    static var general: NSImage { tile("gearshape.fill", color: .systemGray) }
+    static var deck: NSImage { tile("rectangle.stack.fill", color: .systemBlue) }
+    static var cards: NSImage { tile("square.grid.2x2.fill", color: .systemIndigo) }
+    static var notifications: NSImage { tile("bell.badge.fill", color: .systemRed) }
 }

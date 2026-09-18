@@ -9,20 +9,29 @@ import GitLabKit
 /// A stored token is never written back into the field. The status line says whether one is
 /// stored and whether it works; typing a new one and pressing Return, or Save Token, replaces it.
 @MainActor
-final class TokenBlock: NSObject {
+final class TokenBlock: NSObject, NSTextFieldDelegate {
     let field = NSSecureTextField()
     let status: StatusLine
     private let saveButton: NSButton
+    private let verifyButton: NSButton
     var onSave: (() -> Void)?
+    /// Every keystroke, so a token half typed survives the form being rebuilt under it.
+    var onDraftChange: ((String) -> Void)?
 
-    init(hasToken: Bool, placeholder: String) {
+    init(hasToken: Bool, placeholder: String, draft: String = "") {
+        // Grey, not green: what is stored is stored, and whether it still works is what Verify
+        // answers. Green everywhere else on the deck means "working".
         status = StatusLine(
-            tone: hasToken ? .good : .busy,
+            tone: hasToken ? .idle : .busy,
             state: hasToken ? "Saved in Keychain" : "No token",
-            detail: hasToken ? "" : "paste one below"
+            detail: hasToken ? "not checked yet" : "paste one below"
         )
         saveButton = SettingsForm.button("Save Token", target: nil, action: nil)
+        verifyButton = SettingsForm.button("Verify", target: nil, action: nil)
+        verifyButton.isEnabled = hasToken
         super.init()
+        field.stringValue = draft
+        field.delegate = self
         field.placeholderString = placeholder
         field.bezelStyle = .roundedBezel
         field.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
@@ -31,11 +40,17 @@ final class TokenBlock: NSObject {
         field.action = #selector(save)
         saveButton.target = self
         saveButton.action = #selector(save)
+        verifyButton.target = self
+        verifyButton.action = #selector(save)
     }
 
     func add(to form: SettingsForm) {
-        form.statusRow(status, button: nil)
+        form.statusRow(status, button: verifyButton)
         form.fieldRow("New token", [(field, nil)], trailing: saveButton)
+    }
+
+    func controlTextDidChange(_ notification: Notification) {
+        onDraftChange?(field.stringValue)
     }
 
     var entered: String {
@@ -48,6 +63,7 @@ final class TokenBlock: NSObject {
 
     func works(_ detail: String) {
         field.stringValue = ""
+        onDraftChange?("")
         status.update(tone: .good, state: "Token works", detail: detail)
     }
 
@@ -83,9 +99,9 @@ final class GitHubAccountForm: FlippedContainer, NSTextFieldDelegate {
     /// signed into in their browser is the one the token belongs to.
     static let createTokenURL = URL(string: "https://github.com/settings/personal-access-tokens/new")!
 
-    init(account: GitHubAccount, hasToken: Bool, isAdvancedOpen: Bool, width: CGFloat) {
+    init(account: GitHubAccount, hasToken: Bool, isAdvancedOpen: Bool, draft: String = "", width: CGFloat) {
         self.account = account
-        token = TokenBlock(hasToken: hasToken, placeholder: "github_pat_… or ghp_…")
+        token = TokenBlock(hasToken: hasToken, placeholder: "github_pat_… or ghp_…", draft: draft)
         nameField = SettingsForm.field(account.label, placeholder: "Work")
         organizationsField = SettingsForm.field(account.organizations.joined(separator: ", "), placeholder: "all the token can see")
         browser = BrowserPicker(choice: account.browser)
@@ -106,7 +122,7 @@ final class GitHubAccountForm: FlippedContainer, NSTextFieldDelegate {
         form.beginGroup()
         token.add(to: form)
         form.endGroup()
-        form.textButton("Create a Token on GitHub…", target: self, action: #selector(createToken))
+        form.textButton("Create a token on GitHub…", target: self, action: #selector(createToken))
 
         form.section("Account")
         form.beginGroup()
@@ -182,9 +198,9 @@ final class GitLabAccountForm: FlippedContainer, NSTextFieldDelegate {
     var onSave: ((GitLabAccountForm) -> Void)?
     var onTestLink: ((GitLabAccountForm) -> Void)?
 
-    init(account: GitLabAccount, hasToken: Bool, width: CGFloat) {
+    init(account: GitLabAccount, hasToken: Bool, draft: String = "", width: CGFloat) {
         self.account = account
-        token = TokenBlock(hasToken: hasToken, placeholder: "glpat-…")
+        token = TokenBlock(hasToken: hasToken, placeholder: "glpat-…", draft: draft)
         nameField = SettingsForm.field(account.label, placeholder: "GitLab")
         hostField = SettingsForm.field(account.host.absoluteString, placeholder: "https://gitlab.com", code: true)
         browser = BrowserPicker(choice: account.browser)
@@ -201,12 +217,8 @@ final class GitLabAccountForm: FlippedContainer, NSTextFieldDelegate {
             action: #selector(changed)
         )
 
-        form.section("Token", help: "A personal access token with the read_api scope. The card asks for merge requests, their pipeline and their approvals, and nothing else.")
-        form.beginGroup()
-        token.add(to: form)
-        form.endGroup()
-        form.textButton("Create a Token on \(account.displayHost)…", target: self, action: #selector(createToken))
-
+        // The instance first: the token belongs to whatever address is in this form, and the
+        // link that makes one is built from it.
         form.section("Instance")
         form.beginGroup()
         nameField.delegate = self
@@ -216,6 +228,12 @@ final class GitLabAccountForm: FlippedContainer, NSTextFieldDelegate {
         browser.onChange = { [weak self] in self?.changed() }
         form.fieldRow("Open links in", [(browser.browserPopUp, 170), (browser.profilePopUp, nil)], trailing: SettingsForm.button("Test", target: self, action: #selector(testLink)))
         form.endGroup()
+
+        form.section("Token", help: "A personal access token with the read_api scope. The card asks for merge requests, their pipeline and their approvals, and nothing else.")
+        form.beginGroup()
+        token.add(to: form)
+        form.endGroup()
+        form.textButton("Create a token on \(account.displayHost)…", target: self, action: #selector(createToken))
 
         frame.size.height = form.usedHeight
         token.onSave = { [weak self] in

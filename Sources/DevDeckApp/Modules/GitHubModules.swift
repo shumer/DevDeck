@@ -133,6 +133,9 @@ final class GitHubAccountsSection: SettingsSection {
 
     private let store: GitHubAccountsStore
     private let tokenStore: any TokenStore
+    /// A token half typed, by account, kept while the window is open: selecting another row
+    /// rebuilds the form, and the field used to come back empty with no word about it.
+    private var drafts: [String: String] = [:]
 
     init(store: GitHubAccountsStore, tokenStore: any TokenStore) {
         self.store = store
@@ -160,8 +163,10 @@ final class GitHubAccountsSection: SettingsSection {
             account: account,
             hasToken: SettingsSupport.hasToken(account.tokenKey, in: tokenStore),
             isAdvancedOpen: host?.isOpen(fold) ?? false,
+            draft: drafts[id] ?? "",
             width: container.bounds.width
         )
+        form.token.onDraftChange = { [weak self] text in self?.drafts[id] = text }
         form.onChange = { [weak self] in self?.applyEdits($0) }
         form.onSave = { [weak self] in self?.save($0) }
         form.onTestLink = { LinkOpener.open(URL(string: "https://github.com/pulls")!, using: $0.editedAccount.browser) }

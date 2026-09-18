@@ -84,17 +84,26 @@ final class LocalProjectForm: FlippedContainer, NSTextFieldDelegate {
             action: #selector(changed)
         )
 
+        form.section("Project")
+        form.beginGroup()
+        form.fieldRow("Name", [(nameField, nil)])
+        form.fieldRow("Folder", [(folderField, nil)], trailing: SettingsForm.button("Choose…", target: self, action: #selector(chooseFolder)))
+        form.endGroup()
+
         form.section("Start")
         form.beginGroup()
-        form.fieldRow("Folder", [(folderField, nil)], trailing: SettingsForm.button("Choose…", target: self, action: #selector(chooseFolder)))
         detectButton.target = self
         detectButton.action = #selector(detect)
         form.fieldRow("Start command", [(startField, nil)], trailing: detectButton)
+        form.fieldRow("Stop command", [(stopField, nil)])
         form.settingRow(
             "Long-running command",
-            subtitle: "On for dev servers like npm run dev. Off for commands that exit, like docker compose up -d.",
+            subtitle: "On for a dev server like npm run dev, off for a command that exits.",
             control: holdsSwitch
         )
+        // The switch that decides whether Start can work at all belongs beside the command, not
+        // behind a fold.
+        form.settingRow("Needs Docker", subtitle: "Start waits until Docker is running.", control: dockerSwitch)
         form.endGroup()
 
         form.section("Health check", help: "Up means the address answered 2xx, 3xx, 401 or 403. A 404 or a 500 does not count: a local port is shared, and somebody else's server answering on it is how a project nobody started reads as running. Empty, only a command started from DevDeck is tracked.")
@@ -124,13 +133,10 @@ final class LocalProjectForm: FlippedContainer, NSTextFieldDelegate {
             form.endGroup()
         }
 
-        form.disclosure("Advanced", summary: "Name, caption, stop command, Docker, browser", isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
+        form.disclosure("Advanced", summary: "Caption, browser", isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
         if isAdvancedOpen {
             form.beginGroup()
-            form.fieldRow("Name", [(nameField, nil)])
             form.fieldRow("Caption", [(captionField, nil)])
-            form.fieldRow("Stop command", [(stopField, nil)])
-            form.settingRow("Needs Docker", subtitle: "Start waits until Docker is running.", control: dockerSwitch)
             testButton.target = self
             testButton.action = #selector(testLink)
             form.fieldRow("Open links in", [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
@@ -301,12 +307,19 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
             action: #selector(changed)
         )
 
+        form.section("Project")
+        form.beginGroup()
+        form.fieldRow("Name", [(nameField, nil)])
+        form.fieldRow("Folder", [(folderField, nil)], trailing: SettingsForm.button("Choose…", target: self, action: #selector(chooseFolder)))
+        form.endGroup()
+
         form.section("Local stack")
         form.beginGroup()
-        form.fieldRow("Folder", [(folderField, nil)], trailing: SettingsForm.button("Choose…", target: self, action: #selector(chooseFolder)))
         form.fieldRow("Start command", [(startField, nil)])
-        form.fieldRow("Local URL", [(localURLField, nil)])
-        form.fieldRow("Check path", [(healthField, nil)])
+        form.fieldRow("Stop command", [(stopField, nil)])
+        // The same two words as every other project's form: what is asked, and where the site is.
+        form.fieldRow("Check URL", [(healthField, nil)])
+        form.fieldRow("Open URL", [(localURLField, nil)])
         form.statusRow(stack, button: SettingsForm.button("Check Now", target: self, action: #selector(checkStack)))
         form.endGroup()
 
@@ -320,6 +333,7 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
         form.section("Links", help: "{org} and {site} are filled in from the organisation and the site ID. A link you add can be renamed and removed; the ones DevDeck ships keep their names.")
         form.beginGroup()
         let shipped = Set(ArcLink.defaults().map(\.label))
+        let chipWidth = SettingsForm.chipWidth(for: project.links.map(\.label))
         for (index, link) in project.links.enumerated() {
             let check = NSButton(checkboxWithTitle: "", target: self, action: #selector(changed))
             check.state = link.isEnabled ? .on : .off
@@ -330,10 +344,18 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
             linkFields.append(template)
 
             // A shipped link keeps its name: renaming one would orphan it at the next migration,
-            // which matches links by label.
+            // which matches links by label. It gets the same chipped row as every other project's
+            // links, so one thing looks like one thing across the three forms.
             guard !shipped.contains(link.label) else {
                 labelFields.append(nil)
-                form.fieldRow(link.label, [(check, 18), (template, nil)])
+                form.linkRow(
+                    toggle: check,
+                    tag: link.label,
+                    tint: tint(for: link.label),
+                    field: template,
+                    open: nil,
+                    chipWidth: chipWidth
+                )
                 continue
             }
             let name = SettingsForm.field(link.label, placeholder: "Name")
@@ -347,11 +369,9 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
         form.endGroup()
         form.textButton("Add Link", target: self, action: #selector(addLink))
 
-        form.disclosure("Advanced", summary: "Name, stop command, browser", isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
+        form.disclosure("Advanced", summary: "Browser", isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
         if isAdvancedOpen {
             form.beginGroup()
-            form.fieldRow("Name", [(nameField, nil)])
-            form.fieldRow("Stop command", [(stopField, nil)])
             testButton.target = self
             testButton.action = #selector(testLink)
             form.fieldRow("Open links in", [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
@@ -498,8 +518,8 @@ final class DDEVProjectForm: FlippedContainer, NSTextFieldDelegate {
         form.beginGroup()
         chooseButton.target = self
         chooseButton.action = #selector(chooseFolder)
-        form.fieldRow("Folder", [(folderField, nil)], trailing: chooseButton)
         form.fieldRow("Name", [(nameField, nil)])
+        form.fieldRow("Folder", [(folderField, nil)], trailing: chooseButton)
         form.endGroup()
 
         form.section("Tools on the card")
@@ -524,11 +544,12 @@ final class DDEVProjectForm: FlippedContainer, NSTextFieldDelegate {
             form.endGroup()
         }
 
-        form.section("Open links in")
+        // One row called the same thing as in every other form, rather than a section whose
+        // title and whose row said the same word twice.
         form.beginGroup()
         testButton.target = self
         testButton.action = #selector(testLink)
-        form.fieldRow("Browser", [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
+        form.fieldRow("Open links in", [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
         form.endGroup()
 
         frame.size.height = form.usedHeight

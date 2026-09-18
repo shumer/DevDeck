@@ -14,15 +14,22 @@ class FlippedContainer: NSView {
 /// mix four of them with four different left edges. Every row inside a group shares two edges:
 /// the leading one at 12 points, and a control column at 130 points for rows with a label.
 ///
-/// The column has a fixed width. A form that stretched with the window had to be rebuilt on
-/// every resize, and rebuilding threw away whatever field had focus along with what was typed
-/// in it. System Settings keeps its column fixed for the same reason.
+/// The column follows the window's width up to a ceiling, the way System Settings' does, and
+/// nothing is rebuilt to do it: every row and every control carries the autoresizing mask that
+/// says whether it stretches or keeps to the trailing edge. Rebuilding on a resize is what used
+/// to throw away whatever field had focus, along with what was typed in it.
 @MainActor
 final class SettingsForm {
-    /// The column's width at the window's default size, and its ceiling at any other.
-    nonisolated static let columnWidth: CGFloat = 544
-    nonisolated static let sideInset: CGFloat = 28
-    nonisolated static let rowInset: CGFloat = 12
+    /// The column's width at the window's default size, and its ceiling at any other: a form
+    /// three feet wide is no easier to read than a menu bar is.
+    nonisolated static let columnWidth: CGFloat = 760
+    /// Narrow enough to keep a label column and a field beside it.
+    nonisolated static let minimumColumnWidth: CGFloat = 440
+    nonisolated static let sideInset: CGFloat = 20
+    nonisolated static let rowInset: CGFloat = 10
+    /// Text sits about two points inside its field, so a label lines up with a control's edge
+    /// only if its frame starts two points further out.
+    nonisolated static let labelInset: CGFloat = 8
     nonisolated static let labelColumn: CGFloat = 130
 
     private let parent: FlippedContainer
@@ -38,7 +45,7 @@ final class SettingsForm {
     init(in parent: FlippedContainer, top: CGFloat = 20) {
         self.parent = parent
         self.left = Self.sideInset
-        self.width = min(Self.columnWidth, parent.bounds.width - Self.sideInset * 2)
+        self.width = max(Self.minimumColumnWidth, min(Self.columnWidth, parent.bounds.width - Self.sideInset * 2))
         self.cursor = top
     }
 
@@ -74,11 +81,13 @@ final class SettingsForm {
             let control = Self.makeSwitch(isOn: isOn, title: toggleTitle, target: target, action: action)
             let size = control.fittingSize
             control.frame = NSRect(x: left + width - size.width, y: cursor + 9, width: size.width, height: size.height)
+            control.autoresizingMask = [.minXMargin]
             parent.addSubview(control)
 
             let caption = Self.label(toggleTitle, size: 12, color: .secondaryLabelColor)
             caption.sizeToFit()
             caption.frame.origin = NSPoint(x: control.frame.minX - caption.frame.width - 8, y: cursor + 10)
+            caption.autoresizingMask = [.minXMargin]
             parent.addSubview(caption)
             toggleWidth = size.width + caption.frame.width + 20
             toggle = control
@@ -87,6 +96,7 @@ final class SettingsForm {
         let name = Self.label(title, size: 17, weight: .semibold)
         name.lineBreakMode = .byTruncatingTail
         name.frame = NSRect(x: textLeft, y: cursor, width: left + width - textLeft - toggleWidth, height: 21)
+        name.autoresizingMask = [.width]
         parent.addSubview(name)
 
         if let subtitle, !subtitle.isEmpty {
@@ -94,6 +104,7 @@ final class SettingsForm {
             detail.lineBreakMode = .byTruncatingMiddle
             detail.toolTip = subtitle
             detail.frame = NSRect(x: textLeft, y: cursor + 22, width: left + width - textLeft - toggleWidth, height: 14)
+            detail.autoresizingMask = [.width]
             parent.addSubview(detail)
         }
 
@@ -106,10 +117,10 @@ final class SettingsForm {
     /// question mark instead of under the group, where it used to outweigh the controls.
     func section(_ title: String, help: String? = nil) {
         closeGroupIfOpen()
-        if afterGroup { cursor += 22 }
+        if afterGroup { cursor += 30 }
         let header = Self.label(title, size: 13, weight: .semibold)
         header.sizeToFit()
-        header.frame.origin = NSPoint(x: left + 4, y: cursor)
+        header.frame.origin = NSPoint(x: left + Self.labelInset, y: cursor)
         parent.addSubview(header)
 
         if let help {
@@ -117,7 +128,7 @@ final class SettingsForm {
             button.frame = NSRect(x: header.frame.maxX + 6, y: cursor - 2, width: 20, height: 20)
             parent.addSubview(button)
         }
-        cursor += 17 + 7
+        cursor += 17 + 9
         afterGroup = false
     }
 
@@ -125,8 +136,11 @@ final class SettingsForm {
 
     func beginGroup() {
         closeGroupIfOpen()
-        if afterGroup { cursor += 22 }
+        // Two groups with nothing between them sit closer than a group and the next section's
+        // title do.
+        if afterGroup { cursor += 10 }
         let box = GroupBoxView(frame: NSRect(x: left, y: cursor, width: width, height: 0))
+        box.autoresizingMask = [.width]
         parent.addSubview(box)
         group = box
         groupCursor = 0
@@ -147,8 +161,10 @@ final class SettingsForm {
     /// Adds a hairline above the next row, unless it is the first row of the group.
     private func separatorIfNeeded(in box: GroupBoxView) {
         guard groupCursor > 0 else { return }
-        let line = NSBox(frame: NSRect(x: Self.rowInset, y: groupCursor, width: box.frame.width - Self.rowInset * 2, height: 1))
-        line.boxType = .separator
+        // Drawn rather than an NSBox separator, which is twice as dark as the hairline inside a
+        // System Settings group.
+        let line = HairlineView(frame: NSRect(x: Self.rowInset, y: groupCursor, width: box.frame.width - Self.rowInset * 2, height: 1))
+        line.autoresizingMask = [.width]
         box.addSubview(line)
     }
 
@@ -177,12 +193,14 @@ final class SettingsForm {
             detail = field
         }
 
-        let height = max(36, 10 + 16 + (subtitleHeight > 0 ? 2 + subtitleHeight : 0) + 10)
+        let height = max(38, 11 + 16 + (subtitleHeight > 0 ? 2 + subtitleHeight : 0) + 11)
         let textTop = groupCursor + (height - 16 - (subtitleHeight > 0 ? 2 + subtitleHeight : 0)) / 2
-        caption.frame = NSRect(x: Self.rowInset, y: textTop, width: textWidth, height: 16)
+        caption.frame = NSRect(x: Self.labelInset, y: textTop, width: textWidth, height: 16)
+        caption.autoresizingMask = [.width]
         box.addSubview(caption)
         if let detail {
-            detail.frame = NSRect(x: Self.rowInset, y: textTop + 18, width: textWidth, height: subtitleHeight)
+            detail.frame = NSRect(x: Self.labelInset, y: textTop + 18, width: textWidth, height: subtitleHeight)
+            detail.autoresizingMask = [.width]
             box.addSubview(detail)
         }
 
@@ -193,6 +211,7 @@ final class SettingsForm {
             height: size.height
         )
         if let toggle = control as? NSSwitch { toggle.setAccessibilityLabel(title) }
+        control.autoresizingMask = [.minXMargin]
         box.addSubview(control)
         groupCursor += height
     }
@@ -202,17 +221,18 @@ final class SettingsForm {
     func fieldRow(_ label: String, _ controls: [(view: NSView, width: CGFloat?)], trailing: NSView? = nil) {
         guard let box = group else { return }
         separatorIfNeeded(in: box)
-        let height: CGFloat = 36
+        let height: CGFloat = 38
 
         let caption = Self.label(label, size: 13)
         caption.lineBreakMode = .byTruncatingTail
-        caption.frame = NSRect(x: Self.rowInset, y: groupCursor + 10, width: Self.labelColumn - Self.rowInset - 8, height: 16)
+        caption.frame = NSRect(x: Self.labelInset, y: groupCursor + 11, width: Self.labelColumn - Self.labelInset - 8, height: 16)
         box.addSubview(caption)
 
         var right = box.frame.width - Self.rowInset
         if let trailing {
             let size = Self.fittingSize(of: trailing)
             trailing.frame = NSRect(x: right - size.width, y: groupCursor + (height - size.height) / 2, width: size.width, height: size.height)
+            trailing.autoresizingMask = [.minXMargin]
             box.addSubview(trailing)
             right -= size.width + 8
         }
@@ -225,11 +245,16 @@ final class SettingsForm {
 
         var x = Self.labelColumn
         // Hidden controls keep their place, so a profile pop-up appearing never moves the row.
+        var afterFlexible = false
         for control in controls {
             let controlWidth = control.width ?? flexible
             let controlHeight = Self.fittingSize(of: control.view).height
             control.view.frame = NSRect(x: x, y: groupCursor + (height - controlHeight) / 2, width: controlWidth, height: controlHeight)
             if let field = control.view as? NSTextField, field.isEditable { field.setAccessibilityLabel(label) }
+            // The one that shares what is left is the one that grows; anything after it keeps its
+            // distance from the trailing edge instead.
+            control.view.autoresizingMask = control.width == nil ? [.width] : (afterFlexible ? [.minXMargin] : [])
+            afterFlexible = afterFlexible || control.width == nil
             box.addSubview(control.view)
             x += controlWidth + spacing
         }
@@ -241,15 +266,17 @@ final class SettingsForm {
     func statusRow(_ status: StatusLine, button: NSButton?) {
         guard let box = group else { return }
         separatorIfNeeded(in: box)
-        let height: CGFloat = 36
+        let height: CGFloat = 38
         var right = box.frame.width - Self.rowInset
         if let button {
             let size = Self.fittingSize(of: button)
             button.frame = NSRect(x: right - size.width, y: groupCursor + (height - size.height) / 2, width: size.width, height: size.height)
+            button.autoresizingMask = [.minXMargin]
             box.addSubview(button)
             right -= size.width + 10
         }
-        status.frame = NSRect(x: Self.rowInset, y: groupCursor, width: right - Self.rowInset, height: height)
+        status.frame = NSRect(x: Self.labelInset, y: groupCursor, width: right - Self.labelInset, height: height)
+        status.autoresizingMask = [.width]
         box.addSubview(status)
         groupCursor += height
     }
@@ -265,26 +292,28 @@ final class SettingsForm {
     func linkRow(toggle: NSButton, tag: String, tint: NSColor, field: NSTextField, open: NSButton?, chipWidth fixedWidth: CGFloat? = nil) {
         guard let box = group else { return }
         separatorIfNeeded(in: box)
-        let height: CGFloat = 36
+        let height: CGFloat = 38
 
-        toggle.frame = NSRect(x: Self.rowInset, y: groupCursor + 10, width: 18, height: 16)
+        toggle.frame = NSRect(x: Self.rowInset, y: groupCursor + 11, width: 18, height: 16)
         toggle.setAccessibilityLabel(tag)
         box.addSubview(toggle)
 
         let chip = ChipView(text: tag.uppercased(), tint: tint)
         let chipWidth = fixedWidth ?? min(110, max(52, chip.textWidth + 14))
-        chip.frame = NSRect(x: 36, y: groupCursor + 9, width: chipWidth, height: 18)
+        chip.frame = NSRect(x: 34, y: groupCursor + 10, width: chipWidth, height: 18)
         box.addSubview(chip)
         let fieldLeft = chip.frame.maxX + 8
 
         var right = box.frame.width - Self.rowInset
         if let open {
-            open.frame = NSRect(x: right - 20, y: groupCursor + 8, width: 20, height: 20)
+            open.frame = NSRect(x: right - 20, y: groupCursor + 9, width: 20, height: 20)
+            open.autoresizingMask = [.minXMargin]
             box.addSubview(open)
             right -= 28
         }
-        field.frame = NSRect(x: fieldLeft, y: groupCursor + 7, width: right - fieldLeft, height: 22)
+        field.frame = NSRect(x: fieldLeft, y: groupCursor + 8, width: right - fieldLeft, height: 22)
         field.setAccessibilityLabel(tag)
+        field.autoresizingMask = [.width]
         box.addSubview(field)
         groupCursor += height
     }
@@ -298,7 +327,8 @@ final class SettingsForm {
         let note = Self.label(text, size: 11, color: .secondaryLabelColor)
         note.lineBreakMode = .byTruncatingTail
         note.toolTip = text
-        note.frame = NSRect(x: left + 4, y: cursor + 6, width: width - 8, height: 14)
+        note.frame = NSRect(x: left + Self.labelInset, y: cursor + 6, width: width - Self.labelInset * 2, height: 14)
+        note.autoresizingMask = [.width]
         parent.addSubview(note)
         cursor += 6 + 14
     }
@@ -311,7 +341,7 @@ final class SettingsForm {
         button.contentTintColor = .controlAccentColor
         button.font = NSFont.systemFont(ofSize: 12.5)
         button.sizeToFit()
-        button.frame.origin = NSPoint(x: left + 2, y: cursor + 6)
+        button.frame.origin = NSPoint(x: left + Self.labelInset - 2, y: cursor + 6)
         parent.addSubview(button)
         cursor += 6 + button.frame.height
     }
@@ -342,6 +372,7 @@ final class SettingsForm {
             let hint = Self.label(summary, size: 11, color: .secondaryLabelColor)
             hint.lineBreakMode = .byTruncatingTail
             hint.frame = NSRect(x: caption.frame.maxX + 6, y: cursor, width: left + width - caption.frame.maxX - 6, height: 14)
+            hint.autoresizingMask = [.width]
             parent.addSubview(hint)
         }
         cursor += 17 + 7
@@ -421,7 +452,7 @@ final class GroupBoxView: FlippedContainer {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 10
+        layer?.cornerRadius = 12
         layer?.cornerCurve = .continuous
     }
 
@@ -433,7 +464,27 @@ final class GroupBoxView: FlippedContainer {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.05).cgColor
+        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.03).cgColor
+    }
+}
+
+/// The hairline between two rows of a group.
+@MainActor
+final class HairlineView: NSView {
+    override var wantsUpdateLayer: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used, this view is built in code")
+    }
+
+    override func updateLayer() {
+        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.06).cgColor
     }
 }
 

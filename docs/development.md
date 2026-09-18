@@ -12,6 +12,12 @@ That single fact shapes the project:
   `NSWindow`s hosting SwiftUI views - see [adr/0002-spm-only-toolchain.md](adr/0002-spm-only-toolchain.md).
 - `build.sh` assembles `DevDeck.app` by hand and signs it: with a Developer ID when the Keychain
   has one, ad-hoc otherwise.
+- **The binary is stamped with the SDK it was really built against**, through
+  `-platform_version macos 14.0 <sdk>`. SwiftPM writes the deployment target into that field
+  instead, and macOS reads it to decide which era of window chrome to draw: without the flag the
+  settings window gets title-bar buttons two points smaller than every other window's. The
+  deployment target stays at macOS 14. The release workflow therefore runs on `macos-26`; the test
+  workflow stays on `macos-15`, which keeps the code honest about building on the older SDK.
 
 ## Commands
 

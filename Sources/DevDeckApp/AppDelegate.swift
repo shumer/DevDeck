@@ -123,6 +123,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Before any window exists, because a settings field with no Edit menu behind it cannot
         // be pasted into.
         EditMenu.install()
+        // An agent app has no Dock icon, so macOS has nothing to put on the tile of a minimised
+        // window: the settings window went down to the Dock as a blank page. Said explicitly, the
+        // tile carries the app's own icon.
+        NSApp.applicationIconImage = AppIcon.image(size: 512)
         CardHostView.modules = modules
         menu.install()
 

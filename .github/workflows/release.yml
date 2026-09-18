@@ -23,7 +23,10 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    # The runner decides how the released app looks: macOS draws a window's chrome from the SDK
+    # the binary was stamped with, and a build on an older runner gets the previous era's title
+    # bar, two points smaller than every other window on a current Mac.
+    runs-on: macos-26
     env:
       # A secret cannot be read in an `if`; an env var set from one can. Empty secrets compare
       # equal to the empty string, so a repository without them takes the ad-hoc path.
