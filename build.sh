@@ -52,14 +52,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# The icon is drawn in code, so it is rendered here rather than checked in: every size comes
-# from the drawing instead of being resampled from the largest one, and it cannot go stale
-# against the source the way an exported PNG does.
-swift build --package-path "$HERE" -c release --product AppIconExport >/dev/null
-ICONSET="$(mktemp -d)/DevDeck.iconset"
-"$(swift build --package-path "$HERE" -c release --show-bin-path)/AppIconExport" "$ICONSET" >/dev/null
-iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/DevDeck.icns"
-rm -rf "$(dirname "$ICONSET")"
+# The application icon is artwork, not code: every size in the iconset was drawn at that size
+# rather than resampled from the largest, and `Resources/AppIcon` keeps the SVG and the geometry
+# it came from beside it. Only the menu-bar glyph is still drawn at run time.
+iconutil -c icns "$HERE/Resources/AppIcon/DevDeck.iconset" -o "$APP/Contents/Resources/DevDeck.icns"
 
 cp "$(swift build --package-path "$HERE" -c release --show-bin-path)/DevDeck" "$MACOS/DevDeck"
 chmod +x "$MACOS/DevDeck"

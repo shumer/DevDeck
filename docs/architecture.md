@@ -283,9 +283,10 @@ on-screen order, anchored at the top card, never moving a card to another column
 sorting, which is what separates it from `tidy`. Why all of this, with the measurements:
 [adr/0012-automatic-movement.md](adr/0012-automatic-movement.md).
 
-**The icons are code.** No asset catalog exists here and no Xcode to build one, so `AppIcon`
-draws the application icon on a 1024 grid and `Tools/AppIconExport` renders the ten sizes an
-`.icns` holds, each one from the drawing rather than resampled from the largest. `DeckIcon` draws
+**The menu-bar glyph is code, the application icon is artwork.** There is no asset catalog here
+and no Xcode to build one, so the application icon lives in `Resources/AppIcon` as an iconset,
+every size drawn at that size rather than resampled from the largest, with the SVG and the
+geometry beside it; `build.sh` packs it with `iconutil`. `DeckIcon` draws
 the menu-bar glyph and its four states: calm, a ring for stuck work, a dot for something to fix, a
 red dot for a person waiting. All but the red one are real template images so the menu bar tints
 them; the one carrying red cannot be, so it draws itself in `labelColor`, which resolves against
@@ -518,8 +519,8 @@ from a terminal. See [adr/0018-settings-like-system-settings.md](adr/0018-settin
 
 ## Concurrency
 
-Every target except `DevDeckUI`, `DevDeckApp` and the three render tools (`IconPreview`,
-`GlyphPreview`, `AppIconExport`) builds in Swift 6 language mode with strict concurrency. Those
+Every target except `DevDeckUI`, `DevDeckApp` and the two render tools (`IconPreview`,
+`GlyphPreview`) builds in Swift 6 language mode with strict concurrency. Those
 build in Swift 5 mode - see
 [adr/0002-spm-only-toolchain.md](adr/0002-spm-only-toolchain.md).
 

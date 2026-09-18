@@ -476,13 +476,14 @@ you pressed, reports nothing about a project that was already stopped at launch,
 project that went down with Docker into one **Start Docker** row. Silence from a health check is
 only said after two minutes, and a network error only becomes something to fix after fifteen.
 
-Both icons are drawn in code rather than shipped as images, because there is no asset catalog and
-no Xcode to build one, and because an icon that is drawn can be judged at 32 points by rendering
-it at 32 points. `swift run IconPreview out.png` renders the menu-bar icon at menu-bar size on a
-light and a dark bar; `build.sh` renders the application icon at all ten sizes through
-`AppIconExport` and packs them with `iconutil`. The application icon is one card showing what a
-card is for: the state dot with its halo, the state word beside it, and the quiet rows under it.
-Being an agent app, it appears in Finder and in Login Items rather than in the Dock.
+The menu-bar glyph is drawn in code, because an icon that is drawn can be judged at 15 points by
+rendering it at 15 points: `swift run IconPreview out.png` puts all four states on a light and a
+dark bar. The application icon is artwork, in `Resources/AppIcon`: an iconset whose every size was
+drawn at that size rather than resampled, with the SVG and the geometry it came from beside it,
+packed into an `.icns` by `build.sh`. It shows a deck: four dark cards on a pale ground, a green
+dot on the ones that are running and an amber one on the card that wants something. Being an agent
+app, DevDeck is in Finder and in Login Items rather than in the Dock, and it appears there only
+while its settings window is open.
 
 Its menu holds what you do:
 
@@ -800,8 +801,9 @@ Tests/
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
-  AppIconExport/   renders the application icon at all ten sizes for build.sh
   GlyphPreview/    renders every card mark at the size a card draws it
+Resources/
+  AppIcon/         the application icon: the iconset build.sh packs, its SVG and its geometry
 scripts/           seed-token.sh, smoke-test.sh
 docs/              architecture, development, GitHub API, roadmap, adr/
 ```
