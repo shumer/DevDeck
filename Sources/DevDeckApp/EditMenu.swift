@@ -34,7 +34,7 @@ enum EditMenu {
         let findItem = NSMenuItem(title: L("menu.edit.find"), action: nil, keyEquivalent: "")
         let find = NSMenu(title: L("menu.edit.find"))
         for (title, tag, key, modifiers) in findItems {
-            let item = NSMenuItem(title: title, action: Selector(("performTextFinderAction:")), keyEquivalent: key)
+            let item = NSMenuItem(title: title, action: #selector(NSTextView.performTextFinderAction(_:)), keyEquivalent: key)
             item.tag = tag
             item.keyEquivalentModifierMask = modifiers
             find.addItem(item)
