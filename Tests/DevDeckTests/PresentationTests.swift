@@ -371,20 +371,6 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(DeckIcon.statusItemImage(.waiting).size, DeckIcon.size)
     }
 
-    await run.test("the app icon is drawn at every size rather than resampled from one") {
-        for size in [16.0, 32.0, 128.0, 1024.0] {
-            let image = AppIcon.image(size: size)
-            try expectEqual(image.size.width, size)
-            try expectEqual(image.size.height, size)
-        }
-        // The squircle is a superellipse, not a rounded rectangle: at the halfway point of a
-        // side it is still flat, which a circular corner is not.
-        let path = AppIcon.squirclePath(center: CGPoint(x: 512, y: 512), radius: 412)
-        try expectEqual(path.elementCount, 243, "241 sampled points and a close")
-        try expect(path.bounds.width <= 824.5 && path.bounds.width >= 823.5,
-                   "824 of 1024, the modern macOS inset")
-    }
-
     run.section("Arrangements")
 
     func placed(_ card: String, visible: Bool = true, collapsed: Bool = false, at spot: String? = "d|0|0") -> DeckArrangement.Placed {

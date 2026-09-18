@@ -79,6 +79,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     func show(_ section: Section = .general, id: String? = nil) {
         if window == nil { makeWindow() }
         open(section, id: id ?? (section == current.section ? current.id : nil))
+        // In the Dock while this window is open, and out of it again when it closes. An agent app
+        // has no Dock icon, so a minimised window sat there as a nameless blank page with no way
+        // to tell whose it was; with the app itself in the Dock, macOS puts its icon on the tile
+        // and the window can be brought back the ordinary way.
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
@@ -215,9 +220,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         detailScroll.hasVerticalScroller = detailHeight > size.height
     }
 
-    /// Whatever was being typed is kept: ending the edit is what commits it.
+    /// Whatever was being typed is kept: ending the edit is what commits it. The Dock icon goes
+    /// with the window: this is an agent app again once there is nothing to show.
     func windowWillClose(_ notification: Notification) {
         window?.makeFirstResponder(nil)
+        NSApp.setActivationPolicy(.accessory)
     }
 
     // MARK: Identity of a row
