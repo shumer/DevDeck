@@ -40,7 +40,7 @@ struct CardHostView: View {
     private var unimplemented: some View {
         CardChrome(title: CardCatalog.descriptor(for: card)?.title ?? card.rawValue) {
             Spacer()
-            Text("Not built yet")
+            Text(L("card.notBuilt"))
                 .font(.system(size: 13))
                 .foregroundStyle(DeckTheme.label)
             Spacer()

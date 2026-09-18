@@ -44,7 +44,7 @@ final class ArrangementsController: NSObject {
             item.target = self
             // Alt-click forgets it, which is where macOS puts the destructive twin of a menu
             // item and saves the submenu from being twice as long.
-            let forget = NSMenuItem(title: "Forget \(saved.name)", action: #selector(forget(_:)), keyEquivalent: "")
+            let forget = NSMenuItem(title: L("arrangements.forget", saved.name), action: #selector(forget(_:)), keyEquivalent: "")
             forget.representedObject = saved.name
             forget.target = self
             forget.isAlternate = true
@@ -53,7 +53,7 @@ final class ArrangementsController: NSObject {
             submenu.addItem(forget)
         }
         if !preferences.arrangements.isEmpty { submenu.addItem(.separator()) }
-        let save = NSMenuItem(title: "Save this one…", action: #selector(save), keyEquivalent: "")
+        let save = NSMenuItem(title: L("arrangements.save"), action: #selector(save), keyEquivalent: "")
         save.target = self
         submenu.addItem(save)
         return submenu
@@ -61,14 +61,13 @@ final class ArrangementsController: NSObject {
 
     @objc private func save() {
         let alert = NSAlert()
-        alert.messageText = "Save this arrangement"
-        alert.informativeText = "Which cards are on the deck, which are folded to a row, and where "
-            + "each one sits. Saving over a name replaces it."
+        alert.messageText = L("arrangements.save.title")
+        alert.informativeText = L("arrangements.save.detail")
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
-        field.placeholderString = "Il Tempo day"
+        field.placeholderString = L("arrangements.name.placeholder")
         alert.accessoryView = field
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: L("button.save"))
+        alert.addButton(withTitle: L("button.cancel"))
         NSApp.activate(ignoringOtherApps: true)
         alert.window.initialFirstResponder = field
 

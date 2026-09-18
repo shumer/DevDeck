@@ -1,11 +1,13 @@
 import AppKit
 import ArcKit
+import DDEVKit
 import DevDeckCore
 import DevDeckUI
 import SwiftUI
 import Foundation
 import GitHubKit
 import GitLabKit
+import ProjectKit
 import TestHarness
 
 func runPresentationTests(_ run: TestRun) async {
@@ -602,14 +604,13 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(stopped, ["Start", "Terminal"])
     }
 
-    await run.test("an open tray is not carried into a collapsed card") {
+    await run.test("a collapsed card is one row, whatever else is open") {
         let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let status = LocalStackStatus(state: .running)
-        let logs = LogLines(lines: ["one", "two"], source: "docker logs x")
         try expectEqual(
-            ArcProjectCard.size(for: project, status: status, logs: logs, isCollapsed: true).height,
+            ArcProjectCard.size(for: project, status: status, isCollapsed: true).height,
             CollapsedCardMetrics.height,
-            "six lines of log under a one-line card is not a card"
+            "a card folded to a row is a row"
         )
     }
 
@@ -621,9 +622,9 @@ func runPresentationTests(_ run: TestRun) async {
         )
     }
 
-    run.section("Cards - the log tray")
+    run.section("Cards - the log")
 
-    await run.test("a tray keeps the last lines and drops the noise between them") {
+    await run.test("a log keeps the last lines and drops the noise between them") {
         let output = "starting\n\n\u{1B}[32mready\u{1B}[0m in 612 ms\r  \rGET / 200\nGET /admin 302\n"
         let lines = LogTail.lines(from: output, limit: 3)
         try expectEqual(lines, ["ready in 612 ms", "GET / 200", "GET /admin 302"],
@@ -644,25 +645,35 @@ func runPresentationTests(_ run: TestRun) async {
         try expectEqual(LogTail.strippingEscapes("plain"), "plain")
     }
 
-    await run.test("the tray costs the card an honest number of points") {
-        let empty = LogLines(detail: "nothing logged yet")
-        try expectEqual(CardLogTray.height(for: nil), 0, "a closed tray costs nothing")
-        try expectEqual(CardLogTray.height(for: empty), CardLogTray.height(lineCount: 1),
-                        "an empty tray still says so on one line")
-        try expect(CardLogTray.height(lineCount: 6) > CardLogTray.height(lineCount: 3))
-        try expectEqual(CardLogTray.height(lineCount: 20), CardLogTray.height(lineCount: LogTail.lineLimit),
-                        "and it never grows past what it draws")
+    await run.test("a window asks for a log worth reading, a card for a glance") {
+        let output = (1...600).map { "line \($0)" }.joined(separator: "\n")
+        let card = LogTail.lines(from: output)
+        try expectEqual(card.count, LogTail.lineLimit, "the card takes what it can show")
+        try expectEqual(card.last, "line 600", "and the newest is the last of them")
+
+        let window = LogTail.lines(from: output, limit: LogTail.windowLineLimit)
+        try expectEqual(window.count, LogTail.windowLineLimit, "the window takes a screenful and then some")
+        try expectEqual(window.first, "line 201")
+        try expectEqual(window.last, "line 600", "newest last, both times")
+        try expect(LogTail.windowTailBytes > LogTail.fileTailBytes,
+                   "and it reads enough of the file to have that many")
     }
 
-    await run.test("a card grows by exactly its tray") {
+    await run.test("a log on screen costs the card nothing") {
+        // It used to be a tray inside the card, 120 points of it, and the column under the card
+        // moved every time somebody opened one. The window is the whole point.
         let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let status = LocalStackStatus(state: .running, branch: "main")
-        let logs = LogLines(lines: ["one", "two", "three"], source: "docker logs x")
+        let height = ArcProjectCard.size(for: project, status: status).height
+        // The tray was another 120 points on top of this, and the column under the card moved
+        // every time one opened. Nothing a log does may change this number.
+        try expect(height < 260, "a project card stays a card: \(height)")
 
-        let closed = ArcProjectCard.size(for: project, status: status)
-        let open = ArcProjectCard.size(for: project, status: status, logs: logs)
-        try expectEqual(open.height - closed.height, CardLogTray.height(lineCount: 3),
-                        "the panel and the card have to agree on this exactly")
+        let ddev = DDEVProject(id: "d", name: "shop", folder: "/tmp")
+        try expect(DDEVProjectCard.size(for: ddev, status: DDEVStatus(state: .running)).height < 260)
+
+        let local = LocalProject(id: "l", title: "feed", folder: "/tmp", startCommand: "npm run dev")
+        try expect(LocalProjectCard.size(for: local, status: LocalProjectStatus(state: .running)).height < 260)
     }
 
     run.section("Cards - the palette")
@@ -694,6 +705,41 @@ func runPresentationTests(_ run: TestRun) async {
                         try red(DeckTheme.value), "and none of it")
     }
 
+    run.section("Cards - the header toggles")
+
+    await run.test("a popover closed by a click elsewhere tells the card it closed") {
+        // It used to be bound to a constant: the popover went away on the click, the card still
+        // thought it was open, and the redraw that click caused opened it again. Pressing any
+        // other button on the card brought the QR code back every time.
+        var isShowing = true
+        let toggle = CardHeaderToggle(
+            id: "phone",
+            isOn: true,
+            systemImage: "qrcode",
+            help: "open this on your phone",
+            popover: AnyView(EmptyView()),
+            dismiss: { isShowing = false }
+        ) { isShowing.toggle() }
+
+        let binding = toggle.presentation()
+        try expect(binding.wrappedValue, "it is open")
+        binding.wrappedValue = false
+        try expect(!isShowing, "and the card was told it closed")
+        // Twice, because a dismissal can arrive again before the card is drawn: closing has to
+        // mean closed, not the other way round.
+        binding.wrappedValue = false
+        try expect(!isShowing, "a second dismissal leaves it closed")
+    }
+
+    await run.test("a toggle with nothing to show never presents anything") {
+        var presses = 0
+        let logs = CardHeaderToggle(isOn: true, help: "hide the log") { presses += 1 }
+        let binding = logs.presentation()
+        try expect(!binding.wrappedValue, "the log tray lives in the card, not in a popover")
+        binding.wrappedValue = false
+        try expectEqual(presses, 0, "so there is nothing to dismiss")
+    }
+
     run.section("Cards - the control row")
 
     await run.test("every button gets the same air around its label") {
@@ -723,7 +769,7 @@ func runPresentationTests(_ run: TestRun) async {
                         "the row fills the card exactly, so it lines up with everything above it")
     }
 
-    await run.test("a row too full to fit shrinks in proportion rather than truncating one label") {
+    await run.test("a row too full to fit gives up whole words rather than cutting every label") {
         let crowded = [
             CardAction("Start Docker", systemImage: "shippingbox.fill", isProminent: true),
             CardAction("Restart", systemImage: "arrow.clockwise"),
@@ -731,10 +777,37 @@ func runPresentationTests(_ run: TestRun) async {
             CardAction("Folder", systemImage: "folder"),
             CardAction("Logs", systemImage: "doc.text"),
         ]
-        let widths = CardActionRow.widths(for: crowded)
-        let total = widths.reduce(0, +) + CardActionRow.spacing * Double(crowded.count - 1)
+        let places = CardActionRow.layout(for: crowded)
+        let total = places.map(\.width).reduce(0, +) + CardActionRow.spacing * Double(crowded.count - 1)
         try expect(total <= CardChromeMetrics.contentWidth + 0.5, "it fits, whatever it costs")
-        try expect(widths.allSatisfy { $0 > 30 }, "and nothing collapses")
+        try expect(places.allSatisfy { $0.width > 30 }, "and nothing collapses")
+        try expect(!places.contains { $0.showsLabel && $0.width < 44 }, "a word that stayed is a word you can read")
+        try expect(places[0].showsLabel, "the action the card is offering keeps its word")
+        try expect(!places[4].showsLabel, "the ones it can do without are the quiet ones, from the right")
+    }
+
+    await run.test("a translation that does not fit costs the words, not the row") {
+        // The Russian labels: four of them need more than the card is wide, where the English
+        // four fit with room to spare.
+        let english = [
+            CardAction("Start", systemImage: "play.fill", isProminent: true),
+            CardAction("Restart", systemImage: "arrow.clockwise"),
+            CardAction("Terminal", systemImage: "terminal"),
+            CardAction("Folder", systemImage: "folder"),
+        ]
+        try expect(CardActionRow.layout(for: english).allSatisfy(\.showsLabel), "English keeps all four")
+
+        let russian = [
+            CardAction("Запустить", systemImage: "play.fill", isProminent: true),
+            CardAction("Перезапустить", systemImage: "arrow.clockwise"),
+            CardAction("Терминал", systemImage: "terminal"),
+            CardAction("Папка", systemImage: "folder"),
+        ]
+        let places = CardActionRow.layout(for: russian)
+        let total = places.map(\.width).reduce(0, +) + CardActionRow.spacing * 3
+        try expectEqual(total.rounded(), CardChromeMetrics.contentWidth.rounded(), "the row still fills the card")
+        try expect(places[0].showsLabel, "the one you came for keeps its word")
+        try expect(places.contains { !$0.showsLabel }, "and something gave its up")
     }
 
     run.section("Browsers")

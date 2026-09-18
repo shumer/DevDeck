@@ -86,21 +86,21 @@ public struct MergeRequestsCard: View {
     private var collapsed: some View {
         CardCollapsedRow(
             glyph: CardGlyph.gitlab,
-            title: "Merge requests",
+            title: L("card.title.merges"),
             note: collapsedNote,
             tone: collapsedTone.tone,
             color: collapsedTone.color,
-            actions: [CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard)],
-            help: collapsedNote ?? "Merge requests"
+            actions: [CardAction(L("card.action.openInBrowser"), systemImage: "arrow.up.forward", action: onOpenDashboard)],
+            help: collapsedNote ?? L("card.title.merges")
         )
     }
 
     /// The pill's words, which are already the shortest true sentence about the card.
     private var collapsedNote: String? {
-        guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
-        if snapshot.blockedCount > 0 { return "\(snapshot.blockedCount) blocked · \(snapshot.totalCount) open" }
-        if snapshot.reviewRequestCount > 0 { return "\(snapshot.reviewRequestCount) to review · \(snapshot.totalCount) open" }
-        return snapshot.totalCount == 0 ? "clear" : "\(snapshot.totalCount) open"
+        guard let snapshot = state.value else { return state.failure?.displayMessage ?? L("card.pill.loading") }
+        if snapshot.blockedCount > 0 { return L("card.pill.blockedOpen", snapshot.blockedCount, snapshot.totalCount) }
+        if snapshot.reviewRequestCount > 0 { return L("card.pill.toReviewOpen", snapshot.reviewRequestCount, snapshot.totalCount) }
+        return snapshot.totalCount == 0 ? L("card.pill.clear") : L("card.pill.open", snapshot.totalCount)
     }
 
     private var collapsedTone: (tone: CardStateTone, color: Color) {
@@ -112,7 +112,7 @@ public struct MergeRequestsCard: View {
 
     private var full: some View {
         CardChrome(
-            title: "GitLab · merge requests",
+            title: L("card.chrome.merges"),
             glyph: .gitlab,
             timestamp: CardFreshness.text(for: state)
         ) {
@@ -130,16 +130,16 @@ public struct MergeRequestsCard: View {
         }
         guard let snapshot = state.value else { return nil }
         if snapshot.blockedCount > 0 {
-            return ("\(snapshot.blockedCount) blocked", DeckTheme.red)
+            return (L("card.pill.blocked", snapshot.blockedCount), DeckTheme.red)
         }
         // Someone waiting on you outranks anything of yours that is merely in progress.
         if snapshot.reviewRequestCount > 0 {
-            return ("\(snapshot.reviewRequestCount) to review", DeckTheme.amber)
+            return (L("card.pill.toReview", snapshot.reviewRequestCount), DeckTheme.amber)
         }
         if snapshot.totalCount == 0 {
-            return ("clear", DeckTheme.green)
+            return (L("card.pill.clear"), DeckTheme.green)
         }
-        return ("on track", DeckTheme.green)
+        return (L("card.pill.onTrack"), DeckTheme.green)
     }
 
     @ViewBuilder
@@ -153,7 +153,7 @@ public struct MergeRequestsCard: View {
                 .font(.system(size: 26, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(DeckTheme.value.opacity(0.85))
-            Text("open")
+            Text(L("card.open"))
                 .font(.system(size: 12))
                 .foregroundStyle(DeckTheme.label)
             Spacer(minLength: 6)
@@ -238,7 +238,7 @@ public struct MergeRequestsCard: View {
                 Image(systemName: "eye")
                     .font(.system(size: 9.5, weight: .semibold))
                     .foregroundStyle(DeckTheme.amber)
-                    .help("waiting for your review")
+                    .help(L("card.waitingReview"))
             }
             if let key = ticket.key {
                 Text(key)
@@ -263,17 +263,17 @@ public struct MergeRequestsCard: View {
         .contentShape(Rectangle())
         .clickable()
         .onTapGesture { onOpen(mergeRequest.url, mergeRequest.accountID) }
-        .help("\(mergeRequest.shortLabel): \(mergeRequest.statusLine)")
+        .help(L("attention.row.colon", mergeRequest.shortLabel, mergeRequest.statusLine))
     }
 
     private func footerLeading(_ snapshot: MergeRequestsSnapshot) -> String {
         let projects = snapshot.projectCount
         let groups = snapshot.groupCount
-        var text = "\(projects) project\(projects == 1 ? "" : "s") · \(groups) group\(groups == 1 ? "" : "s")"
+        var text = L("card.footer.pair", LN("card.projects", projects), LN("card.groups", groups))
         // Only the rows beyond the expanded ceiling are worth mentioning here; the ones the
         // expander would reveal are its own business.
         let beyondCeiling = CardMetrics.hiddenWhenExpanded(total: snapshot.mergeRequests.count)
-        if isExpanded, beyondCeiling > 0 { text += " · +\(beyondCeiling) not shown" }
+        if isExpanded, beyondCeiling > 0 { text += L("card.notShown", beyondCeiling) }
         return text
     }
 }

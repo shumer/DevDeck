@@ -11,7 +11,7 @@ public struct DDEVProjectCard: View {
     private let project: DDEVProject
     private let status: DDEVStatus
     private let docker: DockerStatus
-    private let logs: LogLines?
+    private let isShowingLogs: Bool
     private let isCollapsed: Bool
     /// The same site, addressed for another device on this network. Nil unless it is running.
     private let phoneURL: URL?
@@ -27,13 +27,12 @@ public struct DDEVProjectCard: View {
     private let onOpenTerminal: () -> Void
     private let onStartDocker: (() -> Void)?
     private let onToggleLogs: (() -> Void)?
-    private let onOpenLogFile: ((URL) -> Void)?
 
     public init(
         project: DDEVProject,
         status: DDEVStatus,
         docker: DockerStatus = DockerStatus(state: .unknown),
-        logs: LogLines? = nil,
+        isShowingLogs: Bool = false,
         isCollapsed: Bool = false,
         phoneURL: URL? = nil,
         onOpen: @escaping (URL) -> Void = { _ in },
@@ -41,13 +40,12 @@ public struct DDEVProjectCard: View {
         onRevealFolder: @escaping () -> Void = {},
         onOpenTerminal: @escaping () -> Void = {},
         onStartDocker: (() -> Void)? = nil,
-        onToggleLogs: (() -> Void)? = nil,
-        onOpenLogFile: ((URL) -> Void)? = nil
+        onToggleLogs: (() -> Void)? = nil
     ) {
         self.project = project
         self.status = status
         self.docker = docker
-        self.logs = logs
+        self.isShowingLogs = isShowingLogs
         self.isCollapsed = isCollapsed
         self.phoneURL = phoneURL
         self.onOpen = onOpen
@@ -56,10 +54,9 @@ public struct DDEVProjectCard: View {
         self.onOpenTerminal = onOpenTerminal
         self.onStartDocker = onStartDocker
         self.onToggleLogs = onToggleLogs
-        self.onOpenLogFile = onOpenLogFile
     }
 
-    nonisolated public static func size(for project: DDEVProject, status: DDEVStatus, logs: LogLines? = nil, isCollapsed: Bool = false) -> CGSize {
+    nonisolated public static func size(for project: DDEVProject, status: DDEVStatus, isCollapsed: Bool = false) -> CGSize {
         guard !isCollapsed else {
             return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
         }
@@ -69,8 +66,7 @@ public struct DDEVProjectCard: View {
                 tools: project.toolLinks(status: status).map(\.label),
                 environments: project.environmentLinks(status: status).map(\.label),
                 hasBranch: status.branch != nil,
-                hasMetaRow: true,
-                logs: logs
+                hasMetaRow: true
             )
         )
     }
@@ -107,9 +103,9 @@ public struct DDEVProjectCard: View {
         var actions: [CardAction] = []
         if let first = lifecycle.first { actions.append(first) }
         actions.append(contentsOf: lifecycle.dropFirst().filter(\.isEnabled))
-        actions.append(CardAction("Terminal", systemImage: "terminal", action: onOpenTerminal))
+        actions.append(CardAction(L("card.action.terminal"), systemImage: "terminal", action: onOpenTerminal))
         if let site = status.isRunning ? status.entry?.primaryURL : nil {
-            actions.append(CardAction("Open the site", systemImage: "arrow.up.forward") { onOpen(site) })
+            actions.append(CardAction(L("card.action.openSite"), systemImage: "arrow.up.forward") { onOpen(site) })
         }
         return actions
     }
@@ -137,9 +133,6 @@ public struct DDEVProjectCard: View {
                 onOpenRepository: onOpen
             )
             chips
-            if let logs {
-                CardLogTray(logs: logs, onOpenFile: onOpenLogFile)
-            }
             controls
             Spacer(minLength: 0)
         }
@@ -159,7 +152,7 @@ public struct DDEVProjectCard: View {
             // "unknown" alone says nothing useful; what makes it useful is who does not know.
             note: isDockerBlocked
                 ? nil
-                : (status.state == .unknown ? "not in ddev list" : status.mutagenWarning),
+                : (status.state == .unknown ? L("card.ddev.notListed") : status.mutagenWarning),
             help: status.detail ?? heroText
         )
     }
@@ -182,13 +175,13 @@ public struct DDEVProjectCard: View {
         // be a true sentence that helps nobody.
         if isDockerBlocked { return DockerGate.text(docker) }
         switch status.state {
-        case .running: return "running"
+        case .running: return L("card.state.running")
         // Paused is DDEV's own state, not a shade of stopped: the containers are still there
         // and a start is quick, so the card says which it is.
-        case .paused: return "paused"
-        case .stopped: return "stopped"
-        case .working: return status.detail ?? "working…"
-        case .unknown: return "unknown"
+        case .paused: return L("card.state.paused")
+        case .stopped: return L("card.state.stopped")
+        case .working: return status.detail ?? L("card.state.working")
+        case .unknown: return L("card.state.unknown")
         }
     }
 
@@ -216,13 +209,13 @@ public struct DDEVProjectCard: View {
     private var controls: some View {
         CardActionRow(lifecycle + [
             CardAction(
-                "Folder",
+                L("card.action.folder"),
                 systemImage: "folder",
                 isEnabled: project.folderURL != nil,
                 action: onRevealFolder
             ),
             CardAction(
-                "Terminal",
+                L("card.action.terminal"),
                 systemImage: "terminal",
                 isEnabled: project.folderURL != nil,
                 action: onOpenTerminal
@@ -234,20 +227,20 @@ public struct DDEVProjectCard: View {
         if isDockerBlocked {
             return [
                 DockerGate.startAction(docker, onStart: onStartDocker),
-                CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+                CardAction(L("card.action.restart"), systemImage: "arrow.clockwise", isEnabled: false),
             ]
         }
         if status.isRunning {
             return [
-                CardAction("Stop", systemImage: "power", tint: DeckTheme.red, isProminent: true) {
+                CardAction(L("card.action.stop"), systemImage: "power", tint: DeckTheme.red, isProminent: true) {
                     onAction(.stop)
                 },
-                CardAction("Restart", systemImage: "arrow.clockwise") { onAction(.restart) },
+                CardAction(L("card.action.restart"), systemImage: "arrow.clockwise") { onAction(.restart) },
             ]
         }
         return [
             CardAction(
-                "Start",
+                L("card.action.start"),
                 systemImage: "play.fill",
                 tint: DeckTheme.green,
                 isEnabled: !status.isBusy,
@@ -255,7 +248,7 @@ public struct DDEVProjectCard: View {
             ) {
                 onAction(.start)
             },
-            CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+            CardAction(L("card.action.restart"), systemImage: "arrow.clockwise", isEnabled: false),
         ]
     }
 
@@ -267,8 +260,8 @@ public struct DDEVProjectCard: View {
         if let onToggleLogs {
             toggles.append(CardHeaderToggle(
                 id: "log",
-                isOn: logs != nil,
-                help: logs == nil ? "show the last log lines" : "hide the log"
+                isOn: isShowingLogs,
+                help: isShowingLogs ? L("card.log.window.close") : L("card.log.window.open")
             ) { onToggleLogs() })
         }
         if let phoneURL {
@@ -276,8 +269,9 @@ public struct DDEVProjectCard: View {
                 id: "phone",
                 isOn: isShowingPhone,
                 systemImage: "qrcode",
-                help: "open this on your phone",
-                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard))
+                help: L("card.phone.help"),
+                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard)),
+                dismiss: { isShowingPhone = false }
             ) { isShowingPhone.toggle() })
         }
         return toggles

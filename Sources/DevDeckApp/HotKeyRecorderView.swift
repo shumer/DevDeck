@@ -59,11 +59,11 @@ final class HotKeyRecorderView: NSView {
     }
 
     private func update() {
-        label.stringValue = isRecording ? "Press a combination" : combo.display
+        label.stringValue = isRecording ? L("hotkey.press") : combo.display
         label.textColor = isRecording ? NSColor.secondaryLabelColor : NSColor.labelColor
         toolTip = isRecording
-            ? "Escape cancels"
-            : "Click, then press the keys you want. At least one modifier is required."
+            ? L("hotkey.escape")
+            : L("hotkey.hint")
     }
 
     private func start() {

@@ -19,18 +19,18 @@ public enum DockerGate {
 
     public static func pillText(_ status: DockerStatus) -> String {
         switch status.state {
-        case .notInstalled: return "no docker"
-        case .starting: return "docker starting…"
-        default: return "docker off"
+        case .notInstalled: return L("card.docker.noDocker")
+        case .starting: return L("card.docker.starting")
+        default: return L("card.docker.off")
         }
     }
 
     /// What goes on the state line.
     public static func text(_ status: DockerStatus) -> String {
         switch status.state {
-        case .notInstalled: return "Docker is not installed, nothing here can run"
-        case .starting: return "starting Docker…"
-        default: return "Docker is not running, start it first"
+        case .notInstalled: return L("card.docker.notInstalled.note")
+        case .starting: return L("card.docker.starting.note")
+        default: return L("card.docker.off.note")
         }
     }
 
@@ -48,10 +48,10 @@ public enum DockerGate {
     /// no app to open - and then there is nothing to offer but the disabled Start.
     public static func startAction(_ status: DockerStatus, onStart: (() -> Void)?) -> CardAction {
         guard let onStart else {
-            return CardAction("Start", systemImage: "play.fill", tint: DeckTheme.green, isEnabled: false)
+            return CardAction(L("card.action.start"), systemImage: "play.fill", tint: DeckTheme.green, isEnabled: false)
         }
         return CardAction(
-            "Start Docker",
+            L("attention.docker.start"),
             systemImage: "shippingbox.fill",
             tint: DeckTheme.amber,
             isEnabled: status.state == .notRunning,

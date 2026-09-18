@@ -22,8 +22,8 @@ public struct CheckSummary: Sendable, Equatable {
         self.detail = detail
     }
 
-    public static let checking = CheckSummary(tone: .idle, state: "Checking…", detail: "")
-    public static let notChecked = CheckSummary(tone: .idle, state: "Not checked yet", detail: "")
+    public static var checking: CheckSummary { CheckSummary(tone: .idle, state: L("token.checking"), detail: "") }
+    public static var notChecked: CheckSummary { CheckSummary(tone: .idle, state: L("check.notChecked.yet"), detail: "") }
 
     /// "at 23:41:07", in the form's clock.
     public static func time(_ date: Date?) -> String {

@@ -18,7 +18,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
 
     // MARK: The card
 
-    let menuGroup: String? = "Arc projects"
+    var menuGroup: String? { L("menu.group.arc") }
 
     func descriptors() -> [CardDescriptor] {
         CardCatalog.sortedByTitle(store.projects().map { project in
@@ -43,7 +43,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
             project: project,
             status: status,
             docker: controller.docker,
-            logs: controller.logs(for: card),
+            isShowingLogs: controller.isShowingLogs(card),
             isCollapsed: controller.isCollapsed(card),
             // Where the site is served is read from the checkout's `.env`, and the stack says
             // whether it is up.
@@ -53,8 +53,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
             onRevealFolder: { LocalFolder.reveal(project.folderURL) },
             onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
             onStartDocker: context.startDocker,
-            onToggleLogs: { [controller] in controller.toggleLogs(for: card) },
-            onOpenLogFile: { LocalFolder.open($0) }
+            onToggleLogs: { [controller] in controller.toggleLogs(for: card) }
         ))
     }
 
@@ -65,7 +64,6 @@ final class ArcProjectModule: CardModule, SettingsSection {
         return ArcProjectCard.size(
             for: project,
             status: controller.stackStatus(for: project),
-            logs: controller.logs(for: card),
             isCollapsed: controller.isCollapsed(card)
         )
     }
@@ -78,7 +76,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
 
     let kind = SettingsWindowController.Section.arc
     let group = SettingsListGroup.projects
-    let addTitle = "Arc XP Project"
+    var addTitle: String { L("settings.add.arc") }
     weak var host: SettingsHost?
     private weak var form: ArcProjectForm?
     /// What the last stack check said, and the address it said it about.
@@ -105,14 +103,14 @@ final class ArcProjectModule: CardModule, SettingsSection {
         let form = ArcProjectForm(project: project, stack: StatusLine(summary), isAdvancedOpen: host?.isOpen(fold) ?? false, width: container.bounds.width)
         form.onChange = { [weak self] in self?.applyEdits($0) }
         form.onChooseFolder = { form in
-            guard let url = SettingsSupport.chooseDirectory(message: "Pick the project checkout: the folder the fusion commands run in.") else { return }
+            guard let url = SettingsSupport.chooseDirectory(message: L("project.choose.arc")) else { return }
             form.setFolder(url.path)
         }
         form.onCheckStack = { [weak self] in self?.checkStack($0.editedProject) }
         form.onTestLink = { form in
             let project = form.editedProject
             guard let link = project.resolvedLinks.first else {
-                form.setLinkNote("No enabled link to open.", isError: true)
+                form.setLinkNote(L("project.link.noneEnabled"), isError: true)
                 return
             }
             form.setLinkNote("", isError: false)
@@ -142,7 +140,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
     func add() -> String? {
         var projects = store.projects()
         let id = ArcProject.makeID(from: "project", existing: projects.map(\.id))
-        projects.append(ArcProject(id: id, title: "New Project", organization: ""))
+        projects.append(ArcProject(id: id, title: L("project.new.title"), organization: ""))
         store.save(projects)
         host?.changed()
         return id
@@ -150,7 +148,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
 
     func remove(_ id: String) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }),
-              SettingsSupport.confirm("Remove \(project.title)?", detail: "The card disappears from the deck.")
+              SettingsSupport.confirm(L("settings.remove.account.title", project.title), detail: L("settings.remove.project.detail.arc"))
         else { return false }
         store.save(store.projects().filter { $0.id != id })
         return true
@@ -181,7 +179,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
 
     private func checkStack(_ project: ArcProject) {
         guard project.supportsLocalStack else {
-            form?.stack.update(CheckSummary(tone: .idle, state: "Not configured", detail: "set the project folder"))
+            form?.stack.update(CheckSummary(tone: .idle, state: L("project.notConfigured"), detail: L("project.notConfigured.detail")))
             return
         }
         form?.stack.update(.checking)

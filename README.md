@@ -149,9 +149,10 @@ only works for the installed copy.
 | `open -a DevDeck --args --settings project agrica-qdd` | opens Settings on a page, `general`, `deck`, `cards`, `notifications`, or on one item by kind (`github`, `gitlab`, `arc`, `ddev`, `project`) and id |
 | `open -a DevDeck --args --update` | checks for a newer release and installs it, the same as the menu line |
 | `open -a DevDeck --args --menu sample` | opens the menu-bar menu filled with made-up rows of every tier, for judging or screenshotting it; `--menu` alone opens it with the deck's own |
+| `open -a DevDeck --args --logs` | opens a log window; a card id after it picks the project |
 | `pkill -f DevDeck` | quits every running copy |
 
-**Settings → General shows the running version** under its heading, `DevDeck 0.16 (build 128)`,
+**Settings → General shows the running version** under its heading, `DevDeck 0.17 (build 131)`,
 and which bundle it came from in the note at the bottom. The marketing number lives in `VERSION` and is bumped by hand when a release
 earns a name; the build number is the commit count, so it moves on every rebuild. That is the
 quickest way to tell whether the copy in front of you is the change you just made or the one
@@ -346,9 +347,10 @@ but keeps a caption or Check URL you already filled in.
 - **One switch decides how the command is run.** *Long-running command* is on for
   `npm run dev` and off for `docker compose up -d`. A command that holds its process is started
   detached with `nohup`, its output goes to a log under `~/Library/Application
-  Support/DevDeck/projects`, and its process id is written down beside it; the card's log tray
-  shows the end of that file, and the arrow inside it opens the whole thing. A command that returns is simply run and waited for, with its output kept in
-  the same log.
+  Support/DevDeck/projects`, and its process id is written down beside it; the card's log
+  button opens the end of that file in a window, and the button in its footer opens the whole
+  thing. A command that returns is simply run and waited for, with its output kept in the same
+  log.
 - **Stop kills the whole tree** when there is no stop command of your own. `npm run dev` is a
   wrapper, and killing it alone leaves the server it spawned holding the port - which then makes
   the next start fail for a reason nothing on screen would explain.
@@ -505,14 +507,14 @@ Its menu holds what you do:
 - **Lock positions** - a checkmark; while it is on, a stray drag moves nothing.
 - **Refresh now**, **Settings…** and **Quit DevDeck**.
 
-What the deck *is* rather than what you do with it lives in Settings: start at login under
-**General**, and where the panels sit, the lock, closing gaps, the summon shortcut and its dimming
-under **Deck**. A menu that mixes the two grows until the thing you came for is
+What the deck *is* rather than what you do with it lives in Settings: start at login and the
+interface language under **General**, and where the panels sit, the lock, closing gaps, the
+summon shortcut and its dimming under **Deck**. A menu that mixes the two grows until the thing you came for is
 somewhere in the middle of it. The one exception is the lock, which is also a checkmark in both
 menus: it gets toggled in the middle of arranging cards, and a trip to a settings window for that
 is the one interruption the deck should not cost.
 
-Right-click a panel and the menu is about that card: fold it to a row, show or hide its log,
+Right-click a panel and the menu is about that card: fold it to a row, open or close its log,
 take it off the deck, open **Settings for This Card…**, which lands on that card's own form, and
 under a separator the deck-wide few: Lock positions, Tidy and Refresh now.
 
@@ -524,8 +526,8 @@ The settings window looks and behaves like System Settings, down to its measurem
 height translucent sidebar whose rows follow the Mac's own sidebar icon size, the standard title
 bar, and a form for whatever is selected in the sidebar. Its width is fixed, since the form has
 one column, and its height is yours to change. It minimises to the Dock like any other window,
-carrying the app's icon, and ⌘W closes it. At the top of the sidebar are four pages. **General** is start at login, updates
-and the version. **Deck** is where the cards sit, the lock, closing gaps and the summon shortcut.
+carrying the app's icon, and ⌘W closes it. At the top of the sidebar are four pages. **General** is start at login, the
+interface language, updates and the version. **Deck** is where the cards sit, the lock, closing gaps and the summon shortcut.
 **Cards** switches the cards that are not an account or a project on and off, with the refresh
 interval and the Actions repositories. **Notifications** is the master switch and two tables:
 what each account and what each project may interrupt you about. Under them come **Accounts**, GitHub and GitLab
@@ -553,8 +555,8 @@ go home. Nothing is re-saved while a card is parked, because parking is not a de
 This is why a deck kept on the laptop screen no longer scatters when an external display that
 happens to be the main one comes and goes, and why quitting and reopening puts every panel back
 exactly where it was rather than a little further down each time. The deck moves a card only when
-you asked it to: collapsing one, opening a log, expanding a list. Data arriving never moves
-anything. **Close gaps automatically**, under Settings → Deck and off by default, closes the gaps in a column whenever
+you asked it to: collapsing one, expanding a list. Data arriving never moves anything, and
+neither does a log any more: it opens in a window of its own. **Close gaps automatically**, under Settings → Deck and off by default, closes the gaps in a column whenever
 a card changes height, at the price of any gap you left in it on purpose.
 
 **Being told.** One switch, **Allow notifications** on the Notifications page of Settings, off
@@ -660,12 +662,14 @@ answer than no button. No account, no tunnel, nothing published to the internet.
 be on the same network, and a dev server bound to localhost only will still refuse: that is what
 `--host` is for.
 
-The small button beside the clock opens the **log tray**: the last six lines the project is
-writing, in place, on any of the three project cards. Arc reads the containers carrying the
+The small button beside the clock opens the **log in a window of its own**: dark, monospaced,
+as big as you drag it, on any of the three project cards. Arc reads the containers carrying the
 project's compose label, DDEV reads `ddev logs -s web`, and a plain project reads the log its
-detached start already writes. It refreshes only while it is open, and the arrow inside it opens
-the whole file when six lines are not enough. It is not a terminal: no following, no scrolling,
-no colour beyond stripping the escapes the tools paint with.
+detached start already writes. The window re-reads every couple of seconds while you can see it
+and nothing at all when it is behind something or minimised. The text is selectable and ⌘F
+searches it; the footer says where the lines come from, keeps a **Follow** switch that stops
+pulling you to the bottom the moment you scroll up, and opens the whole file when the last few
+hundred lines are not enough. One window per project, each remembering its own size and place.
 
 The state pill, the horizontal rule and the footer are gone: the pill said what the state line
 says, and the timestamp took a whole row to be the least important thing on the card. Cards
@@ -675,6 +679,23 @@ The palette is deliberately a step below fully saturated, and the contrast range
 both ends than it was: dim text came up, the title came down, and the only outline left on a card
 belongs to the action being offered. One card looks better loud. Six of them on a desktop all day
 do not. See [docs/adr/0010-card-palette.md](docs/adr/0010-card-palette.md).
+
+## Language
+
+The interface speaks English, German, Spanish, French, Italian and Russian. It follows the
+language of the Mac, and **Settings → General → Language** forces one of the six; the change is
+immediate, with no restart.
+
+What is not translated is deliberate: `pull request`, `merge request`, `pipeline`, `commit`,
+`Docker`, `DDEV`, `Arc XP` are the words people say in every one of these languages, and the logs
+stay in English, because a log in two languages is a log nobody can grep. Your own names - a
+project's title, an account's label, a link's chip - are what you typed, whatever the interface
+is set to.
+
+A translation is often longer than the English, so the layout gives way rather than the words: a
+group of settings widens its label column to its longest label, and a card's button row drops
+whole words before it cuts any of them, leaving the icon with the word in its tooltip. See
+[adr/0020-six-languages.md](docs/adr/0020-six-languages.md).
 
 ## The Keychain and the password prompt
 
@@ -732,7 +753,7 @@ The workflow writes the install section itself, naming the file it actually buil
 which of the two builds it is, so a version number is never typed by hand into the notes.
 
 To cut a release: bump `VERSION`, commit, then create the release on GitHub with a tag like
-`v0.16`. The build number in the bundle is the commit count, so it moves on its own. A manual
+`v0.17`. The build number in the bundle is the commit count, so it moves on its own. A manual
 run of the workflow against an existing tag builds that tag's commit and replaces its asset.
 
 ### Updating
@@ -767,14 +788,15 @@ command is done. Settings, General has the switch and a **Check Now** button wit
 - [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
-- [docs/adr/](docs/adr/) - nineteen decisions and what they cost: why native, why SwiftPM only,
+- [docs/adr/](docs/adr/) - twenty-one decisions and what they cost: why native, why SwiftPM only,
   why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
   shares one call, how a plain project is started, why Docker is checked first, how a card is
   laid out, why the deck is quieter than it was, why a card has two sizes, why the deck moves a
   card only when asked, why GitLab is a card of its own, how a monorepo is read, why the
   application layer is in pieces, how the app updates itself, why the signature decides how
-  tokens are kept, why the settings window is built like System Settings, and why the menu names
-  what needs you in four tiers
+  tokens are kept, why the settings window is built like System Settings, why the menu names
+  what needs you in four tiers, why the interface speaks six languages, and why a log is a
+  window rather than a tray on the card
 
 ## Layout
 
@@ -783,7 +805,7 @@ Sources/
   DevDeckCore/     attention tiers, rows and project history, configuration, cards, HTTP
                    transport, tokens and code identity, policies,
                    command runner, git branch, browser choice, the Docker probe, log tail,
-                   the refresh cycle, the update check
+                   the refresh cycle, the update check, the words in six languages
   KeychainACL/     the C shim for the one deprecated Keychain call Swift cannot silence
   GitHubKit/       GraphQL and REST clients, models, per-account fan-out
   GitLabKit/       GitLab accounts per host, the merge requests query, models
@@ -793,17 +815,19 @@ Sources/
   DevDeckUI/       SwiftUI cards, the shared card pieces, the brand marks and their SVG
                    parser, and the visual language
   DevDeckApp/      AppKit shell: the controller and its loops, the panel coordinator, the
-                   menu, arrangements, the summon key, the updater, the settings window
+                   menu, arrangements, the summon key, the updater, the settings window,
+                   the log windows
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (372 tests, offline)
+  DevDeckTests/    the suite (380 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen
   GlyphPreview/    renders every card mark at the size a card draws it
 Resources/
   AppIcon/         the application icon: the iconset build.sh packs, its SVG and its geometry
+  Localizations/   one .lproj per language, the strings and the plural rules
 scripts/           seed-token.sh, smoke-test.sh
 docs/              architecture, development, GitHub API, roadmap, adr/
 ```

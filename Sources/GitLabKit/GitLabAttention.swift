@@ -15,9 +15,9 @@ public enum GitLabAttention {
                     id: "review:\(request.id)",
                     tier: .waiting,
                     mark: .gitlab,
-                    title: "Review: \(AttentionWords.trimmed(request.ticket.subject))",
+                    title: L("attention.row.colon", L("attention.inbox.review.prefix"), AttentionWords.trimmed(request.ticket.subject)),
                     subtitle: AttentionWords.withAccount(
-                        [place, request.author.map { "from \($0)" } ?? "review requested"],
+                        [place, request.author.map { L("attention.gh.who.from", $0) } ?? L("attention.inbox.review.note")],
                         label: labels[request.accountID]
                     ),
                     since: request.updatedAt,
@@ -29,8 +29,8 @@ public enum GitLabAttention {
                 id: "stuck:\(request.id):\(request.statusCode)",
                 tier: .stuck,
                 mark: .gitlab,
-                title: "\(stuckVerb(request)): \(AttentionWords.trimmed(request.ticket.subject))",
-                subtitle: AttentionWords.withAccount([place, "your merge request"], label: labels[request.accountID]),
+                title: L("attention.row.colon", stuckVerb(request), AttentionWords.trimmed(request.ticket.subject)),
+                subtitle: AttentionWords.withAccount([place, L("attention.gl.yours")], label: labels[request.accountID]),
                 since: request.updatedAt,
                 action: .open(request.url, service: .gitlab, account: request.accountID)
             )
@@ -38,7 +38,7 @@ public enum GitLabAttention {
     }
 
     static func stuckVerb(_ request: MergeRequestSummary) -> String {
-        request.hasConflicts ? "Merge conflict" : "Pipeline failed"
+        request.hasConflicts ? L("attention.stuck.conflict") : L("attention.stuck.pipelineFailed")
     }
 
     /// The banners one snapshot could raise, before anyone's switches are applied.
@@ -51,9 +51,9 @@ public enum GitLabAttention {
                     id: "review:\(request.id)",
                     kind: .reviewRequest,
                     source: .gitlab,
-                    title: request.author.map { "\($0) asked for your review" } ?? "Your review is requested",
+                    title: request.author.map { L("attention.banner.review.title.who", $0) } ?? L("attention.banner.review.title"),
                     subtitle: place,
-                    body: "\(ticket). Click to open it.",
+                    body: L("attention.banner.open", ticket),
                     subject: request.ticket.subject,
                     target: .url(request.url, account: request.accountID),
                     isQuiet: false
@@ -66,11 +66,11 @@ public enum GitLabAttention {
                 id: "blocked:\(request.id):\(request.statusCode)",
                 kind: .blocked,
                 source: .gitlab,
-                title: request.hasConflicts ? "Your merge request has a conflict" : "Pipeline failed on your merge request",
+                title: request.hasConflicts ? L("attention.banner.mr.conflict.title") : L("attention.banner.mr.pipeline.title"),
                 subtitle: place,
                 body: request.hasConflicts
-                    ? "\(ticket). Rebase or merge the target branch."
-                    : "\(ticket). Click to see the failed jobs.",
+                    ? L("attention.banner.mr.conflict.body", ticket)
+                    : L("attention.banner.mr.pipeline.body", ticket),
                 subject: request.ticket.subject,
                 target: .url(request.url, account: request.accountID),
                 isQuiet: true

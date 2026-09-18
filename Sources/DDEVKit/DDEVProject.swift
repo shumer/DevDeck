@@ -161,7 +161,7 @@ public struct DDEVProject: Sendable, Equatable, Codable, Identifiable {
         var links: [DDEVResolvedLink] = []
 
         if let site = entry?.primaryURL {
-            links.append(DDEVResolvedLink(label: "Local site", url: site, kind: .site))
+            links.append(DDEVResolvedLink(label: L("card.localSite"), url: site, kind: .site))
         }
         links.append(contentsOf: resolve(customLinks.filter { $0.kind == .site }, entry: entry))
         return links

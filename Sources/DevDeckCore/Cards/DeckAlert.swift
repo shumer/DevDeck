@@ -132,20 +132,24 @@ public enum NotificationDigest {
         guard alerts.count >= summaryThreshold else { return nil }
 
         func count(_ kind: DeckAlert.Kind) -> Int { alerts.filter { $0.kind == kind }.count }
-        func plural(_ count: Int, _ one: String, _ many: String) -> String { "\(count) \(count == 1 ? one : many)" }
 
         var parts: [String] = []
-        if count(.reviewRequest) > 0 { parts.append(plural(count(.reviewRequest), "review waiting", "reviews waiting")) }
-        if count(.cantCheck) > 0 { parts.append(plural(count(.cantCheck), "account can't be checked", "accounts can't be checked")) }
-        if count(.wentDown) > 0 { parts.append(plural(count(.wentDown), "project went down", "projects went down")) }
-        if count(.startFailed) > 0 { parts.append(plural(count(.startFailed), "project didn't start", "projects didn't start")) }
-        if count(.blocked) > 0 { parts.append("\(count(.blocked)) stuck") }
-        if count(.failedRun) > 0 { parts.append(plural(count(.failedRun), "run failing", "runs failing")) }
+        if count(.reviewRequest) > 0 { parts.append(LN("alert.summary.reviews", count(.reviewRequest))) }
+        if count(.cantCheck) > 0 { parts.append(LN("alert.summary.cantCheck", count(.cantCheck))) }
+        if count(.wentDown) > 0 { parts.append(LN("alert.summary.wentDown", count(.wentDown))) }
+        if count(.startFailed) > 0 { parts.append(LN("alert.summary.startFailed", count(.startFailed))) }
+        if count(.blocked) > 0 { parts.append(LN("alert.summary.stuck", count(.blocked))) }
+        if count(.failedRun) > 0 { parts.append(LN("alert.summary.failedRun", count(.failedRun))) }
 
         let names = alerts.map(\.subject)
-        let named = names.count > 2
-            ? "\(names[0]), \(names[1]) and \(names.count - 2) more"
-            : names.joined(separator: " and ")
-        return (parts.joined(separator: ", "), "\(named). Click to see them in the menu.")
+        let named: String
+        if names.count > 2 {
+            named = L("alert.summary.named.more", names[0], names[1], names.count - 2)
+        } else if names.count == 2 {
+            named = L("attention.list.two", names[0], names[1])
+        } else {
+            named = names.first ?? ""
+        }
+        return (parts.joined(separator: ", "), L("alert.summary.body", named))
     }
 }

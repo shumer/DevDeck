@@ -33,6 +33,8 @@ swift run IconPreview out.png     # draw the menu-bar icon at menu-bar size, at 
 swift run GlyphPreview out.png    # draw every card mark at 15 points and blown up
 iconutil -c icns Resources/AppIcon/DevDeck.iconset -o /tmp/DevDeck.icns   # what build.sh packs
 open -a DevDeck --args --menu sample   # the installed app's menu, with a row of every tier
+open -a DevDeck --args --logs         # a log window, without a hand on the mouse
+open -a DevDeck --args --logs project.agrica-qdd   # that project's log window
 pkill -f DevDeck                  # quit a running instance
 ```
 
@@ -80,6 +82,31 @@ Rules:
   stays local, takes about a second, and touches nothing outside `NSTemporaryDirectory()`.
   Tests that read `.env`, `.git/HEAD`, `.ddev/config.yaml` or `composer.lock` write those
   files into a temporary folder for the same reason.
+
+## Adding a string
+
+There are no literals on screen. A new word is a key in all six tables under
+`Resources/Localizations/<code>.lproj/Localizable.strings`, read with `L`, `L(_:_:)` or, when it
+carries a number, `LN` with an entry in each `Localizable.stringsdict`. Keys read `area.thing`
+(`settings.deck.lock`, `attention.tier.stuck`, `card.action.restart`), English is the table the
+others are measured against, and `LocalisationTests` fails on a key that is missing from one
+table, left over in another, or whose arguments do not line up with the English.
+
+The suite also sweeps the sources for every `L("…")` and `LN("…")`, so a key that no table has
+and a word no code says both fail the same test. Write the key as a literal at each call site -
+`count == 1 ? L("a.one", x) : L("a.many", x)`, never `L(count == 1 ? "a.one" : "a.many", x)` -
+or the sweep cannot see it.
+
+Sentences take positional arguments, `%1$@` and `%2$@`, because the order is not the same in six
+languages. Terms stay as they are written - `pull request`, `pipeline`, `Docker` - and so do the
+logs. A string that a translation makes longer must not be laid out against a fixed width: see
+[architecture.md#words](architecture.md#words).
+
+To see the app in another language without changing the setting:
+
+```bash
+defaults write com.shumer.devdeck language -string ru   # en, de, es, fr, it, ru or system
+```
 
 ## Signing
 

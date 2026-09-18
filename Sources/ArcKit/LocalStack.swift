@@ -58,7 +58,7 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
         self.progressLine = progressLine
     }
 
-    public static let unavailable = LocalStackStatus(state: .unavailable, detail: "No project folder set")
+    public static var unavailable: LocalStackStatus { LocalStackStatus(state: .unavailable, detail: L("arc.stack.unavailable")) }
 
     public var isRunning: Bool { state == .running }
     public var isBusy: Bool { state == .working }
@@ -143,7 +143,7 @@ public struct LocalStackService: Sendable {
         // more than the fact of the silence.
         return LocalStackStatus(
             state: .stopped,
-            detail: hint ?? "started, but \(project.healthURL?.absoluteString ?? "the health URL") never answered",
+            detail: hint ?? L("project.started.noAnswer", project.healthURL?.absoluteString ?? L("project.healthURL.fallback")),
             checkedAt: clock.now,
             branch: latest.branch,
             repositoryURL: latest.repositoryURL
@@ -175,7 +175,7 @@ public struct LocalStackService: Sendable {
             state: .running,
             engineVersion: latest.engineVersion,
             containers: latest.containers,
-            detail: "stop did not take effect, still answering",
+            detail: L("project.stopNoEffect"),
             checkedAt: clock.now,
             siteURL: latest.siteURL,
             branch: latest.branch,
@@ -204,7 +204,7 @@ public struct LocalStackService: Sendable {
             guard response.isSuccess else {
                 return LocalStackStatus(
                     state: .stopped,
-                    detail: "health check answered \(response.statusCode)",
+                    detail: L("project.health.answered", response.statusCode),
                     checkedAt: clock.now,
                     siteURL: siteURL,
                     branch: branch,
@@ -333,26 +333,26 @@ public struct LocalStackService: Sendable {
     /// Read through Docker rather than through Fusion: the CLI has no `logs` command, and the
     /// compose file it generates is not at a path this app should be guessing at. The containers
     /// carry the compose project label already, which is how the card counts them.
-    public func logs() async -> LogLines {
+    public func logs(limit: Int = LogTail.lineLimit) async -> LogLines {
         guard let folder = project.folderURL else {
-            return LogLines(detail: "no project folder", fetchedAt: clock.now)
+            return LogLines(detail: L("project.noFolder"), fetchedAt: clock.now)
         }
         guard let names = await containerNames(), !names.isEmpty else {
             return LogLines(
                 source: "docker logs",
-                detail: "no containers for this project",
+                detail: L("arc.noContainers"),
                 fetchedAt: clock.now
             )
         }
         // One container, because six of them interleaved in six lines is noise. The engine is
         // the one that serves the site, so it is the one worth reading.
         let name = names.first { $0.contains("engine") } ?? names[0]
-        let command = "docker logs --tail \(LogTail.lineLimit * 4) \(name) 2>&1"
+        let command = "docker logs --tail \(limit * 4) \(name) 2>&1"
         guard let result = try? await runner.run(command, in: folder, timeout: 20) else {
-            return LogLines(source: "docker logs \(name)", detail: "docker did not answer", fetchedAt: clock.now)
+            return LogLines(source: "docker logs \(name)", detail: L("docker.noAnswer"), fetchedAt: clock.now)
         }
         return LogLines(
-            lines: LogTail.lines(from: result.standardOutput + result.standardError),
+            lines: LogTail.lines(from: result.standardOutput + result.standardError, limit: limit),
             source: "docker logs \(name)",
             fetchedAt: clock.now
         )
@@ -401,18 +401,18 @@ public extension LocalStackStatus {
     /// a plain project's: an answer next to an address it was not the answer for is worse than none.
     func summary(checkedAddress: String, currentAddress: String) -> CheckSummary {
         guard checkedAddress == currentAddress else {
-            return CheckSummary(tone: .idle, state: "Not checked", detail: "the address changed, check again")
+            return CheckSummary(tone: .idle, state: L("check.notChecked"), detail: L("check.notChecked.detail"))
         }
         let when = CheckSummary.time(checkedAt)
         switch state {
         case .running:
-            return CheckSummary(tone: .good, state: "Running", detail: detail ?? "answered at \(when)")
+            return CheckSummary(tone: .good, state: L("check.running"), detail: detail ?? L("check.answeredAt", when))
         case .working:
-            return CheckSummary(tone: .busy, state: "Working", detail: detail ?? "")
+            return CheckSummary(tone: .busy, state: L("check.working"), detail: detail ?? "")
         case .stopped:
-            return CheckSummary(tone: .idle, state: "Stopped", detail: detail ?? "nothing answered at \(when)")
+            return CheckSummary(tone: .idle, state: L("check.stopped"), detail: detail ?? L("check.stopped.noAnswer", when))
         case .unavailable:
-            return CheckSummary(tone: .idle, state: "Not configured", detail: "set the project folder")
+            return CheckSummary(tone: .idle, state: L("project.notConfigured"), detail: L("project.notConfigured.detail"))
         }
     }
 }

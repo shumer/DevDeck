@@ -158,7 +158,7 @@ public struct CardChrome<Content: View>: View {
                         .clickable(cornerRadius: 5, isEnabled: toggle.isEnabled)
                         .onTapGesture { if toggle.isEnabled { toggle.action() } }
                         .help(toggle.help)
-                        .popover(isPresented: .constant(toggle.isOn && toggle.popover != nil)) {
+                        .popover(isPresented: toggle.presentation()) {
                             toggle.popover
                         }
                 }

@@ -37,8 +37,8 @@ final class LocalProjectForm: FlippedContainer, NSTextFieldDelegate {
     private var linkChecks: [NSButton] = []
     private var linkFields: [NSTextField] = []
     private var openButtons: [NSButton] = []
-    private let detectButton = SettingsForm.button("Detect", target: nil, action: nil)
-    private let testButton = SettingsForm.button("Test", target: nil, action: nil)
+    private let detectButton = SettingsForm.button(L("button.detect"), target: nil, action: nil)
+    private let testButton = SettingsForm.button(L("button.test"), target: nil, action: nil)
     let health: StatusLine
 
     var onChange: ((LocalProjectForm) -> Void)?
@@ -53,14 +53,14 @@ final class LocalProjectForm: FlippedContainer, NSTextFieldDelegate {
         self.project = project
         self.health = health
         folderField = SettingsForm.field(project.folder ?? "", placeholder: "~/Projects/…", code: true)
-        startField = SettingsForm.field(project.startCommand, placeholder: "Required, e.g. npm run dev", code: true)
-        holdsSwitch = SettingsForm.makeSwitch(isOn: project.holdsProcess, title: "Long-running command", target: nil, action: nil)
+        startField = SettingsForm.field(project.startCommand, placeholder: L("project.start.placeholder"), code: true)
+        holdsSwitch = SettingsForm.makeSwitch(isOn: project.holdsProcess, title: L("project.longRunning"), target: nil, action: nil)
         healthField = SettingsForm.field(project.healthURL, placeholder: "http://localhost:3000", code: true)
-        siteField = SettingsForm.field(project.localSiteURL, placeholder: "same as Check URL", code: true)
-        nameField = SettingsForm.field(project.title, placeholder: project.folderURL?.lastPathComponent ?? "Project")
-        captionField = SettingsForm.field(project.subtitle, placeholder: "e.g. bun · next + nest, also picks the icon")
-        stopField = SettingsForm.field(project.stopCommand, placeholder: "empty: DevDeck stops what it started", code: true)
-        dockerSwitch = SettingsForm.makeSwitch(isOn: project.requiresDocker, title: "Needs Docker", target: nil, action: nil)
+        siteField = SettingsForm.field(project.localSiteURL, placeholder: L("project.openURL.placeholder"), code: true)
+        nameField = SettingsForm.field(project.title, placeholder: project.folderURL?.lastPathComponent ?? L("project.name.placeholder"))
+        captionField = SettingsForm.field(project.subtitle, placeholder: L("project.caption.placeholder"))
+        stopField = SettingsForm.field(project.stopCommand, placeholder: L("project.stop.placeholder"), code: true)
+        dockerSwitch = SettingsForm.makeSwitch(isOn: project.requiresDocker, title: L("project.needsDocker"), target: nil, action: nil)
         browser = BrowserPicker(choice: project.browser)
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
 
@@ -78,43 +78,43 @@ final class LocalProjectForm: FlippedContainer, NSTextFieldDelegate {
             icon: SettingsIcons.mark(Self.glyph(for: project), size: 32),
             title: project.displayTitle,
             subtitle: project.folder,
-            toggleTitle: "Show on deck",
+            toggleTitle: L("account.showOnDeck"),
             isOn: project.isEnabled,
             target: self,
             action: #selector(changed)
         )
 
-        form.section("Project")
+        form.section(L("project.section.project"))
         form.beginGroup()
-        form.fieldRow("Name", [(nameField, nil)])
-        form.fieldRow("Folder", [(folderField, nil)], trailing: SettingsForm.button("Choose…", target: self, action: #selector(chooseFolder)))
+        form.fieldRow(L("account.name"), [(nameField, nil)])
+        form.fieldRow(L("project.folder"), [(folderField, nil)], trailing: SettingsForm.button(L("button.choose"), target: self, action: #selector(chooseFolder)))
         form.endGroup()
 
-        form.section("Start")
+        form.section(L("project.section.start"))
         form.beginGroup()
         detectButton.target = self
         detectButton.action = #selector(detect)
-        form.fieldRow("Start command", [(startField, nil)], trailing: detectButton)
-        form.fieldRow("Stop command", [(stopField, nil)])
+        form.fieldRow(L("project.startCommand"), [(startField, nil)], trailing: detectButton)
+        form.fieldRow(L("project.stopCommand"), [(stopField, nil)])
         form.settingRow(
-            "Long-running command",
-            subtitle: "On for a dev server like npm run dev, off for a command that exits.",
+            L("project.longRunning"),
+            subtitle: L("project.longRunning.detail"),
             control: holdsSwitch
         )
         // The switch that decides whether Start can work at all belongs beside the command, not
         // behind a fold.
-        form.settingRow("Needs Docker", subtitle: "Start waits until Docker is running.", control: dockerSwitch)
+        form.settingRow(L("project.needsDocker"), subtitle: L("project.needsDocker.detail"), control: dockerSwitch)
         form.endGroup()
 
-        form.section("Health check", help: "Up means the address answered 2xx, 3xx, 401 or 403. A 404 or a 500 does not count: a local port is shared, and somebody else's server answering on it is how a project nobody started reads as running. Empty, only a command started from DevDeck is tracked.")
+        form.section(L("project.section.health"), help: L("project.health.help"))
         form.beginGroup()
-        form.fieldRow("Check URL", [(healthField, nil)])
-        form.fieldRow("Open URL", [(siteField, nil)])
-        form.statusRow(health, button: SettingsForm.button("Check Now", target: self, action: #selector(checkHealth)))
+        form.fieldRow(L("project.checkURL"), [(healthField, nil)])
+        form.fieldRow(L("project.openURL"), [(siteField, nil)])
+        form.statusRow(health, button: SettingsForm.button(L("button.checkNow"), target: self, action: #selector(checkHealth)))
         form.endGroup()
 
         if !project.links.isEmpty {
-            form.section("Links")
+            form.section(L("project.section.links"))
             form.beginGroup()
             let chipWidth = SettingsForm.chipWidth(for: project.links.map(\.label))
             for (index, link) in project.links.enumerated() {
@@ -133,13 +133,13 @@ final class LocalProjectForm: FlippedContainer, NSTextFieldDelegate {
             form.endGroup()
         }
 
-        form.disclosure("Advanced", summary: "Caption, browser", isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
+        form.disclosure(L("account.advanced"), summary: L("project.advanced.summary.local"), isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
         if isAdvancedOpen {
             form.beginGroup()
-            form.fieldRow("Caption", [(captionField, nil)])
+            form.fieldRow(L("project.caption"), [(captionField, nil)])
             testButton.target = self
             testButton.action = #selector(testLink)
-            form.fieldRow("Open links in", [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
+            form.fieldRow(L("account.openLinksIn"), [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
             form.endGroup()
         }
 
@@ -265,7 +265,7 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
     private var linkFields: [NSTextField] = []
     /// One per link, nil where the name is not editable.
     private var labelFields: [NSTextField?] = []
-    private let testButton = SettingsForm.button("Test", target: nil, action: nil)
+    private let testButton = SettingsForm.button(L("button.test"), target: nil, action: nil)
     let stack: StatusLine
 
     var onChange: ((ArcProjectForm) -> Void)?
@@ -282,11 +282,11 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
         folderField = SettingsForm.field(project.folder ?? "", placeholder: "~/Projects/…", code: true)
         startField = SettingsForm.field(project.startCommand, placeholder: "npx fusion daemon", code: true)
         let envURL = EnvFile.localURL(in: project.folderURL)
-        localURLField = SettingsForm.field(project.localURL, placeholder: "empty: from .env, \(envURL)", code: true)
+        localURLField = SettingsForm.field(project.localURL, placeholder: L("project.arc.localURL.placeholder", "\(envURL)"), code: true)
         healthField = SettingsForm.field(project.healthPath, placeholder: "/release", code: true)
         organizationField = SettingsForm.field(project.organization, placeholder: "sandbox.acme")
-        siteField = SettingsForm.field(project.site ?? "", placeholder: "Optional")
-        nameField = SettingsForm.field(project.title, placeholder: "Project")
+        siteField = SettingsForm.field(project.site ?? "", placeholder: L("project.arc.site.placeholder"))
+        nameField = SettingsForm.field(project.title, placeholder: L("project.name.placeholder"))
         stopField = SettingsForm.field(project.stopCommand, placeholder: "npx fusion stop", code: true)
         browser = BrowserPicker(choice: project.browser)
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
@@ -301,36 +301,36 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
             icon: SettingsIcons.mark(.arc, size: 32),
             title: project.title,
             subtitle: project.organization.isEmpty ? "Arc XP" : "Arc XP · \(project.organization)",
-            toggleTitle: "Show on deck",
+            toggleTitle: L("account.showOnDeck"),
             isOn: project.isEnabled,
             target: self,
             action: #selector(changed)
         )
 
-        form.section("Project")
+        form.section(L("project.section.project"))
         form.beginGroup()
-        form.fieldRow("Name", [(nameField, nil)])
-        form.fieldRow("Folder", [(folderField, nil)], trailing: SettingsForm.button("Choose…", target: self, action: #selector(chooseFolder)))
+        form.fieldRow(L("account.name"), [(nameField, nil)])
+        form.fieldRow(L("project.folder"), [(folderField, nil)], trailing: SettingsForm.button(L("button.choose"), target: self, action: #selector(chooseFolder)))
         form.endGroup()
 
-        form.section("Local stack")
+        form.section(L("project.section.stack"))
         form.beginGroup()
-        form.fieldRow("Start command", [(startField, nil)])
-        form.fieldRow("Stop command", [(stopField, nil)])
+        form.fieldRow(L("project.startCommand"), [(startField, nil)])
+        form.fieldRow(L("project.stopCommand"), [(stopField, nil)])
         // The same two words as every other project's form: what is asked, and where the site is.
-        form.fieldRow("Check URL", [(healthField, nil)])
-        form.fieldRow("Open URL", [(localURLField, nil)])
-        form.statusRow(stack, button: SettingsForm.button("Check Now", target: self, action: #selector(checkStack)))
+        form.fieldRow(L("project.checkURL"), [(healthField, nil)])
+        form.fieldRow(L("project.openURL"), [(localURLField, nil)])
+        form.statusRow(stack, button: SettingsForm.button(L("button.checkNow"), target: self, action: #selector(checkStack)))
         form.endGroup()
 
         form.section("Arc XP")
         form.beginGroup()
-        form.fieldRow("Organisation", [(organizationField, nil)])
-        form.fieldRow("Site ID", [(siteField, nil)])
+        form.fieldRow(L("project.arc.organisation"), [(organizationField, nil)])
+        form.fieldRow(L("project.arc.site"), [(siteField, nil)])
         form.endGroup()
-        form.footnote("Use sandbox.acme for the sandbox, acme for production.")
+        form.footnote(L("project.arc.footnote"))
 
-        form.section("Links", help: "{org} and {site} are filled in from the organisation and the site ID. A link you add can be renamed and removed; the ones DevDeck ships keep their names.")
+        form.section(L("project.section.links"), help: L("project.arc.links.help"))
         form.beginGroup()
         let shipped = Set(ArcLink.defaults().map(\.label))
         let chipWidth = SettingsForm.chipWidth(for: project.links.map(\.label))
@@ -358,23 +358,23 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
                 )
                 continue
             }
-            let name = SettingsForm.field(link.label, placeholder: "Name")
+            let name = SettingsForm.field(link.label, placeholder: L("account.name"))
             name.delegate = self
             labelFields.append(name)
-            let remove = NSButton(image: NSImage(systemSymbolName: "minus.circle", accessibilityDescription: "Remove link") ?? NSImage(), target: self, action: #selector(removeLink(_:)))
+            let remove = NSButton(image: NSImage(systemSymbolName: "minus.circle", accessibilityDescription: L("project.link.remove")) ?? NSImage(), target: self, action: #selector(removeLink(_:)))
             remove.isBordered = false
             remove.tag = index
             form.fieldRow("", [(name, 96), (check, 18), (template, nil)], trailing: remove)
         }
         form.endGroup()
-        form.textButton("Add Link", target: self, action: #selector(addLink))
+        form.textButton(L("project.arc.addLink"), target: self, action: #selector(addLink))
 
-        form.disclosure("Advanced", summary: "Browser", isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
+        form.disclosure(L("account.advanced"), summary: L("project.advanced.summary.browser"), isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
         if isAdvancedOpen {
             form.beginGroup()
             testButton.target = self
             testButton.action = #selector(testLink)
-            form.fieldRow("Open links in", [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
+            form.fieldRow(L("account.openLinksIn"), [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
             form.endGroup()
         }
 
@@ -440,10 +440,10 @@ final class ArcProjectForm: FlippedContainer, NSTextFieldDelegate {
     @objc private func addLink() {
         var edited = editedProject
         let existing = Set(edited.links.map(\.label))
-        var name = "New link"
+        var name = L("project.link.new")
         var index = 2
         while existing.contains(name) {
-            name = "New link \(index)"
+            name = L("project.link.new.numbered", index)
             index += 1
         }
         edited.links.append(ArcLink(label: name, urlTemplate: "", isEnabled: true, kind: .admin))
@@ -479,8 +479,8 @@ final class DDEVProjectForm: FlippedContainer, NSTextFieldDelegate {
     private var enabledSwitch: NSSwitch?
     private var linkChecks: [NSButton] = []
     private var linkFields: [NSTextField] = []
-    private let chooseButton = SettingsForm.button("Choose…", target: nil, action: nil)
-    private let testButton = SettingsForm.button("Test", target: nil, action: nil)
+    private let chooseButton = SettingsForm.button(L("button.choose"), target: nil, action: nil)
+    private let testButton = SettingsForm.button(L("button.test"), target: nil, action: nil)
 
     var onChange: ((DDEVProjectForm) -> Void)?
     var onChooseFolder: ((DDEVProjectForm) -> Void)?
@@ -508,28 +508,28 @@ final class DDEVProjectForm: FlippedContainer, NSTextFieldDelegate {
             icon: SettingsIcons.mark(.ddev, size: 32),
             title: project.displayTitle,
             subtitle: "DDEV · \(project.name)",
-            toggleTitle: "Show on deck",
+            toggleTitle: L("account.showOnDeck"),
             isOn: project.isEnabled,
             target: self,
             action: #selector(changed)
         )
 
-        form.section("Project")
+        form.section(L("project.section.project"))
         form.beginGroup()
         chooseButton.target = self
         chooseButton.action = #selector(chooseFolder)
-        form.fieldRow("Name", [(nameField, nil)])
-        form.fieldRow("Folder", [(folderField, nil)], trailing: chooseButton)
+        form.fieldRow(L("account.name"), [(nameField, nil)])
+        form.fieldRow(L("project.folder"), [(folderField, nil)], trailing: chooseButton)
         form.endGroup()
 
-        form.section("Tools on the card")
+        form.section(L("project.ddev.tools"))
         form.beginGroup()
         form.settingRow("Mailpit", control: mailpitSwitch)
         form.settingRow("xhgui", control: xhguiSwitch)
         form.endGroup()
 
         if !project.customLinks.isEmpty {
-            form.section("Links")
+            form.section(L("project.section.links"))
             form.beginGroup()
             let chipWidth = SettingsForm.chipWidth(for: project.customLinks.map(\.label))
             for link in project.customLinks {
@@ -549,7 +549,7 @@ final class DDEVProjectForm: FlippedContainer, NSTextFieldDelegate {
         form.beginGroup()
         testButton.target = self
         testButton.action = #selector(testLink)
-        form.fieldRow("Open links in", [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
+        form.fieldRow(L("account.openLinksIn"), [(browser.browserPopUp, 150), (browser.profilePopUp, nil)], trailing: testButton)
         form.endGroup()
 
         frame.size.height = form.usedHeight

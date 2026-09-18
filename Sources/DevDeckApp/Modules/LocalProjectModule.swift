@@ -19,14 +19,14 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     // MARK: The card
 
-    let menuGroup: String? = "Projects"
+    var menuGroup: String? { L("menu.group.projects") }
 
     func descriptors() -> [CardDescriptor] {
         CardCatalog.sortedByTitle(store.projects().map { project in
             CardDescriptor(
                 id: project.cardID,
                 title: project.displayTitle,
-                subtitle: project.startCommand.isEmpty ? "Project" : "Project · \(project.startCommand)",
+                subtitle: project.startCommand.isEmpty ? L("project.section.project") : "\(L("project.section.project")) · \(project.startCommand)",
                 isImplemented: true,
                 isEnabledByDefault: true
             )
@@ -44,7 +44,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
             project: project,
             status: status,
             docker: controller.docker,
-            logs: controller.logs(for: card),
+            isShowingLogs: controller.isShowingLogs(card),
             isCollapsed: controller.isCollapsed(card),
             // A plain project was told where it serves; nothing can find out for it.
             phoneURL: controller.phoneURL(for: project.siteURL ?? project.healthCheckURL, isRunning: status.isRunning),
@@ -53,8 +53,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
             onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
             onRevealFolder: { LocalFolder.reveal(project.folderURL) },
             onStartDocker: context.startDocker,
-            onToggleLogs: { [controller] in controller.toggleLogs(for: card) },
-            onOpenLogFile: { LocalFolder.open($0) }
+            onToggleLogs: { [controller] in controller.toggleLogs(for: card) }
         ))
     }
 
@@ -65,7 +64,6 @@ final class LocalProjectModule: CardModule, SettingsSection {
         return LocalProjectCard.size(
             for: project,
             status: controller.localStatus(for: project),
-            logs: controller.logs(for: card),
             isCollapsed: controller.isCollapsed(card)
         )
     }
@@ -78,7 +76,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     let kind = SettingsWindowController.Section.project
     let group = SettingsListGroup.projects
-    let addTitle = "Project from a Folder…"
+    var addTitle: String { L("settings.add.local") }
     weak var host: SettingsHost?
     /// The form on screen, so an answer that comes back updates its row instead of rebuilding it.
     private weak var form: LocalProjectForm?
@@ -91,7 +89,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
                 title: project.displayTitle,
                 // The command rather than the folder: with several checkouts under one parent
                 // the folder names look alike, and the command is what differs.
-                detail: project.startCommand.isEmpty ? "no start command" : project.startCommand,
+                detail: project.startCommand.isEmpty ? L("project.list.noStart") : project.startCommand,
                 icon: SettingsIcons.mark(LocalProjectForm.glyph(for: project)),
                 dot: live == .running ? .systemGreen : (live == .starting || live == .working ? .systemOrange : nil),
                 isDimmed: !project.isEnabled
@@ -106,7 +104,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
         let form = LocalProjectForm(project: project, health: health, isAdvancedOpen: host?.isOpen(fold) ?? false, width: container.bounds.width)
         form.onChange = { [weak self] in self?.applyEdits($0) }
         form.onChooseFolder = { form in
-            guard let url = SettingsSupport.chooseDirectory(message: "Pick the project folder: the one its start command runs in.") else { return }
+            guard let url = SettingsSupport.chooseDirectory(message: L("project.choose.local")) else { return }
             form.setFolder(url.path)
         }
         form.onDetect = { [weak self] in self?.detect($0) }
@@ -118,7 +116,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
         form.onTestLink = { form in
             let project = form.editedProject
             guard let link = project.environmentLinks().first ?? project.toolLinks().first else {
-                form.setLinkNote("Nothing to open: set a Check URL or a link.", isError: true)
+                form.setLinkNote(L("project.link.nothingToOpen"), isError: true)
                 return
             }
             form.setLinkNote("", isError: false)
@@ -138,7 +136,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     /// Adds a project from a folder, filling in what the folder already says about itself.
     func add() -> String? {
-        guard let url = SettingsSupport.chooseDirectory(message: "Pick the project folder: the one its start command runs in.") else {
+        guard let url = SettingsSupport.chooseDirectory(message: L("project.choose.local")) else {
             return nil
         }
         var projects = store.projects()
@@ -164,7 +162,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     func remove(_ id: String) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }),
-              SettingsSupport.confirm("Remove \(project.displayTitle)?", detail: "The card disappears from the deck. Anything it started keeps running.")
+              SettingsSupport.confirm(L("settings.remove.account.title", project.displayTitle), detail: L("settings.remove.project.detail.local"))
         else { return false }
         store.save(store.projects().filter { $0.id != id })
         return true
@@ -214,15 +212,15 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     private func detect(_ form: LocalProjectForm) {
         guard let folder = form.editedProject.folderURL else {
-            form.setDetectNote("Set a folder first.", isError: true)
+            form.setDetectNote(L("project.detect.noFolder"), isError: true)
             return
         }
         guard let suggestion = ProjectProbe.suggestion(for: folder) else {
-            form.setDetectNote("Nothing recognisable: no compose file, package.json script or Makefile target.", isError: true)
+            form.setDetectNote(L("project.detect.nothing"), isError: true)
             return
         }
         form.applySuggestion(suggestion)
-        let found = [suggestion.subtitle, suggestion.requiresDocker ? "needs Docker" : ""].filter { !$0.isEmpty }.joined(separator: ", ")
-        form.setDetectNote("Detected: \(found.isEmpty ? suggestion.startCommand : found)", isError: false)
+        let found = [suggestion.subtitle, suggestion.requiresDocker ? L("project.detect.needsDocker") : ""].filter { !$0.isEmpty }.joined(separator: ", ")
+        form.setDetectNote(L("project.detect.found", found.isEmpty ? suggestion.startCommand : found), isError: false)
     }
 }
