@@ -92,6 +92,13 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   a wrapper left behind keeps the port.
 - **Project ids are card identifiers** (`arc.project.<id>`, `ddev.project.<id>`,
   `project.<id>`) and are never renamed.
+- **The bundle is stamped with the SDK it was built against**, by the `-platform_version` flag in
+  `build.sh`. Without it macOS draws the settings window with the previous era's title bar. The
+  deployment target is a separate number and stays at macOS 14.
+- **Sidebar metrics come from `SidebarMetrics`**, which follows the Mac's own "Sidebar icon size"
+  setting. Never hard-code a row height or an icon size there.
+- **A control that depends on a switch is disabled while that switch is off**, the way System
+  Settings greys out what a master switch turns off.
 - **Settings forms are built with `SettingsForm`**, never with hand-computed frames, and with
   its four row shapes only: `settingRow`, `fieldRow`, `statusRow`, `linkRow`. An explanation is
   one line under a group or behind a section's help button, never a paragraph. A switch is an

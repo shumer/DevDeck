@@ -519,8 +519,11 @@ Cut, copy and paste work in the settings window. That is not as obvious as it so
 agent app: with no Dock icon there is no menu bar of its own, ⌘V is routed through the main menu,
 and with no Edit menu there was nothing to route it to, so pasting a token was impossible.
 
-The settings window looks and behaves like System Settings: a sidebar, and a form for whatever is
-selected in it. At the top of the sidebar are four pages. **General** is start at login, updates
+The settings window looks and behaves like System Settings, down to its measurements: a full
+height translucent sidebar whose rows follow the Mac's own sidebar icon size, the standard title
+bar, and a form for whatever is selected in the sidebar. Its width is fixed, since the form has
+one column, and its height is yours to change. It minimises to the Dock like any other window,
+carrying the app's icon, and ⌘W closes it. At the top of the sidebar are four pages. **General** is start at login, updates
 and the version. **Deck** is where the cards sit, the lock, closing gaps and the summon shortcut.
 **Cards** switches the cards that are not an account or a project on and off, with the refresh
 interval and the Actions repositories. **Notifications** is the master switch and two tables:

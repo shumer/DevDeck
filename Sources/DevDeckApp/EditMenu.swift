@@ -1,6 +1,6 @@
 import AppKit
 
-/// The Edit menu nobody sees, and every text field needs.
+/// The menus nobody sees, and a window needs anyway.
 ///
 /// This is an agent app: `LSUIElement` means no Dock icon and no menu bar of its own, and it
 /// went the whole way without a main menu at all. That is fine until somebody opens Settings and
@@ -29,7 +29,17 @@ enum EditMenu {
         editItem.submenu = edit
         main.addItem(editItem)
 
+        // Window, for the same reason as Edit: ⌘W and ⌘M are routed through the main menu, and
+        // without them the settings window can only be closed by its red button.
+        let windowItem = NSMenuItem()
+        let windows = NSMenu(title: "Window")
+        windows.addItem(NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+        windows.addItem(NSMenuItem(title: "Minimise", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
+        windowItem.submenu = windows
+        main.addItem(windowItem)
+
         NSApp.mainMenu = main
+        NSApp.windowsMenu = windows
     }
 
     private static let editItems: [(String, Selector, String)] = [

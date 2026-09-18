@@ -19,7 +19,14 @@ fi
 SHORT_VERSION="$(tr -d '[:space:]' < "$HERE/VERSION" 2>/dev/null || echo 0.0)"
 BUILD_NUMBER="$(git -C "$HERE" rev-list --count HEAD 2>/dev/null || echo 1)"
 echo "Building v$SHORT_VERSION ($BUILD_NUMBER)…"
-swift build --package-path "$HERE" -c release --product DevDeck
+# The SDK the app is stamped as built against, which is what macOS reads to decide whether to
+# draw the window chrome of its own era or the one before it. SwiftPM writes the deployment
+# target there instead, so an app that runs on macOS 14 was told to look like one built for it:
+# window buttons two points smaller than every other window's. The deployment target is
+# unchanged; only the stamp is made honest.
+SDK_VERSION="$(xcrun --show-sdk-version 2>/dev/null || echo 14.0)"
+swift build --package-path "$HERE" -c release --product DevDeck \
+  -Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION"
 
 rm -rf "$APP"
 mkdir -p "$MACOS" "$APP/Contents/Resources"

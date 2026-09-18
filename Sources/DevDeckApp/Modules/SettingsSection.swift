@@ -80,6 +80,11 @@ enum SettingsSupport {
         alert.informativeText = detail
         alert.addButton(withTitle: "Remove")
         alert.addButton(withTitle: "Cancel")
+        // Return cancels, and the button that deletes is marked as the one that deletes: the
+        // sidebar's Delete key opens this, and an account taken away takes its token with it.
+        alert.buttons[0].hasDestructiveAction = true
+        alert.buttons[0].keyEquivalent = ""
+        alert.buttons[1].keyEquivalent = "\r"
         return alert.runModal() == .alertFirstButtonReturn
     }
 

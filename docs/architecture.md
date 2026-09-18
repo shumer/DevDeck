@@ -459,10 +459,14 @@ badge, ⌥ twins for Dismiss and Mark as Read.
 
 ## The settings window
 
-A sidebar and a form column, built the way System Settings is built.
+A sidebar and a form column, built the way System Settings is built: an `NSSplitViewController`
+whose first item is a real sidebar item, so the sidebar is translucent and runs the full height of
+the window, and a toolbar, which is what gives the window the standard title bar. The two panes
+apply their own top inset, because a window that draws its content full height reports no safe
+area to the views inside a split item.
 
 ```
-sidebar                     form column (fixed 544 points)
+sidebar                     form column (stretches, 440 to 760 points)
 ⌕ Search                    [mark] agrica-qdd                 Show on deck ●
 ⚙ General                   Start
 ▦ Deck                      ┌ Folder         [~/Projects/…   ] [Choose…] ┐

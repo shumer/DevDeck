@@ -20,7 +20,7 @@ protocol SettingsPage: AnyObject {
 /// The window owns the sidebar and the form column and nothing about any kind of thing. What goes
 /// in them is each page's and each section's.
 @MainActor
-final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
+final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDelegate, SettingsHost {
     /// Everything the sidebar can show, as the `--settings` launch argument names it. Raw values
     /// are what the argument takes, so they do not change.
     enum Section: String, CaseIterable {
@@ -40,14 +40,27 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
     private let onChanged: () -> Void
 
     private var window: NSWindow?
+    private var splitController: NSSplitViewController?
     private var list: SettingsListView?
     private var detailScroll: NSScrollView?
 
+    /// How tall the form built for the current page is, so a resize can keep the document at
+    /// least as tall as the window without building it again.
+    private var detailHeight: CGFloat = 0
     private var current: (section: Section, id: String?) = (.general, nil)
     private var openFolds: Set<String> = []
 
-    private static let listWidth: CGFloat = 220
-    private static let defaultSize = NSSize(width: 820, height: 640)
+    /// What System Settings uses, measured from its own window: a sidebar wide enough for a
+    /// project name and its mark.
+    private static let listWidth: CGFloat = 268
+    /// The window is exactly as wide as the sidebar and the widest the form column goes, and that
+    /// width is fixed: System Settings does not let its window be reshaped either, and a form
+    /// column that can be dragged to any width is a column nobody has laid out. The height is the
+    /// one System Settings opens at, and that one can be changed.
+    /// The sidebar item is inset eight points from the window's edge, and those eight are the
+    /// window's, not the sidebar's.
+    private static let windowWidth: CGFloat = listWidth + 8 + SettingsForm.sideInset * 2 + SettingsForm.columnWidth
+    private static let defaultSize = NSSize(width: windowWidth, height: 679)
 
     init(pages: [SettingsPage], sections: [SettingsSection], onChanged: @escaping () -> Void) {
         self.pages = pages
@@ -73,26 +86,26 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
     private func makeWindow() {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+            // Full-size content, so the sidebar's material runs up behind the window buttons the
+            // way every sidebar on the machine does. What that costs is the top inset, which the
+            // two panes then apply themselves: see `SettingsChrome`.
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "DevDeck Settings"
+        // What the Dock shows under a minimised window, where "DevDeck Settings" is the only clue
+        // to whose window it is.
+        window.miniwindowTitle = "DevDeck Settings"
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         // The form column has a fixed width, so a narrower window only cuts into it.
-        window.minSize = NSSize(width: Self.defaultSize.width, height: 480)
+        window.minSize = NSSize(width: Self.windowWidth, height: 420)
+        window.maxSize = NSSize(width: Self.windowWidth, height: 100_000)
         window.delegate = self
-        window.center()
-        // Remembered, because at the old fixed 880 x 580 nearly every form scrolled and nobody
-        // could make it stay larger.
-        window.setFrameAutosaveName("DevDeck Settings")
 
-        let content = NSView(frame: NSRect(origin: .zero, size: Self.defaultSize))
-
-        let list = SettingsListView(frame: NSRect(x: 0, y: 0, width: Self.listWidth, height: content.bounds.height))
-        list.autoresizingMask = [.height]
+        let list = SettingsListView(frame: NSRect(x: 0, y: 0, width: Self.listWidth, height: Self.defaultSize.height))
+        list.autoresizingMask = [.width, .height]
         list.onSelect = { [weak self] compound in
             guard let self, let entry = Self.parse(compound) else { return }
             self.current = (entry.section, entry.id)
@@ -105,25 +118,101 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
         addOptions.append("")
         addOptions += sections.filter { $0.group == .projects }.map(\.addTitle)
         list.setAddOptions(addOptions)
-        content.addSubview(list)
         self.list = list
 
-        let scroll = NSScrollView(frame: NSRect(
-            x: Self.listWidth,
-            y: 0,
-            width: content.bounds.width - Self.listWidth,
-            height: content.bounds.height
-        ))
+        let scroll = NSScrollView(frame: NSRect(origin: .zero, size: Self.defaultSize))
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.drawsBackground = false
         scroll.autoresizingMask = [.width, .height]
-        content.addSubview(scroll)
         detailScroll = scroll
 
-        window.contentView = content
+        // A real sidebar item rather than a view on the left: that is what makes the sidebar
+        // translucent, keeps its content clear of the title bar, and gives the window the
+        // full-height title bar System Settings has, with the window buttons at their usual size.
+        let split = NSSplitViewController()
+        let sidebar = NSSplitViewItem(sidebarWithViewController: Pane(view: list))
+        sidebar.minimumThickness = Self.listWidth
+        sidebar.maximumThickness = Self.listWidth
+        sidebar.canCollapse = false
+        sidebar.allowsFullHeightLayout = true
+        sidebar.titlebarSeparatorStyle = .none
+        split.addSplitViewItem(sidebar)
+
+        // The scroll view goes inside a plain container: a split item takes its view's fitting
+        // size as a minimum, and a scroll view's fitting size is its document's, so the form's own
+        // width became a floor the window could never be narrowed past.
+        let detailPane = NSView(frame: NSRect(x: 0, y: 0, width: Self.defaultSize.width - Self.listWidth, height: Self.defaultSize.height))
+        scroll.frame = detailPane.bounds
+        detailPane.addSubview(scroll)
+
+        let detail = NSSplitViewItem(viewController: Pane(view: detailPane))
+        detail.titlebarSeparatorStyle = .none
+        // Said outright, because a split item otherwise takes the form's own width as its
+        // minimum, and the window could then only ever be made wider.
+        detail.minimumThickness = SettingsForm.minimumColumnWidth + SettingsForm.sideInset * 2
+        split.addSplitViewItem(detail)
+        self.splitController = split
+
+        // An empty toolbar, for its height and for the divider that runs up into the title bar.
+        // Without one the window gets the compact title bar, whose buttons are two points smaller
+        // than every other window's on screen.
+        let toolbar = NSToolbar(identifier: "settings")
+        toolbar.delegate = self
+        toolbar.showsBaselineSeparator = false
+        window.toolbar = toolbar
+        // Unified, not compact: this is the title bar AppKit gives a window with a toolbar, and
+        // it puts the window buttons exactly where every other window has them. System Settings'
+        // bar is fourteen points shorter because it is a Catalyst app, which is not a look an
+        // AppKit window can ask for.
+        window.toolbarStyle = .unified
+        // No rule under the title bar until something scrolls beneath it, the way System Settings
+        // does it.
+        window.titlebarSeparatorStyle = .automatic
+
+        window.contentViewController = split
+        // After the content, which sizes the window to itself: the remembered frame has to be the
+        // last word, or a window somebody made narrower opens at whatever the panes add up to.
+        window.center()
+        // Remembered, because at the old fixed 880 x 580 nearly every form scrolled and nobody
+        // could make it stay larger.
+        window.setFrameAutosaveName("DevDeck Settings")
         window.initialFirstResponder = list
         self.window = window
+    }
+
+    // MARK: NSToolbarDelegate
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.sidebarTrackingSeparator]
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.sidebarTrackingSeparator]
+    }
+
+    func toolbar(
+        _ toolbar: NSToolbar,
+        itemForItemIdentifier identifier: NSToolbarItem.Identifier,
+        willBeInsertedIntoToolbar flag: Bool
+    ) -> NSToolbarItem? {
+        guard identifier == .sidebarTrackingSeparator, let split = splitController else { return nil }
+        return NSTrackingSeparatorToolbarItem(
+            identifier: identifier,
+            splitView: split.splitView,
+            dividerIndex: 0
+        )
+    }
+
+    /// The form follows the window's width. Its rows carry the autoresizing masks that say what
+    /// stretches, but the document view they sit in is a clip view's subview, and that one has to
+    /// be resized by hand: without this the groups kept the width they were built at and their
+    /// trailing buttons went off the edge of a narrowed window.
+    func windowDidResize(_ notification: Notification) {
+        guard let detailScroll, let container = detailScroll.documentView else { return }
+        let size = detailScroll.contentSize
+        container.frame.size = NSSize(width: size.width, height: max(detailHeight, size.height))
+        detailScroll.hasVerticalScroller = detailHeight > size.height
     }
 
     /// Whatever was being typed is kept: ending the edit is what commits it.
@@ -191,6 +280,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
         }
         list.show(listSections, selecting: wanted)
         list.setRemovable(sectionObject(current.section) != nil)
+        // Named in the Dock and in the Window menu by what is on screen, the way a document
+        // window is.
+        window?.title = listSections
+            .flatMap(\.items)
+            .first { $0.id == wanted }
+            .map { "\($0.title) - DevDeck Settings" } ?? "DevDeck Settings"
     }
 
     func reloadDetail() {
@@ -214,10 +309,14 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
         }
 
         let needed = (container.subviews.map(\.frame.maxY).max() ?? 0) + 28
+        detailHeight = needed
         container.frame.size.height = max(needed, detailScroll.contentSize.height)
         detailScroll.hasVerticalScroller = needed > detailScroll.contentSize.height
         detailScroll.documentView = container
-        container.scroll(.zero)
+        // To the top of the form, not to the top of the clip view: with the title bar's inset
+        // those are different points, and the difference is the page header hidden behind the bar.
+        detailScroll.contentView.scroll(to: NSPoint(x: 0, y: -detailScroll.contentInsets.top))
+        detailScroll.reflectScrolledClipView(detailScroll.contentView)
     }
 
     private func open(_ kind: Section, id: String?) {
@@ -253,9 +352,17 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
         onChanged()
     }
 
+    /// Centred, the way an empty view is on a Mac, rather than a grey line in the top corner.
     private func emptyState(_ text: String, in container: FlippedContainer) {
         let label = SettingsForm.label(text, size: 13, color: .secondaryLabelColor)
-        label.frame = NSRect(x: SettingsForm.sideInset, y: 24, width: container.bounds.width - 56, height: 18)
+        label.alignment = .center
+        label.frame = NSRect(
+            x: SettingsForm.sideInset,
+            y: max(60, (detailScroll?.contentSize.height ?? 400) / 2 - 40),
+            width: container.bounds.width - SettingsForm.sideInset * 2,
+            height: 18
+        )
+        label.autoresizingMask = [.width]
         container.addSubview(label)
     }
 
@@ -280,3 +387,26 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, SettingsHost {
         onChanged()
     }
 }
+
+/// One side of the split, holding a view that lays itself out. The split view controller needs
+/// view controllers; nothing else here does.
+@MainActor
+final class Pane: NSViewController {
+    private let pane: NSView
+
+    init(view: NSView) {
+        self.pane = view
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used, this view is built in code")
+    }
+
+    override func loadView() {
+        view = pane
+    }
+
+}
+

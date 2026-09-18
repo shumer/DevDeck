@@ -135,6 +135,9 @@ final class DeckSettingsPage: NSObject, SettingsPage {
 
     private let preferences: Preferences
     private weak var recorder: HotKeyRecorderView?
+    /// What the shortcut's own switch turns on and off with it, the way a dependent control is
+    /// greyed out in System Settings rather than left live with nothing behind it.
+    private var summonControls: [NSView] = []
 
     init(preferences: Preferences) {
         self.preferences = preferences
@@ -143,6 +146,7 @@ final class DeckSettingsPage: NSObject, SettingsPage {
     func build(in container: FlippedContainer) {
         let form = SettingsForm(in: container)
         form.pageHeader(icon: SettingsIcons.tile("rectangle.stack.fill", color: .systemBlue, size: 32), title: title, subtitle: "Where the cards sit and how they come forward")
+        summonControls = []
 
         form.section("Position")
         form.beginGroup()
@@ -154,8 +158,8 @@ final class DeckSettingsPage: NSObject, SettingsPage {
         placement.selectItem(at: DisplayMode.allCases.firstIndex(of: preferences.displayMode) ?? 0)
         placement.target = self
         placement.action = #selector(placementChanged(_:))
-        placement.setAccessibilityLabel("Cards sit")
-        form.settingRow("Cards sit", control: placement)
+        placement.setAccessibilityLabel("Place cards")
+        form.settingRow("Place cards", control: placement)
         form.settingRow(
             "Lock position",
             subtitle: "Also in the menu-bar menu and on a card's right-click menu.",
@@ -194,13 +198,25 @@ final class DeckSettingsPage: NSObject, SettingsPage {
         recorder.widthAnchor.constraint(equalToConstant: 110).isActive = true
         recorder.heightAnchor.constraint(equalToConstant: 24).isActive = true
         form.settingRow("Shortcut", control: pair)
+        summonControls += [recorder, reset]
 
+        let dim = SettingsForm.makeSwitch(isOn: preferences.summonDims, title: "Dim the screen while they are up", target: self, action: #selector(dimChanged(_:)))
         form.settingRow(
             "Dim the screen while they are up",
-            control: SettingsForm.makeSwitch(isOn: preferences.summonDims, title: "Dim the screen while they are up", target: self, action: #selector(dimChanged(_:)))
+            control: dim
         )
+        summonControls.append(dim)
         form.endGroup()
         form.footnote("Use at least one modifier, or the key stops typing in every other app.")
+        applySummonState()
+    }
+
+    private func applySummonState() {
+        let isOn = preferences.summonEnabled
+        for view in summonControls {
+            (view as? NSControl)?.isEnabled = isOn
+            view.alphaValue = isOn ? 1 : 0.5
+        }
     }
 
     @objc private func placementChanged(_ sender: NSPopUpButton) {
@@ -221,6 +237,7 @@ final class DeckSettingsPage: NSObject, SettingsPage {
 
     @objc private func summonChanged(_ sender: NSSwitch) {
         preferences.summonEnabled = sender.state == .on
+        applySummonState()
         host?.changed()
     }
 
@@ -251,6 +268,7 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
     private let preferences: Preferences
     private let actionsField = SettingsForm.field("", placeholder: "owner/name, owner/name", code: true)
     private var switches: [NSSwitch: CardID] = [:]
+    private weak var actionsRow: NSView?
 
     private static let refreshChoices: [(title: String, seconds: Int)] = [
         ("1 minute", 60), ("2 minutes", 120), ("5 minutes", 300), ("10 minutes", 600),
@@ -295,9 +313,10 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
 
         actionsField.stringValue = preferences.actionsRepositories.joined(separator: ", ")
         actionsField.delegate = self
-        form.fieldRow("Actions repos", [(actionsField, nil)])
+        form.fieldRow("Actions repositories", [(actionsField, nil)])
         form.endGroup()
         form.footnote("Empty: the repositories of your open pull requests, up to five per account.")
+        applyActionsState()
     }
 
     @objc private func cardChanged(_ sender: NSSwitch) {
@@ -305,7 +324,15 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
         var layout = preferences.cardLayout
         layout.setEnabled(sender.state == .on, for: card)
         preferences.cardLayout = layout
+        applyActionsState()
         host?.changed()
+    }
+
+    /// Nothing to name repositories for while the card that watches them is off.
+    private func applyActionsState() {
+        let isOn = preferences.cardLayout.isEnabled(.githubActions)
+        actionsField.isEnabled = isOn
+        actionsField.alphaValue = isOn ? 1 : 0.5
     }
 
     @objc private func intervalChanged(_ sender: NSPopUpButton) {
@@ -349,6 +376,8 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
 
     private enum Column { case review, stuck, runs, down, start }
     private var switches: [NSSwitch: (column: Column, service: String, id: String)] = [:]
+    /// Everything that only means something while notifications are allowed at all.
+    private var dependents: [NSView] = []
 
     init(
         preferences: Preferences,
@@ -374,6 +403,7 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
             subtitle: "A banner when somebody waits on you, your work gets stuck or a project goes down"
         )
         switches = [:]
+        dependents = []
 
         form.beginGroup()
         form.settingRow(
@@ -381,11 +411,11 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
             subtitle: "macOS asks for permission the first time.",
             control: SettingsForm.makeSwitch(isOn: preferences.notificationsEnabled, title: "Allow notifications", target: self, action: #selector(masterChanged(_:)))
         )
-        form.settingRow(
-            "New versions of DevDeck",
-            control: SettingsForm.makeSwitch(isOn: preferences.notifiesUpdates, title: "New versions of DevDeck", target: self, action: #selector(updatesChanged(_:)))
-        )
-        form.settingRow("Check it", control: SettingsForm.button("Send Test Notification", target: self, action: #selector(sendTest)))
+        let updates = SettingsForm.makeSwitch(isOn: preferences.notifiesUpdates, title: "New versions of DevDeck", target: self, action: #selector(updatesChanged(_:)))
+        form.settingRow("New versions of DevDeck", control: updates)
+        let test = SettingsForm.button("Send Test Notification", target: self, action: #selector(sendTest))
+        form.settingRow("Test notifications", control: test)
+        dependents += [updates, test]
         form.endGroup()
 
         let github = githubStore.accounts()
@@ -394,7 +424,7 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
             form.section("Accounts")
             form.beginGroup()
             form.settingRow("", control: Self.columns([
-                Self.columnLabel("Review requests"), Self.columnLabel("My work stuck"), Self.columnLabel("Failed runs"),
+                Self.columnLabel("Review requests"), Self.columnLabel("Stuck work"), Self.columnLabel("Failed runs"),
             ]))
             for account in github {
                 form.settingRow(account.label, subtitle: "GitHub", control: Self.columns([
@@ -407,8 +437,9 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
                 form.settingRow(account.label, subtitle: "GitLab", control: Self.columns([
                     toggle(.review, "gitlab", account.id, isOn: account.notifiesReviewRequests, title: "\(account.label) review requests"),
                     toggle(.stuck, "gitlab", account.id, isOn: account.notifiesBlocked, title: "\(account.label) stuck work"),
-                    // GitLab has no Actions card, so there is nothing to switch here.
-                    NSView(),
+                    // GitLab has no Actions card, so there is nothing to switch here. A dash
+                    // rather than a hole, so the column reads as "not for this one".
+                    Self.columnLabel("-"),
                 ]))
             }
             form.endGroup()
@@ -433,16 +464,26 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
                 ]))
             }
             form.endGroup()
-            form.footnote("Went down means it stopped without anyone pressing Stop, or stopped answering. Nothing is announced on the first check after a launch.")
-        } else {
-            form.footnote("Nothing is announced on the first check after a launch.")
+            form.footnote("Went down means it stopped without anyone pressing Stop, or stopped answering.")
         }
+        form.footnote("Nothing is announced on the first check after a launch.")
+        applyMasterState()
     }
 
     private func toggle(_ column: Column, _ service: String, _ id: String, isOn: Bool, title: String) -> NSSwitch {
         let control = SettingsForm.makeSwitch(isOn: isOn, title: title, target: self, action: #selector(switchChanged(_:)))
         switches[control] = (column, service, id)
+        dependents.append(control)
         return control
+    }
+
+    /// With the master switch off nothing can be delivered, so nothing below it is live.
+    private func applyMasterState() {
+        let isOn = preferences.notificationsEnabled
+        for view in dependents {
+            (view as? NSControl)?.isEnabled = isOn
+            view.alphaValue = isOn ? 1 : 0.5
+        }
     }
 
     /// Controls centred in fixed columns, so the switches line up under their headings.
@@ -466,12 +507,14 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
     @objc private func masterChanged(_ sender: NSSwitch) {
         guard sender.state == .on else {
             preferences.notificationsEnabled = false
+            applyMasterState()
             return
         }
         // The switch goes back if macOS says no: "on" while nothing can be delivered lies.
         onRequestAuthorization { [weak self] granted in
             self?.preferences.notificationsEnabled = granted
             sender.state = granted ? .on : .off
+            self?.applyMasterState()
             if !granted {
                 let alert = NSAlert()
                 alert.messageText = "macOS is not allowing DevDeck to notify you"

@@ -59,6 +59,8 @@ final class GitLabInstancesSection: SettingsSection {
     private let store: GitLabAccountsStore
     private let tokenStore: any TokenStore
     private let preferences: Preferences
+    /// A token half typed, by instance, kept while the window is open.
+    private var drafts: [String: String] = [:]
 
     init(store: GitLabAccountsStore, tokenStore: any TokenStore, preferences: Preferences) {
         self.store = store
@@ -85,8 +87,10 @@ final class GitLabInstancesSection: SettingsSection {
         let form = GitLabAccountForm(
             account: account,
             hasToken: SettingsSupport.hasToken(account.tokenKey, in: tokenStore),
+            draft: drafts[id] ?? "",
             width: container.bounds.width
         )
+        form.token.onDraftChange = { [weak self] text in self?.drafts[id] = text }
         form.onChange = { [weak self] in self?.applyEdits($0) }
         form.onSave = { [weak self] in self?.save($0) }
         form.onTestLink = { form in

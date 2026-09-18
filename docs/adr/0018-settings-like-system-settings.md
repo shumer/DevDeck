@@ -39,9 +39,11 @@ a setting with a trailing control, a labelled field row, a status row and a link
 instead of checkboxes. One line of explanation under a group at most; anything longer behind a
 help button. Rarely touched fields under a disclosure per thing, remembered for the session.
 
-**A fixed form column.** 544 points at the default 820-point window, left in place when the
-window is wider. A form that stretched had to be rebuilt on resize, and rebuilding is what lost
-the focused field. The window remembers its size.
+**A form column that stretches, without a rebuild.** Every row and control carries the
+autoresizing mask that says whether it grows or keeps to the trailing edge, so a resize moves
+frames and rebuilds nothing: rebuilding is what lost the focused field. The column runs from 440
+to 760 points and the window cannot be made wider than the column grows, so there is never a
+strip of empty window beside the groups. The window remembers its size.
 
 **Answers go where the question was asked.** A check updates its own status row in place, a
 button's answer is a popover at that button, and nothing says "Saved.". The form is rebuilt only
@@ -71,5 +73,30 @@ tests, and a change of address, folder or command starts a new check.
   preference keys did not change.
 - Launch with `--settings <kind> <id>` opens one account's or project's form, which is also how
   the screenshots for this ADR were taken.
+- The window is a real `NSSplitViewController` with a sidebar item and a toolbar, so the sidebar
+  is translucent and full height and the title bar is the standard one. Measured against System
+  Settings' own window after a colleague noticed the difference: window buttons 14 points across,
+  23 apart, centred 25 points down; a 28-point search field nine points under the title bar;
+  32-point rows. What was actually wrong was the SDK stamp, see `docs/development.md`.
+- Measured against System Settings' own window, pixel by pixel, after a colleague said the two
+  did not look alike: sidebar 268 wide, rows and icons from the Mac's own "Sidebar icon size"
+  setting (`SidebarMetrics`, 28/16, 32/20 or 40/26), selection the full height of a row with an
+  8-point radius, form inset 20, rows 38 tall, group radius 12 on a 3% fill, a hairline at 6%,
+  a section title in line with the labels under it. The title bar is AppKit's `unified`, which
+  puts the window buttons where System Settings has them; its bar is 14 points shorter because it
+  is a Catalyst app, and an AppKit window cannot ask for that.
+- The window's width is fixed at the sidebar plus the widest the form column goes, and only its
+  height can be changed: a settings form has one column, and a window wider than the column is a
+  window with a strip of nothing in it. It opens at the height System Settings opens at.
+- A control that depends on a switch is disabled while that switch is off: the notification
+  tables, the shortcut and its dimming, the Actions repositories.
+- A token half typed survives moving to another row: the text is kept per account while the
+  window is open. It used to be thrown away silently.
+- The token row says "Saved in Keychain" in grey with a Verify button, because green means
+  "works" everywhere else on the deck, and what is stored may not.
+- The Remove dialog marks its destructive button and gives Return to Cancel: the sidebar's Delete
+  key opens it, and an account removed takes its token with it.
+- An agent app has no Dock icon, so a minimised window went to the Dock as a blank page:
+  `NSApp.applicationIconImage` is set at launch, and the window carries a `miniwindowTitle`.
 - Not done from the reviews: naming an account after its GitHub login on first verification, and
   an Arc form's check of the organisation against the API.

@@ -56,6 +56,7 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
     var onAdd: ((String) -> Void)?
     var onRemove: (() -> Void)?
 
+    private let footerLine = NSBox()
     private let addButton = NSPopUpButton()
     private let removeButton = NSButton()
     private let footerHeight: CGFloat = 32
@@ -63,54 +64,40 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
-        let material = NSVisualEffectView(frame: bounds)
-        material.material = .sidebar
-        material.blendingMode = .behindWindow
-        material.state = .followsWindowActiveState
-        material.autoresizingMask = [.width, .height]
-        addSubview(material)
-
-        // Under the traffic lights: the window's content runs beneath a transparent title bar.
-        search.frame = NSRect(x: 10, y: bounds.height - 62, width: bounds.width - 20, height: 24)
-        search.autoresizingMask = [.width, .minYMargin]
+        // No material of its own: this view is the window's sidebar item, and that is what draws
+        // the translucency and keeps it consistent with every other sidebar on the machine.
         search.placeholderString = "Search"
-        search.controlSize = .regular
+        search.controlSize = .large
         search.sendsSearchStringImmediately = true
         search.delegate = self
         addSubview(search)
 
-        scroll.frame = NSRect(x: 0, y: footerHeight, width: bounds.width, height: bounds.height - footerHeight - 70)
-        scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.drawsBackground = false
         scroll.documentView = document
         addSubview(scroll)
 
-        addButton.frame = NSRect(x: 8, y: 5, width: 40, height: 22)
+        addButton.frame = NSRect(x: 12, y: 6, width: 40, height: 22)
         addButton.pullsDown = true
         addButton.isBordered = false
         addButton.autoresizingMask = [.maxXMargin]
         addButton.setAccessibilityLabel("Add")
+        addButton.toolTip = "Add an account or a project"
+
         addSubview(addButton)
 
-        removeButton.frame = NSRect(x: 50, y: 5, width: 24, height: 22)
+        removeButton.frame = NSRect(x: 54, y: 6, width: 24, height: 22)
         removeButton.image = NSImage(systemSymbolName: "minus", accessibilityDescription: "Remove")
+        removeButton.toolTip = "Remove the selected account or project"
         removeButton.isBordered = false
         removeButton.target = self
         removeButton.action = #selector(removeTapped)
         removeButton.autoresizingMask = [.maxXMargin]
         addSubview(removeButton)
 
-        let footerLine = NSBox(frame: NSRect(x: 0, y: footerHeight, width: bounds.width, height: 1))
         footerLine.boxType = .separator
-        footerLine.autoresizingMask = [.width]
         addSubview(footerLine)
-
-        let edge = NSBox(frame: NSRect(x: bounds.width - 1, y: 0, width: 1, height: bounds.height))
-        edge.boxType = .separator
-        edge.autoresizingMask = [.height, .minXMargin]
-        addSubview(edge)
 
         setAccessibilityRole(.list)
         setAccessibilityLabel("Settings")
@@ -122,6 +109,20 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
     }
 
     override var isFlipped: Bool { false }
+
+    /// Laid out against the safe area, because a sidebar item runs the full height of the window
+    /// and its top is behind the title bar. The numbers are System Settings' own, measured from
+    /// its window: a 28-point search field nine points below the title bar, fourteen points in.
+    override func layout() {
+        super.layout()
+        let top = safeAreaInsets.top
+        let searchHeight: CGFloat = 28
+        search.frame = NSRect(x: 14, y: bounds.height - top - 9 - searchHeight, width: bounds.width - 27, height: searchHeight)
+        let scrollTop = search.frame.minY - 5
+        scroll.frame = NSRect(x: 0, y: footerHeight + 1, width: bounds.width, height: max(0, scrollTop - footerHeight - 1))
+        footerLine.frame = NSRect(x: 0, y: footerHeight, width: bounds.width, height: 1)
+        rebuild()
+    }
 
     // MARK: Content
 
@@ -150,15 +151,41 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
             let items = query.isEmpty
                 ? section.items
                 : section.items.filter { $0.title.lowercased().contains(query) || $0.detail.lowercased().contains(query) }
-            guard !items.isEmpty else { continue }
+            // A group with nothing in it still shows its title and says where things come from:
+            // hiding it left a new deck with no sign that accounts and projects exist at all.
+            guard !items.isEmpty || (query.isEmpty && section.title != nil) else { continue }
 
             if let title = section.title {
-                let label = SettingsForm.label(title, size: 11, weight: .semibold, color: .secondaryLabelColor)
-                label.frame = NSRect(x: 18, y: y + 12, width: width - 30, height: 14)
+                // A rule across the sidebar and a small capitalised label under it: in sentence
+                // case at row size the title read as one more row rather than as the start of a
+                // group. The rule is what says "everything below this belongs together".
+                y += 12
+                let rule = HairlineView(frame: NSRect(x: 10, y: y, width: width - 20, height: 1))
+                rule.autoresizingMask = [.width]
+                document.addSubview(rule)
+                headers.append(rule)
+                y += 9
+
+                let label = NSTextField(labelWithString: title)
+                label.attributedStringValue = NSAttributedString(string: title.uppercased(), attributes: [
+                    .font: NSFont.systemFont(ofSize: 10.5, weight: .semibold),
+                    .foregroundColor: NSColor.secondaryLabelColor,
+                    .kern: 0.7,
+                ])
+                label.frame = NSRect(x: SidebarMetrics.iconLeft, y: y, width: width - SidebarMetrics.iconLeft - 12, height: 14)
                 label.autoresizingMask = [.width]
                 document.addSubview(label)
                 headers.append(label)
-                y += 30
+                y += 14 + 6
+            }
+
+            if items.isEmpty {
+                let hint = SettingsForm.label("Add one with +", size: 12, color: .tertiaryLabelColor)
+                hint.frame = NSRect(x: SidebarMetrics.textLeft, y: y + 6, width: width - SidebarMetrics.textLeft - 12, height: 16)
+                hint.autoresizingMask = [.width]
+                document.addSubview(hint)
+                headers.append(hint)
+                y += 28
             }
 
             for item in items {
@@ -174,7 +201,7 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
                 }
                 document.addSubview(row)
                 rows.append(row)
-                y += SettingsListRow.height
+                y += SidebarMetrics.rowHeight
             }
             y += 4
         }
@@ -252,7 +279,7 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
 /// One row: the mark, the name, and a dot only when the dot means something.
 @MainActor
 final class SettingsListRow: NSView {
-    static let height: CGFloat = 28
+    static var height: CGFloat { SidebarMetrics.rowHeight }
 
     let item: SettingsListItem
     var onClick: (() -> Void)?
@@ -272,33 +299,34 @@ final class SettingsListRow: NSView {
         self.item = item
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Self.height))
 
-        selection.frame = NSRect(x: 10, y: 1, width: width - 20, height: Self.height - 2)
+        selection.frame = NSRect(x: 10, y: 0, width: width - 20, height: Self.height)
         selection.autoresizingMask = [.width]
         addSubview(selection)
 
-        var left: CGFloat = 20
+        var left = SidebarMetrics.iconLeft + 2
         if let icon = item.icon {
-            let image = NSImageView(frame: NSRect(x: 18, y: 4, width: 20, height: 20))
+            let size = SidebarMetrics.iconSize
+            let image = NSImageView(frame: NSRect(x: SidebarMetrics.iconLeft, y: (Self.height - size) / 2, width: size, height: size))
             image.image = icon
             image.alphaValue = item.isDimmed ? 0.45 : 1
             addSubview(image)
-            left = 46
+            left = SidebarMetrics.textLeft
         }
 
         var right: CGFloat = 20
         if let color = item.dot {
             let dot = DotView(color: color)
-            dot.frame = NSRect(x: width - 28, y: 11, width: 7, height: 7)
+            dot.frame = NSRect(x: width - 28, y: (Self.height - 7) / 2, width: 7, height: 7)
             dot.autoresizingMask = [.minXMargin]
             addSubview(dot)
             right = 34
         }
 
         titleField.stringValue = item.title
-        titleField.font = NSFont.systemFont(ofSize: 13)
+        titleField.font = NSFont.systemFont(ofSize: SidebarMetrics.rowFontSize)
         titleField.lineBreakMode = .byTruncatingTail
         titleField.textColor = item.isDimmed ? .tertiaryLabelColor : .labelColor
-        titleField.frame = NSRect(x: left, y: 6, width: width - left - right, height: 16)
+        titleField.frame = NSRect(x: left, y: (Self.height - 17) / 2, width: width - left - right, height: 17)
         titleField.autoresizingMask = [.width]
         addSubview(titleField)
 
@@ -327,6 +355,43 @@ final class SettingsListRow: NSView {
     }
 }
 
+/// What a sidebar row is made of, in the size the Mac is set to show one.
+///
+/// System Settings follows "Sidebar icon size" under Appearance, and so does every sidebar Apple
+/// ships: at Large its rows are 40 points tall with 26-point icons, and hard-coding those makes an
+/// app that is bigger than the system on a Mac set to Medium.
+enum SidebarMetrics {
+    /// 1 small, 2 medium, 3 large. Absent means medium, which is the default.
+    private static var size: Int {
+        let stored = UserDefaults.standard.integer(forKey: "NSTableViewDefaultSizeMode")
+        return (1...3).contains(stored) ? stored : 2
+    }
+
+    static var rowHeight: CGFloat {
+        switch size {
+        case 1: return 28
+        case 3: return 40
+        default: return 32
+        }
+    }
+
+    static var iconSize: CGFloat {
+        switch size {
+        case 1: return 16
+        case 3: return 26
+        default: return 20
+        }
+    }
+
+    static let iconLeft: CGFloat = 18
+
+    static var textLeft: CGFloat { iconLeft + iconSize + 8 }
+
+    static var rowFontSize: CGFloat { size == 3 ? 14 : 13 }
+
+    static var headerFontSize: CGFloat { size == 3 ? 12 : 11 }
+}
+
 /// The rounded selection, in the accent colour when the window is key and grey when it is not.
 @MainActor
 private final class SelectionView: NSView {
@@ -337,7 +402,7 @@ private final class SelectionView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 6
+        layer?.cornerRadius = 8
         layer?.cornerCurve = .continuous
     }
 
