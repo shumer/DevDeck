@@ -19,7 +19,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     // MARK: The card
 
-    let menuGroup: String? = "DDEV projects"
+    var menuGroup: String? { L("menu.group.ddev") }
 
     func descriptors() -> [CardDescriptor] {
         CardCatalog.sortedByTitle(store.projects().map { project in
@@ -44,7 +44,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
             project: project,
             status: status,
             docker: controller.docker,
-            logs: controller.logs(for: card),
+            isShowingLogs: controller.isShowingLogs(card),
             isCollapsed: controller.isCollapsed(card),
             // DDEV knows where it serves; `ddev list` says so.
             phoneURL: controller.phoneURL(for: status.entry?.primaryURL, isRunning: status.isRunning),
@@ -53,8 +53,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
             onRevealFolder: { LocalFolder.reveal(project.folderURL) },
             onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
             onStartDocker: context.startDocker,
-            onToggleLogs: { [controller] in controller.toggleLogs(for: card) },
-            onOpenLogFile: { LocalFolder.open($0) }
+            onToggleLogs: { [controller] in controller.toggleLogs(for: card) }
         ))
     }
 
@@ -65,7 +64,6 @@ final class DDEVProjectModule: CardModule, SettingsSection {
         return DDEVProjectCard.size(
             for: project,
             status: controller.ddevStatus(for: project),
-            logs: controller.logs(for: card),
             isCollapsed: controller.isCollapsed(card)
         )
     }
@@ -78,7 +76,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     let kind = SettingsWindowController.Section.ddev
     let group = SettingsListGroup.projects
-    let addTitle = "DDEV Project…"
+    var addTitle: String { L("settings.add.ddev") }
     weak var host: SettingsHost?
 
     func listItems() -> [SettingsListItem] {
@@ -100,10 +98,10 @@ final class DDEVProjectModule: CardModule, SettingsSection {
         let form = DDEVProjectForm(project: project, width: container.bounds.width)
         form.onChange = { [weak self] in self?.applyEdits($0) }
         form.onChooseFolder = { form in
-            guard let url = SettingsSupport.chooseDirectory(message: "Pick the project checkout: the folder holding .ddev.") else { return }
+            guard let url = SettingsSupport.chooseDirectory(message: L("project.choose.ddev")) else { return }
             // Said plainly rather than refused: the folder may be right and the project not set
             // up yet, and that is the user's business.
-            form.setFolderNote(DDEVConfig.isProject(url) ? "" : "No .ddev/config.yaml in that folder.", isError: true)
+            form.setFolderNote(DDEVConfig.isProject(url) ? "" : L("ddev.noConfig"), isError: true)
             form.setFolder(url.path)
         }
         form.onTestLink = { [weak self] in self?.testLink($0) }
@@ -126,23 +124,23 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
             guard !candidates.isEmpty else {
                 let alert = NSAlert()
-                alert.messageText = entries.isEmpty ? "ddev has no projects" : "Every DDEV project is already on the deck"
-                alert.informativeText = entries.isEmpty ? "Run ddev config in a project folder first." : "Nothing left to add."
-                alert.addButton(withTitle: "OK")
+                alert.messageText = entries.isEmpty ? L("ddev.none.title") : L("ddev.all.title")
+                alert.informativeText = entries.isEmpty ? L("ddev.none.detail") : L("ddev.all.detail")
+                alert.addButton(withTitle: L("button.ok"))
                 alert.runModal()
                 return
             }
 
             let alert = NSAlert()
-            alert.messageText = "Add a DDEV project"
-            alert.informativeText = "Found by ddev list."
+            alert.messageText = L("ddev.add.title")
+            alert.informativeText = L("ddev.add.detail")
             let popUp = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 320, height: 25))
             for candidate in candidates {
                 popUp.addItem(withTitle: "\(candidate.name) (\(candidate.state.rawValue))")
             }
             alert.accessoryView = popUp
-            alert.addButton(withTitle: "Add")
-            alert.addButton(withTitle: "Cancel")
+            alert.addButton(withTitle: L("button.add"))
+            alert.addButton(withTitle: L("button.cancel"))
             guard alert.runModal() == .alertFirstButtonReturn else { return }
 
             let index = max(0, min(popUp.indexOfSelectedItem, candidates.count - 1))
@@ -159,7 +157,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     func remove(_ id: String) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }),
-              SettingsSupport.confirm("Remove \(project.displayTitle)?", detail: "The card disappears from the deck. The project itself is untouched.")
+              SettingsSupport.confirm(L("settings.remove.account.title", project.displayTitle), detail: L("settings.remove.project.detail.ddev"))
         else { return false }
         store.save(store.projects().filter { $0.id != id })
         return true
@@ -167,9 +165,9 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     private func presentUnavailable() {
         let alert = NSAlert()
-        alert.messageText = "ddev did not answer"
-        alert.informativeText = "Either DDEV is not installed, or it is not on the PATH a login shell sees. Running ddev list in a terminal will say which."
-        alert.addButton(withTitle: "OK")
+        alert.messageText = L("ddev.silent.title")
+        alert.informativeText = L("ddev.silent.detail")
+        alert.addButton(withTitle: L("button.ok"))
         alert.runModal()
     }
 
@@ -194,7 +192,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
             let entries = await self.environment.list()
             let status = self.environment.status(for: project, entries: entries)
             guard let link = project.links(status: status).first else {
-                form.setLinkNote("ddev has no URL for this project yet.", isError: true)
+                form.setLinkNote(L("ddev.noURL"), isError: true)
                 return
             }
             form.setLinkNote("", isError: false)

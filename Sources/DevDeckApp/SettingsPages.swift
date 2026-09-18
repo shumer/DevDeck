@@ -15,7 +15,7 @@ import ProjectKit
 @MainActor
 final class GeneralSettingsPage: NSObject, SettingsPage {
     let kind = SettingsWindowController.Section.general
-    let title = "General"
+    var title: String { L("settings.general.title") }
     var icon: NSImage { SettingsIcons.general }
     weak var host: SettingsHost?
 
@@ -35,17 +35,27 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
 
         form.beginGroup()
         form.settingRow(
-            "Start at login",
-            control: SettingsForm.makeSwitch(isOn: LoginItem.isEnabled, title: "Start at login", target: self, action: #selector(loginItemChanged(_:)))
+            L("settings.general.startAtLogin"),
+            control: SettingsForm.makeSwitch(isOn: LoginItem.isEnabled, title: L("settings.general.startAtLogin"), target: self, action: #selector(loginItemChanged(_:)))
         )
+        let language = NSPopUpButton()
+        for choice in AppLanguage.choices {
+            language.addItem(withTitle: choice.title)
+            language.lastItem?.representedObject = choice.rawValue
+        }
+        language.selectItem(at: AppLanguage.choices.firstIndex(of: preferences.language) ?? 0)
+        language.target = self
+        language.action = #selector(languageChanged(_:))
+        language.setAccessibilityLabel(L("settings.language"))
+        form.settingRow(L("settings.language"), subtitle: L("settings.language.detail"), control: language)
         form.endGroup()
 
-        form.section("Updates")
+        form.section(L("settings.general.updates"))
         form.beginGroup()
         form.settingRow(
-            "Check for updates automatically",
-            subtitle: "Thirty seconds after launch and every six hours. Nothing installs until you ask.",
-            control: SettingsForm.makeSwitch(isOn: preferences.checksForUpdates, title: "Check for updates automatically", target: self, action: #selector(updatesChanged(_:)))
+            L("settings.general.checkAutomatically"),
+            subtitle: L("settings.general.checkAutomatically.detail"),
+            control: SettingsForm.makeSwitch(isOn: preferences.checksForUpdates, title: L("settings.general.checkAutomatically"), target: self, action: #selector(updatesChanged(_:)))
         )
         let status = updateStatus
         let line = StatusLine(tone: status.tone, state: status.title, detail: status.detail)
@@ -56,10 +66,9 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
         updateLine = line
         updateButton = button
 
-        // Said in words: the path of a translocated copy is a random folder nobody recognises.
         form.footnote(AppVersion.isTranslocated
-            ? "Running from a read-only copy macOS made because DevDeck was opened without being moved to Applications. The next update installs it into Applications."
-            : "Running from \(AppVersion.location)")
+            ? L("settings.general.runningTranslocated")
+            : L("settings.general.runningFrom", AppVersion.location))
     }
 
     /// Called when the updater moves, so the row changes where it stands without the page
@@ -74,33 +83,34 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
 
     private var updateStatus: (tone: StatusLine.Tone, title: String, detail: String, button: String, isEnabled: Bool) {
         let clock = DateFormatter()
-        clock.dateFormat = "HH:mm"
+        clock.locale = Strings.locale
+        clock.setLocalizedDateFormatFromTemplate("j:mm")
         guard updater.isSupported else {
-            return (.idle, "Not from a bundle", "run from a terminal, nothing to replace", "Check Now", false)
+            return (.idle, L("update.notFromBundle"), L("update.notFromBundle.detail"), L("update.button.check"), false)
         }
         switch updater.state {
         case .available(let update):
             if let working = updater.waitingFor {
-                return (.busy, "\(update.version) waits", "installs once \(working) finishes", "Update Now", false)
+                return (.busy, L("update.waits", update.version.description), L("update.waits.detail", working), L("update.button.update"), false)
             }
             let size = ByteCountFormatter.string(fromByteCount: Int64(update.asset.size), countStyle: .file)
-            return (.busy, "\(update.version) is available", size, "Update Now", true)
+            return (.busy, L("update.available", update.version.description), size, L("update.button.update"), true)
         case .downloading(let update, let fraction):
-            return (.busy, "Downloading \(update.version)", "\(Int((fraction * 100).rounded()))%", "Update Now", false)
+            return (.busy, L("update.downloading", update.version.description), "\(Int((fraction * 100).rounded()))%", L("update.button.update"), false)
         case .installing(let update):
-            return (.busy, "Installing \(update.version)", "", "Update Now", false)
+            return (.busy, L("update.installing", update.version.description), "", L("update.button.update"), false)
         case .failed(_, let reason):
-            return (.bad, "Update failed", reason, "Try Again", true)
+            return (.bad, L("update.failed"), reason, L("update.button.retry"), true)
         case .checking:
-            return (.idle, "Checking…", "", "Check Now", false)
+            return (.idle, L("update.checking"), "", L("update.button.check"), false)
         case .idle:
             if let failure = updater.lastCheckFailure {
-                return (.busy, "Could not check", failure, "Check Now", true)
+                return (.busy, L("update.couldNotCheck"), failure, L("update.button.check"), true)
             }
             if let checked = updater.lastCheckedAt {
-                return (.good, "Up to date", "\(updater.currentVersion ?? ""), checked at \(clock.string(from: checked))", "Check Now", true)
+                return (.good, L("update.upToDate"), L("update.upToDate.detail", updater.currentVersion ?? "", clock.string(from: checked)), L("update.button.check"), true)
             }
-            return (.idle, "Not checked yet", updater.currentVersion ?? "", "Check Now", true)
+            return (.idle, L("update.notCheckedYet"), updater.currentVersion ?? "", L("update.button.check"), true)
         }
     }
 
@@ -108,6 +118,19 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
         // Put back to what macOS ended up doing: the registration can fail, and a switch that
         // stays on while the login item is not is a setting that lies.
         sender.state = LoginItem.set(sender.state == .on) ? .on : .off
+    }
+
+    /// The whole interface follows at once: the window is rebuilt, and the menu and the cards
+    /// read their words fresh every time they are drawn.
+    @objc private func languageChanged(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let language = AppLanguage(rawValue: raw)
+        else { return }
+        preferences.language = language
+        Strings.use(language)
+        host?.reloadList()
+        host?.reloadDetail()
+        host?.changed()
     }
 
     @objc private func updatesChanged(_ sender: NSSwitch) {
@@ -129,7 +152,7 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
 @MainActor
 final class DeckSettingsPage: NSObject, SettingsPage {
     let kind = SettingsWindowController.Section.deck
-    let title = "Deck"
+    var title: String { L("settings.deck.title") }
     var icon: NSImage { SettingsIcons.deck }
     weak var host: SettingsHost?
 
@@ -145,10 +168,10 @@ final class DeckSettingsPage: NSObject, SettingsPage {
 
     func build(in container: FlippedContainer) {
         let form = SettingsForm(in: container)
-        form.pageHeader(icon: SettingsIcons.tile("rectangle.stack.fill", color: .systemBlue, size: 32), title: title, subtitle: "Where the cards sit and how they come forward")
+        form.pageHeader(icon: SettingsIcons.tile("rectangle.stack.fill", color: .systemBlue, size: 32), title: title, subtitle: L("settings.deck.subtitle"))
         summonControls = []
 
-        form.section("Position")
+        form.section(L("settings.deck.position"))
         form.beginGroup()
         let placement = NSPopUpButton()
         for mode in DisplayMode.allCases {
@@ -158,26 +181,26 @@ final class DeckSettingsPage: NSObject, SettingsPage {
         placement.selectItem(at: DisplayMode.allCases.firstIndex(of: preferences.displayMode) ?? 0)
         placement.target = self
         placement.action = #selector(placementChanged(_:))
-        placement.setAccessibilityLabel("Place cards")
-        form.settingRow("Place cards", control: placement)
+        placement.setAccessibilityLabel(L("settings.deck.placeCards"))
+        form.settingRow(L("settings.deck.placeCards"), control: placement)
         form.settingRow(
-            "Lock position",
-            subtitle: "Also in the menu-bar menu and on a card's right-click menu.",
-            control: SettingsForm.makeSwitch(isOn: preferences.isLocked, title: "Lock position", target: self, action: #selector(lockChanged(_:)))
+            L("settings.deck.lock"),
+            subtitle: L("settings.deck.lock.detail"),
+            control: SettingsForm.makeSwitch(isOn: preferences.isLocked, title: L("settings.deck.lock"), target: self, action: #selector(lockChanged(_:)))
         )
         form.settingRow(
-            "Close gaps automatically",
-            subtitle: "When a card changes height, the column closes up.",
-            control: SettingsForm.makeSwitch(isOn: preferences.packsColumns, title: "Close gaps automatically", target: self, action: #selector(packingChanged(_:)))
+            L("settings.deck.closeGaps"),
+            subtitle: L("settings.deck.closeGaps.detail"),
+            control: SettingsForm.makeSwitch(isOn: preferences.packsColumns, title: L("settings.deck.closeGaps"), target: self, action: #selector(packingChanged(_:)))
         )
         form.endGroup()
 
-        form.section("Shortcut")
+        form.section(L("settings.deck.shortcut"))
         form.beginGroup()
         form.settingRow(
-            "Bring cards forward while holding the shortcut",
-            subtitle: "A tap keeps them up until the next press.",
-            control: SettingsForm.makeSwitch(isOn: preferences.summonEnabled, title: "Bring cards forward while holding the shortcut", target: self, action: #selector(summonChanged(_:)))
+            L("settings.deck.summon"),
+            subtitle: L("settings.deck.summon.detail"),
+            control: SettingsForm.makeSwitch(isOn: preferences.summonEnabled, title: L("settings.deck.summon"), target: self, action: #selector(summonChanged(_:)))
         )
 
         let recorder = HotKeyRecorderView(combo: preferences.summonHotKey)
@@ -189,7 +212,7 @@ final class DeckSettingsPage: NSObject, SettingsPage {
         }
         recorder.frame.size = NSSize(width: 110, height: 24)
         self.recorder = recorder
-        let reset = SettingsForm.button("Default", target: self, action: #selector(resetShortcut))
+        let reset = SettingsForm.button(L("settings.deck.default"), target: self, action: #selector(resetShortcut))
         reset.controlSize = .small
         reset.sizeToFit()
         let pair = NSStackView(views: [recorder, reset])
@@ -197,17 +220,14 @@ final class DeckSettingsPage: NSObject, SettingsPage {
         pair.spacing = 8
         recorder.widthAnchor.constraint(equalToConstant: 110).isActive = true
         recorder.heightAnchor.constraint(equalToConstant: 24).isActive = true
-        form.settingRow("Shortcut", control: pair)
+        form.settingRow(L("settings.deck.shortcut"), control: pair)
         summonControls += [recorder, reset]
 
-        let dim = SettingsForm.makeSwitch(isOn: preferences.summonDims, title: "Dim the screen while they are up", target: self, action: #selector(dimChanged(_:)))
-        form.settingRow(
-            "Dim the screen while they are up",
-            control: dim
-        )
+        let dim = SettingsForm.makeSwitch(isOn: preferences.summonDims, title: L("settings.deck.dim"), target: self, action: #selector(dimChanged(_:)))
+        form.settingRow(L("settings.deck.dim"), control: dim)
         summonControls.append(dim)
         form.endGroup()
-        form.footnote("Use at least one modifier, or the key stops typing in every other app.")
+        form.footnote(L("settings.deck.footnote"))
         applySummonState()
     }
 
@@ -261,7 +281,7 @@ final class DeckSettingsPage: NSObject, SettingsPage {
 @MainActor
 final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
     let kind = SettingsWindowController.Section.cards
-    let title = "Cards"
+    var title: String { L("settings.cards.title") }
     var icon: NSImage { SettingsIcons.cards }
     weak var host: SettingsHost?
 
@@ -270,9 +290,14 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
     private var switches: [NSSwitch: CardID] = [:]
     private weak var actionsRow: NSView?
 
-    private static let refreshChoices: [(title: String, seconds: Int)] = [
-        ("1 minute", 60), ("2 minutes", 120), ("5 minutes", 300), ("10 minutes", 600),
-    ]
+    private static var refreshChoices: [(title: String, seconds: Int)] {
+        [
+            (L("settings.cards.interval.1"), 60),
+            (L("settings.cards.interval.2"), 120),
+            (L("settings.cards.interval.5"), 300),
+            (L("settings.cards.interval.10"), 600),
+        ]
+    }
 
     init(preferences: Preferences) {
         self.preferences = preferences
@@ -280,9 +305,9 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
 
     func build(in container: FlippedContainer) {
         let form = SettingsForm(in: container)
-        form.pageHeader(icon: SettingsIcons.tile("square.grid.2x2.fill", color: .systemIndigo, size: 32), title: title, subtitle: "Cards that are not an account or a project")
+        form.pageHeader(icon: SettingsIcons.tile("square.grid.2x2.fill", color: .systemIndigo, size: 32), title: title, subtitle: L("settings.cards.subtitle"))
 
-        form.section("On the deck")
+        form.section(L("settings.cards.onDeck"))
         form.beginGroup()
         switches = [:]
         let layout = preferences.cardLayout
@@ -298,7 +323,7 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
         }
         form.endGroup()
 
-        form.section("Fetching")
+        form.section(L("settings.cards.fetching"))
         form.beginGroup()
         let interval = NSPopUpButton()
         for choice in Self.refreshChoices {
@@ -308,14 +333,14 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
         interval.selectItem(at: Self.refreshChoices.firstIndex { $0.seconds == Int(preferences.refreshIntervalSeconds) } ?? 1)
         interval.target = self
         interval.action = #selector(intervalChanged(_:))
-        interval.setAccessibilityLabel("Refresh every")
-        form.settingRow("Refresh every", control: interval)
+        interval.setAccessibilityLabel(L("settings.cards.refreshEvery"))
+        form.settingRow(L("settings.cards.refreshEvery"), control: interval)
 
         actionsField.stringValue = preferences.actionsRepositories.joined(separator: ", ")
         actionsField.delegate = self
-        form.fieldRow("Actions repositories", [(actionsField, nil)])
+        form.fieldRow(L("settings.cards.actionsRepositories"), [(actionsField, nil)])
         form.endGroup()
-        form.footnote("Empty: the repositories of your open pull requests, up to five per account.")
+        form.footnote(L("settings.cards.actions.footnote"))
         applyActionsState()
     }
 
@@ -358,7 +383,7 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
 @MainActor
 final class NotificationsSettingsPage: NSObject, SettingsPage {
     let kind = SettingsWindowController.Section.notifications
-    let title = "Notifications"
+    var title: String { L("settings.notifications.title") }
     var icon: NSImage { SettingsIcons.notifications }
     weak var host: SettingsHost?
 
@@ -400,50 +425,52 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
         form.pageHeader(
             icon: SettingsIcons.tile("bell.badge.fill", color: .systemRed, size: 32),
             title: title,
-            subtitle: "A banner when somebody waits on you, your work gets stuck or a project goes down"
+            subtitle: L("settings.notifications.subtitle")
         )
         switches = [:]
         dependents = []
 
         form.beginGroup()
         form.settingRow(
-            "Allow notifications",
-            subtitle: "macOS asks for permission the first time.",
-            control: SettingsForm.makeSwitch(isOn: preferences.notificationsEnabled, title: "Allow notifications", target: self, action: #selector(masterChanged(_:)))
+            L("settings.notifications.allow"),
+            subtitle: L("settings.notifications.allow.detail"),
+            control: SettingsForm.makeSwitch(isOn: preferences.notificationsEnabled, title: L("settings.notifications.allow"), target: self, action: #selector(masterChanged(_:)))
         )
-        let updates = SettingsForm.makeSwitch(isOn: preferences.notifiesUpdates, title: "New versions of DevDeck", target: self, action: #selector(updatesChanged(_:)))
-        form.settingRow("New versions of DevDeck", control: updates)
-        let test = SettingsForm.button("Send Test Notification", target: self, action: #selector(sendTest))
-        form.settingRow("Test notifications", control: test)
+        let updates = SettingsForm.makeSwitch(isOn: preferences.notifiesUpdates, title: L("settings.notifications.updates"), target: self, action: #selector(updatesChanged(_:)))
+        form.settingRow(L("settings.notifications.updates"), control: updates)
+        let test = SettingsForm.button(L("settings.notifications.test.button"), target: self, action: #selector(sendTest))
+        form.settingRow(L("settings.notifications.test"), control: test)
         dependents += [updates, test]
         form.endGroup()
 
         let github = githubStore.accounts()
         let gitlab = gitlabStore.accounts()
         if !github.isEmpty || !gitlab.isEmpty {
-            form.section("Accounts")
+            form.section(L("settings.notifications.accounts"))
             form.beginGroup()
             form.settingRow("", control: Self.columns([
-                Self.columnLabel("Review requests"), Self.columnLabel("Stuck work"), Self.columnLabel("Failed runs"),
+                Self.columnLabel(L("settings.notifications.column.review")),
+                Self.columnLabel(L("settings.notifications.column.stuck")),
+                Self.columnLabel(L("settings.notifications.column.runs")),
             ]))
             for account in github {
                 form.settingRow(account.label, subtitle: "GitHub", control: Self.columns([
-                    toggle(.review, "github", account.id, isOn: account.notifiesReviewRequests, title: "\(account.label) review requests"),
-                    toggle(.stuck, "github", account.id, isOn: account.notifiesBlocked, title: "\(account.label) stuck work"),
-                    toggle(.runs, "github", account.id, isOn: account.notifiesFailedRuns, title: "\(account.label) failed runs"),
+                    toggle(.review, "github", account.id, isOn: account.notifiesReviewRequests, title: L("notify.toggle.review", account.label)),
+                    toggle(.stuck, "github", account.id, isOn: account.notifiesBlocked, title: L("notify.toggle.stuck", account.label)),
+                    toggle(.runs, "github", account.id, isOn: account.notifiesFailedRuns, title: L("notify.toggle.runs", account.label)),
                 ]))
             }
             for account in gitlab {
                 form.settingRow(account.label, subtitle: "GitLab", control: Self.columns([
-                    toggle(.review, "gitlab", account.id, isOn: account.notifiesReviewRequests, title: "\(account.label) review requests"),
-                    toggle(.stuck, "gitlab", account.id, isOn: account.notifiesBlocked, title: "\(account.label) stuck work"),
+                    toggle(.review, "gitlab", account.id, isOn: account.notifiesReviewRequests, title: L("notify.toggle.review", account.label)),
+                    toggle(.stuck, "gitlab", account.id, isOn: account.notifiesBlocked, title: L("notify.toggle.stuck", account.label)),
                     // GitLab has no Actions card, so there is nothing to switch here. A dash
                     // rather than a hole, so the column reads as "not for this one".
                     Self.columnLabel("-"),
                 ]))
             }
             form.endGroup()
-            form.footnote("Failed runs means a workflow failing on a main branch, and needs the Actions card on.")
+            form.footnote(L("settings.notifications.runs.footnote"))
         }
 
         let projects: [(id: String, title: String, kind: String)] =
@@ -451,22 +478,26 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
             + ddevStore.projects().map { ($0.cardID.rawValue, $0.displayTitle, "DDEV") }
             + localStore.projects().map { ($0.cardID.rawValue, $0.displayTitle, "Project") }
         if !projects.isEmpty {
-            form.section("Projects")
+            form.section(L("settings.notifications.projects"))
             form.beginGroup()
-            form.settingRow("", control: Self.columns([Self.columnLabel("Went down"), Self.columnLabel("Start failed"), NSView()]))
+            form.settingRow("", control: Self.columns([
+                Self.columnLabel(L("settings.notifications.column.down")),
+                Self.columnLabel(L("settings.notifications.column.startFailed")),
+                NSView(),
+            ]))
             let quietDown = preferences.projectsQuietWhenDown
             let quietStart = preferences.projectsQuietWhenStartFails
             for project in projects.sorted(by: { $0.title.localizedStandardCompare($1.title) == .orderedAscending }) {
                 form.settingRow(project.title, subtitle: project.kind, control: Self.columns([
-                    toggle(.down, "project", project.id, isOn: !quietDown.contains(project.id), title: "\(project.title) went down"),
-                    toggle(.start, "project", project.id, isOn: !quietStart.contains(project.id), title: "\(project.title) start failed"),
+                    toggle(.down, "project", project.id, isOn: !quietDown.contains(project.id), title: L("notify.toggle.down", project.title)),
+                    toggle(.start, "project", project.id, isOn: !quietStart.contains(project.id), title: L("notify.toggle.start", project.title)),
                     NSView(),
                 ]))
             }
             form.endGroup()
-            form.footnote("Went down means it stopped without anyone pressing Stop, or stopped answering.")
+            form.footnote(L("settings.notifications.down.footnote"))
         }
-        form.footnote("Nothing is announced on the first check after a launch.")
+        form.footnote(L("settings.notifications.footnote"))
         applyMasterState()
     }
 
@@ -517,9 +548,9 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
             self?.applyMasterState()
             if !granted {
                 let alert = NSAlert()
-                alert.messageText = "macOS is not allowing DevDeck to notify you"
-                alert.informativeText = "Turn it on under System Settings, Notifications, DevDeck."
-                alert.addButton(withTitle: "OK")
+                alert.messageText = L("settings.notifications.denied.title")
+                alert.informativeText = L("settings.notifications.denied.detail")
+                alert.addButton(withTitle: L("button.ok"))
                 NSApp.activate(ignoringOtherApps: true)
                 alert.runModal()
             }

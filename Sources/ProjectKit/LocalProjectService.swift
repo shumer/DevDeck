@@ -66,21 +66,22 @@ public struct LocalProjectService: Sendable {
     /// Read straight off disk rather than through `tail`, because there is no reason to spawn a
     /// shell for something Foundation does, and because this runs on every refresh while the
     /// tray is open.
-    public func logs() async -> LogLines {
+    public func logs(limit: Int = LogTail.lineLimit) async -> LogLines {
         let name = logURL.lastPathComponent
-        guard let text = LogTail.tail(of: logURL) else {
+        let bytes = limit > LogTail.lineLimit ? LogTail.windowTailBytes : LogTail.fileTailBytes
+        guard let text = LogTail.tail(of: logURL, bytes: bytes) else {
             return LogLines(
                 source: "tail \(name)",
-                detail: "nothing has been started from here yet",
+                detail: L("project.log.nothingStarted"),
                 fetchedAt: clock.now,
                 fileURL: nil
             )
         }
-        let lines = LogTail.lines(from: text)
+        let lines = LogTail.lines(from: text, limit: limit)
         return LogLines(
             lines: lines,
             source: "tail \(name)",
-            detail: lines.isEmpty ? "the log is empty" : nil,
+            detail: lines.isEmpty ? L("project.log.empty") : nil,
             fetchedAt: clock.now,
             fileURL: logURL
         )
@@ -108,7 +109,7 @@ public struct LocalProjectService: Sendable {
             // Nothing to ask, so the process we started is the whole answer.
             return LocalProjectStatus(
                 state: isAlive ? .running : .stopped,
-                detail: isAlive ? nil : "no health URL, nothing running from here",
+                detail: isAlive ? nil : L("project.noHealthURL"),
                 checkedAt: clock.now,
                 pid: isAlive ? pid : nil,
                 branch: branch,
@@ -122,7 +123,7 @@ public struct LocalProjectService: Sendable {
             if Self.isServing(response.statusCode) {
                 return LocalProjectStatus(
                     state: .running,
-                    detail: response.isSuccess ? nil : "answered \(response.statusCode)",
+                    detail: response.isSuccess ? nil : L("project.answered", response.statusCode),
                     checkedAt: clock.now,
                     pid: isAlive ? pid : nil,
                     branch: branch,
@@ -134,7 +135,7 @@ public struct LocalProjectService: Sendable {
             // with the code kept so the card can say which.
             return LocalProjectStatus(
                 state: isAlive ? .starting : .stopped,
-                detail: "\(healthURL.absoluteString) answered \(response.statusCode)",
+                detail: L("project.urlAnswered", healthURL.absoluteString, response.statusCode),
                 checkedAt: clock.now,
                 pid: isAlive ? pid : nil,
                 branch: branch,
@@ -192,8 +193,8 @@ public struct LocalProjectService: Sendable {
         guard !latest.isRunning else { return latest }
         return LocalProjectStatus(
             state: .stopped,
-            detail: project.healthCheckURL.map { "started, but \($0.absoluteString) never answered" }
-                ?? "the process did not stay up",
+            detail: project.healthCheckURL.map { L("project.started.noAnswer", $0.absoluteString) }
+                ?? L("project.didNotStayUp"),
             checkedAt: clock.now,
             branch: latest.branch,
             hasLog: latest.hasLog

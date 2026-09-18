@@ -225,10 +225,10 @@ public enum ProjectAttention {
                         id: "project:\(project.id):stopped",
                         tier: .needsFixing,
                         mark: project.mark,
-                        title: "\(project.title) stopped on its own",
+                        title: L("attention.project.stopped.title", project.title),
                         subtitle: withDocker
-                            ? "\(project.kind) · stopped when Docker quit"
-                            : "\(project.kind) · was running at \(AttentionDigest.clock(wasRunningAt)) · nobody pressed Stop",
+                            ? L("attention.project.stopped.withDocker", project.kind)
+                            : L("attention.project.stopped.subtitle", project.kind, AttentionDigest.clock(wasRunningAt)),
                         since: at,
                         action: .showCard(project.cardID),
                         isDismissible: true
@@ -238,7 +238,7 @@ public enum ProjectAttention {
                         id: "project:\(project.id):start",
                         tier: .needsFixing,
                         mark: project.mark,
-                        title: "\(project.title) didn't start",
+                        title: L("attention.project.startFailed.title", project.title),
                         subtitle: line,
                         since: at,
                         action: .showCard(project.cardID),
@@ -249,7 +249,7 @@ public enum ProjectAttention {
                         id: "project:\(project.id):silent",
                         tier: .needsFixing,
                         mark: project.mark,
-                        title: "\(project.title) is up but not answering",
+                        title: L("attention.project.silent.title", project.title),
                         subtitle: detail,
                         since: since,
                         action: .showCard(project.cardID)
@@ -259,8 +259,8 @@ public enum ProjectAttention {
                         id: "project:\(project.id):stop",
                         tier: .needsFixing,
                         mark: project.mark,
-                        title: "\(project.title) is still running",
-                        subtitle: "Stop didn't take effect, it still answers",
+                        title: L("attention.project.stillRunning.title", project.title),
+                        subtitle: L("attention.project.stillRunning.subtitle"),
                         since: at,
                         action: .showCard(project.cardID),
                         isDismissible: true
@@ -270,8 +270,8 @@ public enum ProjectAttention {
                         id: "project:\(project.id):sync",
                         tier: .needsFixing,
                         mark: project.mark,
-                        title: "File sync broken: \(project.title)",
-                        subtitle: "\(detail) · saved files may not reach the site",
+                        title: L("attention.project.sync.title", project.title),
+                        subtitle: L("attention.project.sync.subtitle", detail),
                         since: since,
                         action: .showCard(project.cardID)
                     ))
@@ -286,8 +286,8 @@ public enum ProjectAttention {
                 id: "docker:quit",
                 tier: .needsFixing,
                 mark: .docker,
-                title: canStart ? "Start Docker" : "Docker is gone",
-                subtitle: "Docker quit · \(AttentionWords.list(wentDownWithDocker.map(\.title))) went down",
+                title: canStart ? L("attention.docker.start") : L("attention.docker.gone"),
+                subtitle: L("attention.docker.quit.subtitle", AttentionWords.list(wentDownWithDocker.map(\.title))),
                 since: dockerDownSince,
                 action: canStart ? .startDocker : .none
             ))
@@ -298,8 +298,12 @@ public enum ProjectAttention {
                     id: "docker:off",
                     tier: .goodToKnow,
                     mark: .docker,
-                    title: canStart ? "Docker is not running" : "Docker is not installed",
-                    subtitle: "\(AttentionWords.list(needing)) \(needing.count == 1 ? "needs" : "need") it",
+                    title: canStart ? L("attention.docker.notRunning") : L("attention.docker.notInstalled"),
+                    // Both keys written out: a key built at the call site is a key nothing can
+                    // grep for, and the suite sweeps the sources to keep the table honest.
+                    subtitle: needing.count == 1
+                        ? L("attention.docker.needs.one", AttentionWords.list(needing))
+                        : L("attention.docker.needs.many", AttentionWords.list(needing)),
                     since: dockerDownSince,
                     action: canStart ? .startDocker : .none,
                     isEnabled: canStart
@@ -336,9 +340,9 @@ public enum ProjectAttention {
                         id: "down:\(project.id):\(Int(at.timeIntervalSince1970))",
                         kind: .wentDown,
                         source: source(project),
-                        title: "\(project.title) stopped on its own",
+                        title: L("attention.project.stopped.title", project.title),
                         subtitle: project.kind,
-                        body: "It was running at \(AttentionDigest.clock(wasRunningAt)) and nobody pressed Stop. Click to see the log.",
+                        body: L("attention.banner.stopped.body", AttentionDigest.clock(wasRunningAt)),
                         subject: project.title,
                         target: .card(project.cardID),
                         isQuiet: true
@@ -349,9 +353,9 @@ public enum ProjectAttention {
                         id: "start:\(project.id):\(Int(at.timeIntervalSince1970))",
                         kind: .startFailed,
                         source: source(project),
-                        title: "\(project.title) didn't start",
+                        title: L("attention.project.startFailed.title", project.title),
                         subtitle: project.kind,
-                        body: "\(line). Click to see the log.",
+                        body: L("attention.banner.log", line),
                         subject: project.title,
                         target: .card(project.cardID),
                         isQuiet: true
@@ -361,9 +365,9 @@ public enum ProjectAttention {
                         id: "silent:\(project.id):\(Int(since.timeIntervalSince1970))",
                         kind: .wentDown,
                         source: source(project),
-                        title: "\(project.title) stopped answering",
+                        title: L("attention.banner.silent.title", project.title),
                         subtitle: project.kind,
-                        body: "\(detail). Click to see the log.",
+                        body: L("attention.banner.log", detail),
                         subject: project.title,
                         target: .card(project.cardID),
                         isQuiet: true
@@ -373,9 +377,9 @@ public enum ProjectAttention {
                         id: "sync:\(project.id):\(Int(since.timeIntervalSince1970))",
                         kind: .wentDown,
                         source: source(project),
-                        title: "File sync broke on \(project.title)",
+                        title: L("attention.banner.sync.title", project.title),
                         subtitle: project.kind,
-                        body: "Saved files may not reach the site. Click for the card.",
+                        body: L("attention.banner.sync.body"),
                         subject: project.title,
                         target: .card(project.cardID),
                         isQuiet: true
@@ -392,9 +396,9 @@ public enum ProjectAttention {
                 id: "docker:quit:\(Int((dockerDownSince ?? now).timeIntervalSince1970))",
                 kind: .wentDown,
                 source: .docker,
-                title: "Docker stopped",
+                title: L("attention.banner.docker.title"),
                 subtitle: names,
-                body: "\(names) went down with it. Click to see \(first.title).",
+                body: L("attention.banner.docker.body", names, first.title),
                 subject: "Docker",
                 target: .card(first.cardID),
                 isQuiet: true

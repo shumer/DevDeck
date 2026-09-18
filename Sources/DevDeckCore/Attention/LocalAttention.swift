@@ -15,15 +15,15 @@ public enum CheckoutAttention {
                   now.timeIntervalSince(oldest) >= unpushedAfter
             else { return nil }
             let days = Int(now.timeIntervalSince(oldest) / 86_400)
-            let commits = "\(checkout.localCommits) commit\(checkout.localCommits == 1 ? "" : "s")"
+            let commits = LN("attention.local.commits", checkout.localCommits)
             let action: AttentionAction = folders[checkout.id].map { .openTerminal($0) } ?? .none
             if checkout.hasUpstream {
                 return AttentionItem(
                     id: "checkout:\(checkout.id):unpushed",
                     tier: .goodToKnow,
                     mark: .unpushed,
-                    title: "\(commits) only on this Mac: \(checkout.title)",
-                    subtitle: "\(checkout.branch) · oldest \(days) day\(days == 1 ? "" : "s") ago",
+                    title: L("attention.local.unpushed.title", commits, checkout.title),
+                    subtitle: L("attention.local.unpushed.subtitle", checkout.branch, LN("attention.local.days", days)),
                     since: oldest,
                     action: action
                 )
@@ -32,8 +32,8 @@ public enum CheckoutAttention {
                 id: "checkout:\(checkout.id):noremote",
                 tier: .goodToKnow,
                 mark: .noRemote,
-                title: "Branch not on any remote: \(checkout.title)",
-                subtitle: "\(checkout.branch) · \(commits) · oldest \(days) day\(days == 1 ? "" : "s") ago",
+                title: L("attention.local.noRemote.title", checkout.title),
+                subtitle: L("attention.local.noRemote.subtitle", checkout.branch, commits, LN("attention.local.days", days)),
                 since: oldest,
                 action: action
             )
@@ -57,35 +57,35 @@ public enum UpdateAttention {
         case .available:
             return AttentionItem(
                 id: "update:\(version)", tier: .goodToKnow, mark: .update,
-                title: "Update to \(version)…",
-                subtitle: "Restarts DevDeck, cards come back where they were",
+                title: L("attention.update.available.title", version),
+                subtitle: L("attention.update.available.subtitle"),
                 action: .installUpdate
             )
         case .waiting(let card):
             return AttentionItem(
                 id: "update:\(version)", tier: .goodToKnow, mark: .update,
-                title: "Update to \(version) waits for \(card)",
-                subtitle: "Installs by itself when its command finishes",
+                title: L("attention.update.waits.title", version, card),
+                subtitle: L("attention.update.waits.subtitle"),
                 action: .none, isEnabled: false
             )
         case .downloading(let fraction):
             return AttentionItem(
                 id: "update:\(version)", tier: .goodToKnow, mark: .update,
-                title: "Downloading \(version)… \(Int((fraction * 100).rounded()))%",
-                subtitle: "Restarts DevDeck when it is done",
+                title: L("attention.update.downloading.title", version, Int((fraction * 100).rounded())),
+                subtitle: L("attention.update.downloading.subtitle"),
                 action: .none, isEnabled: false
             )
         case .installing:
             return AttentionItem(
                 id: "update:\(version)", tier: .goodToKnow, mark: .update,
-                title: "Installing \(version)…",
-                subtitle: "Restarts DevDeck in a moment",
+                title: L("attention.update.installing.title", version),
+                subtitle: L("attention.update.installing.subtitle"),
                 action: .none, isEnabled: false
             )
         case .failed(let reason):
             return AttentionItem(
                 id: "update:\(version)", tier: .goodToKnow, mark: .update,
-                title: "Update to \(version) failed, click to retry",
+                title: L("attention.update.failed.title", version),
                 subtitle: reason,
                 action: .installUpdate
             )

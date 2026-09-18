@@ -12,7 +12,7 @@ public struct LocalProjectCard: View {
     private let project: LocalProject
     private let status: LocalProjectStatus
     private let docker: DockerStatus
-    private let logs: LogLines?
+    private let isShowingLogs: Bool
     private let isCollapsed: Bool
     /// The same site, addressed for another device on this network. Nil unless it is running.
     private let phoneURL: URL?
@@ -28,13 +28,12 @@ public struct LocalProjectCard: View {
     private let onRevealFolder: () -> Void
     private let onStartDocker: (() -> Void)?
     private let onToggleLogs: (() -> Void)?
-    private let onOpenLogFile: ((URL) -> Void)?
 
     public init(
         project: LocalProject,
         status: LocalProjectStatus,
         docker: DockerStatus = DockerStatus(state: .unknown),
-        logs: LogLines? = nil,
+        isShowingLogs: Bool = false,
         isCollapsed: Bool = false,
         phoneURL: URL? = nil,
         onOpen: @escaping (URL) -> Void = { _ in },
@@ -42,13 +41,12 @@ public struct LocalProjectCard: View {
         onOpenTerminal: @escaping () -> Void = {},
         onRevealFolder: @escaping () -> Void = {},
         onStartDocker: (() -> Void)? = nil,
-        onToggleLogs: (() -> Void)? = nil,
-        onOpenLogFile: ((URL) -> Void)? = nil
+        onToggleLogs: (() -> Void)? = nil
     ) {
         self.project = project
         self.status = status
         self.docker = docker
-        self.logs = logs
+        self.isShowingLogs = isShowingLogs
         self.isCollapsed = isCollapsed
         self.phoneURL = phoneURL
         self.onOpen = onOpen
@@ -57,10 +55,9 @@ public struct LocalProjectCard: View {
         self.onRevealFolder = onRevealFolder
         self.onStartDocker = onStartDocker
         self.onToggleLogs = onToggleLogs
-        self.onOpenLogFile = onOpenLogFile
     }
 
-    nonisolated public static func size(for project: LocalProject, status: LocalProjectStatus, logs: LogLines? = nil, isCollapsed: Bool = false) -> CGSize {
+    nonisolated public static func size(for project: LocalProject, status: LocalProjectStatus, isCollapsed: Bool = false) -> CGSize {
         guard !isCollapsed else {
             return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
         }
@@ -70,8 +67,7 @@ public struct LocalProjectCard: View {
                 tools: project.toolLinks().map(\.label),
                 environments: project.environmentLinks().map(\.label),
                 hasBranch: status.branch != nil,
-                hasMetaRow: true,
-                logs: logs
+                hasMetaRow: true
             )
         )
     }
@@ -108,9 +104,9 @@ public struct LocalProjectCard: View {
         var actions: [CardAction] = []
         if let first = lifecycle.first { actions.append(first) }
         actions.append(contentsOf: lifecycle.dropFirst().filter(\.isEnabled))
-        actions.append(CardAction("Terminal", systemImage: "terminal", action: onOpenTerminal))
+        actions.append(CardAction(L("card.action.terminal"), systemImage: "terminal", action: onOpenTerminal))
         if let site = status.isRunning ? (project.siteURL ?? project.healthCheckURL) : nil {
-            actions.append(CardAction("Open the site", systemImage: "arrow.up.forward") { onOpen(site) })
+            actions.append(CardAction(L("card.action.openSite"), systemImage: "arrow.up.forward") { onOpen(site) })
         }
         return actions
     }
@@ -124,7 +120,7 @@ public struct LocalProjectCard: View {
 
     private var full: some View {
         CardChrome(
-            title: "Project · \(project.displayTitle)",
+            title: "\(L("project.section.project")) · \(project.displayTitle)",
             glyph: glyph,
             timestamp: ProjectCardMetrics.timestamp(status.checkedAt),
             toggles: headerToggles
@@ -138,9 +134,6 @@ public struct LocalProjectCard: View {
                 onOpenRepository: onOpen
             )
             chips
-            if let logs {
-                CardLogTray(logs: logs, onOpenFile: onOpenLogFile)
-            }
             controls
             Spacer(minLength: 0)
         }
@@ -186,11 +179,11 @@ public struct LocalProjectCard: View {
     private var heroText: String {
         if isDockerBlocked { return DockerGate.text(docker) }
         switch status.state {
-        case .running: return "running"
-        case .starting: return "starting…"
-        case .working: return status.detail ?? "working…"
-        case .stopped: return "stopped"
-        case .unavailable: return "not configured"
+        case .running: return L("card.state.running")
+        case .starting: return L("card.state.starting")
+        case .working: return status.detail ?? L("card.state.working")
+        case .stopped: return L("card.state.stopped")
+        case .unavailable: return L("card.state.notConfigured")
         }
     }
 
@@ -217,9 +210,9 @@ public struct LocalProjectCard: View {
     /// file is one click away inside it.
     private var controls: some View {
         CardActionRow(lifecycle + [
-            CardAction("Terminal", systemImage: "terminal", action: onOpenTerminal),
+            CardAction(L("card.action.terminal"), systemImage: "terminal", action: onOpenTerminal),
             CardAction(
-                "Folder",
+                L("card.action.folder"),
                 systemImage: "folder",
                 isEnabled: project.folderURL != nil,
                 action: onRevealFolder
@@ -231,20 +224,20 @@ public struct LocalProjectCard: View {
         if isDockerBlocked {
             return [
                 DockerGate.startAction(docker, onStart: onStartDocker),
-                CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+                CardAction(L("card.action.restart"), systemImage: "arrow.clockwise", isEnabled: false),
             ]
         }
         if status.isRunning || status.state == .starting {
             return [
-                CardAction("Stop", systemImage: "power", tint: DeckTheme.red, isProminent: true) {
+                CardAction(L("card.action.stop"), systemImage: "power", tint: DeckTheme.red, isProminent: true) {
                     onAction(.stop)
                 },
-                CardAction("Restart", systemImage: "arrow.clockwise") { onAction(.restart) },
+                CardAction(L("card.action.restart"), systemImage: "arrow.clockwise") { onAction(.restart) },
             ]
         }
         return [
             CardAction(
-                "Start",
+                L("card.action.start"),
                 systemImage: "play.fill",
                 tint: DeckTheme.green,
                 isEnabled: !status.isBusy && project.supportsCommands,
@@ -252,7 +245,7 @@ public struct LocalProjectCard: View {
             ) {
                 onAction(.start)
             },
-            CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+            CardAction(L("card.action.restart"), systemImage: "arrow.clockwise", isEnabled: false),
         ]
     }
 
@@ -264,8 +257,8 @@ public struct LocalProjectCard: View {
         if let onToggleLogs {
             toggles.append(CardHeaderToggle(
                 id: "log",
-                isOn: logs != nil,
-                help: logs == nil ? "show the last log lines" : "hide the log"
+                isOn: isShowingLogs,
+                help: isShowingLogs ? L("card.log.window.close") : L("card.log.window.open")
             ) { onToggleLogs() })
         }
         if let phoneURL {
@@ -273,8 +266,9 @@ public struct LocalProjectCard: View {
                 id: "phone",
                 isOn: isShowingPhone,
                 systemImage: "qrcode",
-                help: "open this on your phone",
-                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard))
+                help: L("card.phone.help"),
+                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard)),
+                dismiss: { isShowingPhone = false }
             ) { isShowingPhone.toggle() })
         }
         return toggles

@@ -13,15 +13,15 @@ public enum DisplayMode: String, Codable, Sendable, CaseIterable {
     /// How the setting reads in a pop-up, where the label beside it already says "Panels".
     public var settingsTitle: String {
         switch self {
-        case .desktop: return "Behind windows, on the desktop"
-        case .floating: return "Above windows"
+        case .desktop: return L("settings.deck.place.desktop")
+        case .floating: return L("settings.deck.place.floating")
         }
     }
 
     public var menuTitle: String {
         switch self {
-        case .desktop: return "Keep on desktop (behind windows)"
-        case .floating: return "Float above windows"
+        case .desktop: return L("menu.place.desktop")
+        case .floating: return L("menu.place.floating")
         }
     }
 }

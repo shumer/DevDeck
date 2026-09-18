@@ -45,20 +45,20 @@ public struct ActionsCard: View {
     private var collapsed: some View {
         CardCollapsedRow(
             glyph: CardGlyph.github,
-            title: "GitHub Actions",
+            title: L("card.title.actions"),
             note: collapsedNote,
             tone: collapsedTone.tone,
             color: collapsedTone.color,
-            actions: [CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard)],
-            help: collapsedNote ?? "GitHub Actions"
+            actions: [CardAction(L("card.action.openInBrowser"), systemImage: "arrow.up.forward", action: onOpenDashboard)],
+            help: collapsedNote ?? L("card.title.actions")
         )
     }
 
     private var collapsedNote: String? {
-        guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
-        if snapshot.failedCount > 0 { return "\(snapshot.failedCount) failing" }
-        guard let rate = snapshot.successRate else { return "idle" }
-        return "\(Int((rate * 100).rounded()))% green"
+        guard let snapshot = state.value else { return state.failure?.displayMessage ?? L("card.pill.loading") }
+        if snapshot.failedCount > 0 { return L("card.actions.failing", snapshot.failedCount) }
+        guard let rate = snapshot.successRate else { return L("card.actions.idle") }
+        return L("card.actions.green", Int((rate * 100).rounded()))
     }
 
     private var collapsedTone: (tone: CardStateTone, color: Color) {
@@ -68,7 +68,7 @@ public struct ActionsCard: View {
     }
 
     private var full: some View {
-        CardChrome(title: "GitHub · actions", pill: pill) {
+        CardChrome(title: L("card.chrome.actions"), pill: pill) {
             if let snapshot = state.value {
                 content(snapshot)
             } else {
@@ -82,10 +82,10 @@ public struct ActionsCard: View {
             return (failure.displayMessage, DeckTheme.red)
         }
         guard let snapshot = state.value else { return nil }
-        if snapshot.repositories.isEmpty { return ("no repos", DeckTheme.label) }
-        guard let rate = snapshot.successRate else { return ("idle", DeckTheme.label) }
-        if rate < 0.8 || snapshot.failedCount > 0 { return ("attention", DeckTheme.red) }
-        return ("healthy", DeckTheme.green)
+        if snapshot.repositories.isEmpty { return (L("card.actions.noRepos"), DeckTheme.label) }
+        guard let rate = snapshot.successRate else { return (L("card.actions.idle"), DeckTheme.label) }
+        if rate < 0.8 || snapshot.failedCount > 0 { return (L("card.actions.attention"), DeckTheme.red) }
+        return (L("card.actions.healthy"), DeckTheme.green)
     }
 
     @ViewBuilder
@@ -98,7 +98,7 @@ public struct ActionsCard: View {
                     .font(.system(size: 42, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(headlineColor(snapshot))
-                Text(snapshot.successRate == nil ? "no runs" : "% success · \(snapshot.windowDays)d")
+                Text(snapshot.successRate == nil ? L("card.actions.noRuns") : L("card.actions.successWindow", snapshot.windowDays))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(DeckTheme.label)
             }
@@ -131,7 +131,7 @@ public struct ActionsCard: View {
     }
 
     private func headline(_ snapshot: ActionsSnapshot) -> String {
-        guard let rate = snapshot.successRate else { return "n/a" }
+        guard let rate = snapshot.successRate else { return L("card.na") }
         return "\(Int((rate * 100).rounded()))"
     }
 
@@ -153,7 +153,7 @@ public struct ActionsCard: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 6)
-            Text(run.status.isActive ? "running" : RelativeTime.short(from: run.updatedAt, to: now))
+            Text(run.status.isActive ? L("card.state.running") : RelativeTime.short(from: run.updatedAt, to: now))
                 .font(.system(size: 11))
                 .foregroundStyle(DeckTheme.label)
                 .fixedSize()
@@ -168,11 +168,11 @@ public struct ActionsCard: View {
 
     private func activity(_ snapshot: ActionsSnapshot) -> String {
         var parts: [String] = []
-        if snapshot.runningCount > 0 { parts.append("\(snapshot.runningCount) running") }
-        if snapshot.failedCount > 0 { parts.append("\(snapshot.failedCount) failed") }
-        if parts.isEmpty { parts.append("\(snapshot.repositories.count) repos") }
+        if snapshot.runningCount > 0 { parts.append(L("card.actions.running", snapshot.runningCount)) }
+        if snapshot.failedCount > 0 { parts.append(L("card.actions.failed", snapshot.failedCount)) }
+        if parts.isEmpty { parts.append(LN("card.repos", snapshot.repositories.count)) }
         if let average = snapshot.averageDurationSeconds {
-            parts.append("avg \(RelativeTime.duration(average))")
+            parts.append(L("card.actions.avg", RelativeTime.duration(average)))
         }
         return parts.joined(separator: " · ")
     }
@@ -180,10 +180,10 @@ public struct ActionsCard: View {
     private var emptyConfiguration: some View {
         VStack(alignment: .leading, spacing: 2) {
             Spacer(minLength: 8)
-            Text("No repositories to watch")
+            Text(L("card.actions.noRepositories"))
                 .font(.system(size: 13))
                 .foregroundStyle(DeckTheme.label)
-            Text("Open a pull request, or list repositories in settings")
+            Text(L("card.actions.hint"))
                 .font(.system(size: 11))
                 .foregroundStyle(DeckTheme.label)
             Spacer(minLength: 8)

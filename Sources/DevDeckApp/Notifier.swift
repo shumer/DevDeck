@@ -57,9 +57,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             id: "test.\(UUID().uuidString)",
             kind: .reviewRequest,
             source: .github,
-            title: "DevDeck test notification",
-            subtitle: "Notifications work",
-            body: "A real one names the pull request or the project, and opens it when clicked.",
+            title: L("notify.test.title"),
+            subtitle: L("notify.test.subtitle"),
+            body: L("notify.test.body"),
             subject: "test",
             target: .menu,
             isQuiet: false
@@ -71,8 +71,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     func postUpdate(_ version: String) {
         guard isAuthorized else { return }
         let content = UNMutableNotificationContent()
-        content.title = "DevDeck \(version) is available"
-        content.body = "Click to install it now, or later from the DevDeck menu."
+        content.title = L("notify.update.title", version)
+        content.body = L("notify.update.body")
         content.userInfo = ["action": "update"]
         content.threadIdentifier = "devdeck.update"
         add(content, identifier: "devdeck.update.\(version)")

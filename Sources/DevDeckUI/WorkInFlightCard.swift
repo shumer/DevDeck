@@ -68,20 +68,20 @@ public struct WorkInFlightCard: View {
             note: note,
             tone: rows.contains(where: \.isUrgent) ? .alert : (rows.isEmpty ? .good : .neutral),
             color: rows.contains(where: \.isUrgent) ? DeckTheme.amber : DeckTheme.green,
-            help: note ?? "Work in flight"
+            help: note ?? L("card.title.workInFlight")
         )
     }
 
     private var note: String? {
-        guard !rows.isEmpty else { return "all clean" }
+        guard !rows.isEmpty else { return L("card.wif.allClean") }
         let unpushed = rows.filter { $0.ahead > 0 }.count
-        if unpushed > 0 { return "\(unpushed) unpushed · \(rows.count) in flight" }
-        return "\(rows.count) in flight"
+        if unpushed > 0 { return L("card.wif.unpushedInFlight", unpushed, rows.count) }
+        return L("card.wif.inFlight", rows.count)
     }
 
     private var full: some View {
         CardChrome(
-            title: "Work in flight",
+            title: L("card.title.workInFlight"),
             glyph: nil,
             timestamp: ProjectCardMetrics.timestamp(checkedAt)
         ) {
@@ -92,7 +92,7 @@ public struct WorkInFlightCard: View {
                     .font(.system(size: 26, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(DeckTheme.value.opacity(0.85))
-                Text(rows.isEmpty ? "clean" : "in flight")
+                Text(rows.isEmpty ? L("card.wif.clean") : L("card.wif.inFlight.word"))
                     .font(.system(size: 12))
                     .foregroundStyle(DeckTheme.label)
                 Spacer(minLength: 6)
@@ -125,12 +125,12 @@ public struct WorkInFlightCard: View {
 
     private var unpushedSummary: String? {
         let unpushed = rows.filter { $0.ahead > 0 }.count
-        return unpushed > 0 ? "\(unpushed) unpushed" : nil
+        return unpushed > 0 ? L("card.wif.unpushed", unpushed) : nil
     }
 
     private var footer: String {
         let checkouts = states.count
-        return "\(checkouts) checkout\(checkouts == 1 ? "" : "s") watched"
+        return LN("card.wif.watched", checkouts)
     }
 
     private func row(_ state: CheckoutState) -> some View {
@@ -160,6 +160,6 @@ public struct WorkInFlightCard: View {
         .contentShape(Rectangle())
         .clickable()
         .onTapGesture { onOpen(state) }
-        .help("\(state.title) on \(state.branch): \(state.summary)")
+        .help(L("attention.row.colon", "\(state.title) · \(state.branch)", state.summary))
     }
 }

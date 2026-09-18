@@ -37,12 +37,17 @@ public struct LogLines: Sendable, Equatable {
 /// reads the CLI and a plain project reads a file, and all three arrive as the same mess of
 /// colour escapes, carriage returns and blank lines.
 public enum LogTail {
-    /// How many lines a tray holds. Six is what fits without the card becoming a log window,
-    /// and a log window is what the arrow in the corner is for.
+    /// How many lines the card's narration needs: the newest one, and a little either side of
+    /// it for whoever is reading the card rather than the log.
     public static let lineLimit = 6
-    /// How much of a file is worth reading to find its last six lines. Generous: a line of
+    /// How many a log window holds. Enough for a failed start with a stack trace and the
+    /// requests around it, and few enough that re-reading every couple of seconds is free.
+    public static let windowLineLimit = 400
+    /// How much of a file is worth reading to find its last few lines. Generous: a line of
     /// build output can be long, and a start that failed prints a stack trace.
     public static let fileTailBytes = 64 * 1024
+    /// And how much when a window is asking, which wants four hundred of them.
+    public static let windowTailBytes = 512 * 1024
 
     /// The last `limit` useful lines of a command's output.
     ///

@@ -1,4 +1,5 @@
 import AppKit
+import DevDeckCore
 
 /// The menus nobody sees, and a window needs anyway.
 ///
@@ -21,20 +22,35 @@ enum EditMenu {
         main.addItem(appItem)
 
         let editItem = NSMenuItem()
-        let edit = NSMenu(title: "Edit")
+        let edit = NSMenu(title: L("menu.edit"))
         for (title, selector, key) in editItems {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: key)
             edit.addItem(item)
         }
+        // Find, for the log window: ⌘F is routed through the main menu like everything else, and
+        // `performTextFinderAction:` is what a text view listens for. The tags are the system's
+        // own numbering of what to do.
+        edit.addItem(.separator())
+        let findItem = NSMenuItem(title: L("menu.edit.find"), action: nil, keyEquivalent: "")
+        let find = NSMenu(title: L("menu.edit.find"))
+        for (title, tag, key, modifiers) in findItems {
+            let item = NSMenuItem(title: title, action: Selector(("performTextFinderAction:")), keyEquivalent: key)
+            item.tag = tag
+            item.keyEquivalentModifierMask = modifiers
+            find.addItem(item)
+        }
+        findItem.submenu = find
+        edit.addItem(findItem)
+
         editItem.submenu = edit
         main.addItem(editItem)
 
         // Window, for the same reason as Edit: ⌘W and ⌘M are routed through the main menu, and
         // without them the settings window can only be closed by its red button.
         let windowItem = NSMenuItem()
-        let windows = NSMenu(title: "Window")
-        windows.addItem(NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
-        windows.addItem(NSMenuItem(title: "Minimise", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
+        let windows = NSMenu(title: L("menu.window"))
+        windows.addItem(NSMenuItem(title: L("menu.window.close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+        windows.addItem(NSMenuItem(title: L("menu.window.minimise"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
         windowItem.submenu = windows
         main.addItem(windowItem)
 
@@ -42,12 +58,24 @@ enum EditMenu {
         NSApp.windowsMenu = windows
     }
 
-    private static let editItems: [(String, Selector, String)] = [
-        ("Undo", Selector(("undo:")), "z"),
-        ("Redo", Selector(("redo:")), "Z"),
-        ("Cut", #selector(NSText.cut(_:)), "x"),
-        ("Copy", #selector(NSText.copy(_:)), "c"),
-        ("Paste", #selector(NSText.paste(_:)), "v"),
-        ("Select All", #selector(NSText.selectAll(_:)), "a"),
-    ]
+    /// The four the system draws a find bar for, by `NSTextFinder.Action`.
+    private static var findItems: [(String, Int, String, NSEvent.ModifierFlags)] {
+        [
+            (L("menu.edit.find.find"), NSTextFinder.Action.showFindInterface.rawValue, "f", .command),
+            (L("menu.edit.find.next"), NSTextFinder.Action.nextMatch.rawValue, "g", .command),
+            (L("menu.edit.find.previous"), NSTextFinder.Action.previousMatch.rawValue, "G", [.command, .shift]),
+            (L("menu.edit.find.selection"), NSTextFinder.Action.setSearchString.rawValue, "e", .command),
+        ]
+    }
+
+    private static var editItems: [(String, Selector, String)] {
+        [
+            (L("menu.edit.undo"), Selector(("undo:")), "z"),
+            (L("menu.edit.redo"), Selector(("redo:")), "Z"),
+            (L("menu.edit.cut"), #selector(NSText.cut(_:)), "x"),
+            (L("menu.edit.copy"), #selector(NSText.copy(_:)), "c"),
+            (L("menu.edit.paste"), #selector(NSText.paste(_:)), "v"),
+            (L("menu.edit.selectAll"), #selector(NSText.selectAll(_:)), "a"),
+        ]
+    }
 }

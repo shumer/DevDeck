@@ -14,7 +14,8 @@ DDEVKit        one integration: projects, ddev list, .ddev/config.yaml
 ProjectKit     one integration: plain projects - folder probe, detached start, health check
     │
 DevDeckCore    no AppKit, no integration specifics: config, HTTP, tokens, code identity,
-               policies, command runner, the Docker probe, the update check
+               policies, command runner, the Docker probe, the update check, the words
+               every layer above reads through `L` and `LN`
     │
 KeychainACL    C shim for the one deprecated Keychain call Swift cannot silence
 ```
@@ -87,16 +88,23 @@ serves and `fusion stop` returns before the containers are down, so both are fol
 it a stop that quietly did nothing was repainted green by the next poll, as though the button
 had never been pressed. Now the card stays on "running" and says why.
 
-**A tray reads, it does not tail.** `LogTail` in `DevDeckCore` turns whatever a project prints
-into the six lines a card can hold: escapes stripped, blanks dropped, carriage returns treated as
-line breaks so progress output is not one ribbon, and a file read from its last 64KB rather than
-from the start. Each kit says where its lines come from - `LocalStackService.logs()` through
-`docker logs` on the containers carrying the compose label, `DDEVEnvironment.logs(for:)` through
-the CLI, `LocalProjectService.logs()` straight off the file a detached start writes - and all
-three return the same `LogLines`. The controller reads only the trays that are open, on the
-regular pass and once more when an action settles; a closed tray runs no commands at all. The
-switch lives in the card header rather than the control row because four buttons already need
-more width than the row has.
+**A log is read, not tailed.** `LogTail` in `DevDeckCore` turns whatever a project prints into
+lines something can show: escapes stripped, blanks dropped, carriage returns treated as line
+breaks so progress output is not one ribbon, and a file read from its last chunk rather than from
+the start. Each kit says where its lines come from - `LocalStackService.logs(limit:)` through
+`docker logs` on the containers carrying the compose label, `DDEVEnvironment.logs(for:limit:)`
+through the CLI, `LocalProjectService.logs(limit:)` straight off the file a detached start writes
+- and all three return the same `LogLines`. The limit is what tells them who is asking: six lines
+for a card, `LogTail.windowLineLimit` for a window, which also reads more of the file.
+
+**The log itself is a window.** `LogWindowController` opens one per project, dark, monospaced,
+selectable, with ⌘F through the Edit menu's Find items, a footer that says where the lines come
+from, a Follow switch and a button that opens the file. It re-reads every two seconds while it is
+visible and nothing at all while it is behind another window or minimised. `DeckController` keeps
+`logWindowCards` and `logTails`; the window subscribes to the second, so what it shows and what
+the deck knows cannot disagree, and the card's header button is lit from the first. Closing the
+window, by its own button or ⌘W, tells the controller, which drops the lines and stops reading.
+See [adr/0021-the-log-is-a-window.md](adr/0021-the-log-is-a-window.md).
 
 **A command speaks while it runs.** `CommandRunning.run` takes an `onOutput` closure and
 `ShellCommandRunner` drains both pipes a line at a time - splitting on carriage returns too,
@@ -242,6 +250,11 @@ comes out empty looks, on a card, identical to one that was never added.
 `swift run GlyphPreview out.png` draws the lot at 15 points and blown up, on the glass they
 sit on, which is the only way to tell a mark that fills correctly from one whose
 knocked-out letter has gone solid.
+
+Away from the glass the same mark is drawn on a tile: `SettingsIcons.mark` puts it on a dark
+rounded square, and the settings list, a page header and an attention row in the menu all ask for
+it at `SidebarMetrics.iconSize`, the Mac's own "Sidebar icon size". One account has one mark at
+one size, so a row in the menu and a row in the window are recognisably the same thing.
 
 Two of them do not wear their own colour. GitHub's octocat is black and Next's disc is black,
 and black on dark glass is a hole rather than a logo, so both go white - which is what both
@@ -516,6 +529,36 @@ touch a row or the sidebar, never the form.
 "Settings for This Card…" on a card's right-click menu opens its own form, through
 `CardModule.settingsTarget`; `open -a DevDeck --args --settings project agrica-qdd` does the same
 from a terminal. See [adr/0018-settings-like-system-settings.md](adr/0018-settings-like-system-settings.md).
+
+## Words
+
+Every string on screen is a key. `Sources/DevDeckCore/Localisation/Strings.swift` is the only
+place that reads a table; call sites say `L("key")`, `L("key", argument)` for a sentence with
+something in it, and `LN("key", count)` for anything counted. Nothing caches what comes back,
+because the language can change while the deck is up.
+
+The tables are `Resources/Localizations/<code>.lproj/Localizable.strings`, one per language, with
+`Localizable.stringsdict` beside them for the plural forms. `build.sh` copies the folders into
+the bundle and lists them in `CFBundleLocalizations`. The chain is: the chosen language, then
+English, then the key itself, which is how a missing translation shows up as something obviously
+wrong rather than as an empty row.
+
+`Strings.use(_:lookingIn:)` picks the language: `.system` hands the choice to macOS through
+`Bundle.main`, anything else loads that `.lproj` directly. The setting lives in `Preferences`, the
+General page sets it, and the settings window rebuilds itself on the spot. The suite has no
+bundle of its own, so it points the same call at the repository.
+
+Two rules keep the layout honest when a translation is longer than the English:
+
+- A settings group measures its own labels and sets its label column to the widest of them
+  (`SettingsForm.endGroup`), so the fields still line up and nothing is cut.
+- A card's button row (`CardActionRow.layout`) shrinks a little, and when that would start
+  eating a word it gives up whole words instead - the quiet buttons first, from the right -
+  leaving the icon with the word in its tooltip.
+
+Terms are not translated: `pull request`, `merge request`, `pipeline`, `commit`, `Docker`,
+`DDEV`, `Arc XP`. Logs stay English. See
+[adr/0020-six-languages.md](adr/0020-six-languages.md).
 
 ## Concurrency
 

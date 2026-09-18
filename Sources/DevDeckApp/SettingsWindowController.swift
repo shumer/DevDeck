@@ -77,13 +77,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
 
     /// Opens the window on a page, or on one account or project when `id` names it.
     func show(_ section: Section = .general, id: String? = nil) {
+        // Asking for a window that is already up is not a second window, and the Dock icon is
+        // counted, not flagged.
+        let wasVisible = window?.isVisible ?? false
         if window == nil { makeWindow() }
         open(section, id: id ?? (section == current.section ? current.id : nil))
         // In the Dock while this window is open, and out of it again when it closes. An agent app
         // has no Dock icon, so a minimised window sat there as a nameless blank page with no way
         // to tell whose it was; with the app itself in the Dock, macOS puts its icon on the tile
         // and the window can be brought back the ordinary way.
-        NSApp.setActivationPolicy(.regular)
+        if !wasVisible { WindowPresence.retain() }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
@@ -98,10 +101,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
             backing: .buffered,
             defer: false
         )
-        window.title = "DevDeck Settings"
-        // What the Dock shows under a minimised window, where "DevDeck Settings" is the only clue
-        // to whose window it is.
-        window.miniwindowTitle = "DevDeck Settings"
+        window.title = L("settings.window.title")
+        // What the Dock shows under a minimised window, where the app's name is the only clue to
+        // whose window it is.
+        window.miniwindowTitle = L("settings.window.title")
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         // The form column has a fixed width, so a narrower window only cuts into it.
@@ -224,7 +227,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     /// with the window: this is an agent app again once there is nothing to show.
     func windowWillClose(_ notification: Notification) {
         window?.makeFirstResponder(nil)
-        NSApp.setActivationPolicy(.accessory)
+        WindowPresence.release()
     }
 
     // MARK: Identity of a row
@@ -258,7 +261,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
             SettingsListItem(id: Self.entryID(page.kind, nil), title: page.title, icon: page.icon)
         })]
 
-        for (group, title) in [(SettingsListGroup.accounts, "Accounts"), (.projects, "Projects")] {
+        for (group, title) in [(SettingsListGroup.accounts, L("settings.sidebar.accounts")), (.projects, L("settings.sidebar.projects"))] {
             let items = sections
                 .filter { $0.group == group }
                 .flatMap { section in
@@ -292,7 +295,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         window?.title = listSections
             .flatMap(\.items)
             .first { $0.id == wanted }
-            .map { "\($0.title) - DevDeck Settings" } ?? "DevDeck Settings"
+            .map { L("settings.window.titleFor", $0.title) } ?? L("settings.window.title")
     }
 
     func reloadDetail() {
@@ -309,10 +312,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
             page.build(in: container)
         } else if let section = sectionObject(current.section), let id = current.id {
             if !section.buildForm(for: id, in: container) {
-                emptyState("Nothing is selected.", in: container)
+                emptyState(L("settings.empty.nothingSelected"), in: container)
             }
         } else {
-            emptyState("Nothing here yet. Press + below the list to add one.", in: container)
+            emptyState(L("settings.empty.nothingYet"), in: container)
         }
 
         let needed = (container.subviews.map(\.frame.maxY).max() ?? 0) + 28

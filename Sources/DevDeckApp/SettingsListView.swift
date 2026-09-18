@@ -1,4 +1,5 @@
 import AppKit
+import DevDeckCore
 
 /// A group of rows in the sidebar, under a heading or, for the pages at the top, under none.
 struct SettingsListSection {
@@ -66,7 +67,7 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
 
         // No material of its own: this view is the window's sidebar item, and that is what draws
         // the translucency and keeps it consistent with every other sidebar on the machine.
-        search.placeholderString = "Search"
+        search.placeholderString = L("settings.search")
         search.controlSize = .large
         search.sendsSearchStringImmediately = true
         search.delegate = self
@@ -82,14 +83,14 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
         addButton.pullsDown = true
         addButton.isBordered = false
         addButton.autoresizingMask = [.maxXMargin]
-        addButton.setAccessibilityLabel("Add")
-        addButton.toolTip = "Add an account or a project"
+        addButton.setAccessibilityLabel(L("button.add"))
+        addButton.toolTip = L("settings.sidebar.add")
 
         addSubview(addButton)
 
         removeButton.frame = NSRect(x: 54, y: 6, width: 24, height: 22)
         removeButton.image = NSImage(systemSymbolName: "minus", accessibilityDescription: "Remove")
-        removeButton.toolTip = "Remove the selected account or project"
+        removeButton.toolTip = L("settings.sidebar.remove")
         removeButton.isBordered = false
         removeButton.target = self
         removeButton.action = #selector(removeTapped)
@@ -100,7 +101,7 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
         addSubview(footerLine)
 
         setAccessibilityRole(.list)
-        setAccessibilityLabel("Settings")
+        setAccessibilityLabel(L("settings.window.title"))
     }
 
     @available(*, unavailable)
@@ -180,7 +181,7 @@ final class SettingsListView: NSView, NSSearchFieldDelegate {
             }
 
             if items.isEmpty {
-                let hint = SettingsForm.label("Add one with +", size: 12, color: .tertiaryLabelColor)
+                let hint = SettingsForm.label(L("settings.sidebar.empty"), size: 12, color: .tertiaryLabelColor)
                 hint.frame = NSRect(x: SidebarMetrics.textLeft, y: y + 6, width: width - SidebarMetrics.textLeft - 12, height: 16)
                 hint.autoresizingMask = [.width]
                 document.addSubview(hint)
@@ -330,7 +331,7 @@ final class SettingsListRow: NSView {
         titleField.autoresizingMask = [.width]
         addSubview(titleField)
 
-        toolTip = [item.title, item.detail, item.isDimmed ? "not on the deck" : ""]
+        toolTip = [item.title, item.detail, item.isDimmed ? L("settings.list.notOnDeck") : ""]
             .filter { !$0.isEmpty }
             .joined(separator: " · ")
         setAccessibilityElement(true)

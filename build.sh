@@ -46,11 +46,21 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
   <key>CFBundleIconFile</key><string>DevDeck</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string><string>de</string><string>es</string>
+    <string>fr</string><string>it</string><string>ru</string>
+  </array>
   <!-- Agent app: no Dock icon, no application menu. -->
   <key>LSUIElement</key><true/>
 </dict>
 </plist>
 PLIST
+
+# One folder per language, copied as they are: macOS picks the closest to the Mac's own language
+# when the setting says "System", and `Strings` reads whichever one Settings names.
+cp -R "$HERE"/Resources/Localizations/*.lproj "$APP/Contents/Resources/"
 
 # The application icon is artwork, not code: every size in the iconset was drawn at that size
 # rather than resampled from the largest, and `Resources/AppIcon` keeps the SVG and the geometry

@@ -96,7 +96,8 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   `build.sh`. Without it macOS draws the settings window with the previous era's title bar. The
   deployment target is a separate number and stays at macOS 14.
 - **Sidebar metrics come from `SidebarMetrics`**, which follows the Mac's own "Sidebar icon size"
-  setting. Never hard-code a row height or an icon size there.
+  setting. Never hard-code a row height or an icon size there, and that includes the marks in the
+  menu-bar menu: one account has one mark at one size, in the window and in the menu alike.
 - **A control that depends on a switch is disabled while that switch is off**, the way System
   Settings greys out what a master switch turns off.
 - **Settings forms are built with `SettingsForm`**, never with hand-computed frames, and with
@@ -120,6 +121,22 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   menu item is only a header or a status; anything naming a thing is clickable. An error names
   the account or project, what is wrong and the next step, never an HTTP class, and never
   `GitHub` on a GitLab card. A banner's title says what happened in about 40 characters.
+- **Every word on screen is a key, never a literal.** `L("key")`, `L("key", argument)` for a
+  sentence with something in it, `LN("key", count)` for anything counted, and the same key in all
+  six tables under `Resources/Localizations`. English is the table the others are measured
+  against, and the suite fails on a hole in any of them and on a word left in the table after the
+  thing that said it went away. The key is a literal at the call site, never built from a
+  condition, or the sweep that checks this cannot see it. Terms stay as they are written - `pull
+  request`, `pipeline`, `Docker` - and logs stay English. Nothing caches a translated string: the
+  language changes while the deck is up.
+- **A layout is measured, never counted in English characters.** A translation can be half again
+  as long: a settings group sizes its label column to its own labels, a card's button row gives
+  up whole words before it cuts one. A new row that assumes a fixed width is a row that breaks in
+  German.
+- **A popover is bound both ways.** `.constant(...)` cannot be written back, so a popover closed
+  by a click somewhere else leaves the view believing it is open and the next redraw puts it
+  straight back. What closes it is a dismissal, not a toggle: a dismissal can arrive twice
+  before the view is drawn again, and a toggle run twice reopens what it just closed.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it
   is verified first. A control that silently does nothing until some other button is pressed
   is how the browser choice failed to take effect at all.
