@@ -61,7 +61,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     /// object before the status item exists, and the status item needs nothing back.
     func install() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.toolTip = "DevDeck: checking…"
+        statusItem.button?.toolTip = L("attention.tooltip", L("menu.checking"))
         statusItem.button?.setAccessibilityLabel("DevDeck")
         let menu = NSMenu()
         menu.delegate = self
@@ -127,7 +127,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         menu.addItem(header)
 
         let collapse = NSMenuItem(
-            title: controller.isCollapsed(card) ? "Show the whole card" : "Collapse to one row",
+            title: controller.isCollapsed(card) ? L("menu.card.showWhole") : L("menu.card.collapse"),
             action: #selector(toggleCollapsed(_:)),
             keyEquivalent: ""
         )
@@ -137,7 +137,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
 
         if controller.hasLogSource(card) {
             let logs = NSMenuItem(
-                title: controller.isExpanded(card) ? "Hide the log" : "Show the log",
+                title: controller.isShowingLogs(card) ? L("menu.card.hideLog") : L("menu.card.showLog"),
                 action: #selector(toggleLogs(_:)),
                 keyEquivalent: ""
             )
@@ -147,14 +147,14 @@ final class DeckMenu: NSObject, NSMenuDelegate {
             menu.addItem(logs)
         }
 
-        let hide = NSMenuItem(title: "Hide this card", action: #selector(toggleCard(_:)), keyEquivalent: "")
+        let hide = NSMenuItem(title: L("menu.card.hide"), action: #selector(toggleCard(_:)), keyEquivalent: "")
         hide.target = self
         hide.representedObject = card.rawValue
         menu.addItem(hide)
 
         // Straight to this card's own form. It used to open the window on whatever page came
         // first and leave the project to be found in a list of fifteen.
-        let settings = NSMenuItem(title: "Settings for This Card…", action: #selector(showCardSettings(_:)), keyEquivalent: "")
+        let settings = NSMenuItem(title: L("menu.card.settings"), action: #selector(showCardSettings(_:)), keyEquivalent: "")
         settings.target = self
         settings.representedObject = card.rawValue
         menu.addItem(settings)
@@ -162,8 +162,8 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(lockItem())
         for (title, selector) in [
-            ("Tidy panels into columns", #selector(tidy)),
-            ("Refresh now", #selector(refreshNow)),
+            (L("menu.tidy"), #selector(tidy)),
+            (L("menu.refresh"), #selector(refreshNow)),
         ] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
             item.target = self
@@ -181,7 +181,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         // "1 waiting on you" in grey, which in a menu reads as "nothing to do here".
         addAttention(to: menu)
 
-        menu.addItem(NSMenuItem.sectionHeader(title: "Cards"))
+        menu.addItem(NSMenuItem.sectionHeader(title: L("menu.cards")))
 
         let resolved = cards.resolved
         for card in resolved where cards.menuGroup(of: card.id) == nil {
@@ -197,20 +197,20 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         // The one item that is about a kind rather than a card. It stays here rather than in
         // the module, because it is the only one and a protocol for it would be a protocol
         // with one conformer.
-        let hasDDEV = resolved.contains { cards.menuGroup(of: $0.id) == "DDEV projects" }
+        let hasDDEV = resolved.contains { cards.menuGroup(of: $0.id) == L("menu.group.ddev") }
         if hasDDEV {
             let powerOff = NSMenuItem(
-                title: "Power off all DDEV",
+                title: L("menu.ddev.powerOff"),
                 action: #selector(powerOffDDEV),
                 keyEquivalent: ""
             )
             powerOff.target = self
-            powerOff.toolTip = "ddev poweroff: stops every project and the router"
+            powerOff.toolTip = L("menu.ddev.powerOff.tooltip")
             menu.addItem(powerOff)
         }
 
         menu.addItem(.separator())
-        let open = NSMenuItem(title: "Open pull requests in browser", action: #selector(openDashboard), keyEquivalent: "")
+        let open = NSMenuItem(title: L("menu.openPulls"), action: #selector(openDashboard), keyEquivalent: "")
         open.target = self
         menu.addItem(open)
 
@@ -219,15 +219,15 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         // lives in Settings. A menu that mixes the two grows until the thing you actually came
         // for is somewhere in the middle of it.
         menu.addItem(.separator())
-        let arrangementsItem = NSMenuItem(title: "Arrangements", action: nil, keyEquivalent: "")
+        let arrangementsItem = NSMenuItem(title: L("menu.arrangements"), action: nil, keyEquivalent: "")
         arrangementsItem.submenu = arrangements.submenu()
         menu.addItem(arrangementsItem)
 
         menu.addItem(lockItem())
         for (title, selector) in [
-            ("Tidy panels into columns", #selector(tidy)),
-            ("Refresh now", #selector(refreshNow)),
-            ("Settings…", #selector(showSettings)),
+            (L("menu.tidy"), #selector(tidy)),
+            (L("menu.refresh"), #selector(refreshNow)),
+            (L("menu.settings"), #selector(showSettings)),
         ] {
             let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
             item.target = self
@@ -235,7 +235,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Quit DevDeck", action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: L("menu.quit"), action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
     }
@@ -270,10 +270,10 @@ final class DeckMenu: NSObject, NSMenuDelegate {
 
         guard !digest.isEmpty else {
             // Said rather than left out, so an empty menu is a confirmation and not a question.
-            let calm = NSMenuItem(title: "Nothing needs you", action: nil, keyEquivalent: "")
+            let calm = NSMenuItem(title: L("menu.calm"), action: nil, keyEquivalent: "")
             calm.isEnabled = false
             calm.image = AttentionImages.calm
-            setSubtitle("Checked at \(AttentionDigest.clock(controller.lastCheckedAt ?? now))", on: calm)
+            setSubtitle(L("menu.checkedAt", AttentionDigest.clock(controller.lastCheckedAt ?? now)), on: calm)
             menu.addItem(calm)
             menu.addItem(.separator())
             return
@@ -316,10 +316,10 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         menu.addItem(row)
 
         let alternate: (title: String, action: Selector)? = {
-            if item.inboxThreadID != nil { return ("Mark as Read: \(item.title)", #selector(markAttentionRead(_:))) }
-            if item.isDismissible { return ("Dismiss: \(item.title)", #selector(dismissAttention(_:))) }
+            if item.inboxThreadID != nil { return (L("menu.markRead", item.title), #selector(markAttentionRead(_:))) }
+            if item.isDismissible { return (L("menu.dismiss", item.title), #selector(dismissAttention(_:))) }
             if item.action == .installUpdate, let version = updater.available?.version.description {
-                return ("What's new in \(version)", #selector(openReleaseNotes))
+                return (L("menu.whatsNew", version), #selector(openReleaseNotes))
             }
             return nil
         }()
@@ -385,10 +385,10 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     /// a trip to a settings window for that is the one interruption the deck should not cost.
     /// Settings keeps its switch too; both write the same preference.
     private func lockItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "Lock positions", action: #selector(toggleLock), keyEquivalent: "")
+        let item = NSMenuItem(title: L("menu.lock"), action: #selector(toggleLock), keyEquivalent: "")
         item.target = self
         item.state = preferences.isLocked ? .on : .off
-        item.toolTip = "Stops a stray drag moving a panel. It does not stop the deck packing a column."
+        item.toolTip = L("menu.lock.tooltip")
         return item
     }
 
@@ -399,7 +399,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     private func addGroup(_ title: String, cards: [ResolvedCard], to menu: NSMenu) {
         guard !cards.isEmpty else { return }
         let shown = cards.filter(\.isEnabled).count
-        let item = NSMenuItem(title: "\(title)  (\(shown)/\(cards.count))", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: L("menu.group.count", title, shown, cards.count), action: nil, keyEquivalent: "")
         let submenu = NSMenu()
         submenu.autoenablesItems = false
         for card in cards {
@@ -420,7 +420,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         item.target = self
         if !card.descriptor.isImplemented {
             item.isEnabled = false
-            item.toolTip = "Not built yet"
+            item.toolTip = L("menu.notBuilt")
         }
         return item
     }
@@ -448,11 +448,10 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         // The one item in this menu that stops everything at once, and it sits a line away from
         // Refresh now.
         let alert = NSAlert()
-        alert.messageText = "Power off every DDEV project?"
-        alert.informativeText = "ddev poweroff stops every project on this machine and the router "
-            + "with them, whether or not it is on the deck."
-        alert.addButton(withTitle: "Power off")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = L("menu.ddev.confirm.title")
+        alert.informativeText = L("menu.ddev.confirm.detail")
+        alert.addButton(withTitle: L("button.powerOff"))
+        alert.addButton(withTitle: L("button.cancel"))
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         controller.powerOffDDEV()

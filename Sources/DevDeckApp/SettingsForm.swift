@@ -30,6 +30,9 @@ final class SettingsForm {
     /// Text sits about two points inside its field, so a label lines up with a control's edge
     /// only if its frame starts two points further out.
     nonisolated static let labelInset: CGFloat = 8
+    /// Where the controls start when the labels are short. A translation can be half again as
+    /// long as the English, so this is the floor rather than the width: each group widens its
+    /// own column to whatever its longest label needs.
     nonisolated static let labelColumn: CGFloat = 130
 
     private let parent: FlippedContainer
@@ -39,6 +42,9 @@ final class SettingsForm {
 
     private var group: GroupBoxView?
     private var groupCursor: CGFloat = 0
+    /// The rows of the open group, placed once the group knows how wide its label column is.
+    private var groupRows: [(CGFloat) -> Void] = []
+    private var groupLabelWidth: CGFloat = 0
     /// Whether the last thing placed was a group, so the next section title knows to add air.
     private var afterGroup = false
 
@@ -144,10 +150,17 @@ final class SettingsForm {
         parent.addSubview(box)
         group = box
         groupCursor = 0
+        groupRows = []
+        groupLabelWidth = 0
     }
 
     func endGroup() {
         guard let box = group else { return }
+        // Every row in the group shares one column, so the fields line up whatever language the
+        // labels are in.
+        let column = max(Self.labelColumn, groupLabelWidth + Self.labelInset + 8)
+        for place in groupRows { place(column) }
+        groupRows = []
         box.frame.size.height = groupCursor
         cursor += groupCursor
         group = nil
@@ -223,40 +236,50 @@ final class SettingsForm {
         separatorIfNeeded(in: box)
         let height: CGFloat = 38
 
+        let rowTop = groupCursor
         let caption = Self.label(label, size: 13)
         caption.lineBreakMode = .byTruncatingTail
-        caption.frame = NSRect(x: Self.labelInset, y: groupCursor + 11, width: Self.labelColumn - Self.labelInset - 8, height: 16)
         box.addSubview(caption)
+        // The label's own width, not fittingSize: that one answers 0 for a text field, on
+        // purpose, because an editable one is sized by the column instead.
+        groupLabelWidth = max(groupLabelWidth, caption.intrinsicContentSize.width.rounded(.up) + 4)
 
         var right = box.frame.width - Self.rowInset
         if let trailing {
             let size = Self.fittingSize(of: trailing)
-            trailing.frame = NSRect(x: right - size.width, y: groupCursor + (height - size.height) / 2, width: size.width, height: size.height)
+            trailing.frame = NSRect(x: right - size.width, y: rowTop + (height - size.height) / 2, width: size.width, height: size.height)
             trailing.autoresizingMask = [.minXMargin]
             box.addSubview(trailing)
             right -= size.width + 8
         }
 
-        let spacing: CGFloat = 8
-        let fixed = controls.compactMap(\.width).reduce(0, +)
-        let flexibleCount = controls.filter { $0.width == nil }.count
-        let available = right - Self.labelColumn - spacing * CGFloat(max(controls.count - 1, 0))
-        let flexible = flexibleCount > 0 ? max(60, (available - fixed) / CGFloat(flexibleCount)) : 0
-
-        var x = Self.labelColumn
-        // Hidden controls keep their place, so a profile pop-up appearing never moves the row.
-        var afterFlexible = false
         for control in controls {
-            let controlWidth = control.width ?? flexible
-            let controlHeight = Self.fittingSize(of: control.view).height
-            control.view.frame = NSRect(x: x, y: groupCursor + (height - controlHeight) / 2, width: controlWidth, height: controlHeight)
             if let field = control.view as? NSTextField, field.isEditable { field.setAccessibilityLabel(label) }
-            // The one that shares what is left is the one that grows; anything after it keeps its
-            // distance from the trailing edge instead.
-            control.view.autoresizingMask = control.width == nil ? [.width] : (afterFlexible ? [.minXMargin] : [])
-            afterFlexible = afterFlexible || control.width == nil
             box.addSubview(control.view)
-            x += controlWidth + spacing
+        }
+
+        groupRows.append { column in
+            caption.frame = NSRect(x: Self.labelInset, y: rowTop + 11, width: column - Self.labelInset - 8, height: 16)
+
+            let spacing: CGFloat = 8
+            let fixed = controls.compactMap(\.width).reduce(0, +)
+            let flexibleCount = controls.filter { $0.width == nil }.count
+            let available = right - column - spacing * CGFloat(max(controls.count - 1, 0))
+            let flexible = flexibleCount > 0 ? max(60, (available - fixed) / CGFloat(flexibleCount)) : 0
+
+            var x = column
+            // Hidden controls keep their place, so a profile pop-up appearing never moves the row.
+            var afterFlexible = false
+            for control in controls {
+                let controlWidth = control.width ?? flexible
+                let controlHeight = Self.fittingSize(of: control.view).height
+                control.view.frame = NSRect(x: x, y: rowTop + (height - controlHeight) / 2, width: controlWidth, height: controlHeight)
+                // The one that shares what is left is the one that grows; anything after it keeps
+                // its distance from the trailing edge instead.
+                control.view.autoresizingMask = control.width == nil ? [.width] : (afterFlexible ? [.minXMargin] : [])
+                afterFlexible = afterFlexible || control.width == nil
+                x += controlWidth + spacing
+            }
         }
         groupCursor += height
     }
@@ -423,12 +446,12 @@ final class SettingsForm {
 
     /// A borderless icon button that opens an address.
     static func openButton(target: AnyObject?, action: Selector?) -> NSButton {
-        let image = NSImage(systemSymbolName: "arrow.up.forward.square", accessibilityDescription: "Open")
+        let image = NSImage(systemSymbolName: "arrow.up.forward.square", accessibilityDescription: L("button.open"))
             ?? NSImage()
         let button = NSButton(image: image, target: target, action: action)
         button.isBordered = false
         button.contentTintColor = .controlAccentColor
-        button.toolTip = "Open"
+        button.toolTip = L("button.open")
         return button
     }
 

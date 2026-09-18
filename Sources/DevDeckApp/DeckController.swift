@@ -25,10 +25,17 @@ final class DeckController: ObservableObject {
     /// Cards currently showing every row they have. Not persisted: expanding is a "let me look
     /// at this now" gesture, and a deck that comes back tall the next morning is a surprise.
     @Published private(set) var expandedCards: Set<CardID> = []
-    /// The last lines each open tray is showing. Only open trays have an entry: a closed tray
-    /// runs no commands, which is the difference between a card that reads a log and a card
-    /// that tails one.
+    /// The last lines each open log window is showing. Only open windows have an entry: a
+    /// window that is closed runs no commands, which is the difference between reading a log and
+    /// tailing one.
     @Published private(set) var logTails: [CardID: LogLines] = [:]
+    /// The cards whose log window is open. Not persisted: a log open at midnight is not a
+    /// request to have it open again in the morning.
+    @Published private(set) var logWindowCards: Set<CardID> = []
+    /// Opening and closing a window is the application layer's business; keeping its lines
+    /// fresh is this one's.
+    var presentLogs: ((CardID) -> Void)?
+    var dismissLogs: ((CardID) -> Void)?
     /// Cards folded down to one row. Read from preferences whenever the deck's card list
     /// changes, so a collapsed card comes back collapsed.
     @Published private(set) var collapsedCards: Set<CardID> = []
@@ -807,13 +814,18 @@ final class DeckController: ObservableObject {
         expandedCards.contains(card)
     }
 
-    /// What a card's tray shows, or nil when it is closed.
+    /// What a card's log window shows, or nil when there is no window.
     ///
-    /// An open tray with nothing in it yet says so rather than showing an empty box: the first
-    /// read takes a moment, and `docker logs` on a stopped project takes longer.
+    /// A window with nothing in it yet says so rather than showing an empty page: the first read
+    /// takes a moment, and `docker logs` on a stopped project takes longer.
     func logs(for card: CardID) -> LogLines? {
-        guard isExpanded(card), hasLogSource(card) else { return nil }
-        return logTails[card] ?? LogLines(detail: "reading…")
+        guard logWindowCards.contains(card), hasLogSource(card) else { return nil }
+        return logTails[card] ?? LogLines(detail: L("card.log.reading"))
+    }
+
+    /// Whether this card's log is on screen, which is what its header button shows.
+    func isShowingLogs(_ card: CardID) -> Bool {
+        logWindowCards.contains(card)
     }
 
     /// Whether this card has anything to read at all.
@@ -822,35 +834,51 @@ final class DeckController: ObservableObject {
     }
 
     func toggleLogs(for card: CardID) {
-        noteUserResize(card)
-        toggleExpanded(card)
-        guard isExpanded(card) else {
-            logTails[card] = nil
-            return
+        if logWindowCards.contains(card) {
+            dismissLogs?(card)
+        } else {
+            presentLogs?(card)
         }
+    }
+
+    /// Told by the window itself, so what the deck believes and what is on screen are the same
+    /// thing even when a window is closed with its own red button or with ⌘W.
+    func logWindowOpened(_ card: CardID) {
+        logWindowCards.insert(card)
+    }
+
+    func logWindowClosed(_ card: CardID) {
+        logWindowCards.remove(card)
+        logTails[card] = nil
+    }
+
+    /// Read now, because a window asked. The window is what sets the cadence while it is open.
+    func refreshLogsNow(for card: CardID) {
+        guard hasLogSource(card) else { return }
         Task { await refreshLogs(for: card) }
     }
 
-    /// Reads the trays that are open, and only those.
+    /// Reads the logs that are on screen, and only those.
     private func refreshOpenLogs() async {
-        for card in expandedCards where hasLogSource(card) {
+        for card in logWindowCards where hasLogSource(card) {
             await refreshLogs(for: card)
         }
     }
 
-    /// Re-reads a tray straight after an action, when it is open.
+    /// Re-reads a log straight after an action, when its window is open.
     private func refreshLogsIfOpen(_ card: CardID) async {
-        guard isExpanded(card) else { return }
+        guard logWindowCards.contains(card) else { return }
         await refreshLogs(for: card)
     }
 
     private func refreshLogs(for card: CardID) async {
+        let limit = LogTail.windowLineLimit
         if let project = project(forCard: card) {
-            logTails[card] = await LocalStackService(project: project, runner: commandRunner).logs()
+            logTails[card] = await LocalStackService(project: project, runner: commandRunner).logs(limit: limit)
         } else if let project = ddevProject(forCard: card) {
-            logTails[card] = await ddevEnvironment.logs(for: project)
+            logTails[card] = await ddevEnvironment.logs(for: project, limit: limit)
         } else if let project = localProject(forCard: card) {
-            logTails[card] = await LocalProjectService(project: project, runner: commandRunner).logs()
+            logTails[card] = await LocalProjectService(project: project, runner: commandRunner).logs(limit: limit)
         }
     }
 
@@ -1109,7 +1137,7 @@ final class DeckController: ObservableObject {
                 cardID: $0.cardID,
                 title: $0.displayTitle,
                 // The caption the card wears, `bun · next + nest`, when there is one.
-                kind: $0.subtitle.isEmpty ? "Project" : $0.subtitle,
+                kind: $0.subtitle.isEmpty ? L("project.section.project") : $0.subtitle,
                 mark: .project($0.kind.rawValue),
                 needsDocker: $0.requiresDocker
             )

@@ -171,7 +171,7 @@ public struct LocalProject: Sendable, Equatable, Codable, Identifiable {
     public func environmentLinks() -> [LocalProjectResolvedLink] {
         var resolved: [LocalProjectResolvedLink] = []
         if let site = siteURL {
-            resolved.append(LocalProjectResolvedLink(label: "Local site", url: site, kind: .site))
+            resolved.append(LocalProjectResolvedLink(label: L("card.localSite"), url: site, kind: .site))
         }
         resolved.append(contentsOf: resolve(links.filter { $0.kind == .site }))
         return resolved

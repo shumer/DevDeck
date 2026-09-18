@@ -127,7 +127,8 @@
 - **A card has two sizes** - whole, or one 44-point row with the mark, the state dot, the name
   and the one action the state implies, kept per card. See [adr/0011-two-sizes.md](adr/0011-two-sizes.md).
 - **The log tray** - the last six lines a project is writing, on the card itself, for Arc, DDEV
-  and plain projects alike, read only while the tray is open.
+  and plain projects alike, read only while the tray is open. Replaced in a later pass by a
+  window of its own, see below.
 - **A running command narrates itself** - its newest line sits on the card while it works, and a
   start that failed keeps the reason it printed even when the command exited zero.
 - **The deck has a canonical order** - Arc, DDEV, then plain projects, alphabetical within each
@@ -148,6 +149,15 @@
   card switch, commands with their captions above them, switches that explain themselves in one
   line instead of four footnotes, the live health answer in the group that asks about it, and
   environment rows tagged in their chips' colours.
+- **The interface speaks six languages** - English, German, Spanish, French, Italian and
+  Russian, the Mac's own by default and a forced choice in Settings, taking effect on the spot.
+  Terms and logs stay English; the layouts measure their words instead of assuming English
+  lengths. See [adr/0020-six-languages.md](adr/0020-six-languages.md).
+- **The log is a window** - one per project, dark and monospaced, as big as you drag it,
+  selectable and searchable with ⌘F, following the end until you scroll up, re-read every couple
+  of seconds while it is visible and never while it is not. The tray inside the card is gone, and
+  with it the 120 points that made the column jump every time somebody looked. See
+  [adr/0021-the-log-is-a-window.md](adr/0021-the-log-is-a-window.md).
 
 ## Next
 

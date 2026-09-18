@@ -26,8 +26,8 @@ public enum AccountAttention {
                     id: "account:\(service.rawValue):missing",
                     tier: .needsFixing,
                     mark: .token,
-                    title: "Add a \(service.name) token",
-                    subtitle: "Nothing from \(service.name) can load until there is one",
+                    title: L("attention.account.missing.title", service.name),
+                    subtitle: L("attention.account.missing.subtitle", service.name),
                     since: since,
                     action: .accountSettings(service: service, account: "")
                 )
@@ -36,8 +36,8 @@ public enum AccountAttention {
                     id: "account:\(service.rawValue):\(key):rejected",
                     tier: .needsFixing,
                     mark: .token,
-                    title: "Replace \(service.name) token (\(failure.account))",
-                    subtitle: "\(failure.message) · nothing from this account is updating",
+                    title: L("attention.account.rejected.title", service.name, failure.account),
+                    subtitle: L("attention.account.rejected.subtitle", failure.message),
                     since: since,
                     action: settings
                 )
@@ -46,8 +46,8 @@ public enum AccountAttention {
                     id: "account:\(service.rawValue):\(key):forbidden",
                     tier: .needsFixing,
                     mark: .token,
-                    title: "\(service.name) token can't see everything (\(failure.account))",
-                    subtitle: AttentionWords.trimmed("\(failure.message) · approve it for the organisation or sign in with SSO", to: 90),
+                    title: L("attention.account.forbidden.title", service.name, failure.account),
+                    subtitle: AttentionWords.trimmed(L("attention.account.forbidden.subtitle", failure.message), to: 90),
                     since: since,
                     action: settings
                 )
@@ -56,8 +56,8 @@ public enum AccountAttention {
                     id: "account:\(service.rawValue):\(key):rate",
                     tier: .goodToKnow,
                     mark: .rateLimit,
-                    title: "\(service.name) rate limit (\(failure.account))",
-                    subtitle: failure.resetAt.map { "Back at \(AttentionDigest.clock($0)), nothing to do" } ?? "Nothing to do, it resets by itself",
+                    title: L("attention.account.rate.title", service.name, failure.account),
+                    subtitle: failure.resetAt.map { L("attention.account.rate.back", AttentionDigest.clock($0)) } ?? L("attention.account.rate.self"),
                     since: since,
                     action: .none,
                     isEnabled: false
@@ -69,7 +69,7 @@ public enum AccountAttention {
                     id: "account:\(service.rawValue):\(key):error",
                     tier: .needsFixing,
                     mark: .token,
-                    title: "\(service.name) refused the request (\(failure.account))",
+                    title: L("attention.account.refused.title", service.name, failure.account),
                     subtitle: AttentionWords.trimmed(failure.message, to: 90),
                     since: since,
                     action: settings
@@ -80,8 +80,8 @@ public enum AccountAttention {
                     id: "account:\(service.rawValue):\(key):unreachable",
                     tier: isLong ? .needsFixing : .goodToKnow,
                     mark: .network,
-                    title: "Can't reach \(service.name) (\(failure.account))",
-                    subtitle: since.map { "\(failure.message) since \(AttentionDigest.clock($0)) · showing what loaded before" } ?? failure.message,
+                    title: L("attention.account.unreachable.title", service.name, failure.account),
+                    subtitle: since.map { L("attention.account.unreachable.subtitle", failure.message, AttentionDigest.clock($0)) } ?? failure.message,
                     since: since,
                     action: settings,
                     isEnabled: isLong
@@ -99,9 +99,9 @@ public enum AccountAttention {
             id: "account:\(service.rawValue):\(accountID):rejected:\(episode)",
             kind: .cantCheck,
             source: .devdeck,
-            title: "DevDeck can't check \(failure.account) on \(service.name)",
-            subtitle: "Token rejected",
-            body: "Nothing from \(failure.account) is updating. Click to replace the token.",
+            title: L("attention.account.banner.title", failure.account, service.name),
+            subtitle: L("attention.account.banner.subtitle"),
+            body: L("attention.account.banner.body", failure.account),
             subject: failure.account,
             target: .accountSettings(service: service.rawValue, account: accountID),
             isQuiet: false

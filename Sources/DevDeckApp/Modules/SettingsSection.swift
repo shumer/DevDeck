@@ -68,7 +68,7 @@ enum SettingsSupport {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
+        panel.prompt = L("button.chooseShort")
         panel.message = message
         guard panel.runModal() == .OK else { return nil }
         return panel.url
@@ -78,8 +78,8 @@ enum SettingsSupport {
         let alert = NSAlert()
         alert.messageText = message
         alert.informativeText = detail
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: L("button.remove"))
+        alert.addButton(withTitle: L("button.cancel"))
         // Return cancels, and the button that deletes is marked as the one that deletes: the
         // sidebar's Delete key opens this, and an account taken away takes its token with it.
         alert.buttons[0].hasDestructiveAction = true

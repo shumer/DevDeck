@@ -82,21 +82,21 @@ public struct PullRequestsCard: View {
     private var collapsed: some View {
         CardCollapsedRow(
             glyph: CardGlyph.github,
-            title: "Pull requests",
+            title: L("card.title.pulls"),
             note: collapsedNote,
             tone: collapsedTone.tone,
             color: collapsedTone.color,
-            actions: [CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard)],
-            help: collapsedNote ?? "Pull requests"
+            actions: [CardAction(L("card.action.openInBrowser"), systemImage: "arrow.up.forward", action: onOpenDashboard)],
+            help: collapsedNote ?? L("card.title.pulls")
         )
     }
 
     /// The pill's words, which are already the shortest true sentence about the card.
     private var collapsedNote: String? {
-        guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
-        if snapshot.blockedCount > 0 { return "\(snapshot.blockedCount) blocked · \(snapshot.totalCount) open" }
-        if snapshot.reviewRequestCount > 0 { return "\(snapshot.reviewRequestCount) to review · \(snapshot.totalCount) open" }
-        return snapshot.totalCount == 0 ? "clear" : "\(snapshot.totalCount) open"
+        guard let snapshot = state.value else { return state.failure?.displayMessage ?? L("card.pill.loading") }
+        if snapshot.blockedCount > 0 { return L("card.pill.blockedOpen", snapshot.blockedCount, snapshot.totalCount) }
+        if snapshot.reviewRequestCount > 0 { return L("card.pill.toReviewOpen", snapshot.reviewRequestCount, snapshot.totalCount) }
+        return snapshot.totalCount == 0 ? L("card.pill.clear") : L("card.pill.open", snapshot.totalCount)
     }
 
     private var collapsedTone: (tone: CardStateTone, color: Color) {
@@ -108,7 +108,7 @@ public struct PullRequestsCard: View {
 
     private var full: some View {
         CardChrome(
-            title: "GitHub · pull requests",
+            title: L("card.chrome.pulls"),
             glyph: .github,
             timestamp: CardFreshness.text(for: state)
         ) {
@@ -126,16 +126,16 @@ public struct PullRequestsCard: View {
         }
         guard let snapshot = state.value else { return nil }
         if snapshot.blockedCount > 0 {
-            return ("\(snapshot.blockedCount) blocked", DeckTheme.red)
+            return (L("card.pill.blocked", snapshot.blockedCount), DeckTheme.red)
         }
         // Someone waiting on you outranks anything of yours that is merely in progress.
         if snapshot.reviewRequestCount > 0 {
-            return ("\(snapshot.reviewRequestCount) to review", DeckTheme.amber)
+            return (L("card.pill.toReview", snapshot.reviewRequestCount), DeckTheme.amber)
         }
         if snapshot.totalCount == 0 {
-            return ("clear", DeckTheme.green)
+            return (L("card.pill.clear"), DeckTheme.green)
         }
-        return ("on track", DeckTheme.green)
+        return (L("card.pill.onTrack"), DeckTheme.green)
     }
 
     @ViewBuilder
@@ -149,7 +149,7 @@ public struct PullRequestsCard: View {
                 .font(.system(size: 26, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(DeckTheme.value.opacity(0.85))
-            Text("open")
+            Text(L("card.open"))
                 .font(.system(size: 12))
                 .foregroundStyle(DeckTheme.label)
             Spacer(minLength: 6)
@@ -234,7 +234,7 @@ public struct PullRequestsCard: View {
                 Image(systemName: "eye")
                     .font(.system(size: 9.5, weight: .semibold))
                     .foregroundStyle(DeckTheme.amber)
-                    .help("waiting for your review")
+                    .help(L("card.waitingReview"))
             }
             if let key = ticket.key {
                 Text(key)
@@ -259,17 +259,17 @@ public struct PullRequestsCard: View {
         .contentShape(Rectangle())
         .clickable()
         .onTapGesture { onOpen(pullRequest.url, pullRequest.accountID) }
-        .help("\(pullRequest.shortLabel): \(pullRequest.statusLine)")
+        .help(L("attention.row.colon", pullRequest.shortLabel, pullRequest.statusLine))
     }
 
     private func footerLeading(_ snapshot: PullRequestsSnapshot) -> String {
         let repositories = snapshot.repositoryCount
         let organizations = snapshot.organizationCount
-        var text = "\(repositories) repo\(repositories == 1 ? "" : "s") · \(organizations) org\(organizations == 1 ? "" : "s")"
+        var text = L("card.footer.pair", LN("card.repos", repositories), LN("card.orgs", organizations))
         // Only the rows beyond the expanded ceiling are worth mentioning here; the ones the
         // expander would reveal are its own business.
         let beyondCeiling = CardMetrics.hiddenWhenExpanded(total: snapshot.pullRequests.count)
-        if isExpanded, beyondCeiling > 0 { text += " · +\(beyondCeiling) not shown" }
+        if isExpanded, beyondCeiling > 0 { text += L("card.notShown", beyondCeiling) }
         return text
     }
 }

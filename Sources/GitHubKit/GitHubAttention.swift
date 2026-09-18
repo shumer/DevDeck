@@ -38,7 +38,7 @@ public enum GitHubAttention {
                 id: "inbox:\(item.id)",
                 tier: .waiting,
                 mark: .github,
-                title: "\(words.prefix): \(AttentionWords.trimmed(item.title))",
+                title: L("attention.row.colon", words.prefix, AttentionWords.trimmed(item.title)),
                 subtitle: AttentionWords.withAccount([item.repository, words.detail], label: labels[item.accountID]),
                 since: item.updatedAt,
                 action: item.url.map { .open($0, service: .github, account: item.accountID) } ?? .none,
@@ -52,9 +52,9 @@ public enum GitHubAttention {
                 id: "run:\(run.accountID):\(run.repository):\(run.name):\(run.branch)",
                 tier: .stuck,
                 mark: .github,
-                title: AttentionWords.trimmed("\(run.name) failing on \(run.branch)"),
+                title: AttentionWords.trimmed(L("attention.gh.run.title", run.name, run.branch)),
                 subtitle: AttentionWords.withAccount(
-                    [run.repository, failing.streak > 1 ? "failed \(failing.streak) times in a row" : "the last run failed"],
+                    [run.repository, failing.streak > 1 ? LN("attention.gh.run.streak", failing.streak) : L("attention.gh.run.last")],
                     label: labels[run.accountID]
                 ),
                 since: failing.firstFailure.startedAt,
@@ -65,14 +65,14 @@ public enum GitHubAttention {
     }
 
     static func reviewItem(_ request: PullRequestSummary, labels: Labels) -> AttentionItem {
-        let who = request.requestedBy.map { "\($0) asked" }
-            ?? request.author.map { "from \($0)" }
-            ?? "review requested"
+        let who = request.requestedBy.map { L("attention.gh.who.asked", $0) }
+            ?? request.author.map { L("attention.gh.who.from", $0) }
+            ?? L("attention.inbox.review.note")
         return AttentionItem(
             id: "review:\(request.id)",
             tier: .waiting,
             mark: .github,
-            title: "Review: \(AttentionWords.trimmed(request.ticket.subject))",
+            title: L("attention.row.colon", L("attention.inbox.review.prefix"), AttentionWords.trimmed(request.ticket.subject)),
             subtitle: AttentionWords.withAccount(["\(request.repository) #\(request.number)", who], label: labels[request.accountID]),
             since: request.requestedAt ?? request.updatedAt,
             action: .open(request.url, service: .github, account: request.accountID)
@@ -84,28 +84,28 @@ public enum GitHubAttention {
             id: "stuck:\(request.id):\(request.statusCode)",
             tier: .stuck,
             mark: .github,
-            title: "\(stuckVerb(request)): \(AttentionWords.trimmed(request.ticket.subject))",
-            subtitle: AttentionWords.withAccount(["\(request.repository) #\(request.number)", "your pull request"], label: labels[request.accountID]),
+            title: L("attention.row.colon", stuckVerb(request), AttentionWords.trimmed(request.ticket.subject)),
+            subtitle: AttentionWords.withAccount(["\(request.repository) #\(request.number)", L("attention.gh.yours")], label: labels[request.accountID]),
             since: request.updatedAt,
             action: .open(request.url, service: .github, account: request.accountID)
         )
     }
 
     static func stuckVerb(_ request: PullRequestSummary) -> String {
-        if request.hasConflicts { return "Merge conflict" }
-        if request.checks == .failure { return "Checks failed" }
-        return "Changes requested"
+        if request.hasConflicts { return L("attention.stuck.conflict") }
+        if request.checks == .failure { return L("attention.stuck.checksFailed") }
+        return L("attention.stuck.changesRequested")
     }
 
     /// What an inbox row is called, and nil for the reasons that are news rather than a request:
     /// a comment, a state change, CI chatter, a subscription.
     static func inboxWords(_ reason: NotificationReason) -> (prefix: String, detail: String)? {
         switch reason {
-        case .securityAlert: return ("Security alert", "security alert")
-        case .reviewRequested: return ("Review", "review requested")
-        case .mention: return ("Mentioned", "you were mentioned")
-        case .teamMention: return ("Your team was mentioned", "team mention")
-        case .assigned: return ("Assigned to you", "assigned to you")
+        case .securityAlert: return (L("attention.inbox.security.prefix"), L("attention.inbox.security.note"))
+        case .reviewRequested: return (L("attention.inbox.review.prefix"), L("attention.inbox.review.note"))
+        case .mention: return (L("attention.inbox.mention.prefix"), L("attention.inbox.mention.note"))
+        case .teamMention: return (L("attention.inbox.team.prefix"), L("attention.inbox.team.note"))
+        case .assigned: return (L("attention.inbox.assigned.prefix"), L("attention.inbox.assigned.note"))
         case .ciActivity, .stateChange, .comment, .author, .subscribed, .other: return nil
         }
     }
@@ -122,9 +122,9 @@ public enum GitHubAttention {
                     id: "review:\(request.id)",
                     kind: .reviewRequest,
                     source: .github,
-                    title: request.requestedBy.map { "\($0) asked for your review" } ?? "Your review is requested",
+                    title: request.requestedBy.map { L("attention.banner.review.title.who", $0) } ?? L("attention.banner.review.title"),
                     subtitle: place,
-                    body: "\(ticket). Click to open it.",
+                    body: L("attention.banner.open", ticket),
                     subject: request.ticket.subject,
                     target: .url(request.url, account: request.accountID),
                     isQuiet: false
@@ -132,9 +132,9 @@ public enum GitHubAttention {
             }
             guard request.health == .blocked else { return nil }
             let (title, next): (String, String) = {
-                if request.hasConflicts { return ("Your pull request has a merge conflict", "Click to open it.") }
-                if request.checks == .failure { return ("Checks failed on your pull request", "Click to see which.") }
-                return ("Changes requested on your pull request", "Click to read the review.")
+                if request.hasConflicts { return (L("attention.banner.pr.conflict.title"), L("attention.banner.next.open")) }
+                if request.checks == .failure { return (L("attention.banner.pr.checks.title"), L("attention.banner.next.which")) }
+                return (L("attention.banner.pr.changes.title"), L("attention.banner.next.review"))
             }()
             return DeckAlert(
                 // The state is part of the identity: something announced as blocked, fixed, and
@@ -144,7 +144,7 @@ public enum GitHubAttention {
                 source: .github,
                 title: title,
                 subtitle: place,
-                body: "\(ticket). \(next)",
+                body: L("attention.banner.body", ticket, next),
                 subject: request.ticket.subject,
                 target: .url(request.url, account: request.accountID),
                 isQuiet: true
@@ -162,9 +162,9 @@ public enum GitHubAttention {
                 id: "run:\(run.repository):\(run.name):\(run.branch):\(failing.firstFailure.id)",
                 kind: .failedRun,
                 source: .github,
-                title: AttentionWords.trimmed("\(run.name) is failing on \(run.branch)", to: 60),
+                title: AttentionWords.trimmed(L("attention.banner.run.title", run.name, run.branch), to: 60),
                 subtitle: AttentionWords.withAccount([run.repository], label: labels[run.accountID]),
-                body: "The last run failed. Click to see it.",
+                body: L("attention.banner.run.body"),
                 subject: run.name,
                 target: .url(url, account: run.accountID),
                 isQuiet: true

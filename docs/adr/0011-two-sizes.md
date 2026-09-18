@@ -46,7 +46,9 @@ A card is either whole or one row of 44 points. There is no third size.
   control, as a list card has, keeps its note.
 - **The corner radius drops to 14.** It is the one number a collapsed card cannot inherit: at 44
   points tall, a 20-point radius reads as a pill rather than as a card.
-- **Collapsing closes the log tray.** Six lines of log under a one-line card is not a card.
+- **Collapsing closed the log tray.** Six lines of log under a one-line card is not a card.
+  The tray itself was later replaced by a window, which a folded card can open like any
+  other: see [0021](0021-the-log-is-a-window.md).
 - Collapsed is remembered per card, under `panels.<id>.collapsed`, because the point is that the
   projects you are not working on today take one row each while the one you are stays whole.
 

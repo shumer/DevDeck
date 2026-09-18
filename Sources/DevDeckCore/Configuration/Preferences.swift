@@ -168,6 +168,12 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue, forKey: "keychain.acl") }
     }
 
+    /// Which language the interface is in. Nil, the default, means the one the Mac is set to.
+    public var language: AppLanguage {
+        get { AppLanguage(rawValue: backend.string(forKey: "language") ?? "") ?? .system }
+        set { backend.set(newValue == .system ? nil : newValue.rawValue, forKey: "language") }
+    }
+
     /// Whether the deck asks GitHub for a newer build. On unless switched off, stored as a
     /// string for the same reason as the summon switch: the backend's `bool` cannot tell "off"
     /// from "never asked".

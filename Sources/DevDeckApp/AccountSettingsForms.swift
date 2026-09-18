@@ -23,11 +23,11 @@ final class TokenBlock: NSObject, NSTextFieldDelegate {
         // answers. Green everywhere else on the deck means "working".
         status = StatusLine(
             tone: hasToken ? .idle : .busy,
-            state: hasToken ? "Saved in Keychain" : "No token",
-            detail: hasToken ? "not checked yet" : "paste one below"
+            state: hasToken ? L("token.saved") : L("token.none"),
+            detail: hasToken ? L("token.saved.detail") : L("token.none.detail")
         )
-        saveButton = SettingsForm.button("Save Token", target: nil, action: nil)
-        verifyButton = SettingsForm.button("Verify", target: nil, action: nil)
+        saveButton = SettingsForm.button(L("token.save"), target: nil, action: nil)
+        verifyButton = SettingsForm.button(L("token.verify"), target: nil, action: nil)
         verifyButton.isEnabled = hasToken
         super.init()
         field.stringValue = draft
@@ -46,7 +46,7 @@ final class TokenBlock: NSObject, NSTextFieldDelegate {
 
     func add(to form: SettingsForm) {
         form.statusRow(status, button: verifyButton)
-        form.fieldRow("New token", [(field, nil)], trailing: saveButton)
+        form.fieldRow(L("token.field"), [(field, nil)], trailing: saveButton)
     }
 
     func controlTextDidChange(_ notification: Notification) {
@@ -58,17 +58,17 @@ final class TokenBlock: NSObject, NSTextFieldDelegate {
     }
 
     func checking() {
-        status.update(tone: .idle, state: "Checking…", detail: "")
+        status.update(tone: .idle, state: L("token.checking"), detail: "")
     }
 
     func works(_ detail: String) {
         field.stringValue = ""
         onDraftChange?("")
-        status.update(tone: .good, state: "Token works", detail: detail)
+        status.update(tone: .good, state: L("token.works"), detail: detail)
     }
 
     func refused(_ reason: String) {
-        status.update(tone: .bad, state: "Not accepted", detail: reason)
+        status.update(tone: .bad, state: L("token.refused"), detail: reason)
     }
 
     @objc private func save() {
@@ -102,8 +102,8 @@ final class GitHubAccountForm: FlippedContainer, NSTextFieldDelegate {
     init(account: GitHubAccount, hasToken: Bool, isAdvancedOpen: Bool, draft: String = "", width: CGFloat) {
         self.account = account
         token = TokenBlock(hasToken: hasToken, placeholder: "github_pat_… or ghp_…", draft: draft)
-        nameField = SettingsForm.field(account.label, placeholder: "Work")
-        organizationsField = SettingsForm.field(account.organizations.joined(separator: ", "), placeholder: "all the token can see")
+        nameField = SettingsForm.field(account.label, placeholder: L("account.name.placeholder"))
+        organizationsField = SettingsForm.field(account.organizations.joined(separator: ", "), placeholder: L("account.github.organisations.placeholder"))
         browser = BrowserPicker(choice: account.browser)
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
 
@@ -112,31 +112,31 @@ final class GitHubAccountForm: FlippedContainer, NSTextFieldDelegate {
             icon: SettingsIcons.mark(.github, size: 32),
             title: account.label,
             subtitle: account.apiBaseURL.host ?? "github.com",
-            toggleTitle: "Show on deck",
+            toggleTitle: L("account.showOnDeck"),
             isOn: account.isEnabled,
             target: self,
             action: #selector(changed)
         )
 
-        form.section("Token", help: "Read access to Pull requests, Contents and Metadata covers the pull requests card. The inbox needs the Notifications account permission, and the Actions card needs Actions. Each organisation has to approve a fine-grained token before it sees anything there.")
+        form.section(L("account.section.token"), help: L("account.github.token.help"))
         form.beginGroup()
         token.add(to: form)
         form.endGroup()
-        form.textButton("Create a token on GitHub…", target: self, action: #selector(createToken))
+        form.textButton(L("account.github.create"), target: self, action: #selector(createToken))
 
-        form.section("Account")
+        form.section(L("account.section.account"))
         form.beginGroup()
         nameField.delegate = self
-        form.fieldRow("Name", [(nameField, nil)])
+        form.fieldRow(L("account.name"), [(nameField, nil)])
         browser.onChange = { [weak self] in self?.changed() }
-        form.fieldRow("Open links in", [(browser.browserPopUp, 170), (browser.profilePopUp, nil)], trailing: SettingsForm.button("Test", target: self, action: #selector(testLink)))
+        form.fieldRow(L("account.openLinksIn"), [(browser.browserPopUp, 170), (browser.profilePopUp, nil)], trailing: SettingsForm.button(L("button.test"), target: self, action: #selector(testLink)))
         form.endGroup()
 
-        form.disclosure("Advanced", summary: "Limit to organisations", isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
+        form.disclosure(L("account.advanced"), summary: L("account.github.advanced.summary"), isOpen: isAdvancedOpen, target: self, action: #selector(toggleAdvanced))
         if isAdvancedOpen {
             form.beginGroup()
             organizationsField.delegate = self
-            form.fieldRow("Organisations", [(organizationsField, nil)])
+            form.fieldRow(L("account.github.organisations"), [(organizationsField, nil)])
             form.endGroup()
         }
 
@@ -211,7 +211,7 @@ final class GitLabAccountForm: FlippedContainer, NSTextFieldDelegate {
             icon: SettingsIcons.mark(.gitlab, size: 32),
             title: account.label,
             subtitle: account.displayHost,
-            toggleTitle: "Show on deck",
+            toggleTitle: L("account.showOnDeck"),
             isOn: account.isEnabled,
             target: self,
             action: #selector(changed)
@@ -219,21 +219,21 @@ final class GitLabAccountForm: FlippedContainer, NSTextFieldDelegate {
 
         // The instance first: the token belongs to whatever address is in this form, and the
         // link that makes one is built from it.
-        form.section("Instance")
+        form.section(L("account.section.instance"))
         form.beginGroup()
         nameField.delegate = self
-        form.fieldRow("Name", [(nameField, nil)])
+        form.fieldRow(L("account.name"), [(nameField, nil)])
         hostField.delegate = self
-        form.fieldRow("Address", [(hostField, nil)])
+        form.fieldRow(L("account.gitlab.address"), [(hostField, nil)])
         browser.onChange = { [weak self] in self?.changed() }
-        form.fieldRow("Open links in", [(browser.browserPopUp, 170), (browser.profilePopUp, nil)], trailing: SettingsForm.button("Test", target: self, action: #selector(testLink)))
+        form.fieldRow(L("account.openLinksIn"), [(browser.browserPopUp, 170), (browser.profilePopUp, nil)], trailing: SettingsForm.button(L("button.test"), target: self, action: #selector(testLink)))
         form.endGroup()
 
-        form.section("Token", help: "A personal access token with the read_api scope. The card asks for merge requests, their pipeline and their approvals, and nothing else.")
+        form.section(L("account.section.token"), help: L("account.gitlab.token.help"))
         form.beginGroup()
         token.add(to: form)
         form.endGroup()
-        form.textButton("Create a token on \(account.displayHost)…", target: self, action: #selector(createToken))
+        form.textButton(L("account.gitlab.create", account.displayHost), target: self, action: #selector(createToken))
 
         frame.size.height = form.usedHeight
         token.onSave = { [weak self] in

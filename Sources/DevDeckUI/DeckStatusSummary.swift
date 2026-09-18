@@ -19,7 +19,7 @@ public struct DeckStatusSummary: Sendable, Equatable {
 
     /// One line. The list belongs in the menu; the tooltip only has to say whether opening it is
     /// worth it.
-    public var tooltip: String { "DevDeck: \(digest.summary)" }
+    public var tooltip: String { L("attention.tooltip", digest.summary) }
 }
 
 /// Everything the deck knows, turned into one digest.
@@ -148,9 +148,9 @@ public enum DeckAttention {
         switch state.failure {
         case .accounts(let failures): return failures
         case .missingToken(let service):
-            return [AccountFailure(account: service, message: "No \(service) token yet", kind: .rejected)]
+            return [AccountFailure(account: service, message: L("card.noToken", service), kind: .rejected)]
         case .some(let error):
-            return [AccountFailure(account: "all accounts", message: error.displayMessage, kind: error.isRetryable ? .unreachable : .other)]
+            return [AccountFailure(account: L("card.allAccounts"), message: error.displayMessage, kind: error.isRetryable ? .unreachable : .other)]
         case .none:
             return snapshot ?? []
         }

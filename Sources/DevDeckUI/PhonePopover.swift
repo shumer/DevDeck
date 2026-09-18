@@ -21,7 +21,7 @@ public struct PhoneSheet: View {
 
     public var body: some View {
         VStack(spacing: 10) {
-            Text("Open on your phone")
+            Text(L("card.phone.title"))
                 .font(.system(size: 11, weight: .semibold))
                 .kerning(0.4)
                 .textCase(.uppercase)
@@ -45,7 +45,7 @@ public struct PhoneSheet: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            Text("Same wifi as this Mac. A dev server bound to localhost only will not answer.")
+            Text(L("card.phone.note"))
                 .font(.system(size: 10))
                 .foregroundStyle(DeckTheme.value.opacity(0.45))
                 .multilineTextAlignment(.center)
