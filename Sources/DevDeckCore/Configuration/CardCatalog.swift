@@ -44,25 +44,25 @@ public struct CardDescriptor: Sendable, Equatable {
 /// Adding a card means adding a descriptor here; the settings UI and the stored card layout
 /// pick it up automatically, and users who already have a layout keep their own ordering.
 public enum CardCatalog {
-    public static let all: [CardDescriptor] = [
+    public static var all: [CardDescriptor] {[
         CardDescriptor(
             id: .githubPullRequests,
-            title: "Pull requests",
-            subtitle: "Yours, plus the ones waiting for your review",
+            title: L("card.title.pulls"),
+            subtitle: L("card.catalog.pulls.subtitle"),
             isImplemented: true,
             isEnabledByDefault: true
         ),
         CardDescriptor(
             id: .githubInbox,
-            title: "GitHub inbox",
-            subtitle: "Review requests, mentions and CI notifications",
+            title: L("card.title.inbox"),
+            subtitle: L("card.catalog.inbox.subtitle"),
             isImplemented: true,
             isEnabledByDefault: true
         ),
         CardDescriptor(
             id: .githubActions,
-            title: "GitHub Actions",
-            subtitle: "Workflow success rate and running jobs",
+            title: L("card.title.actions"),
+            subtitle: L("card.catalog.actions.subtitle"),
             isImplemented: true,
             isEnabledByDefault: false
         ),
@@ -73,33 +73,33 @@ public enum CardCatalog {
             // Named for its service, unlike "Pull requests", which was here first and alone.
             // Two entries called "Pull requests" and "Merge requests" side by side are two
             // things nobody can tell apart at a glance.
-            title: "GitLab merge requests",
-            subtitle: "Yours, plus the ones waiting for your review",
+            title: L("card.title.merges.gitlab"),
+            subtitle: L("card.catalog.pulls.subtitle"),
             isImplemented: true,
             isEnabledByDefault: false
         ),
         CardDescriptor(
             id: .workInFlight,
-            title: "Work in flight",
-            subtitle: "Uncommitted, unpushed and behind, across every checkout",
+            title: L("card.title.workInFlight"),
+            subtitle: L("card.catalog.wif.subtitle"),
             isImplemented: true,
             isEnabledByDefault: false
         ),
         CardDescriptor(
             id: .arcOrganizations,
-            title: "Arc XP organizations",
-            subtitle: "Orgs, sites and live bundle versions",
+            title: L("card.catalog.arc.title"),
+            subtitle: L("card.catalog.arc.subtitle"),
             isImplemented: false,
             isEnabledByDefault: false
         ),
         CardDescriptor(
             id: .localStack,
-            title: "Local stack",
-            subtitle: "Local Fusion containers and ports",
+            title: L("project.section.stack"),
+            subtitle: L("card.catalog.stack.subtitle"),
             isImplemented: false,
             isEnabledByDefault: false
         ),
-    ]
+    ]}
 
     public static func descriptor(for id: CardID) -> CardDescriptor? {
         all.first { $0.id == id }

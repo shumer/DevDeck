@@ -43,14 +43,14 @@ public struct ProjectChipRow: View {
     }
 
     /// The label DDEV, Arc and plain projects all give the local environment.
-    public nonisolated static let localLabel = "Local site"
+    public nonisolated static var localLabel: String { L("card.localSite") }
     /// PageBuilder's editor as this stack serves it.
     ///
     /// Named to match its neighbour rather than shortened. "PB editor" beside a "PageBuilder"
     /// chip three places to the left is two names for one product and no clue which of them is
     /// the one you are running; "Local site" and "Local PageBuilder" say what they are and that
     /// they are the same stack.
-    public nonisolated static let localPageBuilderLabel = "Local PageBuilder"
+    public nonisolated static var localPageBuilderLabel: String { L("card.localPageBuilder") }
 
     public var body: some View {
         // The divider is a subview like any other, so the layout is told which index it sits at
@@ -91,7 +91,7 @@ public struct ProjectChipRow: View {
             color: Self.colour(for: chip, isLocal: isLocal),
             isDimmed: isDimmed,
             help: isDimmed
-                ? "\(chip.url.absoluteString), the project is not running"
+                ? L("card.chip.notRunning", chip.url.absoluteString)
                 : chip.url.absoluteString
         ) {
             guard !isDimmed else { return }
@@ -116,22 +116,20 @@ public enum ProjectCardMetrics {
         tools: [String],
         environments: [String],
         hasBranch: Bool,
-        hasMetaRow: Bool,
-        logs: LogLines? = nil
+        hasMetaRow: Bool
     ) -> Double {
         CardChromeMetrics.topPadding
             + CardChromeMetrics.headerHeight
             + CardHeroRow.topPadding + CardHeroRow.height
             + CardMetaBlock.height(hasBranch: hasBranch, hasRow: hasMetaRow)
             + CardChipFlow.height(tools: tools, environments: environments)
-            + CardLogTray.height(for: logs)
             + CardActionRow.height
             + CardChromeMetrics.bottomPadding
     }
 
     /// The time of the last check, as the card header shows it.
     public nonisolated static func timestamp(_ date: Date?) -> String {
-        guard let date else { return "n/a" }
+        guard let date else { return L("card.na") }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "HH:mm:ss"

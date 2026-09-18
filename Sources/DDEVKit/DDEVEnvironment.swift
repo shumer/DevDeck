@@ -89,7 +89,7 @@ public struct DDEVEnvironment: Sendable {
                 branch: branch,
                 repositoryURL: repositoryURL,
                 framework: framework,
-                detail: "ddev did not answer",
+                detail: L("ddev.silent.title"),
                 checkedAt: clock.now
             )
         }
@@ -112,7 +112,7 @@ public struct DDEVEnvironment: Sendable {
                 branch: branch,
                 repositoryURL: repositoryURL,
                 framework: framework,
-                detail: "ddev does not know this project",
+                detail: L("ddev.unknownProject"),
                 checkedAt: clock.now
             )
         }
@@ -143,19 +143,19 @@ public struct DDEVEnvironment: Sendable {
     /// `ddev logs` reads the web service by default, which is the one that serves the site and
     /// the one whose errors people are looking for. A stopped project has no logs at all, and
     /// the CLI says so rather than failing, so the message it gives is what the card shows.
-    public func logs(for project: DDEVProject) async -> LogLines {
+    public func logs(for project: DDEVProject, limit: Int = LogTail.lineLimit) async -> LogLines {
         guard let folder = project.folderURL else {
-            return LogLines(detail: "no project folder", fetchedAt: clock.now)
+            return LogLines(detail: L("project.noFolder"), fetchedAt: clock.now)
         }
-        let command = "ddev logs -s web --tail \(LogTail.lineLimit * 4) 2>&1"
+        let command = "ddev logs -s web --tail \(limit * 4) 2>&1"
         guard let result = try? await runner.run(command, in: folder, timeout: 30) else {
-            return LogLines(source: "ddev logs", detail: "ddev did not answer", fetchedAt: clock.now)
+            return LogLines(source: "ddev logs", detail: L("ddev.silent.title"), fetchedAt: clock.now)
         }
-        let lines = LogTail.lines(from: result.standardOutput + result.standardError)
+        let lines = LogTail.lines(from: result.standardOutput + result.standardError, limit: limit)
         return LogLines(
             lines: lines,
             source: "ddev logs -s web",
-            detail: lines.isEmpty ? "nothing logged yet" : nil,
+            detail: lines.isEmpty ? L("card.log.nothing") : nil,
             fetchedAt: clock.now
         )
     }

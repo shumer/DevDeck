@@ -128,7 +128,7 @@ extension ModuleContext {
 final class GitHubAccountsSection: SettingsSection {
     let kind = SettingsWindowController.Section.github
     let group = SettingsListGroup.accounts
-    let addTitle = "GitHub Account"
+    var addTitle: String { L("settings.add.github") }
     weak var host: SettingsHost?
 
     private let store: GitHubAccountsStore
@@ -148,7 +148,7 @@ final class GitHubAccountsSection: SettingsSection {
             return SettingsListItem(
                 id: account.id,
                 title: account.label,
-                detail: hasToken ? "GitHub" : "GitHub · no token",
+                detail: hasToken ? "GitHub" : L("settings.list.noToken", "GitHub"),
                 icon: SettingsIcons.mark(.github),
                 dot: hasToken ? nil : .systemOrange,
                 isDimmed: !account.isEnabled
@@ -178,14 +178,14 @@ final class GitHubAccountsSection: SettingsSection {
     func add() -> String? {
         var accounts = store.accounts()
         let id = GitHubAccount.makeID(from: "account", existing: accounts.map(\.id))
-        accounts.append(GitHubAccount(id: id, label: "New Account"))
+        accounts.append(GitHubAccount(id: id, label: L("account.new.label")))
         store.save(accounts)
         return id
     }
 
     func remove(_ id: String) -> Bool {
         guard let account = store.accounts().first(where: { $0.id == id }),
-              SettingsSupport.confirm("Remove \(account.label)?", detail: "Its token is deleted from the Keychain as well.")
+              SettingsSupport.confirm(L("settings.remove.account.title", account.label), detail: L("settings.remove.account.detail"))
         else { return false }
         try? tokenStore.setToken(nil, for: account.tokenKey)
         store.save(store.accounts().filter { $0.id != id })
@@ -222,11 +222,11 @@ final class GitHubAccountsSection: SettingsSection {
                     accountID: edited.id
                 ).fetch()
                 if !token.isEmpty { try self.tokenStore.setToken(token, for: edited.tokenKey) }
-                form.token.works("\(snapshot.totalCount) open pull requests")
+                form.token.works(LN("token.works.pulls", snapshot.totalCount))
                 self.host?.reloadList()
                 self.host?.changed()
             } catch let error as APIError {
-                form.token.refused(token.isEmpty && !SettingsSupport.hasToken(edited.tokenKey, in: self.tokenStore) ? "paste a token first" : error.displayMessage)
+                form.token.refused(token.isEmpty && !SettingsSupport.hasToken(edited.tokenKey, in: self.tokenStore) ? L("token.needed") : error.displayMessage)
             } catch {
                 form.token.refused(error.localizedDescription)
             }

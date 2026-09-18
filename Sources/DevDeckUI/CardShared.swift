@@ -71,12 +71,12 @@ public struct CardPlaceholder<Value: Sendable & Equatable>: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Spacer(minLength: 8)
-            Text(state.failure?.displayMessage ?? "Checking…")
+            Text(state.failure?.displayMessage ?? L("token.checking"))
                 .font(.system(size: 13))
                 .foregroundStyle(state.failure == nil ? DeckTheme.label : DeckTheme.red)
             if case .missingToken(let service) = state.failure {
                 // A GitLab card has no token of its own until there is an instance to hold one.
-                Text(service == "GitLab" ? "Add a GitLab instance in Settings" : "Add a \(service) token in Settings")
+                Text(service == "GitLab" ? L("card.addGitLab") : L("card.addToken", service))
                     .font(.system(size: 11))
                     .foregroundStyle(DeckTheme.label)
             }
@@ -119,7 +119,7 @@ public struct CardExpander: View {
     }
 
     public var body: some View {
-        Text(isExpanded ? "show less ⌃" : "show \(hidden) more ⌄")
+        Text(isExpanded ? L("card.showLess") : L("card.showMore", hidden))
             .font(.system(size: 11))
             .foregroundStyle(DeckTheme.label)
             .frame(maxWidth: .infinity)
@@ -137,7 +137,7 @@ public enum CardFreshness {
     /// keeps ticking while the data is frozen is the worst of both.
     public static func text<Value: Sendable & Equatable>(for state: CardState<Value>) -> String {
         if let failure = state.failure { return failure.displayMessage }
-        guard let updatedAt = state.updatedAt else { return "never updated" }
+        guard let updatedAt = state.updatedAt else { return L("card.neverUpdated") }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "HH:mm:ss"
@@ -147,11 +147,11 @@ public enum CardFreshness {
     /// `as of 14:05`, for a card whose data has stopped moving. It says since when, which a bare
     /// "stale" did not.
     public static func asOf<Value: Sendable & Equatable>(_ state: CardState<Value>) -> String {
-        guard let updatedAt = state.updatedAt else { return "not loaded yet" }
+        guard let updatedAt = state.updatedAt else { return L("card.notLoaded") }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "HH:mm"
-        return "as of \(formatter.string(from: updatedAt))"
+        return L("card.asOf", formatter.string(from: updatedAt))
     }
 }
 
@@ -160,18 +160,18 @@ public enum RelativeTime {
     /// more width than it adds meaning.
     public static func short(from date: Date, to now: Date) -> String {
         let seconds = max(0, now.timeIntervalSince(date))
-        if seconds < 90 { return "now" }
+        if seconds < 90 { return L("attention.age.now") }
         let minutes = Int(seconds / 60)
-        if minutes < 60 { return "\(minutes)m" }
+        if minutes < 60 { return L("attention.age.minutes", minutes) }
         let hours = minutes / 60
-        if hours < 24 { return "\(hours)h" }
-        return "\(hours / 24)d"
+        if hours < 24 { return L("attention.age.hours", hours) }
+        return L("attention.age.days", hours / 24)
     }
 
     /// Compact duration for a footer: `6m 12s`, `48s`.
     public static func duration(_ seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded())
-        if total < 60 { return "\(total)s" }
-        return "\(total / 60)m \(total % 60)s"
+        if total < 60 { return L("card.duration.seconds", total) }
+        return L("card.duration.minutes", total / 60, total % 60)
     }
 }

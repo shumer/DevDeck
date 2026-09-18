@@ -38,7 +38,7 @@ moments earlier, saved at the displaced position and loaded from there next time
 ## Decision
 
 **Automatic movement happens only for a change somebody asked for.** Collapsing a card, opening a
-log tray, expanding a list: those make room. Data arriving does not move anything, ever. The deck
+expanding a list, folding a card: those make room. Data arriving does not move anything, ever. The deck
 settling into its own contents is not a layout event.
 
 **A card that has never had data keeps the height it last settled at.** It opens at the remembered

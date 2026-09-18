@@ -301,8 +301,7 @@ final class Updater {
                 try FileManager.default.moveItem(at: fresh, to: current)
                 return
             } catch {
-                throw UpdateFailure("could not put DevDeck into \(current.deletingLastPathComponent().path): \(error.localizedDescription). "
-                    + "Drag DevDeck into Applications by hand and open it from there.")
+                throw UpdateFailure(L("update.error.move", current.deletingLastPathComponent().path, error.localizedDescription))
             }
         }
         do {
@@ -312,8 +311,7 @@ final class Updater {
                 }
             }
         } catch {
-            throw UpdateFailure("could not move the old copy to the Trash: \(error.localizedDescription). "
-                + "Download the release and install it by hand.")
+            throw UpdateFailure(L("update.error.trash", error.localizedDescription))
         }
         do {
             try FileManager.default.moveItem(at: fresh, to: current)

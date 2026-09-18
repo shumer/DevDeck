@@ -53,7 +53,7 @@ final class MergeRequestsModule: CardModule {
 final class GitLabInstancesSection: SettingsSection {
     let kind = SettingsWindowController.Section.gitlab
     let group = SettingsListGroup.accounts
-    let addTitle = "GitLab Instance"
+    var addTitle: String { L("settings.add.gitlab") }
     weak var host: SettingsHost?
 
     private let store: GitLabAccountsStore
@@ -74,7 +74,7 @@ final class GitLabInstancesSection: SettingsSection {
             return SettingsListItem(
                 id: account.id,
                 title: account.label,
-                detail: hasToken ? account.displayHost : "\(account.displayHost) · no token",
+                detail: hasToken ? account.displayHost : L("settings.list.noToken", account.displayHost),
                 icon: SettingsIcons.mark(.gitlab),
                 dot: hasToken ? nil : .systemOrange,
                 isDimmed: !account.isEnabled
@@ -117,7 +117,7 @@ final class GitLabInstancesSection: SettingsSection {
 
     func remove(_ id: String) -> Bool {
         guard let account = store.accounts().first(where: { $0.id == id }),
-              SettingsSupport.confirm("Remove \(account.label)?", detail: "Its token is deleted from the Keychain as well.")
+              SettingsSupport.confirm(L("settings.remove.account.title", account.label), detail: L("settings.remove.account.detail"))
         else { return false }
         try? tokenStore.setToken(nil, for: account.tokenKey)
         store.save(store.accounts().filter { $0.id != id })
@@ -156,7 +156,7 @@ final class GitLabInstancesSection: SettingsSection {
                     accountID: edited.id
                 ).fetch()
                 if !token.isEmpty { try self.tokenStore.setToken(token, for: edited.tokenKey) }
-                form.token.works("\(snapshot.totalCount) open merge requests")
+                form.token.works(LN("token.works.merges", snapshot.totalCount))
                 self.host?.reloadList()
                 self.host?.changed()
             } catch let error as APIError {

@@ -1,3 +1,4 @@
+import DevDeckCore
 import AppKit
 import SwiftUI
 
@@ -80,6 +81,9 @@ public struct CardActionButton: View {
     private let tint: Color
     private let isEnabled: Bool
     private let isProminent: Bool
+    /// False when the row could not afford the word: the icon carries it, and the word moves
+    /// into the tooltip. A label cut off in the middle says less than the arrow on its own.
+    private let showsLabel: Bool
     private let action: () -> Void
 
     public init(
@@ -88,6 +92,7 @@ public struct CardActionButton: View {
         tint: Color = DeckTheme.value,
         isEnabled: Bool = true,
         isProminent: Bool = false,
+        showsLabel: Bool = true,
         action: @escaping () -> Void
     ) {
         self.title = title
@@ -95,6 +100,7 @@ public struct CardActionButton: View {
         self.tint = tint
         self.isEnabled = isEnabled
         self.isProminent = isProminent
+        self.showsLabel = showsLabel || systemImage == nil
         self.action = action
     }
 
@@ -116,13 +122,17 @@ public struct CardActionButton: View {
                 Image(systemName: systemImage)
                     .font(.system(size: isProminent ? 10 : 9.5, weight: .semibold))
             }
-            Text(title)
-                .font(.system(
-                    size: Self.labelSize(isProminent: isProminent),
-                    weight: isProminent ? .semibold : .medium
-                ))
-                .lineLimit(1)
+            if showsLabel {
+                Text(title)
+                    .font(.system(
+                        size: Self.labelSize(isProminent: isProminent),
+                        weight: isProminent ? .semibold : .medium
+                    ))
+                    .lineLimit(1)
+            }
         }
+        .help(title)
+        .accessibilityLabel(title)
         .foregroundStyle(isEnabled ? tint.opacity(isProminent ? 1 : 0.82) : tint.opacity(0.28))
         .frame(maxWidth: .infinity)
         .frame(height: Self.height)
@@ -193,7 +203,7 @@ public struct CardActionRow: View {
     public nonisolated static let prominentShare: Double = 1.5
 
     public var body: some View {
-        let widths = Self.widths(for: actions)
+        let places = Self.layout(for: actions)
 
         return HStack(spacing: Self.spacing) {
             ForEach(Array(actions.enumerated()), id: \.element.id) { index, action in
@@ -203,9 +213,10 @@ public struct CardActionRow: View {
                     tint: action.tint,
                     isEnabled: action.isEnabled,
                     isProminent: action.isProminent,
+                    showsLabel: places[index].showsLabel,
                     action: action.action
                 )
-                .frame(width: widths[index])
+                .frame(width: places[index].width)
             }
         }
         .padding(.top, Self.topPadding)
@@ -217,6 +228,8 @@ public struct CardActionRow: View {
     public nonisolated static let prominentPadding: Double = 24
     private nonisolated static let iconWidth: Double = 12
     private nonisolated static let iconSpacing: Double = 4
+    /// The least a label may have around it before the word is given up instead.
+    private nonisolated static let minimumAir: Double = 8
 
     /// Widths from what each button actually contains, plus the same padding on every one.
     ///
@@ -226,34 +239,86 @@ public struct CardActionRow: View {
     /// kind of button". Whatever is left over is shared out equally, so the row still fills the
     /// card and lines up with the chips above it.
     public nonisolated static func widths(for actions: [CardAction]) -> [Double] {
+        layout(for: actions).map(\.width)
+    }
+
+    /// Where a button sits in the row, and whether it kept its word.
+    public struct Placement: Sendable, Equatable {
+        public let width: Double
+        public let showsLabel: Bool
+    }
+
+    /// The row, once it knows what it can afford.
+    ///
+    /// The words are not all the same length in every language: a translation of `Restart` can
+    /// be half again as long, and four of those do not fit a card 352 points wide. Rather than
+    /// shrink every button until each label is cut in the middle, the row gives up whole words, the
+    /// quiet ones first and from the right, and lets the icon carry the button with the word in
+    /// its tooltip. What is left over goes to the buttons that kept their words, so their
+    /// padding stays uniform.
+    public nonisolated static func layout(for actions: [CardAction]) -> [Placement] {
         guard !actions.isEmpty else { return [] }
         let gaps = spacing * Double(actions.count - 1)
         let available = CardChromeMetrics.contentWidth - gaps
-        let intrinsic = actions.map(intrinsicWidth(of:))
-        let total = intrinsic.reduce(0, +)
 
-        guard total < available else {
-            // Not enough room for everything: shrink in proportion rather than let one label
-            // truncate while another keeps its air.
-            return intrinsic.map { $0 * (available / total) }
+        var showsLabel = actions.map { _ in true }
+        func widths() -> [Double] {
+            zip(actions, showsLabel).map { intrinsicWidth(of: $0, showsLabel: $1) }
         }
-        let surplus = (available - total) / Double(actions.count)
-        return intrinsic.map { $0 + surplus }
+        // A word is given up only once shrinking would start eating it. A row a little over the
+        // width closes up instead, which is what the English one has always done.
+        while true {
+            let intrinsic = widths()
+            let scale = min(1, available / intrinsic.reduce(0, +))
+            let readable = zip(actions, showsLabel).enumerated().allSatisfy { index, pair in
+                !pair.1 || intrinsic[index] * scale >= contentWidth(of: pair.0) + minimumAir
+            }
+            if readable { break }
+            guard let index = wordToDrop(in: actions, showing: showsLabel) else { break }
+            showsLabel[index] = false
+        }
+
+        let intrinsic = widths()
+        let total = intrinsic.reduce(0, +)
+        guard total < available else {
+            // Nothing left to give up: shrink in proportion rather than let one label truncate
+            // while another keeps its air.
+            return zip(intrinsic, showsLabel).map { Placement(width: $0 * (available / total), showsLabel: $1) }
+        }
+        // An icon-only button keeps what it needs, no more: the space belongs to the words.
+        let labelled = showsLabel.filter { $0 }.count
+        let surplus = (available - total) / Double(labelled > 0 ? labelled : actions.count)
+        return zip(intrinsic, showsLabel).map { width, shows in
+            Placement(width: width + (labelled == 0 || shows ? surplus : 0), showsLabel: shows)
+        }
+    }
+
+    /// The next word the row can do without: the right-most quiet button that still has one and
+    /// an icon to stand in for it, and only then the prominent one.
+    private nonisolated static func wordToDrop(in actions: [CardAction], showing showsLabel: [Bool]) -> Int? {
+        func candidate(_ include: (CardAction) -> Bool) -> Int? {
+            actions.indices.reversed().first {
+                showsLabel[$0] && actions[$0].systemImage != nil && include(actions[$0])
+            }
+        }
+        return candidate { !$0.isProminent } ?? candidate { _ in true }
     }
 
     /// What a button actually holds - icon, gap and label - with no padding at all.
     public nonisolated static func contentWidth(of action: CardAction) -> Double {
-        intrinsicWidth(of: action) - labelPadding * 2 - (action.isProminent ? prominentPadding : 0)
+        intrinsicWidth(of: action, showsLabel: true) - labelPadding * 2 - (action.isProminent ? prominentPadding : 0)
     }
 
-    private nonisolated static func intrinsicWidth(of action: CardAction) -> Double {
+    private nonisolated static func intrinsicWidth(of action: CardAction, showsLabel: Bool) -> Double {
         let font = NSFont.systemFont(
             ofSize: CardActionButton.labelSize(isProminent: action.isProminent),
             weight: action.isProminent ? .semibold : .medium
         )
+        let icon = action.systemImage == nil ? 0 : iconWidth
+        guard showsLabel || action.systemImage == nil else { return icon + labelPadding * 2 }
         let label = ceil(NSAttributedString(string: action.title, attributes: [.font: font]).size().width)
-        let icon = action.systemImage == nil ? 0 : iconWidth + iconSpacing
-        return label + icon + labelPadding * 2 + (action.isProminent ? prominentPadding : 0)
+        let gap = action.systemImage == nil ? 0 : iconSpacing
+        return label + icon + gap + labelPadding * 2 + (action.isProminent ? prominentPadding : 0)
     }
 }
 
@@ -444,6 +509,6 @@ public struct CardMetaBlock: View {
             guard let repositoryURL, let onOpenRepository else { return }
             onOpenRepository(repositoryURL)
         }
-        .help(repositoryURL.map { "\($0.absoluteString), the branch is \(branch)" } ?? "checked out branch")
+        .help(repositoryURL.map { L("card.branch.help", $0.absoluteString, branch) } ?? L("card.branch.checkedOut"))
     }
 }

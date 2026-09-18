@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>alert.summary.cantCheck</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d аккаунт не проверить</string>
+			<key>few</key>
+			<string>%d аккаунта не проверить</string>
+			<key>many</key>
+			<string>%d аккаунтов не проверить</string>
+			<key>other</key>
+			<string>%d аккаунтов не проверить</string>
+		</dict>
+	</dict>
+	<key>alert.summary.failedRun</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d запуск падает</string>
+			<key>few</key>
+			<string>%d запуска падают</string>
+			<key>many</key>
+			<string>%d запусков падают</string>
+			<key>other</key>
+			<string>%d запусков падают</string>
+		</dict>
+	</dict>
+	<key>alert.summary.reviews</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d ревью ждёт</string>
+			<key>few</key>
+			<string>%d ревью ждут</string>
+			<key>many</key>
+			<string>%d ревью ждут</string>
+			<key>other</key>
+			<string>%d ревью ждут</string>
+		</dict>
+	</dict>
+	<key>alert.summary.startFailed</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d проект не запустился</string>
+			<key>few</key>
+			<string>%d проекта не запустились</string>
+			<key>many</key>
+			<string>%d проектов не запустились</string>
+			<key>other</key>
+			<string>%d проектов не запустились</string>
+		</dict>
+	</dict>
+	<key>alert.summary.stuck</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d стоит</string>
+			<key>few</key>
+			<string>%d стоят</string>
+			<key>many</key>
+			<string>%d стоят</string>
+			<key>other</key>
+			<string>%d стоят</string>
+		</dict>
+	</dict>
+	<key>alert.summary.wentDown</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d проект упал</string>
+			<key>few</key>
+			<string>%d проекта упали</string>
+			<key>many</key>
+			<string>%d проектов упали</string>
+			<key>other</key>
+			<string>%d проектов упали</string>
+		</dict>
+	</dict>
+	<key>attention.gh.run.streak</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>упал %d раз подряд</string>
+			<key>few</key>
+			<string>упал %d раза подряд</string>
+			<key>many</key>
+			<string>упал %d раз подряд</string>
+			<key>other</key>
+			<string>упал %d раз подряд</string>
+		</dict>
+	</dict>
+	<key>attention.local.commits</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d коммит</string>
+			<key>few</key>
+			<string>%d коммита</string>
+			<key>many</key>
+			<string>%d коммитов</string>
+			<key>other</key>
+			<string>%d коммитов</string>
+		</dict>
+	</dict>
+	<key>attention.local.days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d день</string>
+			<key>few</key>
+			<string>%d дня</string>
+			<key>many</key>
+			<string>%d дней</string>
+			<key>other</key>
+			<string>%d дней</string>
+		</dict>
+	</dict>
+	<key>attention.more.other</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>ещё %d</string>
+			<key>few</key>
+			<string>ещё %d</string>
+			<key>many</key>
+			<string>ещё %d</string>
+			<key>other</key>
+			<string>ещё %d</string>
+		</dict>
+	</dict>
+	<key>attention.more.stuck</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>ещё %d стоит</string>
+			<key>few</key>
+			<string>ещё %d стоят</string>
+			<key>many</key>
+			<string>ещё %d стоят</string>
+			<key>other</key>
+			<string>ещё %d стоят</string>
+		</dict>
+	</dict>
+	<key>attention.more.toFix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>ещё %d на починку</string>
+			<key>few</key>
+			<string>ещё %d на починку</string>
+			<key>many</key>
+			<string>ещё %d на починку</string>
+			<key>other</key>
+			<string>ещё %d на починку</string>
+		</dict>
+	</dict>
+	<key>attention.more.waiting</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>ещё %d ждёт вас</string>
+			<key>few</key>
+			<string>ещё %d ждут вас</string>
+			<key>many</key>
+			<string>ещё %d ждут вас</string>
+			<key>other</key>
+			<string>ещё %d ждут вас</string>
+		</dict>
+	</dict>
+	<key>attention.summary.stuck</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d застряло</string>
+			<key>few</key>
+			<string>%d застряли</string>
+			<key>many</key>
+			<string>%d застряло</string>
+			<key>other</key>
+			<string>%d застряло</string>
+		</dict>
+	</dict>
+	<key>attention.summary.toFix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d надо починить</string>
+			<key>few</key>
+			<string>%d надо починить</string>
+			<key>many</key>
+			<string>%d надо починить</string>
+			<key>other</key>
+			<string>%d надо починить</string>
+		</dict>
+	</dict>
+	<key>attention.summary.waiting</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d ждёт вас</string>
+			<key>few</key>
+			<string>%d ждут вас</string>
+			<key>many</key>
+			<string>%d ждут вас</string>
+			<key>other</key>
+			<string>%d ждут вас</string>
+		</dict>
+	</dict>
+	<key>card.containers</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d контейнер</string>
+			<key>few</key>
+			<string>%d контейнера</string>
+			<key>many</key>
+			<string>%d контейнеров</string>
+			<key>other</key>
+			<string>%d контейнеров</string>
+		</dict>
+	</dict>
+	<key>card.groups</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d группа</string>
+			<key>few</key>
+			<string>%d группы</string>
+			<key>many</key>
+			<string>%d групп</string>
+			<key>other</key>
+			<string>%d групп</string>
+		</dict>
+	</dict>
+	<key>card.orgs</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d организация</string>
+			<key>few</key>
+			<string>%d организации</string>
+			<key>many</key>
+			<string>%d организаций</string>
+			<key>other</key>
+			<string>%d организаций</string>
+		</dict>
+	</dict>
+	<key>card.projects</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d проект</string>
+			<key>few</key>
+			<string>%d проекта</string>
+			<key>many</key>
+			<string>%d проектов</string>
+			<key>other</key>
+			<string>%d проектов</string>
+		</dict>
+	</dict>
+	<key>card.repos</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d репозиторий</string>
+			<key>few</key>
+			<string>%d репозитория</string>
+			<key>many</key>
+			<string>%d репозиториев</string>
+			<key>other</key>
+			<string>%d репозиториев</string>
+		</dict>
+	</dict>
+	<key>card.wif.watched</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d чекаут под наблюдением</string>
+			<key>few</key>
+			<string>%d чекаута под наблюдением</string>
+			<key>many</key>
+			<string>%d чекаутов под наблюдением</string>
+			<key>other</key>
+			<string>%d чекаутов под наблюдением</string>
+		</dict>
+	</dict>
+	<key>token.works.merges</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d открытый merge request</string>
+			<key>few</key>
+			<string>%d открытых merge request</string>
+			<key>many</key>
+			<string>%d открытых merge request</string>
+			<key>other</key>
+			<string>%d открытых merge request</string>
+		</dict>
+	</dict>
+	<key>token.works.pulls</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d открытый pull request</string>
+			<key>few</key>
+			<string>%d открытых pull request</string>
+			<key>many</key>
+			<string>%d открытых pull request</string>
+			<key>other</key>
+			<string>%d открытых pull request</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

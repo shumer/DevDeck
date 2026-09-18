@@ -116,15 +116,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
     ) { [weak self] in self?.settingsChanged() }
 
+    /// The log windows, one per project, opened from a card's header button.
+    private lazy var logWindows: LogWindows = LogWindows(controller: controller) { [unowned self] card in
+        self.cards.resolved.first { $0.id == card }?.descriptor.title ?? card.rawValue
+    }
+
     private let notifier = Notifier()
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Before anything is worded: menus, cards and banners all read their words as they are
+        // drawn, and this is what decides which table they read them from.
+        Strings.use(preferences.language)
         // Before any window exists, because a settings field with no Edit menu behind it cannot
         // be pasted into.
         EditMenu.install()
         CardHostView.modules = modules
         menu.install()
+        // A card's log button opens a window; the controller keeps its lines fresh and knows
+        // which cards have one open, which is what the button shows.
+        controller.presentLogs = { [unowned self] card in self.logWindows.open(card) }
+        controller.dismissLogs = { [unowned self] card in self.logWindows.close(card) }
 
         // Panels are sized from the data, so anything that changes it can change their height -
         // a branch line appearing on a project card counts just as much as a pull request does.
@@ -133,11 +145,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.$inbox.map { _ in () }.eraseToAnyPublisher(),
             controller.$actions.map { _ in () }.eraseToAnyPublisher(),
             controller.$expandedCards.map { _ in () }.eraseToAnyPublisher(),
+            // The header button of a card whose log is on screen is lit, so the card is drawn
+            // again when a window opens or closes.
+            controller.$logWindowCards.map { _ in () }.eraseToAnyPublisher(),
             controller.$stackStatuses.map { _ in () }.eraseToAnyPublisher(),
             controller.$ddevStatuses.map { _ in () }.eraseToAnyPublisher(),
             controller.$localStatuses.map { _ in () }.eraseToAnyPublisher(),
-            // A tray opening or filling changes the card's height, so the panel has to follow.
-            controller.$logTails.map { _ in () }.eraseToAnyPublisher(),
             controller.$collapsedCards.map { _ in () }.eraseToAnyPublisher(),
             // The rest of what the menu-bar badge is made of: GitLab, Docker, the projects'
             // history and the checkouts.
@@ -216,6 +229,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.menu.open() }
         }
 
+        // `open -a DevDeck --args --logs` opens a log window without a hand on the mouse, for
+        // looking at it and for a screenshot. A card id after it picks the project; without one
+        // it takes the first card that has a log to read.
+        if let index = CommandLine.arguments.firstIndex(of: "--logs") {
+            let arguments = CommandLine.arguments
+            let named = arguments.count > index + 1 && !arguments[index + 1].hasPrefix("-")
+                ? CardID(rawValue: arguments[index + 1])
+                : nil
+            let card = named ?? cards.visible.first { controller.hasLogSource($0) }
+            if let card { logWindows.open(card) }
+        }
+
         if CommandLine.arguments.contains("--enable-login-item"), !LoginItem.isEnabled {
             LoginItem.set(true)
         }
@@ -242,13 +267,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Brings the deck up with this card's log open: what a row about a project promises.
+    /// Brings the deck up with this card's log open in its window: what a row about a project
+    /// promises. A folded card has a log like any other; the window is not on the card.
     private func showCard(_ card: CardID) {
         if !cards.isEnabled(card) {
             cards.setEnabled(true, for: card)
             panels.syncPanels()
         }
-        if controller.hasLogSource(card), !controller.isCollapsed(card), !controller.isExpanded(card) {
+        if controller.hasLogSource(card), !controller.isShowingLogs(card) {
             controller.toggleLogs(for: card)
         }
         summoner.present()
@@ -258,6 +284,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the data, and any deck preference may have changed, which only counts once it is applied.
     private func settingsChanged() {
         panels.syncPanels()
+        // A project taken out of settings takes its log window with it: a window titled with a
+        // project that no longer exists has nothing to read.
+        logWindows.closeAll(except: Set(cards.resolved.map(\.id)))
         controller.refreshNow()
         applyDeckPreferences()
     }

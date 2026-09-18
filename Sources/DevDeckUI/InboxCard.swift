@@ -63,20 +63,20 @@ public struct InboxCard: View {
     private var collapsed: some View {
         CardCollapsedRow(
             glyph: CardGlyph.github,
-            title: "GitHub inbox",
+            title: L("card.title.inbox"),
             note: collapsedNote,
             tone: collapsedTone.tone,
             color: collapsedTone.color,
-            actions: [CardAction("Open in browser", systemImage: "arrow.up.forward", action: onOpenDashboard)],
-            help: collapsedNote ?? "GitHub inbox"
+            actions: [CardAction(L("card.action.openInBrowser"), systemImage: "arrow.up.forward", action: onOpenDashboard)],
+            help: collapsedNote ?? L("card.title.inbox")
         )
     }
 
     /// Unread is the number, and what is waiting on you is the part worth colour.
     private var collapsedNote: String? {
-        guard let snapshot = state.value else { return state.failure?.displayMessage ?? "loading" }
-        if snapshot.actionableCount > 0 { return "\(snapshot.actionableCount) for you · \(snapshot.unreadCount) unread" }
-        return snapshot.unreadCount == 0 ? "clear" : "\(snapshot.unreadCount) unread"
+        guard let snapshot = state.value else { return state.failure?.displayMessage ?? L("card.pill.loading") }
+        if snapshot.actionableCount > 0 { return L("card.inbox.forYouUnread", snapshot.actionableCount, snapshot.unreadCount) }
+        return snapshot.unreadCount == 0 ? L("card.pill.clear") : L("card.inbox.unread", snapshot.unreadCount)
     }
 
     private var collapsedTone: (tone: CardStateTone, color: Color) {
@@ -86,7 +86,7 @@ public struct InboxCard: View {
     }
 
     private var full: some View {
-        CardChrome(title: "GitHub · inbox", pill: pill) {
+        CardChrome(title: L("card.chrome.inbox"), pill: pill) {
             if let snapshot = state.value {
                 content(snapshot)
             } else {
@@ -101,9 +101,9 @@ public struct InboxCard: View {
         }
         guard let snapshot = state.value else { return nil }
         if snapshot.actionableCount > 0 {
-            return ("\(snapshot.actionableCount) for you", DeckTheme.violet)
+            return (L("card.inbox.forYou", snapshot.actionableCount), DeckTheme.violet)
         }
-        return snapshot.unreadCount == 0 ? ("clear", DeckTheme.green) : ("nothing for you", DeckTheme.label)
+        return snapshot.unreadCount == 0 ? (L("card.pill.clear"), DeckTheme.green) : (L("card.inbox.nothingForYou"), DeckTheme.label)
     }
 
     @ViewBuilder
@@ -113,7 +113,7 @@ public struct InboxCard: View {
                 .font(.system(size: 42, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(snapshot.actionableCount > 0 ? DeckTheme.violet : DeckTheme.green)
-            Text("unread")
+            Text(L("card.inbox.unread.word"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(DeckTheme.label)
         }
@@ -141,8 +141,8 @@ public struct InboxCard: View {
 
         CardFooter(
             leading: snapshot.failures.summary ?? (snapshot.items.isEmpty
-                ? "inbox empty"
-                : "\(snapshot.repositoryCount) repo\(snapshot.repositoryCount == 1 ? "" : "s")"),
+                ? L("card.inbox.empty")
+                : LN("card.repos", snapshot.repositoryCount)),
             trailing: CardFreshness.text(for: state),
             isStale: state.failure != nil
                 || !snapshot.failures.isEmpty
@@ -181,11 +181,11 @@ public struct InboxCard: View {
         // carries a chip, a repository and a title, and this is not something you do to every
         // one of them.
         .contextMenu {
-            Button("Mark as read") { onMarkRead(item) }
+            Button(L("card.inbox.markRead")) { onMarkRead(item) }
             if let url = item.url {
-                Button("Open on github.com") { onOpen(url, item.accountID) }
+                Button(L("card.inbox.openOnGitHub")) { onOpen(url, item.accountID) }
             }
         }
-        .help("\(item.shortRepository): \(item.title)")
+        .help(L("attention.row.colon", item.shortRepository, item.title))
     }
 }

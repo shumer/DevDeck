@@ -6,7 +6,10 @@ import DevDeckUI
 /// who is asking is answered before the words are read.
 @MainActor
 enum AttentionImages {
-    private static let size: CGFloat = 16
+    /// The same size the settings list draws its marks at, which is the Mac's own "Sidebar icon
+    /// size": one mark, one size, whether it is in the menu or in the window. Hard-coded 16 made
+    /// the menu's marks smaller than the same account's row in Settings on every Mac but one.
+    private static var size: CGFloat { SidebarMetrics.iconSize }
 
     static func image(for mark: AttentionMark) -> NSImage? {
         switch mark {
@@ -28,10 +31,13 @@ enum AttentionImages {
     static var calm: NSImage? { symbol("checkmark.circle") }
     static var more: NSImage? { symbol("ellipsis.circle") }
 
-    /// A template, so it takes the menu's own ink and inverts on the highlighted row.
+    /// A template, so it takes the menu's own ink and inverts on the highlighted row. Drawn a
+    /// little under the marks beside it: a glyph with no tile behind it reads as bigger than a
+    /// filled square of the same size.
     private static func symbol(_ name: String) -> NSImage? {
+        let configuration = NSImage.SymbolConfiguration(pointSize: size * 0.8, weight: .regular)
         let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 13, weight: .regular))
+            .withSymbolConfiguration(configuration)
         image?.isTemplate = true
         return image
     }

@@ -23,10 +23,10 @@ public enum AttentionTier: Int, Sendable, Equatable, Comparable, CaseIterable {
     /// The menu's section header.
     public var title: String {
         switch self {
-        case .waiting: return "Waiting on you"
-        case .needsFixing: return "Needs fixing"
-        case .stuck: return "Your work is stuck"
-        case .goodToKnow: return "Good to know"
+        case .waiting: return L("attention.tier.waiting")
+        case .needsFixing: return L("attention.tier.needsFixing")
+        case .stuck: return L("attention.tier.stuck")
+        case .goodToKnow: return L("attention.tier.goodToKnow")
         }
     }
 
@@ -142,10 +142,10 @@ public struct AttentionDigest: Sendable, Equatable {
         public var overflowTitle: String? {
             guard !overflow.isEmpty else { return nil }
             switch tier {
-            case .waiting: return "\(overflow.count) more waiting on you"
-            case .needsFixing: return "\(overflow.count) more to fix"
-            case .stuck: return "\(overflow.count) more stuck"
-            case .goodToKnow: return "\(overflow.count) more"
+            case .waiting: return LN("attention.more.waiting", overflow.count)
+            case .needsFixing: return LN("attention.more.toFix", overflow.count)
+            case .stuck: return LN("attention.more.stuck", overflow.count)
+            case .goodToKnow: return LN("attention.more.other", overflow.count)
             }
         }
     }
@@ -192,26 +192,27 @@ public struct AttentionDigest: Sendable, Equatable {
         }
     }
 
-    /// One line for the tooltip and for VoiceOver, counting things by what they are.
+    /// One line for the tooltip and for VoiceOver, counting things by what they are. Each count
+    /// carries its own words, because a language decides for itself how many forms a number has.
     public var summary: String {
         var parts: [String] = []
         let waiting = count(.waiting)
         let fixing = count(.needsFixing)
         let stuck = count(.stuck)
-        if waiting > 0 { parts.append("\(waiting) waiting on you") }
-        if fixing > 0 { parts.append("\(fixing) to fix") }
-        if stuck > 0 { parts.append("\(stuck) stuck") }
-        return parts.isEmpty ? "nothing needs you" : parts.joined(separator: ", ")
+        if waiting > 0 { parts.append(LN("attention.summary.waiting", waiting)) }
+        if fixing > 0 { parts.append(LN("attention.summary.toFix", fixing)) }
+        if stuck > 0 { parts.append(LN("attention.summary.stuck", stuck)) }
+        return parts.isEmpty ? L("attention.summary.none") : parts.joined(separator: ", ")
     }
 
     /// The age at the end of a row: `now`, `12m`, `5h`, `3d`.
     public static func age(since date: Date?, now: Date) -> String? {
         guard let date else { return nil }
         let seconds = max(0, now.timeIntervalSince(date))
-        if seconds < 60 { return "now" }
-        if seconds < 3600 { return "\(Int(seconds / 60))m" }
-        if seconds < 86_400 { return "\(Int(seconds / 3600))h" }
-        return "\(Int(seconds / 86_400))d"
+        if seconds < 60 { return L("attention.age.now") }
+        if seconds < 3600 { return L("attention.age.minutes", Int(seconds / 60)) }
+        if seconds < 86_400 { return L("attention.age.hours", Int(seconds / 3600)) }
+        return L("attention.age.days", Int(seconds / 86_400))
     }
 
     /// `10:42`, the way every time on the deck is written.
@@ -234,8 +235,8 @@ public enum AttentionWords {
     public static func list(_ names: [String], limit: Int = 2) -> String {
         guard !names.isEmpty else { return "" }
         if names.count == 1 { return names[0] }
-        if names.count <= limit { return names.dropLast().joined(separator: ", ") + " and " + names.last! }
-        return names.prefix(limit).joined(separator: ", ") + " and \(names.count - limit) more"
+        if names.count <= limit { return L("attention.list.two", names.dropLast().joined(separator: ", "), names.last!) }
+        return L("attention.list.more", names.prefix(limit).joined(separator: ", "), names.count - limit)
     }
 
     /// A title cut to what a menu row can hold, at a word where one is near.

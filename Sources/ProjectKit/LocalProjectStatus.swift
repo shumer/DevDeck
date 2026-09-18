@@ -51,7 +51,7 @@ public struct LocalProjectStatus: Sendable, Equatable {
 
     public static let unavailable = LocalProjectStatus(
         state: .unavailable,
-        detail: "Set a folder and a start command in settings"
+        detail: L("project.status.unavailable")
     )
 
     public var isRunning: Bool { state == .running }
@@ -86,20 +86,20 @@ public extension LocalProjectStatus {
     /// `currentURL` the one in the field now; when they differ the answer is not shown at all.
     func summary(checkedURL: String, currentURL: String) -> CheckSummary {
         guard checkedURL == currentURL else {
-            return CheckSummary(tone: .idle, state: "Not checked", detail: "the address changed, check again")
+            return CheckSummary(tone: .idle, state: L("check.notChecked"), detail: L("check.notChecked.detail"))
         }
         let when = CheckSummary.time(checkedAt)
         switch state {
         case .running:
-            return CheckSummary(tone: .good, state: "Running", detail: detail ?? "answered at \(when)")
+            return CheckSummary(tone: .good, state: L("check.running"), detail: detail ?? L("check.answeredAt", when))
         case .starting:
-            return CheckSummary(tone: .busy, state: "Starting", detail: detail ?? "process up, not answering yet")
+            return CheckSummary(tone: .busy, state: L("check.starting"), detail: detail ?? L("check.starting.detail"))
         case .working:
-            return CheckSummary(tone: .busy, state: "Working", detail: detail ?? "")
+            return CheckSummary(tone: .busy, state: L("check.working"), detail: detail ?? "")
         case .stopped:
-            return CheckSummary(tone: .idle, state: "Stopped", detail: detail ?? (currentURL.isEmpty ? "nothing started from here" : "nothing answered at \(when)"))
+            return CheckSummary(tone: .idle, state: L("check.stopped"), detail: detail ?? (currentURL.isEmpty ? L("check.stopped.nothingStarted") : L("check.stopped.noAnswer", when)))
         case .unavailable:
-            return CheckSummary(tone: .idle, state: "Not configured", detail: "set a folder and a start command")
+            return CheckSummary(tone: .idle, state: L("project.notConfigured"), detail: L("check.notConfigured.local"))
         }
     }
 }

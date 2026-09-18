@@ -8,7 +8,7 @@ public struct ArcProjectCard: View {
     private let project: ArcProject
     private let status: LocalStackStatus
     private let docker: DockerStatus
-    private let logs: LogLines?
+    private let isShowingLogs: Bool
     private let isCollapsed: Bool
     /// The same site, addressed for another device on this network. Nil unless it is running.
     private let phoneURL: URL?
@@ -25,13 +25,12 @@ public struct ArcProjectCard: View {
     private let onOpenTerminal: () -> Void
     private let onStartDocker: (() -> Void)?
     private let onToggleLogs: (() -> Void)?
-    private let onOpenLogFile: ((URL) -> Void)?
 
     public init(
         project: ArcProject,
         status: LocalStackStatus,
         docker: DockerStatus = DockerStatus(state: .unknown),
-        logs: LogLines? = nil,
+        isShowingLogs: Bool = false,
         isCollapsed: Bool = false,
         phoneURL: URL? = nil,
         now: Date = Date(),
@@ -40,13 +39,12 @@ public struct ArcProjectCard: View {
         onRevealFolder: @escaping () -> Void = {},
         onOpenTerminal: @escaping () -> Void = {},
         onStartDocker: (() -> Void)? = nil,
-        onToggleLogs: (() -> Void)? = nil,
-        onOpenLogFile: ((URL) -> Void)? = nil
+        onToggleLogs: (() -> Void)? = nil
     ) {
         self.project = project
         self.status = status
         self.docker = docker
-        self.logs = logs
+        self.isShowingLogs = isShowingLogs
         self.isCollapsed = isCollapsed
         self.phoneURL = phoneURL
         self.now = now
@@ -56,10 +54,9 @@ public struct ArcProjectCard: View {
         self.onOpenTerminal = onOpenTerminal
         self.onStartDocker = onStartDocker
         self.onToggleLogs = onToggleLogs
-        self.onOpenLogFile = onOpenLogFile
     }
 
-    nonisolated public static func size(for project: ArcProject, status: LocalStackStatus, logs: LogLines? = nil, isCollapsed: Bool = false) -> CGSize {
+    nonisolated public static func size(for project: ArcProject, status: LocalStackStatus, isCollapsed: Bool = false) -> CGSize {
         guard !isCollapsed else {
             return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
         }
@@ -69,8 +66,7 @@ public struct ArcProjectCard: View {
                 tools: project.adminLinks.map(\.label),
                 environments: environmentChips(project: project, status: status).map(\.label),
                 hasBranch: status.branch != nil,
-                hasMetaRow: true,
-                logs: logs
+                hasMetaRow: true
             )
         )
     }
@@ -107,9 +103,9 @@ public struct ArcProjectCard: View {
         var actions: [CardAction] = []
         if let first = lifecycle.first { actions.append(first) }
         actions.append(contentsOf: lifecycle.dropFirst().filter(\.isEnabled))
-        actions.append(CardAction("Terminal", systemImage: "terminal", action: onOpenTerminal))
+        actions.append(CardAction(L("card.action.terminal"), systemImage: "terminal", action: onOpenTerminal))
         if let site = status.isRunning ? (status.siteURL ?? project.localSiteURL) : nil {
-            actions.append(CardAction("Open the site", systemImage: "arrow.up.forward") { onOpen(site) })
+            actions.append(CardAction(L("card.action.openSite"), systemImage: "arrow.up.forward") { onOpen(site) })
         }
         return actions
     }
@@ -145,9 +141,6 @@ public struct ArcProjectCard: View {
                 onOpenRepository: onOpen
             )
             chips
-            if let logs {
-                CardLogTray(logs: logs, onOpenFile: onOpenLogFile)
-            }
             controls
             Spacer(minLength: 0)
         }
@@ -193,10 +186,10 @@ public struct ArcProjectCard: View {
         // "local stopped" here against "not running" there made two identical states look like
         // two different ones.
         switch status.state {
-        case .running: return status.detail ?? "running"
-        case .working: return status.detail ?? "working…"
-        case .stopped: return "stopped"
-        case .unavailable: return "not configured"
+        case .running: return status.detail ?? L("card.state.running")
+        case .working: return status.detail ?? L("card.state.working")
+        case .stopped: return L("card.state.stopped")
+        case .unavailable: return L("card.state.notConfigured")
         }
     }
 
@@ -205,7 +198,7 @@ public struct ArcProjectCard: View {
     private var heroNote: String? {
         if isDockerBlocked { return nil }
         if status.isRunning, let containers = status.containers {
-            return "\(containers) container\(containers == 1 ? "" : "s")"
+            return LN("card.containers", containers)
         }
         return status.state == .stopped ? status.detail : nil
     }
@@ -250,13 +243,13 @@ public struct ArcProjectCard: View {
     private var controls: some View {
         CardActionRow(lifecycle + [
             CardAction(
-                "Folder",
+                L("card.action.folder"),
                 systemImage: "folder",
                 isEnabled: project.supportsLocalStack,
                 action: onRevealFolder
             ),
             CardAction(
-                "Terminal",
+                L("card.action.terminal"),
                 systemImage: "terminal",
                 isEnabled: project.supportsLocalStack,
                 action: onOpenTerminal
@@ -268,20 +261,20 @@ public struct ArcProjectCard: View {
         if isDockerBlocked {
             return [
                 DockerGate.startAction(docker, onStart: onStartDocker),
-                CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+                CardAction(L("card.action.restart"), systemImage: "arrow.clockwise", isEnabled: false),
             ]
         }
         if status.isRunning {
             return [
-                CardAction("Stop", systemImage: "power", tint: DeckTheme.red, isProminent: true) {
+                CardAction(L("card.action.stop"), systemImage: "power", tint: DeckTheme.red, isProminent: true) {
                     onAction(.stop)
                 },
-                CardAction("Restart", systemImage: "arrow.clockwise") { onAction(.restart) },
+                CardAction(L("card.action.restart"), systemImage: "arrow.clockwise") { onAction(.restart) },
             ]
         }
         return [
             CardAction(
-                "Start",
+                L("card.action.start"),
                 systemImage: "play.fill",
                 tint: DeckTheme.green,
                 isEnabled: !status.isBusy && project.supportsLocalStack,
@@ -289,7 +282,7 @@ public struct ArcProjectCard: View {
             ) {
                 onAction(.start)
             },
-            CardAction("Restart", systemImage: "arrow.clockwise", isEnabled: false),
+            CardAction(L("card.action.restart"), systemImage: "arrow.clockwise", isEnabled: false),
         ]
     }
 
@@ -301,8 +294,8 @@ public struct ArcProjectCard: View {
         if let onToggleLogs {
             toggles.append(CardHeaderToggle(
                 id: "log",
-                isOn: logs != nil,
-                help: logs == nil ? "show the last log lines" : "hide the log"
+                isOn: isShowingLogs,
+                help: isShowingLogs ? L("card.log.window.close") : L("card.log.window.open")
             ) { onToggleLogs() })
         }
         if let phoneURL {
@@ -310,8 +303,9 @@ public struct ArcProjectCard: View {
                 id: "phone",
                 isOn: isShowingPhone,
                 systemImage: "qrcode",
-                help: "open this on your phone",
-                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard))
+                help: L("card.phone.help"),
+                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard)),
+                dismiss: { isShowingPhone = false }
             ) { isShowingPhone.toggle() })
         }
         return toggles

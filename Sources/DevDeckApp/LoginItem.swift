@@ -35,15 +35,9 @@ enum LoginItem {
     /// alert says what to do rather than only what went wrong.
     private static func report(_ error: Error) {
         let alert = NSAlert()
-        alert.messageText = "Could not change the login item"
-        alert.informativeText = """
-            \(error.localizedDescription)
-
-            macOS registers the app by its location, so this usually means the app is \
-            somewhere it does not consider stable. Move DevDeck.app to /Applications and \
-            try again, or add it under System Settings → General → Login Items.
-            """
-        alert.addButton(withTitle: "OK")
+        alert.messageText = L("loginItem.error.title")
+        alert.informativeText = L("loginItem.error.detail", error.localizedDescription)
+        alert.addButton(withTitle: L("button.ok"))
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
     }

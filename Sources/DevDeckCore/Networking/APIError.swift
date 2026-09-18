@@ -33,29 +33,29 @@ public enum APIError: Error, Sendable, Equatable {
     public var displayMessage: String {
         switch self {
         case .unauthorized:
-            return "Token rejected"
+            return L("error.unauthorized")
         case .forbidden(let detail):
-            return detail ?? "Not allowed"
+            return detail ?? L("error.forbidden")
         case .rateLimited(let resetAt):
-            guard let resetAt else { return "Rate limit reached" }
+            guard let resetAt else { return L("error.rateLimited") }
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.dateFormat = "HH:mm"
-            return "Rate limit, back at \(formatter.string(from: resetAt))"
+            return L("error.rateLimited.back", formatter.string(from: resetAt))
         case .notFound:
-            return "Not found"
+            return L("error.notFound")
         case .server(let status, _):
-            return "Server error \(status)"
+            return L("error.server", status)
         case .transport:
-            return "Offline"
+            return L("error.offline")
         case .decoding:
-            return "A response DevDeck can't read"
+            return L("error.decoding")
         case .graphQL(let messages):
-            return messages.first ?? "GraphQL error"
+            return messages.first ?? L("error.graphQL")
         case .missingToken(let name):
-            return "No \(name) token yet"
+            return L("card.noToken", name)
         case .accounts(let failures):
-            return failures.summary ?? "Every account failed"
+            return failures.summary ?? L("error.everyAccount")
         }
     }
 }

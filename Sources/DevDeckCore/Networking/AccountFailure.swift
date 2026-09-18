@@ -80,11 +80,11 @@ public struct AccountFailure: Sendable, Equatable, Codable {
     /// The line a card footer shows: who, what, and the next step when there is one.
     public var line: String {
         switch kind {
-        case .rejected: return "\(account): token rejected, replace it in Settings"
-        case .forbidden: return "\(account): \(message)"
-        case .rateLimited: return "\(account): \(message)"
-        case .unreachable: return "\(account): \(message), retrying"
-        case .other: return "\(account): \(message)"
+        case .rejected: return L("error.account.rejected", account)
+        case .forbidden: return L("error.account.plain", account, message)
+        case .rateLimited: return L("error.account.plain", account, message)
+        case .unreachable: return L("error.account.retrying", account, message)
+        case .other: return L("error.account.plain", account, message)
         }
     }
 }
@@ -95,6 +95,6 @@ public extension Array where Element == AccountFailure {
     var summary: String? {
         guard !isEmpty else { return nil }
         if count == 1 { return self[0].line }
-        return "\(map(\.account).joined(separator: ", ")) can't load, hover for why"
+        return L("error.accounts.summary", map(\.account).joined(separator: ", "))
     }
 }
