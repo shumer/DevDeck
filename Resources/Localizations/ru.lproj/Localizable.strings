@@ -149,15 +149,18 @@
 "card.action.terminal" = "Терминал";
 "card.actions.attention" = "внимание";
 "card.actions.avg" = "в среднем %@";
+"card.actions.empty.choose" = "Задать свой список репозиториев →";
+"card.actions.empty.detail" = "Карточка следит за репозиториями ваших открытых pull requests, а открытых сейчас нет.";
+"card.actions.empty.title" = "Сейчас не за чем следить";
 "card.actions.failed" = "%d упало";
 "card.actions.failing" = "%d падает";
 "card.actions.green" = "%d%% зелёных";
 "card.actions.healthy" = "здоров";
-"card.actions.hint" = "Откройте pull request или перечислите репозитории в настройках";
-"card.actions.idle" = "тишина";
+"card.actions.noOpenPRs" = "нет открытых PR";
 "card.actions.noRepos" = "нет репозиториев";
-"card.actions.noRepositories" = "Нет репозиториев для наблюдения";
 "card.actions.noRuns" = "запусков нет";
+"card.actions.quiet.detail" = "Смотрим %@.";
+"card.actions.run.help" = "%1$@ · %2$@ на %3$@";
 "card.actions.running" = "%d выполняется";
 "card.actions.successWindow" = "%% успеха · %dд";
 "card.addGitLab" = "Добавьте инстанс GitLab в настройках";
@@ -287,9 +290,7 @@
 "hotkey.escape" = "Escape отменяет";
 "hotkey.hint" = "Нажмите, потом наберите нужные клавиши. Нужен хотя бы один модификатор.";
 "hotkey.press" = "Нажмите сочетание";
-"loginItem.error.detail" = "%@
-
-macOS запоминает приложение по его месту, так что обычно это значит, что приложение лежит там, где система не считает его стабильным. Перенесите DevDeck.app в /Applications и попробуйте снова, или добавьте его в Системных настройках, раздел Основные, Объекты входа.";
+"loginItem.error.detail" = "%@\n\nmacOS запоминает приложение по его месту, так что обычно это значит, что приложение лежит там, где система не считает его стабильным. Перенесите DevDeck.app в /Applications и попробуйте снова, или добавьте его в Системных настройках, раздел Основные, Объекты входа.";
 "loginItem.error.title" = "Не удалось изменить элемент автозапуска";
 "menu.arrangements" = "Раскладки";
 "menu.calm" = "Ничего не ждёт";

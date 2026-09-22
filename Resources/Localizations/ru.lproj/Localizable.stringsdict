@@ -12,12 +12,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d аккаунт не проверить</string>
 			<key>few</key>
 			<string>%d аккаунта не проверить</string>
 			<key>many</key>
 			<string>%d аккаунтов не проверить</string>
+			<key>one</key>
+			<string>%d аккаунт не проверить</string>
 			<key>other</key>
 			<string>%d аккаунтов не проверить</string>
 		</dict>
@@ -32,12 +32,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d запуск падает</string>
 			<key>few</key>
 			<string>%d запуска падают</string>
 			<key>many</key>
 			<string>%d запусков падают</string>
+			<key>one</key>
+			<string>%d запуск падает</string>
 			<key>other</key>
 			<string>%d запусков падают</string>
 		</dict>
@@ -52,12 +52,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d ревью ждёт</string>
 			<key>few</key>
 			<string>%d ревью ждут</string>
 			<key>many</key>
 			<string>%d ревью ждут</string>
+			<key>one</key>
+			<string>%d ревью ждёт</string>
 			<key>other</key>
 			<string>%d ревью ждут</string>
 		</dict>
@@ -72,12 +72,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d проект не запустился</string>
 			<key>few</key>
 			<string>%d проекта не запустились</string>
 			<key>many</key>
 			<string>%d проектов не запустились</string>
+			<key>one</key>
+			<string>%d проект не запустился</string>
 			<key>other</key>
 			<string>%d проектов не запустились</string>
 		</dict>
@@ -92,12 +92,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d стоит</string>
 			<key>few</key>
 			<string>%d стоят</string>
 			<key>many</key>
 			<string>%d стоят</string>
+			<key>one</key>
+			<string>%d стоит</string>
 			<key>other</key>
 			<string>%d стоят</string>
 		</dict>
@@ -112,12 +112,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d проект упал</string>
 			<key>few</key>
 			<string>%d проекта упали</string>
 			<key>many</key>
 			<string>%d проектов упали</string>
+			<key>one</key>
+			<string>%d проект упал</string>
 			<key>other</key>
 			<string>%d проектов упали</string>
 		</dict>
@@ -132,11 +132,11 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>упал %d раз подряд</string>
 			<key>few</key>
 			<string>упал %d раза подряд</string>
 			<key>many</key>
+			<string>упал %d раз подряд</string>
+			<key>one</key>
 			<string>упал %d раз подряд</string>
 			<key>other</key>
 			<string>упал %d раз подряд</string>
@@ -152,12 +152,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d коммит</string>
 			<key>few</key>
 			<string>%d коммита</string>
 			<key>many</key>
 			<string>%d коммитов</string>
+			<key>one</key>
+			<string>%d коммит</string>
 			<key>other</key>
 			<string>%d коммитов</string>
 		</dict>
@@ -172,12 +172,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d день</string>
 			<key>few</key>
 			<string>%d дня</string>
 			<key>many</key>
 			<string>%d дней</string>
+			<key>one</key>
+			<string>%d день</string>
 			<key>other</key>
 			<string>%d дней</string>
 		</dict>
@@ -192,11 +192,11 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>ещё %d</string>
 			<key>few</key>
 			<string>ещё %d</string>
 			<key>many</key>
+			<string>ещё %d</string>
+			<key>one</key>
 			<string>ещё %d</string>
 			<key>other</key>
 			<string>ещё %d</string>
@@ -212,12 +212,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>ещё %d стоит</string>
 			<key>few</key>
 			<string>ещё %d стоят</string>
 			<key>many</key>
 			<string>ещё %d стоят</string>
+			<key>one</key>
+			<string>ещё %d стоит</string>
 			<key>other</key>
 			<string>ещё %d стоят</string>
 		</dict>
@@ -232,11 +232,11 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>ещё %d на починку</string>
 			<key>few</key>
 			<string>ещё %d на починку</string>
 			<key>many</key>
+			<string>ещё %d на починку</string>
+			<key>one</key>
 			<string>ещё %d на починку</string>
 			<key>other</key>
 			<string>ещё %d на починку</string>
@@ -252,12 +252,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>ещё %d ждёт вас</string>
 			<key>few</key>
 			<string>ещё %d ждут вас</string>
 			<key>many</key>
 			<string>ещё %d ждут вас</string>
+			<key>one</key>
+			<string>ещё %d ждёт вас</string>
 			<key>other</key>
 			<string>ещё %d ждут вас</string>
 		</dict>
@@ -272,11 +272,11 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d застряло</string>
 			<key>few</key>
 			<string>%d застряли</string>
 			<key>many</key>
+			<string>%d застряло</string>
+			<key>one</key>
 			<string>%d застряло</string>
 			<key>other</key>
 			<string>%d застряло</string>
@@ -292,11 +292,11 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d надо починить</string>
 			<key>few</key>
 			<string>%d надо починить</string>
 			<key>many</key>
+			<string>%d надо починить</string>
+			<key>one</key>
 			<string>%d надо починить</string>
 			<key>other</key>
 			<string>%d надо починить</string>
@@ -312,14 +312,74 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d ждёт вас</string>
 			<key>few</key>
 			<string>%d ждут вас</string>
 			<key>many</key>
 			<string>%d ждут вас</string>
+			<key>one</key>
+			<string>%d ждёт вас</string>
 			<key>other</key>
 			<string>%d ждут вас</string>
+		</dict>
+	</dict>
+	<key>card.actions.quiet.title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>За %d дня запусков не было</string>
+			<key>many</key>
+			<string>За %d дней запусков не было</string>
+			<key>one</key>
+			<string>За %d день запусков не было</string>
+			<key>other</key>
+			<string>За %d дней запусков не было</string>
+		</dict>
+	</dict>
+	<key>card.actions.repos.fromList</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>%d репозитория из вашего списка</string>
+			<key>many</key>
+			<string>%d репозиториев из вашего списка</string>
+			<key>one</key>
+			<string>%d репозиторий из вашего списка</string>
+			<key>other</key>
+			<string>%d репозиториев из вашего списка</string>
+		</dict>
+	</dict>
+	<key>card.actions.repos.fromPulls</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>%d репозитория из ваших PR</string>
+			<key>many</key>
+			<string>%d репозиториев из ваших PR</string>
+			<key>one</key>
+			<string>%d репозиторий из ваших PR</string>
+			<key>other</key>
+			<string>%d репозиториев из ваших PR</string>
 		</dict>
 	</dict>
 	<key>card.containers</key>
@@ -332,12 +392,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d контейнер</string>
 			<key>few</key>
 			<string>%d контейнера</string>
 			<key>many</key>
 			<string>%d контейнеров</string>
+			<key>one</key>
+			<string>%d контейнер</string>
 			<key>other</key>
 			<string>%d контейнеров</string>
 		</dict>
@@ -352,12 +412,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d группа</string>
 			<key>few</key>
 			<string>%d группы</string>
 			<key>many</key>
 			<string>%d групп</string>
+			<key>one</key>
+			<string>%d группа</string>
 			<key>other</key>
 			<string>%d групп</string>
 		</dict>
@@ -372,12 +432,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d организация</string>
 			<key>few</key>
 			<string>%d организации</string>
 			<key>many</key>
 			<string>%d организаций</string>
+			<key>one</key>
+			<string>%d организация</string>
 			<key>other</key>
 			<string>%d организаций</string>
 		</dict>
@@ -392,12 +452,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d проект</string>
 			<key>few</key>
 			<string>%d проекта</string>
 			<key>many</key>
 			<string>%d проектов</string>
+			<key>one</key>
+			<string>%d проект</string>
 			<key>other</key>
 			<string>%d проектов</string>
 		</dict>
@@ -412,12 +472,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d репозиторий</string>
 			<key>few</key>
 			<string>%d репозитория</string>
 			<key>many</key>
 			<string>%d репозиториев</string>
+			<key>one</key>
+			<string>%d репозиторий</string>
 			<key>other</key>
 			<string>%d репозиториев</string>
 		</dict>
@@ -432,12 +492,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d чекаут под наблюдением</string>
 			<key>few</key>
 			<string>%d чекаута под наблюдением</string>
 			<key>many</key>
 			<string>%d чекаутов под наблюдением</string>
+			<key>one</key>
+			<string>%d чекаут под наблюдением</string>
 			<key>other</key>
 			<string>%d чекаутов под наблюдением</string>
 		</dict>
@@ -452,12 +512,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d открытый merge request</string>
 			<key>few</key>
 			<string>%d открытых merge request</string>
 			<key>many</key>
 			<string>%d открытых merge request</string>
+			<key>one</key>
+			<string>%d открытый merge request</string>
 			<key>other</key>
 			<string>%d открытых merge request</string>
 		</dict>
@@ -472,12 +532,12 @@
 			<string>NSStringPluralRuleType</string>
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
-			<key>one</key>
-			<string>%d открытый pull request</string>
 			<key>few</key>
 			<string>%d открытых pull request</string>
 			<key>many</key>
 			<string>%d открытых pull request</string>
+			<key>one</key>
+			<string>%d открытый pull request</string>
 			<key>other</key>
 			<string>%d открытых pull request</string>
 		</dict>

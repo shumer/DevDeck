@@ -810,6 +810,38 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(places.contains { !$0.showsLabel }, "and something gave its up")
     }
 
+    run.section("Cards - Actions")
+
+    await run.test("an empty Actions card says why it is empty, not that it is missing something") {
+        // "no repos" read as a card nobody had set up. With no list of its own the card follows
+        // the open pull requests, so empty means there are none, which is a quiet, normal state.
+        try expectEqual(ActionsCard.quietReason(followsPullRequests: true), "no open PRs")
+        try expect(ActionsCard.quietReason(followsPullRequests: true) != L("card.actions.noRepos"),
+                   "the pill names the reason")
+    }
+
+    await run.test("a card with nothing run says what it watched, by name") {
+        try expectEqual(ActionsCard.watchedNames(["acme/site", "acme/web", "other/api"]), "site, web and 1 more")
+        try expectEqual(ActionsCard.watchedNames(["acme/site"]), "site")
+        try expectEqual(LN("card.actions.quiet.title", 7), "No runs in the last 7 days")
+
+        Strings.use(.russian, lookingIn: localisationRoot)
+        try expectEqual(LN("card.actions.quiet.title", 7), "За 7 дней запусков не было")
+        try expectEqual(LN("card.actions.quiet.title", 3), "За 3 дня запусков не было")
+        try expectEqual(ActionsCard.watchedNames(["a/site", "a/web"]), "site и web")
+        Strings.use(.english, lookingIn: localisationRoot)
+    }
+
+    await run.test("the footer says where the repositories came from") {
+        try expectEqual(ActionsCard.watching(3, followsPullRequests: true), "3 repos from your PRs")
+        try expectEqual(ActionsCard.watching(1, followsPullRequests: false), "1 repo from your list")
+
+        Strings.use(.russian, lookingIn: localisationRoot)
+        try expectEqual(ActionsCard.watching(2, followsPullRequests: true), "2 репозитория из ваших PR")
+        try expectEqual(ActionsCard.watching(5, followsPullRequests: false), "5 репозиториев из вашего списка")
+        Strings.use(.english, lookingIn: localisationRoot)
+    }
+
     run.section("Browsers")
 
     await run.test("the default choice is the system browser") {

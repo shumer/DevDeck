@@ -149,15 +149,18 @@
 "card.action.terminal" = "Terminal";
 "card.actions.attention" = "Achtung";
 "card.actions.avg" = "Ø %@";
+"card.actions.empty.choose" = "Eigene Repositories festlegen →";
+"card.actions.empty.detail" = "Die Karte folgt den Repositories deiner offenen Pull Requests, und gerade ist keiner offen.";
+"card.actions.empty.title" = "Gerade nichts zu beobachten";
 "card.actions.failed" = "%d fehlgeschlagen";
 "card.actions.failing" = "%d fehlgeschlagen";
 "card.actions.green" = "%d%% grün";
 "card.actions.healthy" = "gesund";
-"card.actions.hint" = "Öffne einen Pull Request oder trage Repositories in den Einstellungen ein";
-"card.actions.idle" = "nichts los";
+"card.actions.noOpenPRs" = "keine offenen PRs";
 "card.actions.noRepos" = "keine Repos";
-"card.actions.noRepositories" = "Keine Repositories zum Beobachten";
 "card.actions.noRuns" = "keine Läufe";
+"card.actions.quiet.detail" = "Beobachtet: %@.";
+"card.actions.run.help" = "%1$@ · %2$@ auf %3$@";
 "card.actions.running" = "%d laufen";
 "card.actions.successWindow" = "%% grün · %dT";
 "card.addGitLab" = "Eine GitLab-Instanz in den Einstellungen hinzufügen";
@@ -287,9 +290,7 @@
 "hotkey.escape" = "Escape bricht ab";
 "hotkey.hint" = "Klicken, dann die gewünschten Tasten drücken. Mindestens ein Modifier ist nötig.";
 "hotkey.press" = "Eine Tastenkombination drücken";
-"loginItem.error.detail" = "%@
-
-macOS registriert die App über ihren Ort, das heißt meistens: die App liegt irgendwo, das macOS nicht als stabil ansieht. Verschiebe DevDeck.app nach /Applications und versuch es erneut, oder trag sie unter Systemeinstellungen, Allgemein, Anmeldeobjekte ein.";
+"loginItem.error.detail" = "%@\n\nmacOS registriert die App über ihren Ort, das heißt meistens: die App liegt irgendwo, das macOS nicht als stabil ansieht. Verschiebe DevDeck.app nach /Applications und versuch es erneut, oder trag sie unter Systemeinstellungen, Allgemein, Anmeldeobjekte ein.";
 "loginItem.error.title" = "Das Anmeldeobjekt konnte nicht geändert werden";
 "menu.arrangements" = "Anordnungen";
 "menu.calm" = "Nichts braucht dich";

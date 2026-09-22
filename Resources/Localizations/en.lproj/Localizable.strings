@@ -149,15 +149,18 @@
 "card.action.terminal" = "Terminal";
 "card.actions.attention" = "attention";
 "card.actions.avg" = "avg %@";
+"card.actions.empty.choose" = "List your own repositories →";
+"card.actions.empty.detail" = "This card follows the repositories of your open pull requests, and there are none open.";
+"card.actions.empty.title" = "Nothing to watch right now";
 "card.actions.failed" = "%d failed";
 "card.actions.failing" = "%d failing";
 "card.actions.green" = "%d%% green";
 "card.actions.healthy" = "healthy";
-"card.actions.hint" = "Open a pull request, or list repositories in settings";
-"card.actions.idle" = "idle";
+"card.actions.noOpenPRs" = "no open PRs";
 "card.actions.noRepos" = "no repos";
-"card.actions.noRepositories" = "No repositories to watch";
 "card.actions.noRuns" = "no runs";
+"card.actions.quiet.detail" = "Watching %@.";
+"card.actions.run.help" = "%1$@ · %2$@ on %3$@";
 "card.actions.running" = "%d running";
 "card.actions.successWindow" = "%% success · %dd";
 "card.addGitLab" = "Add a GitLab instance in Settings";
@@ -287,9 +290,7 @@
 "hotkey.escape" = "Escape cancels";
 "hotkey.hint" = "Click, then press the keys you want. At least one modifier is required.";
 "hotkey.press" = "Press a combination";
-"loginItem.error.detail" = "%@
-
-macOS registers the app by its location, so this usually means the app is somewhere it does not consider stable. Move DevDeck.app to /Applications and try again, or add it under System Settings, General, Login Items.";
+"loginItem.error.detail" = "%@\n\nmacOS registers the app by its location, so this usually means the app is somewhere it does not consider stable. Move DevDeck.app to /Applications and try again, or add it under System Settings, General, Login Items.";
 "loginItem.error.title" = "Could not change the login item";
 "menu.arrangements" = "Arrangements";
 "menu.calm" = "Nothing needs you";

@@ -137,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // which cards have one open, which is what the button shows.
         controller.presentLogs = { [unowned self] card in self.logWindows.open(card) }
         controller.dismissLogs = { [unowned self] card in self.logWindows.close(card) }
+        controller.showSetting = { [unowned self] section, field in
+            self.settingsController.show(section, focusing: field)
+        }
 
         // Panels are sized from the data, so anything that changes it can change their height -
         // a branch line appearing on a project card counts just as much as a pull request does.

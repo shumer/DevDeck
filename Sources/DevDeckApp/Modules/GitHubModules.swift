@@ -99,8 +99,12 @@ final class ActionsModule: CardModule {
         AnyView(ActionsCard(
             state: controller.actions,
             isCollapsed: controller.isCollapsed(card),
+            followsPullRequests: controller.actionsFollowPullRequests,
             onOpen: context.openGitHub,
-            onOpenDashboard: { [context] in context.openGitHubDashboard(for: card) }
+            onOpenDashboard: { [context] in context.openGitHubDashboard(for: card) },
+            onChooseRepositories: { [controller] in
+                controller.showSetting?(.cards, CardsSettingsPage.actionsRepositoriesField)
+            }
         ))
     }
 

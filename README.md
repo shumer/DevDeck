@@ -113,7 +113,12 @@ one card. Nothing appears until you add one.
 
 The Actions card follows the repositories your open pull requests are in, up to five per
 account, unless you name them yourself under **Settings → Cards → Fetching**, where the refresh
-interval lives too.
+interval lives too. Its footer says which of the two it is doing, `3 repos from your PRs` or
+`3 repos from your list`. With no list and no open pull request it has nothing to watch, and says
+exactly that, **no open PRs**, rather than looking like a card nobody set up; its **List your own
+repositories** link opens that settings page with the cursor already in the field. With
+repositories but nothing run in them for the whole window, it says that too, `No runs in the last
+7 days`, and which repositories it looked at.
 
 ## Build and run
 
