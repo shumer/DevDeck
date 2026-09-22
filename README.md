@@ -171,7 +171,7 @@ only works for the installed copy.
 | `open -a DevDeck --args --logs` | opens a log window; a card id after it picks the project |
 | `pkill -f DevDeck` | quits every running copy |
 
-**Settings → General shows the running version** under its heading, `DevDeck 0.17 (build 131)`,
+**Settings → General shows the running version** under its heading, `DevDeck 0.18 (build 140)`,
 and which bundle it came from in the note at the bottom. The marketing number lives in `VERSION` and is bumped by hand when a release
 earns a name; the build number is the commit count, so it moves on every rebuild. That is the
 quickest way to tell whether the copy in front of you is the change you just made or the one
@@ -773,7 +773,7 @@ The workflow writes the install section itself, naming the file it actually buil
 which of the two builds it is, so a version number is never typed by hand into the notes.
 
 To cut a release: bump `VERSION`, commit, then create the release on GitHub with a tag like
-`v0.17`. The build number in the bundle is the commit count, so it moves on its own. A manual
+`v0.18`. The build number in the bundle is the commit count, so it moves on its own. A manual
 run of the workflow against an existing tag builds that tag's commit and replaces its asset.
 
 ### Updating
