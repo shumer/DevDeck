@@ -282,7 +282,13 @@ fixed and shifting the rest of the column out of the way.
   panels.
 - `.floating` → `.floating`.
 
-Locking sets `isMovableByWindowBackground = false`.
+Locking sets `isMovableByWindowBackground = false`, and that flag is still what decides whether
+a panel may move. What moves it is no longer the window on its own: built against a current SDK,
+SwiftUI takes the click on a card for the card's gestures before AppKit can start a background
+drag, so `CardHostView` carries a drag gesture that, once the mouse has travelled three points,
+hands the drag to the window server with `performDrag(with:)`, the way a title bar does. It is
+simultaneous with the card's own gestures, so a click and a double click, which do not travel,
+are never taken for a drag.
 
 **The deck moves a card only when it was asked to.** A card growing because its data arrived is
 the deck settling, and nothing moves for it; a card growing because somebody collapsed it, opened
