@@ -94,7 +94,12 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   `project.<id>`) and are never renamed.
 - **The bundle is stamped with the SDK it was built against**, by the `-platform_version` flag in
   `build.sh`. Without it macOS draws the settings window with the previous era's title bar. The
-  deployment target is a separate number and stays at macOS 14.
+  deployment target is a separate number and stays at macOS 14. The stamp also switches on every
+  behaviour Apple keys to "linked on or after", and that is how 0.17 shipped with panels that
+  could not be dragged: SwiftUI now claims a click on the card for its own gestures before the
+  window can start a background drag. Anything the window used to do by itself for SwiftUI
+  content has to be checked by hand after the SDK moves, and dragging is now asked for
+  explicitly (`PanelDrag` in `CardHostView`).
 - **Sidebar metrics come from `SidebarMetrics`**, which follows the Mac's own "Sidebar icon size"
   setting. Never hard-code a row height or an icon size there, and that includes the marks in the
   menu-bar menu: one account has one mark at one size, in the window and in the menu alike.
