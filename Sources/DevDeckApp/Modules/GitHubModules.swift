@@ -66,7 +66,10 @@ final class InboxModule: CardModule {
             onOpen: context.openGitHub,
             onToggleExpand: { [controller] in controller.toggleExpanded(card) },
             onOpenDashboard: { [context] in context.openGitHubDashboard(for: card) },
-            onMarkRead: { [controller] in controller.markRead($0) }
+            onMarkRead: { [controller] in controller.markRead($0) },
+            onMarkRestRead: { [controller] in controller.markRestRead() },
+            onMarkAllRead: { [controller] in controller.markAllRead() },
+            progress: controller.inboxProgress
         ))
     }
 

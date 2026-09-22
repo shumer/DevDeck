@@ -15,6 +15,12 @@ public struct InboxCard: View {
     private let onToggleExpand: () -> Void
     private let onOpenDashboard: () -> Void
     private let onMarkRead: (InboxItem) -> Void
+    /// Reads everything not addressed to you, and everything, for the footer's link.
+    private let onMarkRestRead: (() -> Void)?
+    private let onMarkAllRead: (() -> Void)?
+    /// Where a mark-as-read that is under way has got to, shown in the footer in place of the
+    /// link until it is over.
+    private let progress: Progress?
 
     public init(
         state: CardState<InboxSnapshot>,
@@ -25,7 +31,10 @@ public struct InboxCard: View {
         onOpen: @escaping (URL, String) -> Void = { _, _ in },
         onToggleExpand: @escaping () -> Void = {},
         onOpenDashboard: @escaping () -> Void = {},
-        onMarkRead: @escaping (InboxItem) -> Void = { _ in }
+        onMarkRead: @escaping (InboxItem) -> Void = { _ in },
+        onMarkRestRead: (() -> Void)? = nil,
+        onMarkAllRead: (() -> Void)? = nil,
+        progress: Progress? = nil
     ) {
         self.state = state
         self.now = now
@@ -36,6 +45,77 @@ public struct InboxCard: View {
         self.onToggleExpand = onToggleExpand
         self.onOpenDashboard = onOpenDashboard
         self.onMarkRead = onMarkRead
+        self.onMarkRestRead = onMarkRestRead
+        self.onMarkAllRead = onMarkAllRead
+        self.progress = progress
+    }
+
+    /// A mark-as-read in flight. Without this the card said nothing for the minute a few hundred
+    /// threads take, and a second press started the same work again.
+    public enum Progress: Equatable, Sendable {
+        /// Paging through the box for what has to be marked.
+        case gathering
+        /// So many of so many.
+        case marking(done: Int, total: Int)
+        /// One request for the whole box, nothing to count.
+        case markingAll
+        /// Over: how many were marked, or nil when GitHub was asked for everything at once.
+        case finished(Int?)
+        /// GitHub refused, with its reason.
+        case failed(String)
+
+        public var isFailure: Bool {
+            if case .failed = self { return true }
+            return false
+        }
+
+        public var isRunning: Bool {
+            switch self {
+            case .gathering, .marking, .markingAll: return true
+            case .finished, .failed: return false
+            }
+        }
+    }
+
+    /// The footer's words for a mark-as-read in progress or just over.
+    public nonisolated static func progressText(_ progress: Progress) -> String {
+        switch progress {
+        case .gathering: return L("card.inbox.progress.gathering")
+        case .marking(let done, let total): return L("card.inbox.progress.marking", done, total)
+        case .markingAll: return L("card.inbox.progress.markingAll")
+        case .finished(let count?): return LN("card.inbox.progress.finished", count)
+        case .finished(nil): return L("card.inbox.progress.finishedAll")
+        case .failed(let reason): return L("card.inbox.progress.failed", reason)
+        }
+    }
+
+    /// What the footer's link does.
+    public enum Clearing: Equatable, Sendable {
+        /// Everything not addressed to you: the safe one, and the default whenever something is.
+        case rest
+        /// The whole box, up to the newest notification shown.
+        case all
+    }
+
+    /// The link the footer offers, or nil when there is nothing to read.
+    ///
+    /// With a mix, it reads what is not addressed to you and ⌥ turns it into all. With only one
+    /// kind left it reads all of it, with the count. It used to offer nothing when everything
+    /// unread was addressed to you, to keep it from being cleared by accident, and that left a
+    /// card saying "33 unread" with no way to act on it; the number on the link is the guard.
+    public nonisolated static func clearing(for snapshot: InboxSnapshot, optionDown: Bool) -> (action: Clearing, title: String)? {
+        guard snapshot.unreadCount > 0 else { return nil }
+        let all = snapshot.isCapped ? L("card.inbox.readAll.capped") : LN("card.inbox.readAll", snapshot.unreadCount)
+        if optionDown || snapshot.actionableCount == 0 { return (.all, all) }
+        guard snapshot.isCapped || !snapshot.unreadNotForYou.isEmpty else { return (.all, all) }
+        // Named by what stays rather than by what goes: "the rest" read as "all but the three
+        // rows on the card", which is not what it does.
+        return (.rest, LN("card.inbox.readRest", snapshot.actionableCount))
+    }
+
+    /// The count, with a plus when the box did not fit in what the card loaded.
+    public nonisolated static func unreadText(for snapshot: InboxSnapshot) -> String {
+        snapshot.isCapped ? "\(snapshot.unreadCount)+" : "\(snapshot.unreadCount)"
     }
 
     public nonisolated static func size(for state: CardState<InboxSnapshot>, isExpanded: Bool, isCollapsed: Bool = false) -> CGSize {
@@ -109,7 +189,7 @@ public struct InboxCard: View {
     @ViewBuilder
     private func content(_ snapshot: InboxSnapshot) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text("\(snapshot.unreadCount)")
+            Text(Self.unreadText(for: snapshot))
                 .font(.system(size: 42, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(snapshot.actionableCount > 0 ? DeckTheme.violet : DeckTheme.green)
@@ -139,15 +219,46 @@ public struct InboxCard: View {
 
         Spacer(minLength: 4)
 
-        CardFooter(
-            leading: snapshot.failures.summary ?? (snapshot.items.isEmpty
-                ? L("card.inbox.empty")
-                : LN("card.repos", snapshot.repositoryCount)),
-            trailing: CardFreshness.text(for: state),
-            isStale: state.failure != nil
-                || !snapshot.failures.isEmpty
-                || state.isStale(now: now, maxAge: 600)
-        )
+        let isStale = state.failure != nil
+            || !snapshot.failures.isEmpty
+            || state.isStale(now: now, maxAge: 600)
+        if let progress {
+            HStack {
+                Text(Self.progressText(progress))
+                    .foregroundStyle(progress.isFailure ? DeckTheme.amber : DeckTheme.label)
+                    .truncationMode(.tail)
+                    .help(Self.progressText(progress))
+                Spacer(minLength: 6)
+                Text(CardFreshness.text(for: state))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(isStale ? DeckTheme.amber : DeckTheme.label)
+                    .fixedSize()
+            }
+            .font(.system(size: 10.5))
+            .lineLimit(1)
+            .frame(height: CardFooter.height)
+        } else if snapshot.failures.isEmpty, let onMarkRestRead, let onMarkAllRead, snapshot.unreadCount > 0 {
+            // The link takes the place of the repository count, which said little.
+            HStack {
+                InboxClearLink(snapshot: snapshot, onRest: onMarkRestRead, onAll: onMarkAllRead)
+                Spacer(minLength: 6)
+                Text(CardFreshness.text(for: state))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(isStale ? DeckTheme.amber : DeckTheme.label)
+                    .fixedSize()
+            }
+            .font(.system(size: 10.5))
+            .lineLimit(1)
+            .frame(height: CardFooter.height)
+        } else {
+            CardFooter(
+                leading: snapshot.failures.summary ?? (snapshot.items.isEmpty
+                    ? L("card.inbox.empty")
+                    : LN("card.repos", snapshot.repositoryCount)),
+                trailing: CardFreshness.text(for: state),
+                isStale: isStale
+            )
+        }
     }
 
     private func row(_ item: InboxItem) -> some View {
@@ -187,5 +298,77 @@ public struct InboxCard: View {
             }
         }
         .help(L("attention.row.colon", item.shortRepository, item.title))
+    }
+}
+
+/// The footer's link on the inbox card: "Mark the rest as read", or with ⌥ held, all of it.
+///
+/// ⌥ is read while the pointer is over the link, a few times a second, so the words change
+/// the moment the key goes down rather than on the next mouse move. Nothing is watched while
+/// the pointer is elsewhere, and no keyboard monitor is needed for it.
+struct InboxClearLink: View {
+    let snapshot: InboxSnapshot
+    let onRest: () -> Void
+    let onAll: () -> Void
+
+    // Written out rather than as `@State`: see `ClickableHighlight`.
+    private var _isOptionDown = State(initialValue: false)
+    private var isOptionDown: Bool {
+        get { _isOptionDown.wrappedValue }
+        nonmutating set { _isOptionDown.wrappedValue = newValue }
+    }
+    private var _watch = State(initialValue: OptionWatch())
+
+    init(snapshot: InboxSnapshot, onRest: @escaping () -> Void, onAll: @escaping () -> Void) {
+        self.snapshot = snapshot
+        self.onRest = onRest
+        self.onAll = onAll
+    }
+
+    var body: some View {
+        if let clearing = InboxCard.clearing(for: snapshot, optionDown: isOptionDown) {
+            Text(clearing.title)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(DeckTheme.blue)
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1)
+                .contentShape(Rectangle())
+                .clickable(cornerRadius: 4)
+                .onHover { hovering in
+                    let flag = _isOptionDown
+                    _watch.wrappedValue.follow(hovering) { flag.wrappedValue = $0 }
+                }
+                .onTapGesture {
+                    // The key is read again at the click: the last poll may be a tenth of a
+                    // second old, and the click is what counts.
+                    let option = NSEvent.modifierFlags.contains(.option)
+                    let action = InboxCard.clearing(for: snapshot, optionDown: option)?.action ?? clearing.action
+                    action == .all ? onAll() : onRest()
+                }
+                .help(clearing.action == .rest ? L("card.inbox.readRest.help") : clearing.title)
+                .padding(.leading, -3)
+        } else {
+            Text(LN("card.repos", snapshot.repositoryCount))
+                .foregroundStyle(DeckTheme.label)
+        }
+    }
+}
+
+/// Polls ⌥ while the pointer is over something that cares, and stops when it leaves.
+@MainActor
+final class OptionWatch {
+    private var timer: Timer?
+
+    func follow(_ hovering: Bool, report: @escaping (Bool) -> Void) {
+        timer?.invalidate()
+        timer = nil
+        guard hovering else {
+            report(false)
+            return
+        }
+        report(NSEvent.modifierFlags.contains(.option))
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            report(NSEvent.modifierFlags.contains(.option))
+        }
     }
 }

@@ -32,6 +32,11 @@ final class DeckController: ObservableObject {
     /// The cards whose log window is open. Not persisted: a log open at midnight is not a
     /// request to have it open again in the morning.
     @Published private(set) var logWindowCards: Set<CardID> = []
+    /// A mark-as-read under way on the inbox, for its footer.
+    @Published private(set) var inboxProgress: InboxCard.Progress?
+    /// Threads being marked read. The poll that lands in the middle of the job is filtered by
+    /// them, or it would put back what the job has not reached yet.
+    private var pendingRead: Set<String> = []
     /// Opening and closing a window is the application layer's business; keeping its lines
     /// fresh is this one's.
     var presentLogs: ((CardID) -> Void)?
@@ -596,32 +601,136 @@ final class DeckController: ObservableObject {
               let snapshot = inbox.value
         else { return }
 
-        inbox.succeed(
-            InboxSnapshot(
-                items: snapshot.items.filter { $0.id != item.id },
-                serverPollInterval: snapshot.serverPollInterval,
-                failures: snapshot.failures
-            ),
-            at: Date()
-        )
+        inbox.succeed(snapshot.removing([item.id]), at: Date())
         updateStatusItem?()
 
         Task { [weak self] in
             guard let self else { return }
             do {
-                try await NotificationsService(
-                    client: GitHubClient.makeDefault(
-                        tokenStore: self.tokenStore,
-                        settings: account.settings(basedOn: self.settings),
-                        tokenKey: account.tokenKey
-                    ),
-                    settings: self.settings,
-                    accountID: account.id
-                ).markRead(item.id)
+                try await self.notifications(for: account).markRead(item.id)
             } catch {
                 Log.refresh.error("Could not mark read: \(String(describing: error), privacy: .public)")
             }
         }
+    }
+
+    /// Marks everything in the inbox that is not addressed to you as read, and leaves the
+    /// mentions, the review requests and the assignments where they are.
+    ///
+    /// Thread by thread, because GitHub has no "all except" call, and for a box bigger than the
+    /// card loaded, every page of it. While that runs the footer says how far it has got, a
+    /// second press does nothing, and the regular poll is not allowed to put back what is
+    /// being marked: that poll landing halfway through is what made the first version look as if
+    /// it had done nothing.
+    func markRestRead() {
+        guard inboxProgress?.isRunning != true, let snapshot = inbox.value else { return }
+        let loaded = snapshot.unreadNotForYou
+        pendingRead.formUnion(loaded.map(\.id))
+        inbox.succeed(snapshot.removing(pendingRead), at: Date())
+        updateStatusItem?()
+        inboxProgress = .gathering
+
+        let accounts = accountsStore.accounts().filter { account in
+            snapshot.cappedAccounts.contains(account.id) || loaded.contains { $0.accountID == account.id }
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            var work: [(service: NotificationsService, ids: [String])] = []
+            for account in accounts {
+                let service = self.notifications(for: account)
+                var ids = loaded.filter { $0.accountID == account.id }.map(\.id)
+                if snapshot.cappedAccounts.contains(account.id),
+                   let everything = try? await service.unreadThreads() {
+                    ids = everything.filter { !$0.reason.isForYou }.map(\.id)
+                }
+                work.append((service, ids))
+            }
+            let all = work.flatMap(\.ids)
+            self.pendingRead.formUnion(all)
+            if let current = self.inbox.value { self.inbox.succeed(current.removing(self.pendingRead), at: Date()) }
+
+            let total = all.count
+            var finished = 0
+            var failures: [String: APIError] = [:]
+            self.inboxProgress = .marking(done: 0, total: total)
+            for (service, ids) in work {
+                let before = finished
+                let refused = await service.markRead(ids) { [weak self] done in
+                    await MainActor.run { self?.inboxProgress = .marking(done: before + done, total: total) }
+                }
+                finished += ids.count
+                failures.merge(refused) { first, _ in first }
+            }
+            await self.finishMarking(.finished(total - failures.count), refused: Set(failures.keys), reason: failures.values.first)
+        }
+    }
+
+    /// Marks the whole inbox read, one request per account, up to the newest notification the
+    /// card has shown. Whatever arrived after the card was drawn stays unread.
+    func markAllRead() {
+        guard inboxProgress?.isRunning != true, let snapshot = inbox.value else { return }
+        let newest = snapshot.newestByAccount
+        pendingRead.formUnion(snapshot.items.map(\.id))
+        inbox.succeed(snapshot.removing(pendingRead), at: Date())
+        updateStatusItem?()
+        inboxProgress = .markingAll
+
+        let accounts = accountsStore.accounts().filter { newest[$0.id] != nil }
+        let count = snapshot.isCapped ? nil : snapshot.unreadCount
+        Task { [weak self] in
+            guard let self else { return }
+            var refusal: APIError?
+            for account in accounts {
+                guard let upTo = newest[account.id] else { continue }
+                do {
+                    try await self.notifications(for: account).markAllRead(upTo: upTo)
+                } catch {
+                    refusal = refusal ?? APIError.wrapping(error)
+                }
+            }
+            // GitHub may take a moment over a big box: a 202 means "accepted, working on it",
+            // and asking straight away would show the box as it was.
+            try? await Task.sleep(for: .seconds(2))
+            // A refusal refuses the whole box, so nothing it held is read.
+            await self.finishMarking(
+                .finished(count),
+                refused: refusal == nil ? [] : Set(snapshot.items.map(\.id)),
+                reason: refusal
+            )
+        }
+    }
+
+    /// The end of a mark-as-read: the server's own answer on the card, and a word in the footer
+    /// that clears itself.
+    private func finishMarking(_ success: InboxCard.Progress, refused: Set<String>, reason: APIError?) async {
+        // What GitHub refused is not read, and comes back.
+        pendingRead.subtract(refused)
+        if let fresh = try? await workspace.inbox() {
+            // Still filtered once: GitHub can take a moment to reflect a read, and a thread
+            // that was just marked should not flicker back for one poll.
+            inbox.succeed(fresh.removing(pendingRead), at: Date())
+        } else if let current = inbox.value {
+            inbox.succeed(current.removing(pendingRead), at: Date())
+        }
+        pendingRead.removeAll()
+        updateStatusItem?()
+
+        let outcome = reason.map { InboxCard.Progress.failed($0.displayMessage) } ?? success
+        inboxProgress = outcome
+        try? await Task.sleep(for: .seconds(outcome.isFailure ? 12 : 5))
+        if inboxProgress == outcome { inboxProgress = nil }
+    }
+
+    private func notifications(for account: GitHubAccount) -> NotificationsService {
+        NotificationsService(
+            client: GitHubClient.makeDefault(
+                tokenStore: tokenStore,
+                settings: account.settings(basedOn: settings),
+                tokenKey: account.tokenKey
+            ),
+            settings: settings,
+            accountID: account.id
+        )
     }
 
     /// Every configured checkout, whatever kind of project it belongs to.
@@ -1060,7 +1169,7 @@ final class DeckController: ObservableObject {
             },
             RefreshSource(card: .githubInbox) { @MainActor [weak self] in
                 guard let self else { return nil }
-                let snapshot = try await self.fetch(into: \.inbox) { try await self.workspace.inbox() }
+                let snapshot = try await self.fetch(into: \.inbox) { try await self.workspace.inbox().removing(self.pendingRead) }
                 // GitHub states how often it wants to be polled on this endpoint; ignoring it
                 // is the fastest way to get a token throttled.
                 return snapshot.serverPollInterval

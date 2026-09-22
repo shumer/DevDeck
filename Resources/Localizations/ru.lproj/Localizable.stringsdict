@@ -422,6 +422,66 @@
 			<string>%d групп</string>
 		</dict>
 	</dict>
+	<key>card.inbox.progress.finished</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>Готово, отмечено %d</string>
+			<key>many</key>
+			<string>Готово, отмечено %d</string>
+			<key>one</key>
+			<string>Готово, отмечено %d</string>
+			<key>other</key>
+			<string>Готово, отмечено %d</string>
+		</dict>
+	</dict>
+	<key>card.inbox.readAll</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>Отметить все %d прочитанными</string>
+			<key>many</key>
+			<string>Отметить все %d прочитанными</string>
+			<key>one</key>
+			<string>Отметить %d прочитанным</string>
+			<key>other</key>
+			<string>Отметить все %d прочитанными</string>
+		</dict>
+	</dict>
+	<key>card.inbox.readRest</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>few</key>
+			<string>Отметить прочитанным, кроме %d для вас</string>
+			<key>many</key>
+			<string>Отметить прочитанным, кроме %d для вас</string>
+			<key>one</key>
+			<string>Отметить прочитанным, кроме %d для вас</string>
+			<key>other</key>
+			<string>Отметить прочитанным, кроме %d для вас</string>
+		</dict>
+	</dict>
 	<key>card.orgs</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

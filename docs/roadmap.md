@@ -158,6 +158,14 @@
   of seconds while it is visible and never while it is not. The tray inside the card is gone, and
   with it the 120 points that made the column jump every time somebody looked. See
   [adr/0021-the-log-is-a-window.md](adr/0021-the-log-is-a-window.md).
+- **Cards say why they are quiet** - an empty Actions card says there are no open pull requests
+  to follow and links straight to the field for a list of its own, a card with nothing run says
+  so by name instead of "n/a", and its footer says where the repositories came from.
+- **The inbox can be cleared from the card** - "mark as read, except the ones for you", or all of
+  it with ⌥ or when only one kind is left, across the whole box rather than the page the card
+  loaded, with its progress in the footer and GitHub's refusal named when there is one. The
+  count says "50+" when the box did not fit, and the reason chips are in the interface's
+  language.
 
 ## Next
 

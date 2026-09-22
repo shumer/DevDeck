@@ -131,16 +131,19 @@ public struct GitHubClient: Sendable {
     ///
     /// Marking a notification read is the first of these: the endpoint answers 205, and a 404
     /// means the thread is already gone, which is the same outcome from where the card sits.
-    public func send(method: HTTPMethod, path: String) async throws {
+    public func send(method: HTTPMethod, path: String, body: Data? = nil) async throws {
+        var headers = [
+            "Authorization": "bearer \(try resolveToken())",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": userAgent,
+        ]
+        if body != nil { headers["Content-Type"] = "application/json" }
         let request = HTTPRequest(
             method: method,
             url: settings.apiBaseURL.appendingPathComponent(path),
-            headers: [
-                "Authorization": "bearer \(try resolveToken())",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "User-Agent": userAgent,
-            ]
+            headers: headers,
+            body: body
         )
         _ = try await transport.perform(request)
     }

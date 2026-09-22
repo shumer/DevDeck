@@ -142,6 +142,11 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   by a click somewhere else leaves the view believing it is open and the next redraw puts it
   straight back. What closes it is a dismissal, not a toggle: a dismissal can arrive twice
   before the view is drawn again, and a toggle run twice reopens what it just closed.
+- **An action longer than a poll guards against the poll.** A job that marks, starts or changes
+  things over more than a second says how far it has got, refuses a second start while it runs,
+  and keeps the regular refresh from putting back what it has not reached yet; it ends with a
+  fetch of its own. The inbox's first mark-as-read did none of it and looked as if it had done
+  nothing at all.
 - **Settings apply on change, not on a button.** Only the token waits for a press, because it
   is verified first. A control that silently does nothing until some other button is pressed
   is how the browser choice failed to take effect at all.
