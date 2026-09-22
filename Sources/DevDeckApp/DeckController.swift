@@ -655,8 +655,11 @@ final class DeckController: ObservableObject {
             self.inboxProgress = .marking(done: 0, total: total)
             for (service, ids) in work {
                 let before = finished
-                let refused = await service.markRead(ids) { [weak self] done in
-                    await MainActor.run { self?.inboxProgress = .marking(done: before + done, total: total) }
+                // The job already holds the controller for as long as it runs, so the progress
+                // callback captures that constant rather than a weak variable of its own.
+                let owner = self
+                let refused = await service.markRead(ids) { done in
+                    await MainActor.run { owner.inboxProgress = .marking(done: before + done, total: total) }
                 }
                 finished += ids.count
                 failures.merge(refused) { first, _ in first }
