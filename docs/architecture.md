@@ -179,6 +179,15 @@ The layout is merged with the catalog on every read, so:
 
 Card identifiers are persisted strings (`github.pullRequests`). **They must never change.**
 
+**A card that acts on its data owns the job, not the view.** The inbox's mark-as-read is the
+model: `DeckController.markRestRead()` and `markAllRead()` take the rows off the card at once,
+then do the work in the background, with `NotificationsService.markRead(_:concurrency:progress:)`
+marking six threads at a time. `inboxProgress` is published for the card's footer and refuses a
+second start while one runs, `pendingRead` filters the answer of any poll that lands in the
+middle so it cannot put back what the job has not reached, and the job ends with a fetch of its
+own. What the link on the card says and does is decided by `InboxCard.clearing(for:optionDown:)`,
+a pure function under tests; see [github-api.md](github-api.md) for the calls behind it.
+
 ## Accounts
 
 `GitHubAccount` is one identity with one token: a slug id, a label, a base URL, the

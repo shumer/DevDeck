@@ -99,7 +99,7 @@ Fine-grained personal access token. Permissions per card:
 | Card | Permission |
 |---|---|
 | pull requests | repository: **pull requests** (read), **contents** (read), **metadata** (read) |
-| inbox | account: **notifications** (read) - this one is a *user* permission, not a repository one |
+| inbox | account: **notifications** (read and write to mark things read) - a *user* permission, not a repository one |
 | actions | repository: **actions** (read) |
 
 The inbox permission is the one that catches people out: it lives under the account section
@@ -152,6 +152,23 @@ The closest thing GitHub has to a todo list. `NotificationsService` asks for `al
 - Rows are sorted unread first, then by `NotificationReason.priority` (security > review
   requested > mention > assigned > CI > the rest), then newest first. `actionableCount` is
   the subset that is genuinely waiting on the user, and that is what the pill counts.
+- **The count is a floor when the page is full.** The card asks for `maxNotifications` (50)
+  per account; a full page marks the account in `cappedAccounts` and the card says `50+`
+  rather than presenting one page as the whole box.
+- **Marking read.** One thread is `PATCH /notifications/threads/{id}`. The whole box is one
+  `PUT /notifications` per account with `last_read_at` set to the newest notification the card
+  has shown, so anything that arrives between the card drawing and the click stays unread.
+  "Everything not addressed to you" has no call of its own: `unreadThreads(maxPages:)` pages
+  through `all=false` without a cache key (an action must see the box as it is, not a 304),
+  stops at the first short page or after ten, and each thread whose reason is not
+  `isForYou` is patched, six at a time (`markRead(_:concurrency:progress:)`): one by one, three
+  hundred threads took minutes, and the card's own poll landing in the middle put back the
+  threads not yet reached. While a job runs the poll's answer is filtered by the ids being
+  marked, and the job ends with a fetch of its own. Nothing can be marked unread again through the API, which is why the
+  card's default leaves mentions, review requests and assignments alone. There is no delete;
+  "Done" (`DELETE /notifications/threads/{id}`) only hides a thread on github.com and the card
+  does not use it. Without the write level the calls fail, the failure is logged, and the next
+  poll puts the rows back.
 - **Subject URLs are API URLs.** There is no HTML URL in the payload, so
   `InboxItem.webURL(fromSubject:)` rewrites `api.github.com/repos/o/r/pulls/1` into
   `github.com/o/r/pull/1`. The `pulls` → `pull` step is the one that is easy to miss; without

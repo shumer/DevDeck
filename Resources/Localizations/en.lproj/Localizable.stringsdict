@@ -338,6 +338,54 @@
 			<string>%d groups</string>
 		</dict>
 	</dict>
+	<key>card.inbox.progress.finished</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Done, %d marked as read</string>
+			<key>other</key>
+			<string>Done, %d marked as read</string>
+		</dict>
+	</dict>
+	<key>card.inbox.readAll</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Mark %d as read</string>
+			<key>other</key>
+			<string>Mark all %d as read</string>
+		</dict>
+	</dict>
+	<key>card.inbox.readRest</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Mark as read, except the %d for you</string>
+			<key>other</key>
+			<string>Mark as read, except the %d for you</string>
+		</dict>
+	</dict>
 	<key>card.orgs</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

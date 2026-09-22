@@ -147,6 +147,30 @@ final class DeckMenu: NSObject, NSMenuDelegate {
             menu.addItem(logs)
         }
 
+        // The inbox's footer link, here as well: the same two readings, with ⌥ for the whole box
+        // the way every other destructive twin in these menus is found.
+        if card == .githubInbox, let inbox = controller.inbox.value, inbox.unreadCount > 0 {
+            let running = controller.inboxProgress?.isRunning == true
+            let rest = NSMenuItem(title: LN("card.inbox.readRest", inbox.actionableCount), action: #selector(markRestRead), keyEquivalent: "")
+            rest.target = self
+            rest.isEnabled = !running && (inbox.isCapped || !inbox.unreadNotForYou.isEmpty)
+            // Only one kind left: the menu offers the whole box in the open, as the card does.
+            if !rest.isEnabled, !running {
+                rest.title = inbox.isCapped ? L("card.inbox.readAll.capped") : LN("card.inbox.readAll", inbox.unreadCount)
+                rest.action = #selector(markAllRead)
+                rest.toolTip = nil
+                rest.isEnabled = true
+            }
+            rest.toolTip = L("card.inbox.readRest.help")
+            menu.addItem(rest)
+            let all = NSMenuItem(title: L("card.inbox.readAll.capped"), action: #selector(markAllRead), keyEquivalent: "")
+            all.target = self
+            all.isAlternate = true
+            all.keyEquivalentModifierMask = .option
+            all.isEnabled = !running
+            menu.addItem(all)
+        }
+
         let hide = NSMenuItem(title: L("menu.card.hide"), action: #selector(toggleCard(_:)), keyEquivalent: "")
         hide.target = self
         hide.representedObject = card.rawValue
@@ -442,6 +466,14 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         let card = CardID(rawValue: raw)
         cards.setEnabled(!cards.isEnabled(card), for: card)
         panels.syncPanels()
+    }
+
+    @objc private func markRestRead() {
+        controller.markRestRead()
+    }
+
+    @objc private func markAllRead() {
+        controller.markAllRead()
     }
 
     @objc private func powerOffDDEV() {

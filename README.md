@@ -111,6 +111,20 @@ an address, a token with `read_api`, and the browser profile it opens in. The ho
 GitLab is routinely self-hosted, so gitlab.com and a customer's own instance are two accounts on
 one card. Nothing appears until you add one.
 
+**The inbox can be cleared from the card.** While something in it is addressed to you, its
+footer offers **Mark as read, except the 2 for you**: comments, CI notes, subscriptions and your
+own pull requests are marked read, including the ones the card has no room for, and mentions,
+review requests and assignments stay. Hold ⌥ and it becomes **Mark all as read**; when only one
+kind is left, nothing addressed to you or nothing but, it is that from the start, with the count. The same two are in the card's
+right-click menu. While it runs the footer says how far it has got, `Marking as read… 120 of
+340`, then `Done, 340 marked as read`, or what GitHub refused; a second press does nothing until
+it is over, and the regular refresh cannot put back what is still being marked. Marking all stops
+at the newest notification the card has shown, so whatever arrives a second later stays unread.
+A full page is shown as `50+`: the count is only as far as the card looked. GitHub cannot mark
+anything unread again and has no delete; a read notification simply leaves the card. Marking
+read needs the notifications permission at its write level, see
+[docs/github-api.md](docs/github-api.md).
+
 The Actions card follows the repositories your open pull requests are in, up to five per
 account, unless you name them yourself under **Settings → Cards → Fetching**, where the refresh
 interval lives too. Its footer says which of the two it is doing, `3 repos from your PRs` or
@@ -239,7 +253,8 @@ the next morning is a surprise.
 
 A fine-grained personal access token with read access to **pull requests**, **contents** and
 **metadata** covers the pull requests card. The inbox card also needs the account-level
-**notifications** permission, and the Actions card needs **actions** (read). Three things
+**notifications** permission, read and write so it can mark things read, and the Actions card
+needs **actions** (read). Three things
 catch people out:
 
 - the **notifications** permission sits under the account section rather than the repository
@@ -825,7 +840,7 @@ Sources/
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (380 tests, offline)
+  DevDeckTests/    the suite (393 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

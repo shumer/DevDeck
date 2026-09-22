@@ -7,15 +7,46 @@ public struct InboxSnapshot: Sendable, Equatable, Codable {
     /// What the server asked for through `X-Poll-Interval`, if anything.
     public let serverPollInterval: TimeInterval?
     public let failures: [AccountFailure]
+    /// Accounts whose box did not fit in the page the card asks for. Their count is a floor, not
+    /// a total, and an action on "everything" has to page through the rest.
+    public let cappedAccounts: Set<String>
 
     public init(
         items: [InboxItem],
         serverPollInterval: TimeInterval? = nil,
-        failures: [AccountFailure] = []
+        failures: [AccountFailure] = [],
+        cappedAccounts: Set<String> = []
     ) {
         self.items = items
         self.serverPollInterval = serverPollInterval
         self.failures = failures
+        self.cappedAccounts = cappedAccounts
+    }
+
+    /// Whether the unread count is only as far as the card looked.
+    public var isCapped: Bool { !cappedAccounts.isEmpty }
+
+    /// The unread threads not addressed to you: comments, CI, state changes, subscriptions,
+    /// your own pull requests. What "mark the rest as read" clears.
+    public var unreadNotForYou: [InboxItem] {
+        items.filter { $0.isUnread && !$0.reason.isForYou }
+    }
+
+    /// The newest notification per account, which is how far "mark all as read" may reach.
+    public var newestByAccount: [String: Date] {
+        items.reduce(into: [:]) { result, item in
+            result[item.accountID] = max(result[item.accountID] ?? item.updatedAt, item.updatedAt)
+        }
+    }
+
+    /// The same box with some threads gone, for the card to redraw before the server answers.
+    public func removing(_ ids: Set<String>) -> InboxSnapshot {
+        InboxSnapshot(
+            items: items.filter { !ids.contains($0.id) },
+            serverPollInterval: serverPollInterval,
+            failures: failures,
+            cappedAccounts: cappedAccounts
+        )
     }
 
     public static let empty = InboxSnapshot(items: [], serverPollInterval: nil)
@@ -31,7 +62,8 @@ public struct InboxSnapshot: Sendable, Equatable, Codable {
         InboxSnapshot(
             items: snapshots.flatMap(\.items),
             serverPollInterval: snapshots.compactMap(\.serverPollInterval).max(),
-            failures: failures + snapshots.flatMap(\.failures)
+            failures: failures + snapshots.flatMap(\.failures),
+            cappedAccounts: snapshots.reduce(into: []) { $0.formUnion($1.cappedAccounts) }
         )
     }
 
@@ -42,7 +74,7 @@ public struct InboxSnapshot: Sendable, Equatable, Codable {
     /// Notifications that are waiting on the user personally, as opposed to things they are
     /// merely subscribed to.
     public var actionableCount: Int {
-        items.filter { $0.isUnread && $0.reason.priority <= 3 }.count
+        items.filter { $0.isUnread && $0.reason.isForYou }.count
     }
 
     public var repositoryCount: Int {

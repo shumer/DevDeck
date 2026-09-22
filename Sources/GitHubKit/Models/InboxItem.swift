@@ -1,3 +1,4 @@
+import DevDeckCore
 import Foundation
 
 /// Why GitHub put a notification in the inbox.
@@ -34,22 +35,27 @@ public enum NotificationReason: String, Sendable, Equatable, Codable {
         }
     }
 
-    /// Short chip text for the card. Long enough to be unambiguous, short enough for a row.
+    /// Short chip text for the card, in the interface's language. Long enough to be
+    /// unambiguous, short enough for a row.
     public var chip: String {
         switch self {
-        case .reviewRequested: return "review"
-        case .mention: return "mention"
-        case .teamMention: return "team"
-        case .assigned: return "assigned"
-        case .ciActivity: return "ci"
-        case .stateChange: return "state"
-        case .comment: return "comment"
-        case .author: return "yours"
-        case .subscribed: return "watching"
-        case .securityAlert: return "security"
-        case .other: return "other"
+        case .reviewRequested: return L("card.inbox.chip.review")
+        case .mention: return L("card.inbox.chip.mention")
+        case .teamMention: return L("card.inbox.chip.team")
+        case .assigned: return L("card.inbox.chip.assigned")
+        case .ciActivity: return L("card.inbox.chip.ci")
+        case .stateChange: return L("card.inbox.chip.state")
+        case .comment: return L("card.inbox.chip.comment")
+        case .author: return L("card.inbox.chip.yours")
+        case .subscribed: return L("card.inbox.chip.watching")
+        case .securityAlert: return L("card.inbox.chip.security")
+        case .other: return L("card.inbox.chip.other")
         }
     }
+
+    /// Waiting on you personally: a security alert, a review request, a mention, an assignment.
+    /// Everything else is something you are merely subscribed to.
+    public var isForYou: Bool { priority <= 3 }
 
     /// Lower sorts first. Things that block someone else outrank things that merely happened.
     public var priority: Int {

@@ -338,6 +338,54 @@
 			<string>%d groupes</string>
 		</dict>
 	</dict>
+	<key>card.inbox.progress.finished</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Terminé, %d marquée comme lue</string>
+			<key>other</key>
+			<string>Terminé, %d marquées comme lues</string>
+		</dict>
+	</dict>
+	<key>card.inbox.readAll</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Marquer %d comme lue</string>
+			<key>other</key>
+			<string>Marquer les %d comme lues</string>
+		</dict>
+	</dict>
+	<key>card.inbox.readRest</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Marquer comme lu, sauf %d pour vous</string>
+			<key>other</key>
+			<string>Marquer comme lu, sauf %d pour vous</string>
+		</dict>
+	</dict>
 	<key>card.orgs</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
