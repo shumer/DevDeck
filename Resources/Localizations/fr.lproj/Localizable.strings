@@ -149,15 +149,18 @@
 "card.action.terminal" = "Terminal";
 "card.actions.attention" = "attention";
 "card.actions.avg" = "moy. %@";
+"card.actions.empty.choose" = "Choisir vos propres dépôts →";
+"card.actions.empty.detail" = "La carte suit les dépôts de vos pull requests ouvertes, et aucune n’est ouverte.";
+"card.actions.empty.title" = "Rien à surveiller pour l’instant";
 "card.actions.failed" = "%d échouées";
 "card.actions.failing" = "%d en échec";
 "card.actions.green" = "%d%% au vert";
 "card.actions.healthy" = "en forme";
-"card.actions.hint" = "Ouvrez une pull request, ou listez des dépôts dans les réglages";
-"card.actions.idle" = "au repos";
+"card.actions.noOpenPRs" = "aucune PR ouverte";
 "card.actions.noRepos" = "aucun dépôt";
-"card.actions.noRepositories" = "Aucun dépôt à surveiller";
 "card.actions.noRuns" = "aucune exécution";
+"card.actions.quiet.detail" = "Surveille %@.";
+"card.actions.run.help" = "%1$@ · %2$@ sur %3$@";
 "card.actions.running" = "%d en cours";
 "card.actions.successWindow" = "%% de réussite · %dj";
 "card.addGitLab" = "Ajoutez une instance GitLab dans les Réglages";
@@ -287,9 +290,7 @@
 "hotkey.escape" = "Échap annule";
 "hotkey.hint" = "Cliquez, puis appuyez sur les touches voulues. Au moins un modificateur est nécessaire.";
 "hotkey.press" = "Appuyez sur une combinaison";
-"loginItem.error.detail" = "%@
-
-macOS enregistre l’app par son emplacement, donc cela veut souvent dire qu’elle se trouve à un endroit qu’il ne juge pas stable. Déplacez DevDeck.app dans /Applications et réessayez, ou ajoutez-la dans Réglages Système, Général, Ouverture.";
+"loginItem.error.detail" = "%@\n\nmacOS enregistre l’app par son emplacement, donc cela veut souvent dire qu’elle se trouve à un endroit qu’il ne juge pas stable. Déplacez DevDeck.app dans /Applications et réessayez, ou ajoutez-la dans Réglages Système, Général, Ouverture.";
 "loginItem.error.title" = "Impossible de modifier l’ouverture au démarrage";
 "menu.arrangements" = "Dispositions";
 "menu.calm" = "Rien ne vous attend";

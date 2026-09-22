@@ -149,15 +149,18 @@
 "card.action.terminal" = "Terminal";
 "card.actions.attention" = "atención";
 "card.actions.avg" = "media %@";
+"card.actions.empty.choose" = "Elegir tus propios repositorios →";
+"card.actions.empty.detail" = "La tarjeta sigue los repositorios de tus pull requests abiertos, y ahora no hay ninguno.";
+"card.actions.empty.title" = "Ahora no hay nada que vigilar";
 "card.actions.failed" = "%d fallidas";
 "card.actions.failing" = "%d fallando";
 "card.actions.green" = "%d%% en verde";
 "card.actions.healthy" = "sano";
-"card.actions.hint" = "Abre un pull request, o pon repositorios en los ajustes";
-"card.actions.idle" = "sin actividad";
+"card.actions.noOpenPRs" = "sin PR abiertos";
 "card.actions.noRepos" = "sin repos";
-"card.actions.noRepositories" = "No hay repositorios que vigilar";
 "card.actions.noRuns" = "sin ejecuciones";
+"card.actions.quiet.detail" = "Vigilando %@.";
+"card.actions.run.help" = "%1$@ · %2$@ en %3$@";
 "card.actions.running" = "%d en marcha";
 "card.actions.successWindow" = "%% de éxito · %dd";
 "card.addGitLab" = "Añade una instancia de GitLab en Ajustes";
@@ -287,9 +290,7 @@
 "hotkey.escape" = "Escape cancela";
 "hotkey.hint" = "Haz clic y luego pulsa las teclas que quieras. Hace falta al menos un modificador.";
 "hotkey.press" = "Pulsa una combinación";
-"loginItem.error.detail" = "%@
-
-macOS registra la app por su ubicación, así que esto suele significar que la app está en un sitio que no considera estable. Mueve DevDeck.app a /Applications y vuelve a intentarlo, o añádela en Ajustes del Sistema, General, Ítems de inicio.";
+"loginItem.error.detail" = "%@\n\nmacOS registra la app por su ubicación, así que esto suele significar que la app está en un sitio que no considera estable. Mueve DevDeck.app a /Applications y vuelve a intentarlo, o añádela en Ajustes del Sistema, General, Ítems de inicio.";
 "loginItem.error.title" = "No se pudo cambiar el elemento de inicio";
 "menu.arrangements" = "Disposiciones";
 "menu.calm" = "Nada te necesita";

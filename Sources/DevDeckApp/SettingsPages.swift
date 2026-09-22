@@ -287,6 +287,14 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
 
     private let preferences: Preferences
     private let actionsField = SettingsForm.field("", placeholder: "owner/name, owner/name", code: true)
+    /// The name a card uses to ask for the field above.
+    static let actionsRepositoriesField = "actionsRepositories"
+
+    func focus(_ field: String) {
+        guard field == Self.actionsRepositoriesField, actionsField.isEnabled else { return }
+        actionsField.scrollToVisible(actionsField.bounds)
+        actionsField.window?.makeFirstResponder(actionsField)
+    }
     private var switches: [NSSwitch: CardID] = [:]
     private weak var actionsRow: NSView?
 

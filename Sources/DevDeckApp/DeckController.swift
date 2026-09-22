@@ -36,6 +36,15 @@ final class DeckController: ObservableObject {
     /// fresh is this one's.
     var presentLogs: ((CardID) -> Void)?
     var dismissLogs: ((CardID) -> Void)?
+    /// Opens Settings with the cursor in one field, for a card that points at the setting it
+    /// needs. Set by the application layer, like the log windows.
+    var showSetting: ((SettingsWindowController.Section, String) -> Void)?
+
+    /// Whether the Actions card picks its repositories from the open pull requests, because no
+    /// list was given in Settings.
+    var actionsFollowPullRequests: Bool {
+        preferences.actionsRepositories.isEmpty
+    }
     /// Cards folded down to one row. Read from preferences whenever the deck's card list
     /// changes, so a collapsed card comes back collapsed.
     @Published private(set) var collapsedCards: Set<CardID> = []

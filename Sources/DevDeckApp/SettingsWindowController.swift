@@ -12,6 +12,12 @@ protocol SettingsPage: AnyObject {
     /// update row, use it to know whether they are on screen.
     var host: SettingsHost? { get set }
     func build(in container: FlippedContainer)
+    /// Puts the cursor in one of the page's fields, for a link that promised to take you there.
+    func focus(_ field: String)
+}
+
+extension SettingsPage {
+    func focus(_ field: String) {}
 }
 
 /// The settings window: a sidebar with the pages, the accounts and the projects, and the form
@@ -89,6 +95,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         if !wasVisible { WindowPresence.retain() }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Opens a page with the cursor in one of its fields: what a card's "set it here" link
+    /// promises, rather than a page and a hunt for the field on it.
+    func show(_ section: Section, focusing field: String) {
+        show(section)
+        page(section)?.focus(field)
     }
 
     private func makeWindow() {

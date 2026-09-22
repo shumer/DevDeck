@@ -136,6 +136,13 @@ func runLocalisationTests(_ run: TestRun) async {
         try expectEqual(L("update.available", "0.17"), "0.17 è disponibile", "the argument lands where the language puts it")
     }
 
+    await run.test("a line break in a table is a line break on screen") {
+        // Every entry is one line of its file, so a paragraph break is written as an escape. The
+        // login item alert is the one that has one, and it has to arrive as two paragraphs.
+        let detail = L("loginItem.error.detail", "Operation not permitted")
+        try expect(detail.hasPrefix("Operation not permitted\n\n"), "got: \(detail.prefix(40))")
+    }
+
     await run.test("a count is worded by the language's own rules") {
         Strings.use(.russian, lookingIn: localisationRoot)
         try expectEqual(LN("attention.summary.stuck", 1), "1 застряло")

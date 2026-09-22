@@ -149,15 +149,18 @@
 "card.action.terminal" = "Terminale";
 "card.actions.attention" = "attenzione";
 "card.actions.avg" = "media %@";
+"card.actions.empty.choose" = "Scegli i tuoi repository →";
+"card.actions.empty.detail" = "La scheda segue i repository dei tuoi pull request aperti, e al momento non ce n’è nessuno.";
+"card.actions.empty.title" = "Niente da guardare per ora";
 "card.actions.failed" = "%d fallite";
 "card.actions.failing" = "%d falliti";
 "card.actions.green" = "%d%% verde";
 "card.actions.healthy" = "in salute";
-"card.actions.hint" = "Apri un pull request, o elenca i repository nelle impostazioni";
-"card.actions.idle" = "inattivo";
+"card.actions.noOpenPRs" = "nessuna PR aperta";
 "card.actions.noRepos" = "nessun repo";
-"card.actions.noRepositories" = "Nessun repository da guardare";
 "card.actions.noRuns" = "nessuna esecuzione";
+"card.actions.quiet.detail" = "Osservo %@.";
+"card.actions.run.help" = "%1$@ · %2$@ su %3$@";
 "card.actions.running" = "%d in esecuzione";
 "card.actions.successWindow" = "%% di successo · %dg";
 "card.addGitLab" = "Aggiungi un’istanza GitLab nelle Impostazioni";
@@ -287,9 +290,7 @@
 "hotkey.escape" = "Esc annulla";
 "hotkey.hint" = "Fai clic, poi premi i tasti che vuoi. Serve almeno un modificatore.";
 "hotkey.press" = "Premi una combinazione";
-"loginItem.error.detail" = "%@
-
-macOS registra l’app in base alla sua posizione, quindi di solito vuol dire che l’app si trova dove non è considerata stabile. Sposta DevDeck.app in /Applications e riprova, oppure aggiungila in Impostazioni di Sistema, Generali, Elementi di login.";
+"loginItem.error.detail" = "%@\n\nmacOS registra l’app in base alla sua posizione, quindi di solito vuol dire che l’app si trova dove non è considerata stabile. Sposta DevDeck.app in /Applications e riprova, oppure aggiungila in Impostazioni di Sistema, Generali, Elementi di login.";
 "loginItem.error.title" = "Non è stato possibile cambiare l’elemento di login";
 "menu.arrangements" = "Disposizioni";
 "menu.calm" = "Niente ti aspetta";

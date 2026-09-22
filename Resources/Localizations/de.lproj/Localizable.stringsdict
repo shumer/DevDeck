@@ -258,6 +258,54 @@
 			<string>%d warten auf dich</string>
 		</dict>
 	</dict>
+	<key>card.actions.quiet.title</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Keine Läufe am letzten Tag</string>
+			<key>other</key>
+			<string>Keine Läufe in den letzten %d Tagen</string>
+		</dict>
+	</dict>
+	<key>card.actions.repos.fromList</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d Repo aus deiner Liste</string>
+			<key>other</key>
+			<string>%d Repos aus deiner Liste</string>
+		</dict>
+	</dict>
+	<key>card.actions.repos.fromPulls</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>%d Repo aus deinen PRs</string>
+			<key>other</key>
+			<string>%d Repos aus deinen PRs</string>
+		</dict>
+	</dict>
 	<key>card.containers</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
