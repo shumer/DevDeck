@@ -22,7 +22,7 @@
 "alert.summary.body" = "%@. Haz clic para verlos en el menú.";
 "alert.summary.named.more" = "%1$@, %2$@ y %3$d más";
 "arc.noContainers" = "no hay contenedores para este proyecto";
-"arc.portHeldBy" = "el puerto %1$d lo ocupa otro checkout: %2$@";
+"arc.portHeldBy" = "puerto %1$d ocupado por %2$@";
 "arc.stack.unavailable" = "No hay carpeta de proyecto";
 "arrangements.forget" = "Olvidar %@";
 "arrangements.name.placeholder" = "Il Tempo day";

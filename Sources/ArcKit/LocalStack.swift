@@ -107,14 +107,20 @@ public struct LocalStackService: Sendable {
         runner: any CommandRunning = ShellCommandRunner(),
         httpClient: any HTTPClient = URLSessionHTTPClient.makeDefault(timeout: 3),
         clock: any DateProvider = SystemDateProvider(),
-        sleeper: any Sleeper = TaskSleeper()
+        sleeper: any Sleeper = TaskSleeper(),
+        neighbours: [String: String] = [:]
     ) {
         self.project = project
         self.runner = runner
         self.httpClient = httpClient
         self.clock = clock
         self.sleeper = sleeper
+        self.neighbours = neighbours
     }
+
+    /// The other checkouts on the deck, by folder, so a port held by one of them is named the
+    /// way its own card is rather than by the folder it happens to live in.
+    private let neighbours: [String: String]
 
     /// Waits for the engine to answer after a start.
     ///
@@ -222,10 +228,11 @@ public struct LocalStackService: Sendable {
                let listed,
                let folder = project.folderURL,
                let holder = Self.stackHolding(port: port, in: listed, folder: folder) {
+                let name = neighbours[holder.directory] ?? holder.name
                 // Answering, but not this project: the stack of another checkout is on the port.
                 return LocalStackStatus(
                     state: .stopped,
-                    detail: L("arc.portHeldBy", port, holder),
+                    detail: L("arc.portHeldBy", port, name),
                     checkedAt: clock.now,
                     siteURL: siteURL,
                     branch: branch,
@@ -352,16 +359,16 @@ public struct LocalStackService: Sendable {
     ///
     /// The answer is the other checkout's folder name, or the container's own name when nothing
     /// says which checkout it came from.
-    public static func stackHolding(port: Int, in output: String, folder: URL) -> String? {
+    public static func stackHolding(port: Int, in output: String, folder: URL) -> (name: String, directory: String)? {
         let root = folder.standardizedFileURL.path
         let published = ":\(port)->"
         for row in rows(in: output) where row.ports.contains(published) {
             if row.directory == root || row.directory.hasPrefix(root + "/") { return nil }
-            guard !row.directory.isEmpty else { return row.name }
+            guard !row.directory.isEmpty else { return (row.name, "") }
             // `.fusion` is where Fusion writes its compose file; the checkout is its parent.
             var directory = URL(fileURLWithPath: row.directory)
             if directory.lastPathComponent.hasPrefix(".") { directory.deleteLastPathComponent() }
-            return directory.lastPathComponent
+            return (directory.lastPathComponent, directory.standardizedFileURL.path)
         }
         return nil
     }

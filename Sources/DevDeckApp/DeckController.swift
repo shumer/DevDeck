@@ -192,7 +192,7 @@ final class DeckController: ObservableObject {
             // A command issued from the card owns the status until it finishes; probing over
             // the top of it would flip the card back to "stopped" mid-restart.
             if stackStatuses[project.id]?.isBusy == true { continue }
-            let service = LocalStackService(project: project, runner: commandRunner)
+            let service = LocalStackService(project: project, runner: commandRunner, neighbours: arcCheckouts)
             let probed = await service.status()
             // One failed probe is a hiccup: the engine drops a request while it reloads and the
             // card would say "stopped" about a stack that is up.
@@ -734,6 +734,15 @@ final class DeckController: ObservableObject {
             settings: settings,
             accountID: account.id
         )
+    }
+
+    /// The Arc checkouts on the deck, by folder: what a card is called, for a message about a
+    /// port one of them is holding.
+    private var arcCheckouts: [String: String] {
+        projectsStore.projects().reduce(into: [:]) { result, project in
+            guard let folder = project.folderURL?.standardizedFileURL.path else { return }
+            result[folder] = project.title
+        }
     }
 
     /// Every configured checkout, whatever kind of project it belongs to.

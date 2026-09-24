@@ -22,7 +22,7 @@
 "alert.summary.body" = "%@. Click to see them in the menu.";
 "alert.summary.named.more" = "%1$@, %2$@ and %3$d more";
 "arc.noContainers" = "no containers for this project";
-"arc.portHeldBy" = "port %1$d is held by another checkout: %2$@";
+"arc.portHeldBy" = "port %1$d taken by %2$@";
 "arc.stack.unavailable" = "No project folder set";
 "arrangements.forget" = "Forget %@";
 "arrangements.name.placeholder" = "Il Tempo day";

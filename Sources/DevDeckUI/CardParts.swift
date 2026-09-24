@@ -374,13 +374,18 @@ public struct CardHeroRow: View {
                 .foregroundStyle(tone == .alert ? color : DeckTheme.value.opacity(0.76))
                 .lineLimit(1)
                 .truncationMode(.tail)
+                // The state is the point of the row and keeps its width; the note gives way.
+                .layoutPriority(1)
             Spacer(minLength: 6)
             if let note {
                 Text(note)
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(DeckTheme.value.opacity(0.66))
                     .lineLimit(1)
-                    .fixedSize()
+                    // Truncated rather than fixed: a note used to refuse to shrink, and a long
+                    // one pushed the whole card sideways out of its panel. The full text is in
+                    // the row's tooltip.
+                    .truncationMode(.middle)
             }
         }
         .frame(height: Self.height)

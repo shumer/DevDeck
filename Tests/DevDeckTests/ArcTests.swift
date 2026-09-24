@@ -366,8 +366,18 @@ func runArcTests(_ run: TestRun) async {
         )
         let status = await service.status()
         try expectEqual(status.state, .stopped, "this checkout has nothing up, whoever answered")
-        try expectEqual(status.detail, "port 80 is held by another checkout: emaratalyoum-arcxp-themes",
-                        "and the card says whose stack it is")
+        try expectEqual(status.detail, "port 80 taken by emaratalyoum-arcxp-themes",
+                        "the folder, when the deck knows nothing else about it")
+
+        // With that checkout on the deck as well, it is named the way its own card is: short
+        // enough for the line it sits on, and the name the person actually uses.
+        let named = LocalStackService(
+            project: makeProject(folder: mine),
+            runner: StubCommandRunner([("docker ps", CommandResult(exitCode: 0, standardOutput: listing, standardError: ""))]),
+            httpClient: FakeHTTPClient([.success(.json("{}"))]),
+            neighbours: [theirs: "DMI"]
+        )
+        try expectEqual(await named.status().detail, "port 80 taken by DMI")
     }
 
     await run.test("the checkout's own containers are what makes it running") {
@@ -407,11 +417,12 @@ func runArcTests(_ run: TestRun) async {
             "mine\timage\t/Users/dev/media24/arcxp.theme/.fusion\t0.0.0.0:8111->8080/tcp",
             "stray\timage\t\t0.0.0.0:9000->9000/tcp",
         ].joined(separator: "\n")
-        try expectEqual(LocalStackService.stackHolding(port: 80, in: rows, folder: folder), "themes",
-                        "the checkout, not the .fusion folder inside it")
+        let holder = try expectNotNil(LocalStackService.stackHolding(port: 80, in: rows, folder: folder), "holder")
+        try expectEqual(holder.name, "themes", "the checkout, not the .fusion folder inside it")
+        try expectEqual(holder.directory, "/Users/dev/dmi/themes", "and its folder, to look the card up by")
         try expectNil(LocalStackService.stackHolding(port: 8111, in: rows, folder: folder),
                       "its own container holds nothing against it")
-        try expectEqual(LocalStackService.stackHolding(port: 9000, in: rows, folder: folder), "stray",
+        try expectEqual(LocalStackService.stackHolding(port: 9000, in: rows, folder: folder)?.name, "stray",
                         "a container from no checkout at all is named by itself")
         try expectNil(LocalStackService.stackHolding(port: 7000, in: rows, folder: folder))
     }

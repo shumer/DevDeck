@@ -22,7 +22,7 @@
 "alert.summary.body" = "%@. Cliquez pour les voir dans le menu.";
 "alert.summary.named.more" = "%1$@, %2$@ et %3$d autres";
 "arc.noContainers" = "aucun conteneur pour ce projet";
-"arc.portHeldBy" = "le port %1$d est pris par un autre dépôt : %2$@";
+"arc.portHeldBy" = "port %1$d pris par %2$@";
 "arc.stack.unavailable" = "Aucun dossier de projet défini";
 "arrangements.forget" = "Oublier %@";
 "arrangements.name.placeholder" = "Il Tempo day";
