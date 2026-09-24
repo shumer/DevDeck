@@ -348,6 +348,74 @@ func runArcTests(_ run: TestRun) async {
         try expectNil(LocalStackService.engineVersion(from: Data("{}".utf8)))
     }
 
+    await run.test("an answer from another checkout's stack is not this project running") {
+        // Exactly what a colleague hit: two Arc checkouts, both on port 80 out of their own
+        // `.env`, one of them up. Fusion names its containers the same in every checkout, so
+        // only one can run, and the card of the other one sat green on its neighbour's answer.
+        let mine = "/Users/dev/media24/arcxp.theme"
+        let theirs = "/Users/dev/dmi/emaratalyoum-arcxp-themes"
+        let listing = [
+            "fusion-engine\twashpost/fusion-engine:7.1.1\t\(theirs)/.fusion\t",
+            "fusion-cli-api\twashpost/fusion-cli-api:production\t\(theirs)/.fusion\t0.0.0.0:80->8080/tcp, [::]:80->8080/tcp",
+        ].joined(separator: "\n")
+
+        let service = LocalStackService(
+            project: makeProject(folder: mine),
+            runner: StubCommandRunner([("docker ps", CommandResult(exitCode: 0, standardOutput: listing, standardError: ""))]),
+            httpClient: FakeHTTPClient([.success(.json("{}"))])
+        )
+        let status = await service.status()
+        try expectEqual(status.state, .stopped, "this checkout has nothing up, whoever answered")
+        try expectEqual(status.detail, "port 80 is held by another checkout: emaratalyoum-arcxp-themes",
+                        "and the card says whose stack it is")
+    }
+
+    await run.test("the checkout's own containers are what makes it running") {
+        let mine = "/Users/dev/media24/arcxp.theme"
+        let listing = [
+            "fusion-engine\twashpost/fusion-engine:7.1.1\t\(mine)/.fusion\t",
+            "fusion-cli-api\twashpost/fusion-cli-api:production\t\(mine)/.fusion\t0.0.0.0:80->8080/tcp",
+        ].joined(separator: "\n")
+        let service = LocalStackService(
+            project: makeProject(folder: mine),
+            runner: StubCommandRunner([("docker ps", CommandResult(exitCode: 0, standardOutput: listing, standardError: ""))]),
+            httpClient: FakeHTTPClient([.success(.json("{}"))])
+        )
+        let status = await service.status()
+        try expectEqual(status.state, .running)
+        try expectEqual(status.containers, 2)
+        try expectEqual(status.engineVersion, "7.1.1", "read from the image tag, not from the answer")
+    }
+
+    await run.test("a stack started by hand, with no containers at all, still counts as running") {
+        // Docker says nothing about it, and nothing else holds the port: whoever answered is the
+        // only thing that could be serving this checkout.
+        let service = LocalStackService(
+            project: makeProject(folder: "/Users/dev/media24/arcxp.theme"),
+            runner: StubCommandRunner([("docker ps", CommandResult(exitCode: 0, standardOutput: "", standardError: ""))]),
+            httpClient: FakeHTTPClient([.success(.json("{\"version\":\"2026.7.2\"}"))])
+        )
+        let status = await service.status()
+        try expectEqual(status.state, .running)
+        try expectNil(status.containers)
+    }
+
+    await run.test("who holds a port is read from the compose working directory") {
+        let folder = URL(fileURLWithPath: "/Users/dev/media24/arcxp.theme")
+        let rows = [
+            "fusion-cli-api\timage\t/Users/dev/dmi/themes/.fusion\t0.0.0.0:80->8080/tcp",
+            "mine\timage\t/Users/dev/media24/arcxp.theme/.fusion\t0.0.0.0:8111->8080/tcp",
+            "stray\timage\t\t0.0.0.0:9000->9000/tcp",
+        ].joined(separator: "\n")
+        try expectEqual(LocalStackService.stackHolding(port: 80, in: rows, folder: folder), "themes",
+                        "the checkout, not the .fusion folder inside it")
+        try expectNil(LocalStackService.stackHolding(port: 8111, in: rows, folder: folder),
+                      "its own container holds nothing against it")
+        try expectEqual(LocalStackService.stackHolding(port: 9000, in: rows, folder: folder), "stray",
+                        "a container from no checkout at all is named by itself")
+        try expectNil(LocalStackService.stackHolding(port: 7000, in: rows, folder: folder))
+    }
+
     await run.test("a stop that did not take effect says so instead of going quiet") {
         // The failure this exists for: `fusion stop` returns, the containers stay up, and the
         // next poll paints the card green again as though the button had never been pressed.

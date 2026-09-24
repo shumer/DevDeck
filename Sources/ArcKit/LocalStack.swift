@@ -212,9 +212,26 @@ public struct LocalStackService: Sendable {
                     healthStatusCode: response.statusCode
                 )
             }
-            // Asked once and read twice: how many containers are up, and which Fusion the engine
-            // among them actually is.
-            let running = await containers() ?? []
+            // Asked once and read three times: how many containers are up, which Fusion the
+            // engine among them is, and, when none of them are this checkout's, who is answering
+            // on its port.
+            let listed = await list()
+            let running = listed.map { Self.containers(in: $0, folder: project.folderURL ?? URL(fileURLWithPath: "/")) } ?? []
+            let port = healthURL.port ?? (healthURL.scheme == "https" ? 443 : 80)
+            if running.isEmpty,
+               let listed,
+               let folder = project.folderURL,
+               let holder = Self.stackHolding(port: port, in: listed, folder: folder) {
+                // Answering, but not this project: the stack of another checkout is on the port.
+                return LocalStackStatus(
+                    state: .stopped,
+                    detail: L("arc.portHeldBy", port, holder),
+                    checkedAt: clock.now,
+                    siteURL: siteURL,
+                    branch: branch,
+                    repositoryURL: repositoryURL
+                )
+            }
 
             return LocalStackStatus(
                 state: .running,
@@ -291,7 +308,7 @@ public struct LocalStackService: Sendable {
     /// same for every checkout on the machine. The working directory is the label that actually
     /// says whose containers these are.
     public static let listCommand =
-        "docker ps --format '{{.Names}}\t{{.Image}}\t{{.Label \"com.docker.compose.project.working_dir\"}}'"
+        "docker ps --format '{{.Names}}\t{{.Image}}\t{{.Label \"com.docker.compose.project.working_dir\"}}\t{{.Ports}}'"
 
     /// The rows belonging to one checkout: the ones whose compose file lives inside it.
     ///
@@ -299,21 +316,68 @@ public struct LocalStackService: Sendable {
     /// and a folder inside it for others, and both are this project's containers.
     public static func containers(in output: String, folder: URL) -> [(name: String, image: String)] {
         let root = folder.standardizedFileURL.path
-        return output.split(separator: "\n").compactMap { line in
+        return rows(in: output)
+            .filter { $0.directory == root || $0.directory.hasPrefix(root + "/") }
+            .map { (name: $0.name, image: $0.image) }
+    }
+
+    /// One row of `docker ps`: what it is called, what it runs, whose compose file started it
+    /// and what it publishes.
+    public struct ContainerRow: Sendable, Equatable {
+        public let name: String
+        public let image: String
+        public let directory: String
+        public let ports: String
+    }
+
+    public static func rows(in output: String) -> [ContainerRow] {
+        output.split(separator: "\n").compactMap { line in
             let columns = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
             guard columns.count >= 3 else { return nil }
-            let directory = columns[2].trimmingCharacters(in: .whitespaces)
-            guard directory == root || directory.hasPrefix(root + "/") else { return nil }
-            return (columns[0].trimmingCharacters(in: .whitespaces), columns[1])
+            return ContainerRow(
+                name: columns[0].trimmingCharacters(in: .whitespaces),
+                image: columns[1],
+                directory: columns[2].trimmingCharacters(in: .whitespaces),
+                ports: columns.count >= 4 ? columns[3] : ""
+            )
         }
     }
 
+    /// Who is holding the port this project is asking, when it is not this project.
+    ///
+    /// Fusion names its containers the same in every checkout - `fusion-engine`, `fusion-cli-api`
+    /// and the rest - so two Arc projects cannot be up at once, and a second checkout on the same
+    /// port is answered by the first one's stack. The card called that "running" and stayed green
+    /// over a project that was not running at all.
+    ///
+    /// The answer is the other checkout's folder name, or the container's own name when nothing
+    /// says which checkout it came from.
+    public static func stackHolding(port: Int, in output: String, folder: URL) -> String? {
+        let root = folder.standardizedFileURL.path
+        let published = ":\(port)->"
+        for row in rows(in: output) where row.ports.contains(published) {
+            if row.directory == root || row.directory.hasPrefix(root + "/") { return nil }
+            guard !row.directory.isEmpty else { return row.name }
+            // `.fusion` is where Fusion writes its compose file; the checkout is its parent.
+            var directory = URL(fileURLWithPath: row.directory)
+            if directory.lastPathComponent.hasPrefix(".") { directory.deleteLastPathComponent() }
+            return directory.lastPathComponent
+        }
+        return nil
+    }
+
     private func containers() async -> [(name: String, image: String)]? {
-        guard let folder = project.folderURL else { return nil }
-        guard let result = try? await runner.run(Self.listCommand, in: folder, timeout: 10),
+        guard let folder = project.folderURL, let output = await list() else { return nil }
+        return Self.containers(in: output, folder: folder)
+    }
+
+    /// What Docker is running, as one block of text, asked once per status.
+    private func list() async -> String? {
+        guard let folder = project.folderURL,
+              let result = try? await runner.run(Self.listCommand, in: folder, timeout: 10),
               result.succeeded
         else { return nil }
-        return Self.containers(in: result.standardOutput, folder: folder)
+        return result.standardOutput
     }
 
     private func containerNames() async -> [String]? {

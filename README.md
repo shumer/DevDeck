@@ -323,6 +323,14 @@ interactive shell for its `PATH` once at launch and gives it to every command. W
 `ddev` and `docker` work - they are in `/usr/local/bin` - and `npx` reports "command not found"
 from a machine that plainly has it.
 
+**Two Arc checkouts cannot both be up.** Fusion names its containers the same in every one of
+them, so starting a second stack replaces the first, and two checkouts that serve on the same
+port out of their own `.env` answer each other's health checks. A card that gets an answer while
+Docker shows none of its own containers now says **stopped** and names the checkout holding the
+port, rather than sitting green over a stack that was never started. Different ports per checkout
+are worth setting anyway: it is the only way to keep the links on both cards pointing at the
+right site. `scripts/check-arc-stack.sh` prints what each card checks and who answered.
+
 ## DDEV projects
 
 **Settings, +, DDEV Project…** offers what `ddev list` found, so there is no

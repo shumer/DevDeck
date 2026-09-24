@@ -59,6 +59,18 @@ merged catalog, so adding a project in settings creates a card with no code chan
 inspecting processes, and runs its commands through `ShellCommandRunner`. Both decisions, and
 why the obvious alternatives are wrong, are in [adr/0005-local-stack.md](adr/0005-local-stack.md).
 
+**An answer is not enough on its own.** Fusion writes the same container names in every
+checkout - `fusion-engine`, `fusion-cli-api` and the rest - so only one Arc stack can run on a
+machine, and two checkouts serving on the same port out of their own `.env` cannot both be up.
+The card used to call the health answer "running" whoever gave it, and sat green over a project
+whose stack had never started. So when the answer arrives and `docker ps` shows no container
+whose compose working directory is inside this checkout, the port is looked up in the same
+listing: a container from another checkout holding it means this project is stopped, and the
+card says whose stack answered (`LocalStackService.stackHolding(port:in:folder:)`). With nothing
+publishing the port at all the answer stands, which is what keeps a stack started by hand in a
+terminal counted as running. `scripts/check-arc-stack.sh` prints the same three facts for every
+configured project, for a card that still disagrees with the person looking at it.
+
 Local status polls on its own 10-second loop in `DeckController`, separate from the API
 refresh: a stack that just came up should appear within seconds, and the probe is local and
 cheap. A project mid-command is skipped by the poll so the card cannot flicker back to

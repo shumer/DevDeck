@@ -22,6 +22,7 @@
 "alert.summary.body" = "%@. Нажмите, чтобы посмотреть их в меню.";
 "alert.summary.named.more" = "%1$@, %2$@ и ещё %3$d";
 "arc.noContainers" = "у этого проекта нет контейнеров";
+"arc.portHeldBy" = "порт %1$d занят другим чекаутом: %2$@";
 "arc.stack.unavailable" = "Папка проекта не задана";
 "arrangements.forget" = "Забыть %@";
 "arrangements.name.placeholder" = "Il Tempo day";
