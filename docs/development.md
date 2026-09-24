@@ -36,6 +36,8 @@ open -a DevDeck --args --menu sample   # the installed app's menu, with a row of
 open -a DevDeck --args --logs         # a log window, without a hand on the mouse
 open -a DevDeck --args --logs project.agrica-qdd   # that project's log window
 pkill -f DevDeck                  # quit a running instance
+scripts/check-arc-stack.sh        # what an Arc card checks, from a terminal, for a card that
+                                  # says "running" when the stack is not
 ```
 
 The DDEV cards need the `ddev` CLI on the PATH a login shell sees; Arc, DDEV and any plain
