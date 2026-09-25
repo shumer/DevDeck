@@ -317,6 +317,7 @@
 "menu.card.hide" = "Ocultar esta tarjeta";
 "menu.card.hideLog" = "Cerrar el log";
 "menu.card.settings" = "Ajustes de esta tarjeta…";
+"menu.card.parked" = "Plegada mientras su pantalla está desconectada";
 "menu.card.showLog" = "Abrir el log";
 "menu.card.showWhole" = "Mostrar la tarjeta entera";
 "menu.cards" = "Tarjetas";

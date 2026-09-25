@@ -258,6 +258,133 @@ func runPresentationTests(_ run: TestRun) async {
         try expectNil(PanelPlacement(storage: "|1|2"), "and neither is a nameless display")
     }
 
+    run.section("Panels - parking the deck")
+
+    // The deck from the report: five cards in two columns on a 27-inch external, and the laptop
+    // the only screen left when it is unplugged.
+    let bigExternal = DisplayFrame(id: "external", visibleFrame: CGRect(x: 0, y: 0, width: 2560, height: 1415))
+    let laptopAlone = DisplayFrame(id: "laptop", visibleFrame: CGRect(x: 0, y: 0, width: 1512, height: 949))
+    let folded = CGSize(width: 352, height: CollapsedCardMetrics.height)
+    func parkedCard(_ name: String, _ x: Double, _ y: Double, on display: String = "external") -> DeckParking.Card {
+        DeckParking.Card(
+            id: CardID(rawValue: name),
+            placement: PanelPlacement(displayID: display, offset: CGPoint(x: x, y: y)),
+            size: folded
+        )
+    }
+    // Given out of order on purpose: the layout reads the offsets, not the list.
+    let reported = [
+        parkedCard("inbox", 40, 560), parkedCard("actions", 40, 300), parkedCard("dmi", 415, 300),
+        parkedCard("pulls", 40, 40), parkedCard("media24", 415, 40),
+    ]
+    func frames(_ points: [CardID: CGPoint], size: CGSize) -> [CGRect] {
+        points.values.map { CGRect(x: $0.x, y: $0.y - size.height, width: size.width, height: size.height) }
+    }
+    func overlapping(_ rects: [CGRect]) -> Bool {
+        for (index, first) in rects.enumerated() {
+            for second in rects[(index + 1)...] where first.intersects(second) { return true }
+        }
+        return false
+    }
+    func topDown(_ points: [CardID: CGPoint], _ names: [String]) -> [String] {
+        names.map { CardID(rawValue: $0) }
+            .sorted { (points[$0]?.y ?? 0) > (points[$1]?.y ?? 0) }
+            .map(\.rawValue)
+    }
+
+    await run.test("a parked deck is one column of rows, in reading order, at the side it stood on") {
+        let points = DeckParking.layout(reported, on: laptopAlone, gap: 12)
+        try expectEqual(points.count, 5)
+        try expect(!overlapping(frames(points, size: folded)), "nothing lies on anything else")
+        try expect(frames(points, size: folded).allSatisfy { laptopAlone.visibleFrame.contains($0) },
+                   "and nothing hangs off the screen")
+        try expect(points.values.allSatisfy { $0.x == 40 }, "one column, the same distance in from the left")
+        try expectEqual(points[CardID(rawValue: "pulls")]?.y, 949 - 40, "the same distance down from the top")
+        try expectEqual(
+            topDown(points, reported.map(\.id.rawValue)),
+            ["pulls", "actions", "inbox", "media24", "dmi"],
+            "home's left column first, top to bottom, then the right one"
+        )
+    }
+
+    await run.test("a deck on the right of a big display stays on the right of a small one") {
+        let points = DeckParking.layout(
+            [parkedCard("a", 2200, 40), parkedCard("b", 2200, 300)],
+            on: laptopAlone,
+            gap: 12
+        )
+        try expect(points.values.allSatisfy { $0.x == 1512 - 352 }, "against the right edge, not off it")
+    }
+
+    await run.test("a deck too tall for the screen wraps into a second column rather than piling up") {
+        let many = (0..<30).map { parkedCard("card-\($0)", 40, Double(40 + $0 * 260)) }
+        let points = DeckParking.layout(many, on: laptopAlone, gap: 12)
+        let rects = frames(points, size: folded)
+        try expectEqual(points.count, 30)
+        try expect(!overlapping(rects))
+        try expect(rects.allSatisfy { laptopAlone.visibleFrame.contains($0) })
+        try expectEqual(Set(points.values.map(\.x)).count, 2, "two columns")
+    }
+
+    await run.test("the plan takes every card home the moment its display is back, exactly") {
+        let atHome = DeckParking.plan(reported, displays: [bigExternal, laptopAlone], fallback: laptopAlone, gap: 12)
+        try expectEqual(atHome.home.count, 5)
+        try expect(atHome.parked.isEmpty)
+        try expectEqual(atHome.home[CardID(rawValue: "dmi")], CGPoint(x: 415, y: 1415 - 300))
+
+        let away = DeckParking.plan(reported, displays: [laptopAlone], fallback: laptopAlone, gap: 12)
+        try expect(away.home.isEmpty, "nothing is home while the external is unplugged")
+        try expectEqual(away.parked.count, 5)
+        try expectEqual(
+            away.parked,
+            DeckParking.plan(reported.reversed(), displays: [laptopAlone], fallback: laptopAlone, gap: 12).parked,
+            "the parked column does not depend on the order the cards come in"
+        )
+
+        let back = DeckParking.plan(reported, displays: [bigExternal, laptopAlone], fallback: laptopAlone, gap: 12)
+        try expectEqual(back, atHome, "the placements were never touched, so home is where it was")
+    }
+
+    await run.test("a card whose display is here stays home while the others are parked") {
+        let mixed = reported + [parkedCard("load", 24, 25, on: "laptop")]
+        let plan = DeckParking.plan(mixed, displays: [laptopAlone], fallback: laptopAlone, gap: 12)
+        try expectEqual(plan.home[CardID(rawValue: "load")], CGPoint(x: 24, y: 949 - 25))
+        try expectEqual(plan.parked.count, 5)
+    }
+
+    await run.test("the window server's shove is not a drag") {
+        let a = CardID(rawValue: "a"), b = CardID(rawValue: "b")
+        var moves = PendingMoves(quietPeriod: 0.15)
+        // The timeline the probe recorded: two moves, then the screens changed 8 ms later.
+        moves.moved(a, at: 10.000)
+        moves.moved(b, at: 10.003)
+        try expectEqual(moves.settled(at: 10.007), [], "nothing is believed yet")
+        try expectEqual(Set(moves.screensChanged()), Set([a, b]), "both moves were the window server's")
+        try expect(moves.isEmpty)
+        try expectNil(moves.nextDue)
+    }
+
+    await run.test("a move the screens keep quiet after is the user's") {
+        let a = CardID(rawValue: "a")
+        var moves = PendingMoves(quietPeriod: 0.15)
+        moves.moved(a, at: 20)
+        try expectEqual(moves.nextDue, 20.15)
+        try expectEqual(moves.settled(at: 20.1), [], "not yet")
+        try expectEqual(moves.settled(at: 20.15), [a], "150 ms of quiet and it counts")
+        try expect(moves.isEmpty)
+
+        // A drag is a hundred moves and one save.
+        for step in 0..<20 { moves.moved(a, at: 30 + Double(step) * 0.016) }
+        try expectEqual(moves.settled(at: 30.4), [], "still dragging")
+        try expectEqual(moves.settled(at: 30.46), [a])
+
+        // Dragging a parked card after the screens changed is a decision like any other.
+        moves.moved(a, at: 40)
+        moves.screensChanged()
+        moves.moved(a, at: 41)
+        try expectEqual(moves.settled(at: 41.2), [a])
+    }
+
     run.section("Cards - chips wrap, and the panel knows by how much")
 
     await run.test("chips break onto a new line only when the line is full") {

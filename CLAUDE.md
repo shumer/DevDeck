@@ -65,6 +65,11 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
 - **Cache keys are namespaced per account**, or two tokens polling one endpoint share an
   `ETag` and serve each other's data.
 - **A hidden card fetches nothing.** New cards must respect `DeckController.setActiveCards`.
+- **`windowDidMove` is not proof of a drag.** The window server posts it for windows it moves
+  when a display comes or goes, about 8 ms before `didChangeScreenParameters`, with `NSScreen`
+  already updated. Positions go through `PendingMoves` and are saved only after 150 ms of quiet
+  screens; never persist a position straight from the notification. A parked card is folded by
+  `DeckController.parkedCards`, not by the collapsed preference, and nothing about it is saved.
 - **Row height and panel height come from `CardMetrics`.** The card and the window it lives in
   must not compute it separately, or the last row gets clipped.
 - **Links open through `LinkOpener` with the row's account**, never `NSWorkspace.open` directly

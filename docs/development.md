@@ -38,6 +38,9 @@ open -a DevDeck --args --logs project.agrica-qdd   # that project's log window
 pkill -f DevDeck                  # quit a running instance
 scripts/check-arc-stack.sh        # what an Arc card checks, from a terminal, for a card that
                                   # says "running" when the stack is not
+swiftc -O -o probe-displays scripts/probe-displays.swift && ./probe-displays
+                                  # four stand-in panels on the last external display, logging
+                                  # what AppKit does to them while a monitor is unplugged
 ```
 
 The DDEV cards need the `ddev` CLI on the PATH a login shell sees; Arc, DDEV and any plain

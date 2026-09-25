@@ -138,6 +138,10 @@
 - **Arranging the deck away from home sticks** - tidying or dragging while the display a card
   belongs to is unplugged is saved against the screen it is actually on, instead of being undone
   by the next screen change.
+- **The deck parks folded** - with its monitor unplugged the deck is one column of 44-point rows
+  at the side it stood on, and goes home exactly when the monitor is back, because the shove
+  macOS gives windows on a display change is no longer mistaken for a drag. See
+  [adr/0022-the-deck-parks-folded.md](adr/0022-the-deck-parks-folded.md).
 - **Pull requests waiting for your review** on the same card as your own, from a second search
   in the same request.
 - **The branch on a card is a link** to the repository it came from, read from the checkout's

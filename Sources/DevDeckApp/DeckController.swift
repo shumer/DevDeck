@@ -53,6 +53,9 @@ final class DeckController: ObservableObject {
     /// Cards folded down to one row. Read from preferences whenever the deck's card list
     /// changes, so a collapsed card comes back collapsed.
     @Published private(set) var collapsedCards: Set<CardID> = []
+    /// Cards folded by the deck because the display they belong to is unplugged. Not a choice
+    /// and not remembered: the card stands up again the moment its display returns.
+    @Published private(set) var parkedCards: Set<CardID> = []
 
     /// Local stack state per Arc project id.
     @Published private(set) var stackStatuses: [String: LocalStackStatus] = [:]
@@ -1046,8 +1049,23 @@ final class DeckController: ObservableObject {
         return true
     }
 
+    /// Whether the card is one row right now, by choice or because it is parked.
     func isCollapsed(_ card: CardID) -> Bool {
+        collapsedCards.contains(card) || parkedCards.contains(card)
+    }
+
+    /// Whether the card is one row because somebody folded it: what an arrangement saves.
+    func isCollapsedByChoice(_ card: CardID) -> Bool {
         collapsedCards.contains(card)
+    }
+
+    func isParked(_ card: CardID) -> Bool {
+        parkedCards.contains(card)
+    }
+
+    func setParked(_ cards: Set<CardID>) {
+        guard cards != parkedCards else { return }
+        parkedCards = cards
     }
 
     /// Folds a card down, or opens it back up. A collapsed card keeps no tray: six lines of log

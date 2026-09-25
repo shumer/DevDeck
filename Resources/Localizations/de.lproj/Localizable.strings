@@ -317,6 +317,7 @@
 "menu.card.hide" = "Diese Karte ausblenden";
 "menu.card.hideLog" = "Log schließen";
 "menu.card.settings" = "Einstellungen für diese Karte…";
+"menu.card.parked" = "Eingeklappt, solange ihr Display abgesteckt ist";
 "menu.card.showLog" = "Log öffnen";
 "menu.card.showWhole" = "Ganze Karte zeigen";
 "menu.cards" = "Karten";

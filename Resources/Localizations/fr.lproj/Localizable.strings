@@ -317,6 +317,7 @@
 "menu.card.hide" = "Masquer cette carte";
 "menu.card.hideLog" = "Fermer le journal";
 "menu.card.settings" = "Réglages de cette carte…";
+"menu.card.parked" = "Repliée tant que son écran est débranché";
 "menu.card.showLog" = "Ouvrir le journal";
 "menu.card.showWhole" = "Afficher toute la carte";
 "menu.cards" = "Cartes";
