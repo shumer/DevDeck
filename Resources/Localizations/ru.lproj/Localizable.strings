@@ -317,6 +317,7 @@
 "menu.card.hide" = "Скрыть эту карточку";
 "menu.card.hideLog" = "Закрыть лог";
 "menu.card.settings" = "Настройки этой карточки…";
+"menu.card.parked" = "Свёрнута, пока её монитор отключён";
 "menu.card.showLog" = "Открыть лог";
 "menu.card.showWhole" = "Показать карточку целиком";
 "menu.cards" = "Карточки";

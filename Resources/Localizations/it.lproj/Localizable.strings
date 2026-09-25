@@ -317,6 +317,7 @@
 "menu.card.hide" = "Nascondi questa scheda";
 "menu.card.hideLog" = "Chiudi il log";
 "menu.card.settings" = "Impostazioni di questa scheda…";
+"menu.card.parked" = "Ripiegata finché il suo schermo è scollegato";
 "menu.card.showLog" = "Apri il log";
 "menu.card.showWhole" = "Mostra tutta la scheda";
 "menu.cards" = "Schede";

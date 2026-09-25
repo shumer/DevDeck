@@ -317,6 +317,7 @@
 "menu.card.hide" = "Hide this card";
 "menu.card.hideLog" = "Close the log";
 "menu.card.settings" = "Settings for This Card…";
+"menu.card.parked" = "Folded while its display is unplugged";
 "menu.card.showLog" = "Open the log";
 "menu.card.showWhole" = "Show the whole card";
 "menu.cards" = "Cards";

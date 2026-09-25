@@ -577,12 +577,15 @@ name and browser, for GitLab its address, and for GitHub the organisations under
 Everything else applies as you change it.
 
 Drag a panel anywhere; the position is remembered per card - **against the display it is on**,
-not as a point on the desktop. Unplug the external monitor and the cards that live on it are
-parked on whatever screen is left, keeping their distance from the top; plug it back in and they
-go home. Nothing is re-saved while a card is parked, because parking is not a decision you made.
-This is why a deck kept on the laptop screen no longer scatters when an external display that
-happens to be the main one comes and goes, and why quitting and reopening puts every panel back
-exactly where it was rather than a little further down each time. The deck moves a card only when
+not as a point on the desktop. Unplug the monitor the deck lives on and the cards are parked on
+the screen that is left, folded to one row each and stacked in a single column at the side the
+deck stood on, in the order it reads in; plug it back in and every card goes home and stands up
+again, exactly where it was. Nothing is re-saved while a card is parked, because parking is not a
+decision you made, and neither is the shove macOS gives windows when a display disappears: the
+deck waits for the screens to settle before it believes a move was yours. This is why a deck kept
+on the laptop screen no longer scatters when an external display that happens to be the main one
+comes and goes, and why quitting and reopening puts every panel back exactly where it was rather
+than a little further down each time. The deck moves a card only when
 you asked it to: collapsing one, expanding a list. Data arriving never moves anything, and
 neither does a log any more: it opens in a window of its own. **Close gaps automatically**, under Settings → Deck and off by default, closes the gaps in a column whenever
 a card changes height, at the price of any gap you left in it on purpose.
@@ -607,7 +610,8 @@ it is not announced, and neither is a stop that did not take: you are looking at
 **Send Test Notification** posts one immediately so the whole chain can be checked.
 
 While the display a card belongs to is unplugged, tidying or dragging the parked card makes that
-its new home.
+its new home. Its context menu says it is folded because its display is away, in place of the
+fold item, since that is not a choice on offer while it is parked.
 
 Click a row to open that pull request, and double-click a list card's background to open the same
 list on the web.
@@ -848,7 +852,7 @@ Sources/
     Modules/       one file per kind of card: its view, size, catalog entries and settings
 Tests/
   TestHarness/     tiny test framework and fakes
-  DevDeckTests/    the suite (393 tests, offline)
+  DevDeckTests/    the suite (404 tests, offline)
 Tools/
   Smoke/           live API check
   IconPreview/     renders the menu-bar icon at the size it is actually seen

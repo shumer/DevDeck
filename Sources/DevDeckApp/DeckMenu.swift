@@ -126,11 +126,15 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         header.isEnabled = false
         menu.addItem(header)
 
+        // A parked card is folded by the deck, and says so in place of the choice it cannot offer.
         let collapse = NSMenuItem(
-            title: controller.isCollapsed(card) ? L("menu.card.showWhole") : L("menu.card.collapse"),
+            title: controller.isParked(card)
+                ? L("menu.card.parked")
+                : controller.isCollapsed(card) ? L("menu.card.showWhole") : L("menu.card.collapse"),
             action: #selector(toggleCollapsed(_:)),
             keyEquivalent: ""
         )
+        collapse.isEnabled = !controller.isParked(card)
         collapse.target = self
         collapse.representedObject = card.rawValue
         menu.addItem(collapse)

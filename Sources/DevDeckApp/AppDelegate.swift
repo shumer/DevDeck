@@ -155,6 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.$ddevStatuses.map { _ in () }.eraseToAnyPublisher(),
             controller.$localStatuses.map { _ in () }.eraseToAnyPublisher(),
             controller.$collapsedCards.map { _ in () }.eraseToAnyPublisher(),
+            controller.$parkedCards.map { _ in () }.eraseToAnyPublisher(),
             // The rest of what the menu-bar badge is made of: GitLab, Docker, the projects'
             // history and the checkouts.
             controller.$mergeRequests.map { _ in () }.eraseToAnyPublisher(),

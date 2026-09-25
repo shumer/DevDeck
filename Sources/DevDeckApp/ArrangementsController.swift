@@ -25,7 +25,7 @@ final class ArrangementsController: NSObject {
             DeckArrangement.Placed(
                 card: descriptor.id.rawValue,
                 isVisible: panels.isShowing(descriptor.id),
-                isCollapsed: controller.isCollapsed(descriptor.id),
+                isCollapsed: controller.isCollapsedByChoice(descriptor.id),
                 placement: preferences.placement(for: descriptor.id)?.storage
             )
         }
@@ -97,7 +97,7 @@ final class ArrangementsController: NSObject {
             if let storage = placed.placement, let placement = PanelPlacement(storage: storage) {
                 preferences.setPlacement(placement, for: card)
             }
-            if controller.isCollapsed(card) != placed.isCollapsed {
+            if controller.isCollapsedByChoice(card) != placed.isCollapsed {
                 controller.toggleCollapsed(card)
             }
         }

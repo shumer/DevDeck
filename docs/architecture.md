@@ -374,8 +374,17 @@ display keeps the placement it already has, so unplugging a monitor for an hour 
 deck move house, **unless the user moved it there themselves**. Dragging a parked card or tidying
 the deck while its own monitor is unplugged is a decision and outranks the placement it replaces.
 Without that exception the arrangement was dropped on the floor and the next screen change hauled
-every card back to where it had been parked - which, on a smaller screen, is the bottom edge,
-because offsets that do not fit are clamped there.
+every card back to where it had been parked.
+
+**The window server's move is not a move the user made either**, and it arrives dressed as one.
+When a display disappears macOS pushes every window it finds off all screens onto the nearest
+one that is left and posts `windowDidMove` for each, about 8 ms *before*
+`didChangeScreenParameters`, with `NSScreen.screens` already describing the new arrangement
+(measured, see `scripts/probe-displays.swift` and [adr/0022](adr/0022-the-deck-parks-folded.md)).
+Saved on the spot, that recorded the card as living on the laptop at the spot it was dropped, and
+the deck had moved house with nobody touching it. So `windowDidMove` goes into `PendingMoves`
+and is written down only once the screens have kept quiet for 150 ms after it; a screen change
+in between drops everything waiting. A drag ends with a last move and 150 ms of silence.
 
 **The panels act on the first click.** `PanelHostingView` overrides `acceptsFirstMouse`, because
 AppKit's default - a click on an inactive window activates the app and goes no further - is
@@ -398,12 +407,18 @@ lays every screen out in one coordinate space and re-lays it whenever a display 
 so a global point that meant "top left of the laptop screen" means somewhere else - often
 off every screen - the moment the external display that happens to be the main one is unplugged.
 
-A card whose display is absent is *parked*: the same offset applied to the main screen, clamped
-back inside it, with the stored placement left untouched so the card goes home when its display
-returns. `persistPosition` refuses to overwrite a placement while it is parked, because parking
-is not a decision the user made. `NSApplication.didChangeScreenParametersNotification` triggers
-a re-place of the whole deck, after a beat - a display that has just woken reports its old frame
-for a moment.
+A card whose display is absent is *parked*, and the deck is parked as a whole rather than a
+card at a time: `DeckParking` folds every parked card to its 44-point row and stacks them in one
+column at the side of the main screen the deck stood on at home, in the order the deck reads in,
+wrapping only when the rows do not fit. One clamp per card was the earlier answer, and on a
+screen 949 points tall it sent every offset taken on one 1440 tall to the same spot on the bottom
+edge. The stored placement is left untouched so the card goes home, and stands up again, when its
+display returns; the fold is `DeckController.parkedCards`, not the collapsed preference, and the
+44-point height is not remembered. `persistPosition` refuses to overwrite a placement while it is
+parked, because parking is not a decision the user made. `NSApplication.didChangeScreenParametersNotification`
+triggers a re-place of the whole deck, after a beat - a display that has just woken reports its
+old frame for a moment, and the Dock follows the main display in a second notification a few
+hundred milliseconds later.
 
 The identity is `CGDisplayCreateUUIDFromDisplayID`, not the display id and not the screen index:
 ids are handed out per connection and change on a replug, and the index changes with the

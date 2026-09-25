@@ -27,6 +27,8 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
     private var restingLevel: NSWindow.Level
     /// Whether they are currently raised over everything.
     private var isRaised = false
+    /// Moves that have not been believed yet, see `PendingMoves`.
+    private var pendingMoves = PendingMoves()
 
     init(
         preferences: Preferences,
@@ -77,11 +79,30 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
         // spot from the two panels that happened to exist at that moment and land under one of
         // them, on top of a card whose saved position had not been restored yet.
         var unplaced: [CardID] = []
+        var opened: [CardID] = []
         for card in wanted where panels[card] == nil {
             if preferences.placement(for: card) == nil { unplaced.append(card) }
             showPanel(card)
+            opened.append(card)
         }
         for card in unplaced { settle(card) }
+        // Two cards remembered at the same spot, which happens when both were hidden and the
+        // deck was tidied over the place one of them had, would open on top of each other. The
+        // one that opened second joins the deck instead.
+        for card in opened where !unplaced.contains(card) && isDoubled(card) { settle(card) }
+        // Home or parked, from the placements, so a card whose display is absent opens folded in
+        // the parked column with the rest, and hiding a parked card closes the column up.
+        replaceAll()
+    }
+
+    /// Whether another panel already sits exactly where this one is.
+    private func isDoubled(_ card: CardID) -> Bool {
+        guard let frame = panels[card]?.frame else { return false }
+        return panels.contains { other, window in
+            other != card
+                && abs(window.frame.minX - frame.minX) < 2
+                && abs(window.frame.maxY - frame.maxY) < 2
+        }
     }
 
     private func showPanel(_ card: CardID) {
@@ -117,6 +138,10 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
         let userChanged = controller.takeUserResizes()
 
         for (card, window) in panels {
+            // A parked card is folded by the deck rather than by its data, and `replaceAll` is
+            // what sizes it. Its height is not remembered either: a deck that opened at 44 points
+            // a card because a monitor was unplugged yesterday is not the deck that was left.
+            guard !controller.isParked(card) else { continue }
             // A card that has never had data computes the height of an empty card. Letting that
             // through resized the panel to a shape nothing was ever in, and then back, and the
             // column walked up the screen and down again with a different set of neighbours each
@@ -171,9 +196,9 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
     /// column and never re-sorted, because a card that jumps sideways or swaps places on its own
     /// is worse than the gap it was closing. The menu's Tidy is still the one that does both.
     private func packColumn(containing card: CardID) {
-        guard let anchor = panels[card] else { return }
+        guard let anchor = panels[card], !controller.isParked(card) else { return }
         let members = panels
-            .filter { DeckLayout.isSameColumn($0.value.frame, anchor.frame) }
+            .filter { !controller.isParked($0.key) && DeckLayout.isSameColumn($0.value.frame, anchor.frame) }
             .sorted { $0.value.frame.maxY > $1.value.frame.maxY }
         guard members.count > 1, let top = members.first?.value.frame else { return }
 
@@ -341,7 +366,7 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
         guard dy != 0 else { return }
         var moved: [CardID] = []
         reposition {
-            for (card, window) in panels {
+            for (card, window) in panels where !controller.isParked(card) {
                 let current = window.frame
                 guard current.maxY <= frame.minY + 1 else { continue }
                 guard current.maxX > frame.minX, current.minX < frame.maxX else { continue }
@@ -354,7 +379,26 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
 
     func windowDidMove(_ notification: Notification) {
         guard !isRepositioning, let window = notification.object as? PanelWindow else { return }
-        persistPosition(of: window.card, userMoved: true)
+        // Not written down yet. The window server moves panels too, and announces it the same
+        // way, a few milliseconds before it announces that the screens changed. The move is
+        // saved once the screens have kept quiet after it, see `PendingMoves`.
+        pendingMoves.moved(window.card, at: Date().timeIntervalSinceReferenceDate)
+        scheduleSettling()
+    }
+
+    private func scheduleSettling() {
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(settleMoves), object: nil)
+        guard let due = pendingMoves.nextDue else { return }
+        let delay = max(due - Date().timeIntervalSinceReferenceDate, 0) + 0.01
+        perform(#selector(settleMoves), with: nil, afterDelay: delay)
+    }
+
+    /// Writes down the moves the screens have kept quiet after: those were the user's.
+    @objc private func settleMoves() {
+        for card in pendingMoves.settled(at: Date().timeIntervalSinceReferenceDate) {
+            persistPosition(of: card, userMoved: true)
+        }
+        scheduleSettling()
     }
 
     /// Runs a move the deck decided on rather than the user, so `windowDidMove` stays quiet.
@@ -373,24 +417,73 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
     /// just reading it again: home if that display is here, parked on the main one if it is
     /// not, and home again the moment it returns.
     @objc private func screensChanged() {
+        // Whatever moves were waiting were the window server's, not the user's.
+        pendingMoves.screensChanged()
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(settleMoves), object: nil)
         // The arrangement is still settling when the notification arrives - a display that has
-        // just woken reports its old frame for a moment - so this runs after a beat.
+        // just woken reports its old frame for a moment, and the Dock follows the main display
+        // in a second notification a few hundred milliseconds later - so this runs after a beat.
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(replaceAll), object: nil)
         perform(#selector(replaceAll), with: nil, afterDelay: 0.6)
     }
 
-    /// Reads every placement again and moves whatever is not where it says.
+    /// Reads every placement again and puts the deck where it says: home when the display is
+    /// here, folded into the parked column on the main display when it is not.
     @objc func replaceAll() {
+        let cards = panels.compactMap { card, window -> DeckParking.Card? in
+            guard let placement = preferences.placement(for: card) else { return nil }
+            return DeckParking.Card(
+                id: card,
+                placement: placement,
+                size: NSSize(width: window.frame.width, height: CollapsedCardMetrics.height)
+            )
+        }
+        let plan = DeckParking.plan(
+            cards,
+            displays: Displays.current(),
+            fallback: Displays.fallback(),
+            gap: DeckTheme.panelGap
+        )
+        // Folded before anything is measured: a parked card measures as a folded one.
+        let wasParked = controller.parkedCards
+        controller.setParked(Set(plan.parked.keys))
+
         reposition {
-            for (card, window) in panels {
-                let size = window.frame.size
-                let point = origin(for: card, size: size)
-                guard abs(point.x - window.frame.minX) > 0.5 || abs(point.y - window.frame.minY) > 0.5
-                else { continue }
-                window.setFrameOrigin(point)
-                window.invalidateShadow()
+            for (card, topLeft) in plan.home {
+                guard let window = panels[card] else { continue }
+                // A card that has just come home stands up again; one that never left keeps
+                // the size its data gave it, so this is not a resize `syncPanelSizes` misses.
+                let size = wasParked.contains(card) ? panelSize(for: card) : window.frame.size
+                place(card, topLeft: topLeft, size: size)
+            }
+            for (card, topLeft) in plan.parked {
+                guard let window = panels[card] else { continue }
+                place(card, topLeft: topLeft, size: NSSize(width: window.frame.width, height: CollapsedCardMetrics.height))
             }
         }
+    }
+
+    /// Moves and sizes one panel, when that changes anything.
+    private func place(_ card: CardID, topLeft: CGPoint, size: NSSize) {
+        guard let window = panels[card] else { return }
+        let frame = NSRect(x: topLeft.x, y: topLeft.y - size.height, width: size.width, height: size.height)
+        let current = window.frame
+        guard abs(frame.minX - current.minX) > 0.5 || abs(frame.minY - current.minY) > 0.5
+            || abs(frame.width - current.width) > 0.5 || abs(frame.height - current.height) > 0.5
+        else { return }
+        window.setFrame(frame, display: true, animate: false)
+        window.apply(cornerRadius: cornerRadius(for: card))
+        window.invalidateShadow()
+    }
+
+    /// The height a card stands at: measured from its data once it has some, remembered until
+    /// then, the same rule `syncPanelSizes` follows.
+    private func panelSize(for card: CardID) -> NSSize {
+        var size = CardHostView.size(for: card)
+        if !controller.hasLoaded(card), let remembered = preferences.height(for: card) {
+            size.height = remembered
+        }
+        return size
     }
 
     // MARK: Levels
