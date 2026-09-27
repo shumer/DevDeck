@@ -863,3 +863,10 @@ Resources/
 scripts/           seed-token.sh, smoke-test.sh
 docs/              architecture, development, GitHub API, roadmap, adr/
 ```
+
+## License
+
+DevDeck is free to use, personally and at work, and the source is here to be read. It is not
+open source: you may build it and propose changes back, but distributing it, publishing a fork
+or shipping a changed version needs the author's written permission. The exact terms are in
+[LICENSE](LICENSE).

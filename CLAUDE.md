@@ -65,6 +65,12 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
 - **Cache keys are namespaced per account**, or two tokens polling one endpoint share an
   `ETag` and serve each other's data.
 - **A hidden card fetches nothing.** New cards must respect `DeckController.setActiveCards`.
+- **Screenshots never come from a real deck.** A real deck shows clients, branches and
+  sandboxes. The `sample-deck` branch carries `--deck sample`, a whole deck with nothing real on
+  it, for pictures; windows are captured by id (`screencapture -l`), never the screen.
+- **The license is the author's own, not open source.** Free to use, source published, no
+  distribution or changed versions without written permission. Never describe the project as
+  open source, and never add a dependency whose license would conflict with that.
 - **`windowDidMove` is not proof of a drag.** The window server posts it for windows it moves
   when a display comes or goes, about 8 ms before `didChangeScreenParameters`, with `NSScreen`
   already updated. Positions go through `PendingMoves` and are saved only after 150 ms of quiet
