@@ -1,0 +1,48 @@
+DevDeck License
+
+Copyright (c) 2026 Alexander Shumenko. All rights reserved.
+
+DevDeck is free to use, and its source code is published so that anyone can read it. It is
+not open source software: the permissions below are the only ones granted, and every right
+not granted here stays with the author.
+
+1. Use
+
+You may download, install and run DevDeck for any purpose, personal or commercial, on any
+number of machines, in the form the author releases it or in a build you make yourself from
+this source code without changes.
+
+2. Source code
+
+You may read, study and build the source code. You may keep a private copy of the repository
+for that purpose.
+
+3. Contributions
+
+You may change the source code only in order to propose the change back to the author, as a
+pull request to the author's repository. By proposing a change you grant the author a
+perpetual, worldwide, royalty free right to use, modify, relicense and distribute it as part
+of DevDeck or otherwise. Nothing else in this license depends on a change being accepted.
+
+4. What is not permitted without the author's prior written permission
+
+- Distributing DevDeck or its source code, changed or unchanged, in any form, including as
+  part of another product, a package repository, an installer or a bundle.
+- Publishing a fork, other than a short-lived one that exists to hold a pull request.
+- Selling, renting, sublicensing or otherwise charging for DevDeck or access to it.
+- Running or shipping a changed version of DevDeck outside the purpose in section 3.
+- Removing or altering this license, the copyright notice or the author's name.
+- Using the name DevDeck, or the author's name, to endorse or promote a product.
+
+5. Warranty and liability
+
+DevDeck is provided "as is", without warranty of any kind, express or implied, including
+merchantability, fitness for a particular purpose and non-infringement. In no event is the
+author liable for any claim, damages or other liability arising from the software or its use.
+
+6. Termination
+
+This license ends automatically if you break any of its terms. Sections 4 to 6 survive.
+
+Written permission can be asked for by opening an issue in the author's repository or by
+writing to the author directly.
