@@ -100,6 +100,11 @@ final class DeckController: ObservableObject {
 
     /// Cards currently on screen. Nothing is fetched for a hidden card.
     private var activeCards: Set<CardID> = []
+    /// True while the deck shows `DeckSamples` rather than fetching: nothing polls, nothing
+    /// reads a log, nothing runs a command. See `open -a DevDeck --args --deck sample`.
+    private(set) var isSample = false
+    /// The sample's logs, put back whenever a window opens on one of its cards.
+    private var sampleLogs: [CardID: LogLines] = [:]
 
     init(
         preferences: Preferences,
@@ -148,6 +153,22 @@ final class DeckController: ObservableObject {
         stackLoop = nil
     }
 
+    /// Shows a made-up deck instead of fetching one, see `DeckSamples`.
+    func present(_ sample: DeckSample, now: Date) {
+        isSample = true
+        sampleLogs = sample.logs
+        pullRequests.succeed(sample.pullRequests, at: now)
+        inbox.succeed(sample.inbox, at: now)
+        actions.succeed(sample.actions, at: now)
+        mergeRequests.succeed(sample.mergeRequests, at: now)
+        checkouts = sample.checkouts
+        checkoutsCheckedAt = now
+        stackStatuses = sample.stackStatuses
+        ddevStatuses = sample.ddevStatuses
+        localStatuses = sample.localStatuses
+        docker = sample.docker
+    }
+
     // MARK: Arc projects
 
     /// Projects with a card on screen.
@@ -167,7 +188,7 @@ final class DeckController: ObservableObject {
 
     private func restartStackLoop() {
         stackLoop?.cancel()
-        guard !activeProjects.isEmpty || !activeDDEVProjects.isEmpty || !activeLocalProjects.isEmpty else {
+        guard !isSample, !activeProjects.isEmpty || !activeDDEVProjects.isEmpty || !activeLocalProjects.isEmpty else {
             stackLoop = nil
             return
         }
@@ -978,6 +999,8 @@ final class DeckController: ObservableObject {
     /// thing even when a window is closed with its own red button or with ⌘W.
     func logWindowOpened(_ card: CardID) {
         logWindowCards.insert(card)
+        // A sample has no command to run, so its lines are simply put back.
+        if isSample { logTails[card] = sampleLogs[card] }
     }
 
     func logWindowClosed(_ card: CardID) {
@@ -987,7 +1010,7 @@ final class DeckController: ObservableObject {
 
     /// Read now, because a window asked. The window is what sets the cadence while it is open.
     func refreshLogsNow(for card: CardID) {
-        guard hasLogSource(card) else { return }
+        guard hasLogSource(card), !isSample else { return }
         Task { await refreshLogs(for: card) }
     }
 
@@ -1123,7 +1146,7 @@ final class DeckController: ObservableObject {
 
     private func restart() {
         loop?.cancel()
-        guard !activeCards.isEmpty else {
+        guard !isSample, !activeCards.isEmpty else {
             loop = nil
             return
         }

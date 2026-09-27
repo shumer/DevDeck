@@ -35,6 +35,7 @@ iconutil -c icns Resources/AppIcon/DevDeck.iconset -o /tmp/DevDeck.icns   # what
 open -a DevDeck --args --menu sample   # the installed app's menu, with a row of every tier
 open -a DevDeck --args --logs         # a log window, without a hand on the mouse
 open -a DevDeck --args --logs project.agrica-qdd   # that project's log window
+open -a DevDeck --args --deck sample  # a made-up deck for screenshots; nothing real is read or written
 pkill -f DevDeck                  # quit a running instance
 scripts/check-arc-stack.sh        # what an Arc card checks, from a terminal, for a card that
                                   # says "running" when the stack is not

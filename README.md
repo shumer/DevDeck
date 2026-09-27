@@ -169,6 +169,7 @@ only works for the installed copy.
 | `open -a DevDeck --args --update` | checks for a newer release and installs it, the same as the menu line |
 | `open -a DevDeck --args --menu sample` | opens the menu-bar menu filled with made-up rows of every tier, for judging or screenshotting it; `--menu` alone opens it with the deck's own |
 | `open -a DevDeck --args --logs` | opens a log window; a card id after it picks the project |
+| `open -a DevDeck --args --deck sample` | a whole deck of made-up cards on in-memory preferences, for screenshots: nothing real is read or written, and `--logs`, `--menu sample` and `--settings` combine with it |
 | `pkill -f DevDeck` | quits every running copy |
 
 **Settings → General shows the running version** under its heading, `DevDeck 0.18 (build 140)`,

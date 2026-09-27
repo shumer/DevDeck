@@ -19,13 +19,21 @@ import SwiftUI
 /// - `Summoner` owns the key that raises the deck.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let preferences = Preferences()
-    private let tokenStore: any TokenStore = CompositeTokenStore.standard()
-    private let accountsStore = GitHubAccountsStore(backend: UserDefaults.standard)
-    private let gitlabAccountsStore = GitLabAccountsStore(backend: UserDefaults.standard)
-    private let projectsStore = ArcProjectsStore(backend: UserDefaults.standard)
-    private let ddevProjectsStore = DDEVProjectsStore(backend: UserDefaults.standard)
-    private let localProjectsStore = LocalProjectsStore(backend: UserDefaults.standard)
+    /// `open -a DevDeck --args --deck sample`: a made-up deck on in-memory preferences, for
+    /// screenshots. Nothing of the real deck is read and nothing is written, see `DeckSamples`.
+    static let showsSampleDeck: Bool = {
+        let arguments = CommandLine.arguments
+        guard let index = arguments.firstIndex(of: "--deck") else { return false }
+        return arguments.count > index + 1 && arguments[index + 1] == "sample"
+    }()
+    private let backend: any PreferencesBackend = AppDelegate.showsSampleDeck ? InMemoryPreferences() : UserDefaults.standard
+    private lazy var preferences = Preferences(backend: backend)
+    private lazy var tokenStore: any TokenStore = Self.showsSampleDeck ? DeckSamples.tokenStore() : CompositeTokenStore.standard()
+    private lazy var accountsStore = GitHubAccountsStore(backend: backend)
+    private lazy var gitlabAccountsStore = GitLabAccountsStore(backend: backend)
+    private lazy var projectsStore = ArcProjectsStore(backend: backend)
+    private lazy var ddevProjectsStore = DDEVProjectsStore(backend: backend)
+    private lazy var localProjectsStore = LocalProjectsStore(backend: backend)
 
     private lazy var controller: DeckController = DeckController(
         preferences: preferences,
@@ -125,6 +133,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Before anything reads a preference: the settings pages are built the moment a
+        // publisher fires, and a page built over an empty sample would show every card off.
+        if Self.showsSampleDeck { seedSampleDeck() }
         // Before anything is worded: menus, cards and banners all read their words as they are
         // drawn, and this is what decides which table they read them from.
         Strings.use(preferences.language)
@@ -192,13 +203,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         notifier.onUpdate = { [weak self] in self?.updater.install() }
 
-        alignKeychainAccess()
+        if !Self.showsSampleDeck { alignKeychainAccess() }
 
         panels.syncPanels()
+        // The sample's rows were placed loosely, since a card's height is only known once it is
+        // drawn; closing the columns up is what makes it a deck.
+        if Self.showsSampleDeck { panels.packAllColumns() }
         menu.updateStatusItem()
-        controller.start()
+        if !Self.showsSampleDeck {
+            controller.start()
+            updater.start()
+        }
         summoner.install()
-        updater.start()
 
         notificationsPage.onRequestAuthorization = { [weak self] completion in
             self?.notifier.requestAuthorization(completion) ?? completion(false)
@@ -209,7 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hasAnyToken = accountsStore.accounts().contains { account in
             ((try? tokenStore.token(for: account.tokenKey)) ?? nil) != nil
         }
-        if !hasAnyToken {
+        if !hasAnyToken, !Self.showsSampleDeck {
             settingsController.show()
         }
 
@@ -254,6 +270,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--update") {
             updater.checkAndInstall()
         }
+    }
+
+    /// Fills the in-memory stores with `DeckSamples` and puts every card where the sample wants
+    /// it, so the deck opens busy and arranged without a hand on the mouse.
+    private func seedSampleDeck() {
+        accountsStore.save(DeckSamples.githubAccounts)
+        gitlabAccountsStore.save(DeckSamples.gitlabAccounts)
+        projectsStore.save(DeckSamples.arcProjects)
+        ddevProjectsStore.save(DeckSamples.ddevProjects)
+        localProjectsStore.save(DeckSamples.localProjects)
+        preferences.actionsRepositories = DeckSamples.actionsRepositories
+        preferences.packsColumns = true
+        // Every card, including the ones that ship switched off: the sample is the whole deck.
+        var layout = preferences.cardLayout
+        for card in [CardID.githubInbox, .githubActions, .gitlabMergeRequests, .workInFlight] {
+            layout.setEnabled(true, for: card)
+        }
+        preferences.cardLayout = layout
+        // English, whatever the Mac speaks: the sample's own words are English, and a deck
+        // half in one language is a screenshot of nothing. Settings still switches it.
+        preferences.language = .english
+        Strings.use(.english)
+        // On the sharpest screen there is, since this exists to be photographed.
+        if let screen = NSScreen.screens.max(by: { $0.backingScaleFactor < $1.backingScaleFactor }),
+           let id = Displays.identifier(of: screen) {
+            let display = DisplayFrame(id: id, visibleFrame: screen.visibleFrame)
+            for (card, placement) in DeckSamples.placements(on: display) {
+                preferences.setPlacement(placement, for: card)
+            }
+        }
+        controller.present(DeckSamples.deck(now: Date()), now: Date())
     }
 
     /// Where a clicked banner goes.
