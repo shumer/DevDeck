@@ -1,7 +1,56 @@
 # Windows qualification — 2026-10-02
 
-Current ACC-03 checkpoint: Preview68312/package04928307578842e6b1c3337fdf206cf0 is qualified and
-active for provider creation pages and separate/empty-input stored-token checks. Only the recorded
+Current SET-08 checkpoint: Preview78356/package9e1090ab67b94081853edfd12e72554e is qualified and
+active for the Windows running-copy provenance adaptation. General shows immutable startup
+informational/assembly version, App-module MVID and separate process/module locations. MVID is
+neither whole-package identity nor release trust; native Mac and full migration remain unqualified.
+The ACC-03/provider/SET-02 records below remain historical valid evidence.
+
+| SET-08 evidence | Actual result and limit |
+| --- | --- |
+| Same-source SDK | Tests exit0/19.59s and publisher exit0/19.70s, zero warnings/errors; frozen source before/after identity |
+| Core helper/full suite | Actual apphost focused4 exit0/0.30s within60s and full226 exit0/58.30s within420s; separate artifact identity, not RID-package hash equality |
+| Provenance component |16/0, exit0/11.30s within180s; retained build/location2, six-language layout6 and functional8 groups, including three actual sample factories |
+| Full native exact package |1587/0, exit0/208.14s within420s; previous token30/provider26 and strict state-preservation checks retained |
+| Installer exact package |8/0, exit0/24.08s within180s; identical manifest/no wrapper restoration and identical owned installer fixture |
+| Read-only integration |7local+2remote, exit0/11.88s within180s; checkoutCommandsInvoked, inboxReadMutationInvoked and powerOffLifecycleInvoked all false |
+| Synthetic artwork |372 completed fresh scenes, exit0/390.85s within1200s outer/30s per child; provenance30/token30/provider30 across six languages, same final App/manifest. Eight English/Russian frames visually reviewed, not all372 |
+| Activation/preservation |68312→74628, then controlled same-artifact recovery74628→78356; native verifier exit0/21.56s. All nine0x80080 HWNDs, IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup preserved; absent geometry omitted, singleton0/old worker proxies0 |
+| Worker/runtime |Exact d9fc85 archive/abd86a binary baseline379/runtime16/Arc4/metadata5/ownedGit30+promisor60/null-wire6 reused; not rerun for SET-08 |
+| Mac/spec |119 frozen files/active graph and140 features/204 references intact in source guards; no native Mac build/UI claim |
+
+Final477-file source snapshot SHA256
+`BEA592AABA7CA659C26FAA00A32F0A43C65B3EBF64990E04664ECEB515AF0112`, App
+`EDE7F9BC9CE5033EAF082653C73DDA065865D9C0194D90DCD96DCD93FCC8338B` and manifest
+`AB4C276059AEC6532C86F727F27FCF2785DFC74DD02A07F2334691FD4AFF3135` correlate the final packaged gates.
+Separate Core apphost artifacts are Tests
+`CF9089950F9FC7E229B117174575EC20D864677E6F4020ACBB2DB2C336848D64` and Core
+`5879C3D0A0675C932E03AB759E060D2498E3FCDDBD88DAFFAC1E040036BC580F`.
+
+The scoped updater exited0 in23.93s and replaced only68312 with74628. Its stdout collector then
+waited for EOF because the running Preview inherited a redirected pipe;23.93s excludes that
+collector stall. The original exit/log remain retained. After exact ownership/configuration/hash
+checks, only74628 was stopped and the same package/configuration was launched without redirected
+helper handles. Recovery exited0 in1.55s as78356; the completed native verifier confirms preservation.
+No product/source/package change was made for this collector defect.
+
+Two actual old-General build/location reds exited1 in1.56s/1.20s after positive controls/HWND/state
+premises. The earlier381e03 candidate's proofs remain separate: a sample-only startup-fact
+omission was caught before any renderer/artwork output. Corrected actual generic/geometry/empty-
+sidebar factories export fake facts; production startup capture is unchanged. Their meaningful
+lifetime assertions stay inside the unchanged16 groups. No actual-path screenshot or OS fault is
+inferred. The final qualification above uses only corrected9e1090.
+
+SET-08 adds no disk/manifest/git lookup, settings schema, vault action, worker operation or Mac UI
+change. Fake updater checks prove the actual raw-info/runtime dispatch body without HTTP/browser.
+The full Core suite separately uses a UUID-owned synthetic Credential Manager entry with finally
+cleanup. Five lazy per-distribution ownership slots remain; no additional channel was introduced.
+Mac marketing/build-counter/translocation/update-install behavior, native Mac/x64/live identities/
+browser/phone/display/summon/input/accessibility/shell/signing/clean-machine/full migration remain
+open; releaseQualified=false. See [ADR0044](adr/0044-windows-running-build-provenance.md).
+
+Historical ACC-03 checkpoint: Preview68312/package04928307578842e6b1c3337fdf206cf0 was qualified and
+activated for provider creation pages and separate/empty-input stored-token checks. Only the recorded
 provider owner39204 was replaced. Earlier provider/SET-02 checkpoints below remain historical valid
 evidence, not the current executable or a completed migration.
 
@@ -39,7 +88,7 @@ Five lazy ownership slots per distribution include separate local/remote setting
 the new remote slot's exact-route bookkeeping is proven by the fake child, not live credentials.
 
 Live provider permissions/browser identity, old nonempty replacement maximum-ID namespace and
-slash-normalizing metadata limitations, SET-08/display/summon/updater/native Mac/x64/phone/physical
+slash-normalizing metadata limitations remained; SET-08 was separate at this checkpoint. Display/summon/updater/native Mac/x64/phone/physical
 input/accessibility/shell/signing/clean-machine/full migration remain open. No merge/release is
 qualified; releaseQualified=false. See [ADR0043](adr/0043-windows-account-token-actions.md).
 
@@ -78,7 +127,7 @@ as do provenance/display/summon/updater/native Mac/x64/phone/shell/signing/clean
 and full migration gates. This unsigned development Preview remains `releaseQualified=false`.
 See [ADR0042](adr/0042-windows-account-provider-applicability.md).
 
-Historical2026-10-01 checkpoint follows; these older counts/PIDs do not replace the current ACC-03 receipt.
+Historical2026-10-01 checkpoint follows; these older counts/PIDs do not replace the current SET-08 receipt.
 
 Latest complete-contract/tray checkpoint: Core65/0, native UI437/0, installer8/0 and read-only
 seven-local/two-remote integration exit0. The new49 native checks cover branded glyph pixels in

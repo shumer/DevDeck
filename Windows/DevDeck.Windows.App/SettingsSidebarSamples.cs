@@ -38,7 +38,8 @@ internal static class SettingsSidebarSamples
             owner.ApplySnapshot(new(owner.Reference.Id, configured.Project.Id.EndsWith(".1", StringComparison.Ordinal) ? "working" : "running",
                 "feature/settings-sidebar", null, null, null));
         }
-        var window = new SettingsWindow(controller, live: false, tokenAvailable: account => account.Id == "render.account.1");
+        var window = new SettingsWindow(controller, live: false, tokenAvailable: account => account.Id == "render.account.1",
+            runningBuildInfoProvider: () => SettingsProvenanceSamples.Facts("native"));
         window.Closed += (_, _) => {
             controller.CloseViews();
             foreach (var file in new[] { path, path + ".bak" }) if (File.Exists(file)) File.Delete(file);

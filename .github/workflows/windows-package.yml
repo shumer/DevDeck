@@ -81,7 +81,7 @@ jobs:
               throw 'Native widget check report is absent or empty.'
             }
             $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
-            if ($result.nativeWindows -ne $true -or $result.passed -ne 1571 -or $result.failed -ne 0) {
+            if ($result.nativeWindows -ne $true -or $result.passed -ne 1587 -or $result.failed -ne 0) {
               throw 'Native widget check report is incomplete.'
             }
           } finally {

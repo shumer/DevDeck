@@ -581,7 +581,7 @@ Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior ca
 
 Token-creation links and empty-field stored-token Verify were separate local gaps then, closed by
 the later ACC-03 subset below. Live credentials/browser identity and the deck-wide Actions watchlist
-remain open, alongside SET-08/display/summon/update/release gates.
+remain open, alongside display/summon/update/release gates. SET-08 was separate at that checkpoint.
 [ADR0042](../docs/adr/0042-windows-account-provider-applicability.md).
 
 ## Account token actions
@@ -604,7 +604,7 @@ settingsChecks local and settingsChecks remote. GetExactAsync changes only a mis
 client; legacy worker reuse is unchanged. These are logical ownership slots, not five mandatory
 running processes.
 
-Preview68312/package04928307578842e6b1c3337fdf206cf0 is qualified and active: Core focused4/full226,
+Historical Preview68312/package04928307578842e6b1c3337fdf206cf0 was qualified and activated: Core focused4/full226,
 component30/0 in32.83s, fullnative1571/0 in189.8s, installer8/0 in24.29s and read-only7local+2remote
 in12.09s pass. Completed342 synthetic scenes include30 token scenes in six languages; six new
 English/Russian scenes were visually reviewed. All use the correlated final App/manifest.
@@ -619,8 +619,42 @@ identity. The existing nonempty replacement's maximum128-byte account-ID namespa
 legacy slash-bound metadata-save limitation remain; stored checks preserve the exact saved slash
 and use a bounded fixed verification namespace. Native Mac/x64/live permissions/browser/phone/
 display/shell/signing/clean-machine and full migration gates stay open. Expanded SET-08 provenance
-remains unimplemented.
+was absent at this ACC-03 checkpoint; the later Windows adaptation follows.
 See [ADR0043](../docs/adr/0043-windows-account-token-actions.md) and
+[qualification](../docs/windows-qualification.md); releaseQualified=false.
+
+## Running copy
+
+General displays four selectable read-only fields: the exact admitted informational version,
+the loaded App module's MVID build ID, the startup process executable and the App module location.
+An unavailable informational version can display an explicitly labelled assembly version;
+missing facts otherwise show independent unavailable values. The MVID identifies only the App
+module, not a package, source revision, timestamp, signature or verified release. A dotnet host
+and its App DLL retain their distinct paths.
+
+Facts are captured once at process startup and once by each settings window's provider. Page
+revisits, search, re-show, localization and newer files on disk do not recapture them. Versions
+are bounded to2048 UTF16 units and paths to32768; controls or malformed UTF16 reject the whole
+field. The block reads no sidecar/manifest/git/configuration contents and saves no settings.
+CheckNow uses only the exact informational version and existing runtime; missing information
+disables the check even when an assembly-version fallback is visible. No automatic network check
+occurs on arrival. Mac marketing/build-counter, translocation and update-install behavior remain
+separate adaptations or external gates.
+
+Current Preview78356/package9e1090ab67b94081853edfd12e72554e is qualified and active: Core focused4/
+full226, provenance16/0 in11.30s, fullnative1587/0 in208.14s, installer8/0 in24.08s and read-only
+7local+2remote in11.88s pass on the correlated final App/manifest. Completed372 synthetic scenes
+include30 provenance scenes across six languages; eight English/Russian frames were inspected.
+Five fake provenance variants cover native/hosted/unknown/long/assembly. Actual generic, geometry
+and empty-sidebar sample factories also display fake facts, retaining production startup privacy.
+Verification preserves all nine0x80080 HWNDs, prior settings/IDs/XY/compact/accounts/scopes/
+preferences/distributions/configuration/shortcut/defaults/startup; absent geometry remains omitted,
+singleton0/old worker proxies0. Worker379/runtime16/Arc4/metadata5/Git30+60/null-wire6 are reused by
+exact hash. Provenance component/render checks use fake facts and owned dependencies; existing-
+project integration is actual read-only configured project/provider work. The full Core suite
+separately cleans up its UUID-owned synthetic real vault entry. None proves live identity,
+provider/project mutations or native Mac qualification.
+See [ADR0044](../docs/adr/0044-windows-running-build-provenance.md) and
 [qualification](../docs/windows-qualification.md); releaseQualified=false.
 
 ## Remaining release work

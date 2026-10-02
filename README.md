@@ -221,8 +221,9 @@ existing token were missing; the later ACC-03 checkpoint below qualifies those l
 Account browser Test already reads the current draft at click; live signed-in
 identity is a separate gate. Fresh/missing settings default120 seconds, legacy omitted intervals
 retain60; Actions repositories are per-account, with Mac's deck-wide/Actions-off-disabled watchlist
-still partial. SET-08, updater install/notes, full summon and native Mac/x64/live identity/phone/
-physical input/accessibility/display/shell/signing/clean-machine/full migration remain open.
+still partial. SET-08 was separate at this checkpoint. Updater install/notes, full summon and
+native Mac/x64/live identity/phone/physical input/accessibility/display/shell/signing/clean-machine/
+full migration remain open.
 See [ADR0041](docs/adr/0041-windows-settings-window-size-persistence.md).
 
 Windows account settings now follow the provider: GitLab shows its instance Address and token help,
@@ -242,7 +243,7 @@ local gaps at that checkpoint; live identities and broader settings/display/shel
 signing/full migration gates remain open.
 See [ADR0042](docs/adr/0042-windows-account-provider-applicability.md).
 
-The current ACC-03 checkpoint is qualified and active in Preview68312/package
+The historical ACC-03 checkpoint was qualified and activated in Preview68312/package
 04928307578842e6b1c3337fdf206cf0: Core focused4/full226, token component30/0, fullnative1571/0,
 installer8/0, read-only7local+2remote and342 six-language synthetic views including30 token scenes
 pass. Only recorded39204 was replaced; all nine0x80080 widgets and prior settings/IDs/positions/
@@ -254,6 +255,23 @@ late identity/password/owner changes cannot publish a result. The older nonempty
 maximum-ID namespace and slash-normalizing metadata limitations remain. This is an unsigned
 development Preview with releaseQualified=false; no full migration or live provider/browser proof.
 See [ADR0043](docs/adr/0043-windows-account-token-actions.md) and the
+[qualification record](docs/windows-qualification.md).
+
+General now shows the running copy's cached startup version, loaded App build ID and separate
+process/module locations in selectable read-only fields. The build ID is an App-module MVID,
+with independent unavailable values; it does not establish package identity or release trust.
+Hosted execution can show a dotnet executable and a different App DLL. Newer disk metadata does
+not replace the startup record, and only the admitted original informational version reaches
+CheckNow; an assembly-version display fallback never becomes updater input.
+
+The current SET-08 adaptation is qualified and active in Preview78356/package
+9e1090ab67b94081853edfd12e72554e: Core focused4/full226, provenance component16/0, fullnative1587/0,
+installer8/0 and read-only7local+2remote pass. Completed372 six-language synthetic scenes include30
+provenance scenes; eight English/Russian frames were visually reviewed. The verified same-package
+Preview preserves all nine0x80080 widgets and existing settings; exact worker379/runtime16/Arc4/
+metadata5/Git30+60 evidence is reused. Native Mac/x64/live identity/browser/phone/display/shell/
+signing/clean-machine/full migration gates remain open; releaseQualified=false.
+See [ADR0044](docs/adr/0044-windows-running-build-provenance.md) and the
 [qualification record](docs/windows-qualification.md).
 
 Pull requests across every account a token can see - yours and the ones waiting on your

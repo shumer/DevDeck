@@ -8,19 +8,31 @@ namespace DevDeck.Windows.App;
 
 internal static class Program
 {
+    // Rendering scenes always use fixture facts; production windows retain startup metadata.
+    internal static SettingsWindow CreateSampleSettingsWindow(DeckController controller) => new(controller, live:false,
+        runningBuildInfoProvider:() => SettingsProvenanceSamples.Facts("native"));
     [STAThread]
     public static int Main(string[] args)
     {
         if (args.Contains("--account-token-fake-worker")) return AccountTokenActionTests.RunFakeWorker(args);
+        RunningBuildInfo.InitializeStartup();
         string Option(string key, string fallback) => Array.IndexOf(args, key) is var index && index >= 0 && index + 1 < args.Length ? args[index + 1] : fallback;
         var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var path = Option("--settings", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DevDeck", "windows-settings.json"));
-        using var instance = args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--sample-render") || args.Contains("--tray-artwork") || args.Contains("--tray-attention-artwork") || args.Contains("--window-check") ? null : new SingleInstance(path);
+        using var instance = args.Contains("--settings-provenance-check") || args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--sample-render") || args.Contains("--tray-artwork") || args.Contains("--tray-attention-artwork") || args.Contains("--window-check") ? null : new SingleInstance(path);
         if (instance is { Acquired: false }) return 0;
         application.Startup += async (_, _) =>
         {
             try
             {
+                if (args.Contains("--settings-provenance-check")) {
+                    var checks = new System.Collections.Generic.List<object>();
+                    var scenario = Option("--settings-provenance-case", "all");
+                    if (scenario == "all") await SettingsProvenanceTests.RunAsync(application, checks);
+                    else await SettingsProvenanceTests.RunRedAsync(application, checks, scenario);
+                    File.WriteAllText(Option("--report", Path.Combine(Path.GetTempPath(), "devdeck-settings-provenance-checks.json")), System.Text.Json.JsonSerializer.Serialize(new { passed = checks.Count, failed = 0, componentOnly = true, releaseQualified = false, checks }));
+                    application.Shutdown(); return;
+                }
                 if (args.Contains("--account-token-check")) {
                     var checks = new System.Collections.Generic.List<object>();
                     var scenario = Option("--account-token-case", "creation");
@@ -92,7 +104,10 @@ internal static class Program
                     var sample = SampleDeck.Controller(application);
                     Text.Use(Option("--language", "en"));
                     Window card;
-                    if (args.Contains("--sample-account-token")) {
+                    if (args.Contains("--sample-settings-provenance")) {
+                        card = await SettingsProvenanceSamples.CreateAsync(sample,Option("--sample-variant","native"));
+                    }
+                    else if (args.Contains("--sample-account-token")) {
                         card = await AccountTokenSamples.WindowAsync(application,Option("--sample-variant","github-present"));
                     }
                     else if (args.Contains("--sample-account-provider")) {
@@ -105,7 +120,7 @@ internal static class Program
                         card = await SettingsSidebarSamples.WindowAsync(application, Option("--sample-variant", "projects"));
                     }
                     else if (args.Contains("--sample-settings")) {
-                        var settings = new SettingsWindow(sample, live: false);
+                        var settings = CreateSampleSettingsWindow(sample);
                         await settings.SelectPageAsync(Option("--sample-page", "general")); card = settings;
                     }
                     else if (args.Contains("--sample-phone")) {
@@ -142,7 +157,7 @@ internal static class Program
                             Text.L("attention.account.rejected.subtitle", "HTTP 401"), null, new("none"), false, false)]);
                     else if(args.Contains("--sample-wif-settings")) {
                         await sample.SetWIFVisibleAsync(true);
-                        var settingsView=new SettingsWindow(sample,live:false);settingsView.SelectPage("cards");card=settingsView;
+                        var settingsView=CreateSampleSettingsWindow(sample);settingsView.SelectPage("cards");card=settingsView;
                     }
                     else if (args.Contains("--sample-wif")) card=WorkInFlightSamples.Card(sample,Option("--sample-variant","mixed"),args.Contains("--sample-collapsed"));
                     else if (args.Contains("--sample-remote"))
@@ -171,7 +186,7 @@ internal static class Program
                         if (args.Contains("--sample-group-busy")) project.BeginDDEVPowerOff("owned-synthetic-group");
                         card = project;
                     }
-                    if(args.Contains("--sample-project")||args.Contains("--sample-account")||args.Contains("--sample-browser"))card.Resources=new SettingsWindow(sample,live:false).Resources;
+                    if(args.Contains("--sample-project")||args.Contains("--sample-account")||args.Contains("--sample-browser"))card.Resources=CreateSampleSettingsWindow(sample).Resources;
                     card.Show(); card.UpdateLayout();
                     if (args.Contains("--sample-advanced") && card.Content is System.Windows.Controls.ScrollViewer scroll) { scroll.ScrollToEnd(); card.UpdateLayout(); }
                     var render = (System.Windows.FrameworkElement)card.Content;
@@ -203,10 +218,10 @@ internal static class Program
             }
             catch (Exception error)
             {
-                if (args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--window-check") || args.Contains("--sample-render") || args.Contains("--tray-attention-artwork"))
+                if (args.Contains("--settings-provenance-check") || args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--window-check") || args.Contains("--sample-render") || args.Contains("--tray-attention-artwork"))
                 {
                     var report = Option("--report", Path.Combine(Path.GetTempPath(), "devdeck-windows-integration.json"));
-                    if (args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--window-check"))
+                    if (args.Contains("--settings-provenance-check") || args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--window-check"))
                         await File.WriteAllTextAsync(report, System.Text.Json.JsonSerializer.Serialize(new { error = error.Message, exceptionType = error.GetType().FullName, hresult = error.HResult, stackTrace = error.StackTrace, releaseQualified = false }));
                     else
                         await File.WriteAllTextAsync(report, System.Text.Json.JsonSerializer.Serialize(new { error = error.Message, releaseQualified = false }));

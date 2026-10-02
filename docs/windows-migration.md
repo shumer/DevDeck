@@ -168,7 +168,7 @@ deck-wide Actions watchlist, provenance/display/summon/updater and required Mac/
 shell/signing/clean-machine release gates remain open. Earlier failed candidate runs are retained.
 See [ADR0042](adr/0042-windows-account-provider-applicability.md).
 
-## Account token actions checkpoint — 2026-10-02
+## Historical account token actions checkpoint — 2026-10-02
 
 The qualified ACC-03 subset adds current-provider creation URLs, a blank explicit Enterprise page
 prompt and read-only stored Verify/empty Return while retaining existing nonempty replacement
@@ -179,7 +179,7 @@ client; legacy reuse is unchanged. Five lazy per-distribution slots now include 
 remote settingsChecks clients beside ordinary local/shared remote/checkout. No worker operation,
 schema/default or frozen Mac UI changes were required.
 
-Current Preview68312/package04928307578842e6b1c3337fdf206cf0 passed Core focused4/full226, component
+Historical Preview68312/package04928307578842e6b1c3337fdf206cf0 passed Core focused4/full226, component
 30/0 in32.83s, fullnative1571/0 in189.8s, installer8/0 in24.29s, read-only7local+2remote in12.09s
 and342 synthetic scenes including30 token scenes across six languages. Six new English/Russian
 scenes were visually reviewed. Only recorded39204 was replaced, preserving all nine0x80080 HWNDs,
@@ -190,10 +190,43 @@ pass; exact d9fc85/abd86a worker379/runtime16/Arc4/metadata5/Git30+60 evidence i
 The component uses fake readers/verifiers/openers and one owned fake stdin/stdout worker through
 the real manager; no real provider mutation or browser identity is qualified. Older nonempty
 replacement maximum-ID namespace and slash-bound metadata limitations remain. Expanded SET-08
-provenance is still unimplemented; native Mac/x64/live identity/permissions/browser/phone/display/input/accessibility/
+provenance was absent at this checkpoint; native Mac/x64/live identity/permissions/browser/phone/display/input/accessibility/
 shell/signing/clean-machine, updater/summon and full migration gates remain open.
 See [ADR0043](adr/0043-windows-account-token-actions.md) and [qualification](windows-qualification.md).
 This development Preview remains releaseQualified=false; M5/M7 and full migration are not complete.
+
+## Running-copy provenance checkpoint — 2026-10-02
+
+The Windows SET-08 adaptation identifies the code actually loaded at startup, rather than a newer
+package subsequently written to disk. App-only immutable RunningBuildInfo captures the loaded
+informational/assembly version, App-module MVID and distinct process/module paths once before
+Application startup. General retains that record through page/search/show/localization changes,
+with independent bounded unavailable values and selectable read-only fields. MVID is module-only,
+not a build counter, authenticated source revision, signature or whole-package proof. Hosted dotnet
+and App DLL locations remain distinct. CheckNow receives only the exact admitted informational
+version; assembly fallback is display-only and missing information disables the check.
+
+No settings schema, Core behavior, worker operation, sidecar/manifest/git reader or frozen Mac UI
+change was required. The block neither saves metadata nor resets attention/Seen/queues/check time.
+Synthetic factories explicitly use fake startup facts; their actual lifetime/state checks prevent
+artwork from exporting production paths. The Enterprise dialog's API endpoint label was corrected
+without changing its action/default Cancel/lifetime semantics.
+
+Current Preview78356/package9e1090ab67b94081853edfd12e72554e passed Core focused4/full226,
+provenance16/0 in11.30s, fullnative1587/0 in208.14s, installer8/0 in24.08s and read-only7local+2remote
+in11.88s. Completed372 synthetic scenes include30 provenance scenes in six languages; eight English/
+Russian frames were visually reviewed. Exact App/manifest correlate the packaged gates. Native
+verification preserves all nine0x80080 HWNDs and prior settings/IDs/XY/compact/raw accounts/scopes/
+preferences/distributions/configuration/shortcut/full backup/defaults/startup, absent geometry
+omitted and singleton0/old proxies0. The updater collector recovery used the same artifact and
+configuration; its separate retained receipts are explained in [qualification](windows-qualification.md).
+
+Worker d9fc85/abd86a379/runtime16/Arc4/metadata5/Git30+60/null-wire6 are unchanged reused evidence.
+Mac119/graph/spec140/204 source guards do not replace native Mac acceptance. Five lazy channels
+per distribution remain. Mac marketing/build-counter/translocation/updater semantics and native
+Mac/x64/live provider/browser/phone/display/summon/input/accessibility/shell/signing/clean-machine
+gates stay open. M5/M7/full migration are incomplete; releaseQualified=false.
+See [ADR0044](adr/0044-windows-running-build-provenance.md).
 
 ## Release status
 

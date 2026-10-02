@@ -93,13 +93,13 @@ explicitly refreshing it. This check catches scope changes, not semantic omissio
 | SET-05 | Metadata applies on end-edit/change, no Save-settings button; token alone explicit verify/save. Show-on-deck header applies immediately. [Forms](../Sources/DevDeckApp/AccountSettingsForms.swift#L169) | Present — quiet serialized autosave retains editable fields and stable new-project identity; invalid drafts guard navigation/close until corrected. Windows creation/token verification remains explicit. Native concurrent-save/focus/draft checks pass; active Preview preserves existing metadata. | Change name/browser/scopes/folder, navigate away/restart; token is never implicitly saved. |
 | SET-06 | Advanced folds belong to selected item; dependent controls disabled when master/card off; inline one-line explanations/help. [Forms](../Sources/DevDeckApp/SettingsPages.swift#L365) | Present/ Gate — contextual expanders and dependencies; full dependency map/manual wording acceptance open. | Toggle masters and open six-language forms; no active orphan settings. |
 | SET-07 | Checks update owning row/button; old URL response cannot overwrite current form; auto-check when health/address changes; no generic Saved message. [Arc checks](../Sources/DevDeckApp/Modules/ArcProjectModule.swift#L171) | Present — Arc/plain owning health row checks on arrival/relevant edits, original optional worker summary/date and stale identity/generation/lifetime guards. Ephemeral project.check/separate transport protects live observations and other requests. Quiet save does not overwrite row; DDEV has no extra row. Worker317/Core96/native1034 pass; active Preview. | Change URL during delayed check and navigate accounts/projects; answer remains correctly scoped. |
-| SET-08 | General shows exact running marketing/build version and location/translocation note. [General](../Sources/DevDeckApp/SettingsPages.swift#L31) | Partial — assembly version shown; package/runtime provenance/location not equivalent. | Distinguish installed release, repo/dev Preview and old process after upgrade. |
+| SET-08 | General shows exact running marketing/build version and location/translocation note. [General](../Sources/DevDeckApp/SettingsPages.swift#L31) | Adapted / Gate — cached startup informational version, explicitly labelled assembly fallback, loaded App MVID and distinct process/module locations in readonly selectable fields. Once-only capture/provider, independent bounded fallback and exact informational updater input qualified/active78356; Core226/provenance16/native1587, ADR0044. MVID is App-module-only; Mac marketing/build-counter/bundle/translocation/updater equivalence and native-release gates are not asserted. | Same version/different MVID, hosted App DLL, unknown fields/disabled CheckNow, full long-Unicode accessible values/default-minimum13/18DIP bounds; newer owned disk metadata/file removal ignored and page/list/show/localized lifetime/state preserved. |
 | SET-09 | Start at login opt-in, uses installed bundle path and reflects actual registration failure. [Login](../Sources/DevDeckApp/LoginItem.swift#L1) | Adapted — owned per-config startup shortcut, retargeted by installer; no default autostart. | Enable, upgrade, rollback, disable; other startup items/configurations unchanged. |
 | SET-10 | System/en/de/es/fr/it/ru, defaults system, takes effect immediately on cards/menu/settings; originals/plural tables shared. [Language](../Sources/DevDeckCore/Localisation/Strings.swift#L1) | Present — original resources plus Windows dictionary; worker process language. | Switch each language live, singular/plural and long localized errors; no old cached text. |
 | SET-11 | Cards refresh choices 60/120/300/600s; default120; Actions comma-separated owner/name list disabled while Actions off; empty follows PR repos. [Fetching](../Sources/DevDeckApp/SettingsPages.swift#L282) | Partial — same60/120/300/600 choices; fresh/missing settings default120. Legacy omitted RefreshSeconds retains60, and explicit saved intervals stay. Actions repositories are per-account; the original deck-wide watchlist and its Actions-off disabled state are not reproduced. | Fresh settings and old explicit interval; edits apply without overwriting user's choice. |
 | ACC-01 | Multiple enabled GitHub accounts with independent label/token/org filter/browser; GitLab instances each have independent normalized host/token/browser. [Forms](../Sources/DevDeckApp/AccountSettingsForms.swift#L90), [Host](../Sources/GitLabKit/GitLabAccount.swift#L118) | Present — AccountSettingsForm/Core remote settings. | Two providers, two hosts, Unicode label, disable one and preserve surviving snapshot. |
 | ACC-02 | Add generates stable slug; first GH default keeps key `github`, later IDs unique; stored tokens never returned to text field. [Accounts](../Sources/GitHubKit/GitHubAccount.swift#L1) | Adapted — Windows vault namespaces and stable GUID IDs; no automatic Mac preferences/vault import. | Rename account without changing credential key; open saved account shows existence only. |
-| ACC-03 | New token Return/Save verifies API before storing; rejected draft retained; stored Verify checks current credential; creation link targets provider. [Token](../Sources/DevDeckApp/AccountSettingsForms.swift#L14) | Present / Gate — nonempty Verify/Save/Return retained; provider creation and separate/empty-input stored Verify qualified/active68312, Core226/token30/native1571. Current browser/profile/edited endpoint and a bounded manual Enterprise page are Windows adaptations. Exact committed credential/full-route/owner/replacement tickets, autosave pause and current-target presence cache preserve password drafts/metadata errors. No live token/HTTP/permissions/browser identity proof; older replacement namespace/slash limitations remain. ADR0043. | Owned checks cover unnamed GH/GL creation, current prefix, Enterprise Cancel/unsafe/late input, empty Return vs nonempty replacement, saved-slash/max-ID route, read/acquire/RPC/closing ABA and failed-autosave preservation. Live sign-in/permissions and physical input remain external. |
+| ACC-03 | New token Return/Save verifies API before storing; rejected draft retained; stored Verify checks current credential; creation link targets provider. [Token](../Sources/DevDeckApp/AccountSettingsForms.swift#L14) | Present / Gate — nonempty Verify/Save/Return retained; provider creation and separate/empty-input stored Verify qualified at68312, Core226/token30/native1571, retained in78356. Current browser/profile/edited endpoint and a bounded manual Enterprise page are Windows adaptations. Exact committed credential/full-route/owner/replacement tickets, autosave pause and current-target presence cache preserve password drafts/metadata errors. No live token/HTTP/permissions/browser identity proof; older replacement namespace/slash limitations remain. ADR0043. | Owned checks cover unnamed GH/GL creation, current prefix, Enterprise Cancel/unsafe/late input, empty Return vs nonempty replacement, saved-slash/max-ID route, read/acquire/RPC/closing ABA and failed-autosave preservation. Live sign-in/permissions and physical input remain external. |
 | ACC-04 | Unsaved token draft is per account in module memory, survives navigation; Mac window close does not explicitly clear the module dictionary; never persisted/logged. [GitHub drafts](../Sources/DevDeckApp/Modules/GitHubModules.swift#L145), [GitLab drafts](../Sources/DevDeckApp/Modules/GitLabModule.swift#L63) | Adapted — Windows window-local dictionary clears on close, stricter lifetime than current Mac implementation. | Navigate two accounts; document close/reopen difference; inspect fixture config/logs for secrets. |
 | ACC-05 | Removal asks, deletes only selected account/token; metadata other accounts untouched; GitLab setup enables MR. [Sections](../Sources/DevDeckApp/Modules/GitLabModule.swift#L1) | Present/ Gate — scope detachment/stable cards retained; form/sidebar share Cancel-focused confirmation with Return/Escape cancelling. Native cancellation/selected-ID/scoped-removal checks pass using fake credential cleanup; active Preview. Real accounts/token acceptance remains open. | Cancel removal, then synthetic delete with referenced custom/automatic scopes; unrelated vault entries intact. |
 | ACC-06 | Keychain policy follows signing identity, can strengthen once, never automatically weaken existing bound tokens. [Security](../Sources/DevDeckCore/Security/CodeIdentity.swift#L1), [Tokens](../Sources/DevDeckCore/Security/TokenStore.swift#L1) | Adapted — Windows Credential Manager; worker receives token only per-request stdin and never persists it. | Offline vault adapter, wrong credential namespace/host, absent vault, worker logs/config contain no tokens. |
@@ -244,11 +244,12 @@ defaults/startup remain, absent size stays absent, singleton0/old proxies0. Orig
 and canonical-before-first-Save Arc fixture diagnostic remain retained; strict preservation stayed.
 The footer passed actual six-language bounds and is unchanged. SET-02 remains Partial for OS
 sidebar metrics and physical display acceptance, with no XY/display-home/DPI contract. Corrected
-ACC-03/ACC-09/SET-11 source descriptions add no new token/provider/live browser behavior. SET-08,
-updater install/notes, full summon and external/full-migration gates stay open.
+ACC-03/ACC-09/SET-11 source descriptions added no new token/provider/live browser behavior.
+SET-08 was separate at that checkpoint; updater install/notes, full summon and external/full-
+migration gates remain open.
 See [ADR0041](adr/0041-windows-settings-window-size-persistence.md).
 
-Windows ACC-03 is qualified and active68312/package04928307578842e6b1c3337fdf206cf0: actual Core
+Historical Windows ACC-03 was qualified and activated68312/package04928307578842e6b1c3337fdf206cf0: actual Core
 focused4/full226, token component30/0, fullnative1571/0 exit0/189.8s, installer8/0, read-only7local+
 2remote and342 synthetic six-language scenes (30 token) pass. Six new English/Russian scenes were
 visually reviewed. Only39204 was replaced; all nine0x80080 HWNDs and existing settings/IDs/positions/
@@ -256,10 +257,26 @@ compact/scopes/accounts/preferences/distributions/configuration/shortcut/default
 absent geometry stays omitted, singleton0/old proxies0. Mac119/active graph/spec140/204 pass without
 new native Mac execution. Exact d9fc85/abd86a worker379/runtime16/Arc4/metadata5/Git30+60 is reused.
 Creation and stored Verify close the previously missing local controls; live permissions/browser
-identity, older replacement ID/slash limitations, SET-08 and full external migration gates remain.
+identity and older replacement ID/slash limitations remain. SET-08 was separate at that checkpoint;
+full external migration gates remain open.
 The host now owns at most five lazy channels per distribution, including separate local/remote
 settingsChecks slots; previous four-channel evidence is historical. See
 [ADR0043](adr/0043-windows-account-token-actions.md) and [qualification](windows-qualification.md).
+
+The Windows SET-08 adaptation is qualified and active78356/package9e1090ab67b94081853edfd12e72554e:
+actual Core focused4/full226, provenance16/0 exit0/11.30s, fullnative1587/0 exit0/208.14s, installer8/0
+exit0/24.08s and read-only7local+2remote exit0/11.88s pass on the correlated final App/manifest.
+Completed372 six-language synthetic views include30 provenance scenes; eight English/Russian
+frames were visually reviewed. Immutable startup facts use no sidecar/manifest/git read or settings
+schema; an assembly fallback never enters CheckNow. Actual generic/geometry/empty-sidebar factories
+use fake facts and preserve state within the unchanged16 groups. The verified same-package owner
+preserves all nine0x80080 HWNDs and prior settings/IDs/XY/compact/raw scopes/accounts/preferences/
+distributions/configuration/shortcut/full backup/defaults/startup; absent geometry omitted,
+singleton0/old proxies0. Worker379/runtime16/Arc4/metadata5/Git30+60/null-wire6 are exact-hash reuse.
+Mac119/graph/spec140/204 source guards are distinct from native Mac execution. App MVID/process/
+module fields adapt the Mac contract; marketing/build-counter/translocation/verified updater and
+native Mac/x64/live identity/browser/phone/display/shell/signing/full migration remain open.
+See [ADR0044](adr/0044-windows-running-build-provenance.md) and [qualification](windows-qualification.md).
 
 ## Attention, notification and update lifecycle
 
@@ -355,8 +372,8 @@ before commit. Windows-only work does not waive full external release gates.
    notes and physical modifier/accessibility acceptance; queued/fake actions do not close those gates.
 4. Complete geometry/display-home parking and temporary user-resize shifts; summon hold/tap/custom key/
    dim/dismiss and opt-in same-column packing: DES-02–04/06/08–13.
-5. Remaining settings OS sidebar metrics/provenance and remote freshness,
-   notification artwork/delivery, focused Actions configuration: SET-02/08,
+5. Remaining settings OS sidebar metrics and Mac-specific provenance/translocation distinctions,
+   remote freshness, notification artwork/delivery, focused Actions configuration: SET-02/08,
    REM-03, ACT-04, NOT-01/04/05.
 6. Verified publisher/update schedule/install/rollback lifecycle and all native/hardware/live gates:
    UPD-01–04, RUN-03; actual GitLab, Inbox permission diagnosis, browser identities/notification reads,

@@ -2,9 +2,9 @@
 
 The authoritative acceptance inventory is now the [Mac functional specification](macos-functional-spec.md):
 140 source-referenced behaviors covering defaults, persistence, side effects, failures and complete
-flows. This page retains historical completed evidence. The current ACC-03 subset is qualified and
-active in Preview68312: Core226/token30/native1571/installer8/read-only9/render342. Its checkpoint,
-the historical provider39204 evidence and remaining gaps are recorded at the end. Earlier broad rows must not be read as
+flows. This page retains historical completed evidence. The current SET-08 adaptation is qualified
+and active in Preview78356: Core226/provenance16/native1587/installer8/read-only9/render372. Its
+checkpoint, historical ACC-03/provider evidence and remaining gaps are recorded at the end. Earlier broad rows must not be read as
 proof of all newly enumerated scenarios. Arc org/site/hosted/template links, local editor and DDEV
 templates/kinds and generic Detect/caption/separate opening URL now have implementation and
 qualification below. Settings keyboard/check behavior and browser discovery/profile/fallback are
@@ -57,11 +57,12 @@ Mac execution is unavailable; findings below are source-level comparisons plus W
 | Account setup/card visibility | CardCatalog / DeckMenu | Accounts saved without cards; tray visibility list absent | Shared catalog bootstraps PR/Inbox, offers Actions/MR, retains hidden legacy cards and exposes tray/settings toggles plus local groups |
 | Work in flight | WorkInFlightModule / CheckoutInspector | Missing | Qualified/active484424: default-off optional fixed-ID preference, all configured folders including hidden sources, typed offline reads, retained three/twelve-row/compact card, exact terminal target, scoped informational attention and shared provider→logs→checkout cadence. Core183/worker367/native1396/installer8/synthetic192/read-only/runtime and owned Git30+60 pass; Mac119 unchanged. ADR0038 |
 | Hidden card makes no fetches | controller active-card set | Implemented by rebuilding enabled cards | Retain; check logs/window lifecycle |
-| Settings sidebar and search | SettingsWindowController / SettingsListView | Missing: one long local-project page and extra windows | Present — flat natural account/project groups preserve saved ties independent of deck order; current hidden local owners supply Running/Busy dots. Disabled entries remain selectable with dimmed icon/title and undimmed dot. Exact-target cached credential availability and list-only reconciliation preserve drafts/password/focus/search/scroll/attention/check time. SET-04 qualified at601784 and retained active627264; historical Core214/native1492/synthetic252, ADR0040. SET-02 OS metrics/SET-08 and live/accessibility/native gates remain separate |
+| Settings sidebar and search | SettingsWindowController / SettingsListView | Missing: one long local-project page and extra windows | Present — flat natural account/project groups preserve saved ties independent of deck order; current hidden local owners supply Running/Busy dots. Disabled entries remain selectable with dimmed icon/title and undimmed dot. Exact-target cached credential availability and list-only reconciliation preserve drafts/password/focus/search/scroll/attention/check time. SET-04 qualified at601784 and retained in78356; historical Core214/native1492/synthetic252, ADR0040. SET-08 adaptation is qualified separately; SET-02 OS metrics and live/accessibility/native gates remain separate |
 | Settings window size | SettingsWindowController frame autosave / measured scroll layout | Resizable1020×720/min880×440, size lost on reopen | Partial — normal-user-completed width/height persistence qualified/active627264, preserving forms/drafts/focus/CTS/runtime and latest metadata merge; effective supported-area clamp never rewrites chosen size. Windows resizable-width adaptation, no XY/display homes. Actual Core4/full218/native1515/installer8/synthetic282/read-only7+2 pass; OS sidebar metrics/physical display acceptance remain open. ADR0041 |
+| Running-copy provenance | GeneralSettingsPage bundle/build/location | Informational version only | Adapted/Gate — cached startup informational version, labelled assembly fallback, loaded App MVID and distinct process/module paths; once-only provider, independent bounded fallback, readonly accessible fields and exact informational updater input. Qualified/active78356: Core226/provenance16/native1587/synthetic372; no package trust, Mac marketing/build counter/translocation or native-release equivalence. ADR0044 |
 | Settings contextual navigation | module settingsTarget / showSetting | Generic settings opens | Local card opens its project; single-account remote card/error opens its account; multi-account card opens Cards |
-| Provider-specific account fields and request scopes | AccountSettingsForms / GitLabAccount | GitLab exposed GitHub filters/failed-run controls; unused legacy scopes were sent and reparsed | Qualified provider subset retained in68312; historical39204 Core4/full222/native1541 proof: Address before token, new-draft switch/provider lock, inactive GL arrays/preferences and raw unedited GH arrays preserved, empty GL request projection, guarded explicit scope edits/revisions and actual current-Draft Test fake proof. Local ACC-03 actions are qualified separately; live identity remains open. ADR0042/0043 |
-| Autosave configuration, explicit verified token save | SettingsForm / AccountSettingsForms | Partial: project/account metadata needs Save | Quiet serialized saves and nonempty verified replacement retained. Provider creation and separate/empty-input stored Verify are qualified in68312 (Core226/token30/native1571): current browser/endpoint/manual Enterprise page, exact committed credential/full-route tickets, owner epochs, scoped autosave pause, separate result row and precise presence-cache update. Half-entered replacement and metadata errors survive. Live permissions/browser identity and older replacement ID/slash limitations remain open; ADR0043 |
+| Provider-specific account fields and request scopes | AccountSettingsForms / GitLabAccount | GitLab exposed GitHub filters/failed-run controls; unused legacy scopes were sent and reparsed | Qualified provider subset retained in78356; historical39204 Core4/full222/native1541 proof: Address before token, new-draft switch/provider lock, inactive GL arrays/preferences and raw unedited GH arrays preserved, empty GL request projection, guarded explicit scope edits/revisions and actual current-Draft Test fake proof. Local ACC-03 actions are qualified separately; live identity remains open. ADR0042/0043 |
+| Autosave configuration, explicit verified token save | SettingsForm / AccountSettingsForms | Partial: project/account metadata needs Save | Quiet serialized saves and nonempty verified replacement retained. Provider creation and separate/empty-input stored Verify qualified in68312 (Core226/token30/native1571) and remain in78356: current browser/endpoint/manual Enterprise page, exact committed credential/full-route tickets, owner epochs, scoped autosave pause, separate result row and precise presence-cache update. Half-entered replacement and metadata errors survive. Live permissions/browser identity and older replacement ID/slash limitations remain open; ADR0043 |
 | Scoped health row and removal confirmation | local/Arc modules / SettingsListView | Generic Saved overwrote feedback; checks had no fresh owning row; removal lacked confirmation | Dedicated row uses original worker summary and rejects changed identity/generation/lifetime; relevant edits auto-check. Ephemeral project.check and separate transport isolate drafts from live observations. One cancel-default removal path. Worker317/Core96/native1034 pass; active Preview preserves old settings |
 | Deck floating/lock/arrange/arrangements | DeckSettingsPage / menu | Available mainly in tray; partial settings | Floating/lock/saved arrangements in Deck page; tray tidy measures native visible heights, uses 12-DIP gaps/column wrapping and preserves anchor/snapshots. Header/context/settings compact controls added |
 | Catalog/tray/Tidy order | CardCatalog.projectOrder / sortedByTitle | Tray kind groups retain added title order; Tidy consumes stored arrays | CardOrdering provides built-in roles/extras then Arc/DDEV/plain natural titles and permanent-ID ties without rewriting settings. Core104/native1041/installer8/read-only qualification pass; active Preview retains all settings/windows. SET-04 remains separate; see ADR0033 |
@@ -510,7 +511,7 @@ Live provider/browser identity, SET-08, SET-11 deck-wide watchlist, display/summ
 x64/network/phone/accessibility/shell/signing/release/full migration remain open.
 [ADR0042](adr/0042-windows-account-provider-applicability.md).
 
-ACC-03 qualified and active — 2026-10-02: Preview68312/package04928307578842e6b1c3337fdf206cf0 adds
+Historical ACC-03 qualified checkpoint — 2026-10-02: Preview68312/package04928307578842e6b1c3337fdf206cf0 added
 current-provider token pages, a blank cancel-default Enterprise address dialog with exact API
 context and separate/empty-input stored-token checks. Creation ignores unrelated incomplete
 metadata without reading credentials. Stored checks preserve the password draft and metadata
@@ -531,6 +532,27 @@ There are now at most five lazy ownership slots per distribution: local/shared r
 settingsChecks local/settingsChecks remote. The prior four-channel receipts remain historical.
 The30 token groups use fake credentials/browser/API bodies and an owned fake worker child, not
 live provider permissions. Old nonempty-replacement maximum-ID namespace and slash-normalizing
-metadata limitations remain. SET-08 and native Mac/x64/browser/phone/display/physical input/
+metadata limitations remain. SET-08 was separate at that checkpoint; native Mac/x64/browser/phone/display/physical input/
 accessibility/shell/signing/clean-machine/full migration gates stay open; releaseQualified=false.
 See [ADR0043](adr/0043-windows-account-token-actions.md) and [qualification](windows-qualification.md).
+
+SET-08 qualified and active — 2026-10-02: Preview78356/package9e1090ab67b94081853edfd12e72554e
+shows immutable startup App/version/process/module facts. Missing values remain independent;
+assembly fallback is labelled and never used by CheckNow. MVID identifies the loaded App module
+only. No settings schema, worker operation, frozen Mac UI or package-trust classifier was added.
+
+Actual Core focused4/full226, provenance16/0 exit0/11.30s, fullnative1587/0 exit0/208.14s,
+installer8/0 exit0/24.08s and read-only7local+2remote exit0/11.88s pass. Completed372 six-language
+synthetic views include30 provenance scenes; eight English/Russian frames were visually reviewed.
+The final App/manifest correlate every packaged gate. A sample-only startup-fact correction was
+caught before artwork generation; actual generic/geometry/empty-sidebar factories now use fake
+facts and preserve state within the unchanged16 groups. Prior candidates remain historical.
+
+Verified owner78356 preserves all nine0x80080 HWNDs and prior IDs/XY/compact/raw scopes/accounts/
+preferences/distributions/configuration/shortcut/full backup/defaults/startup, with absent geometry
+omitted and singleton0/old worker proxies0. Worker379/runtime16/Arc4/metadata5/Git30+60/null-wire6
+are exact-hash reuse, not fresh SET-08 execution. Mac119/graph/spec140/204 source guards are distinct
+from native Mac acceptance. Mac marketing/build-counter/translocation/update-install semantics,
+native Mac/x64/live identities/browser/phone/display/summon/input/accessibility/shell/signing/
+clean-machine/full migration gates remain open; releaseQualified=false.
+See [ADR0044](adr/0044-windows-running-build-provenance.md) and [qualification](windows-qualification.md).

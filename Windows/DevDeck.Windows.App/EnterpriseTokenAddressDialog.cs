@@ -37,7 +37,7 @@ internal sealed class EnterpriseTokenAddressDialog : Window
         panel.Children.Add(new TextBlock { Text=Title, FontSize=19, FontWeight=FontWeights.SemiBold, TextWrapping=TextWrapping.Wrap });
         var detail=Text.L("windows.enterpriseTokenPageDetail");
         panel.Children.Add(new TextBlock { Text=detail, Margin=new(0,12,0,18), Foreground=Brushes.DimGray, TextWrapping=TextWrapping.Wrap });
-        panel.Children.Add(new TextBlock { Text=Text.L("windows.endpoint")+": "+APIEndpoint, Margin=new(0,0,0,16), TextWrapping=TextWrapping.Wrap, Foreground=Brushes.DimGray });
+        panel.Children.Add(new TextBlock { Text=Text.L("windows.apiEndpoint")+": "+APIEndpoint, Margin=new(0,0,0,16), TextWrapping=TextWrapping.Wrap, Foreground=Brushes.DimGray });
         panel.Children.Add(new TextBlock { Text=Text.L("windows.enterpriseTokenAddress"), Margin=new(0,0,0,6), TextWrapping=TextWrapping.Wrap });
         AutomationProperties.SetAutomationId(AddressInput,"account.token.enterpriseAddress");
         AutomationProperties.SetName(AddressInput,Text.L("windows.enterpriseTokenAddress"));

@@ -12,7 +12,8 @@ internal static class SettingsGeometrySamples
     // live:false makes every layout change inert; availability is also explicitly fake.
     internal static async Task<SettingsWindow> CreateAsync(DeckController controller,string scene)
     {
-        var window=new SettingsWindow(controller,live:false,tokenAvailable:_=>false) {
+        var window=new SettingsWindow(controller,live:false,tokenAvailable:_=>false,
+            runningBuildInfoProvider:()=>SettingsProvenanceSamples.Facts("native")) {
             Width=SettingsGeometry.MinimumWidth,Height=SettingsGeometry.MinimumHeight,FontSize=18
         };
         var page=scene switch {

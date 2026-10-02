@@ -23,6 +23,8 @@ internal sealed class SettingsWindow : Window
     private readonly Dictionary<string,bool> tokenAvailability = new(StringComparer.Ordinal);
     private readonly Func<RemoteAccountSettings,bool> tokenAvailable;
     private readonly Func<AccountFormBinding,AccountSettingsForm>? accountFormFactory;
+    private readonly RunningBuildInfo runningBuildInfo;
+    private readonly Func<string,string,Task<WindowsUpdate?>>? updateChecker;
     private readonly DeckController controller;
     private readonly bool live;
     private readonly Func<SettingsRemovalRequest,bool>? confirmation;
@@ -163,10 +165,15 @@ internal sealed class SettingsWindow : Window
 
     internal SettingsWindow(DeckController controller, bool live = true, Func<SettingsRemovalRequest,bool>? confirmation = null,
         Func<RemoteAccountSettings,bool>? tokenAvailable = null,
-        Func<AccountFormBinding,AccountSettingsForm>? accountFormFactory = null)
+        Func<AccountFormBinding,AccountSettingsForm>? accountFormFactory = null,
+        Func<RunningBuildInfo>? runningBuildInfoProvider = null,
+        Func<string,string,Task<WindowsUpdate?>>? updateChecker = null)
     {
         this.controller = controller; this.live = live; this.confirmation = confirmation;
         this.accountFormFactory = accountFormFactory;
+        runningBuildInfo = (runningBuildInfoProvider is null ? RunningBuildInfo.Startup : runningBuildInfoProvider())
+            ?? RunningBuildInfo.Unknown;
+        this.updateChecker = updateChecker;
         this.tokenAvailable = tokenAvailable ?? (live ? controller.Tokens.HasToken : _ => false);
         Title = Text.L("settings.window.title");
         var workArea = GeometryWorkArea();
@@ -546,16 +553,45 @@ internal sealed class SettingsWindow : Window
         language.SelectionChanged += async (_, _) => { if (live && language.SelectedItem is Choice choice) await controller.RunMenuAsync(() => controller.SaveSettingsAsync(current => current with { Language = choice.ID })); };
         var startup = SettingsForm.Toggle(Text.L("settings.general.startAtLogin"), live && controller.StartsAtLogin); panel.Children.Add(startup);
         startup.Click += async (_, _) => { if (live) await controller.RunMenuAsync(() => { controller.SetStartAtLogin(startup.IsChecked == true); return Task.CompletedTask; }); };
+        SettingsForm.Section(panel, Text.L("windows.runningCopy"));
+        var unavailable = Text.L("windows.buildInfoUnavailable");
+        var displayedVersion = runningBuildInfo.InformationalVersion
+            ?? (runningBuildInfo.AssemblyVersion is { } assemblyVersion
+                ? Text.L("windows.assemblyVersion") + ": " + assemblyVersion : unavailable);
+        if (runningBuildInfo.InformationalVersion is { } loadedVersion) SettingsForm.Note(panel, "DevDeck " + loadedVersion);
+        RunningBuildField(panel, "windows.runningVersion", "settings.runningBuild.version", displayedVersion);
+        RunningBuildField(panel, "windows.runningBuildID", "settings.runningBuild.buildID", runningBuildInfo.ModuleVersionID?.ToString("D") ?? unavailable);
+        RunningBuildField(panel, "windows.runningExecutable", "settings.runningBuild.executable", runningBuildInfo.ExecutablePath ?? unavailable);
+        RunningBuildField(panel, "windows.runningModule", "settings.runningBuild.module", runningBuildInfo.ModulePath ?? unavailable);
         SettingsForm.Section(panel, Text.L("settings.general.updates"));
-        var version = System.Reflection.Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false).Cast<System.Reflection.AssemblyInformationalVersionAttribute>().First().InformationalVersion;
-        SettingsForm.Note(panel, "DevDeck " + version); var result = SettingsForm.Note(panel, "");
-        panel.Children.Add(SettingsForm.Button(Text.L("button.checkNow"), async () => {
-            if (!live) return;
-            var runtime = "win-" + System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant();
-            var update = await WindowsUpdateCheck.CheckAsync(version, runtime);
-            result.Text = update is null ? Text.L("windows.noUpdate") : Text.L("windows.updateAvailable", update.Version);
-            if (update is not null) BrowserLaunch.Open("system", null, update.PageURL);
-        })); return panel;
+        var version = runningBuildInfo.VersionForUpdates;
+        var result = SettingsForm.Note(panel, version is null ? unavailable : "");
+        var checkTitle = Text.L("button.checkNow");
+        var checkUpdate = new Button { Content = new TextBlock { Text = checkTitle, TextWrapping = TextWrapping.Wrap },
+            Padding = new(12,7,12,7), Margin = new(0,6,8,4), HorizontalAlignment = HorizontalAlignment.Left,
+            IsEnabled = version is not null, Tag = "settings.checkUpdate" };
+        System.Windows.Automation.AutomationProperties.SetName(checkUpdate, checkTitle);
+        System.Windows.Automation.AutomationProperties.SetAutomationId(checkUpdate, "settings.checkUpdate");
+        checkUpdate.Click += async (_, _) => {
+            if (!checkUpdate.IsEnabled || (!live && updateChecker is null) || version is null) return;
+            checkUpdate.IsEnabled = false;
+            try {
+                var runtime = "win-" + System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant();
+                var update = updateChecker is { } check ? await check(version, runtime) : await WindowsUpdateCheck.CheckAsync(version, runtime);
+                result.Text = update is null ? Text.L("windows.noUpdate") : Text.L("windows.updateAvailable", update.Version);
+                if (update is not null && updateChecker is null) BrowserLaunch.Open("system", null, update.PageURL);
+            } catch (Exception error) { MessageBox.Show(Text.Failure(error), "DevDeck", MessageBoxButton.OK, MessageBoxImage.Information); }
+            finally { checkUpdate.IsEnabled = version is not null; }
+        };
+        panel.Children.Add(checkUpdate); return panel;
+    }
+    private static void RunningBuildField(Panel panel, string labelKey, string identity, string value)
+    {
+        var field = new TextBox { Text = value, IsReadOnly = true, IsUndoEnabled = false, TextWrapping = TextWrapping.Wrap,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            MaxHeight = 96, Tag = identity };
+        SettingsForm.Field(panel, Text.L(labelKey), field);
+        System.Windows.Automation.AutomationProperties.SetAutomationId(field, identity);
     }
     private StackPanel DeckPage()
     {
