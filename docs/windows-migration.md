@@ -189,7 +189,7 @@ pass; exact d9fc85/abd86a worker379/runtime16/Arc4/metadata5/Git30+60 evidence i
 
 The component uses fake readers/verifiers/openers and one owned fake stdin/stdout worker through
 the real manager; no real provider mutation or browser identity is qualified. Older nonempty
-replacement maximum-ID namespace and slash-bound metadata limitations remain. Expanded SET-08
+replacement maximum-ID namespace and slash-bound metadata limitations remained at that checkpoint. Expanded SET-08
 provenance was absent at this checkpoint; native Mac/x64/live identity/permissions/browser/phone/display/input/accessibility/
 shell/signing/clean-machine, updater/summon and full migration gates remain open.
 See [ADR0043](adr/0043-windows-account-token-actions.md) and [qualification](windows-qualification.md).
@@ -212,7 +212,7 @@ Synthetic factories explicitly use fake startup facts; their actual lifetime/sta
 artwork from exporting production paths. The Enterprise dialog's API endpoint label was corrected
 without changing its action/default Cancel/lifetime semantics.
 
-Current Preview78356/package9e1090ab67b94081853edfd12e72554e passed Core focused4/full226,
+Historical SET-08 Preview78356/package9e1090ab67b94081853edfd12e72554e passed Core focused4/full226,
 provenance16/0 in11.30s, fullnative1587/0 in208.14s, installer8/0 in24.08s and read-only7local+2remote
 in11.88s. Completed372 synthetic scenes include30 provenance scenes in six languages; eight English/
 Russian frames were visually reviewed. Exact App/manifest correlate the packaged gates. Native
@@ -227,6 +227,29 @@ per distribution remain. Mac marketing/build-counter/translocation/updater seman
 Mac/x64/live provider/browser/phone/display/summon/input/accessibility/shell/signing/clean-machine
 gates stay open. M5/M7/full migration are incomplete; releaseQualified=false.
 See [ADR0044](adr/0044-windows-running-build-provenance.md).
+
+## Completeness checkpoint — 2026-10-03
+
+Current Preview118080/package781a6f qualifies scoped log Follow/header/current-target feedback,
+exact unchanged account endpoint metadata,128-byte verification IDs, explicit replacement→stored
+check and worker bounded6 Inbox read-rest processing. Six component groups and fullnative1593,
+installer8/read-only7local+2remote/render372 pass; eight EN/RU synthetic frames were inspected.
+Core226/worker382 are reused through70/208 identical inputs, with new ADE5 runtime25/Git90 actual
+checks. Protocol1/settings schema/frozen Mac UI remain; generic metadata reconciliation/reset
+policy is unchanged. See [ADR0045](adr/0045-windows-completeness-logs-accounts-inbox.md).
+
+Only recorded78356 was replaced. Nine0x80080 HWNDs and all prior IDs/XY/compact/raw accounts/scopes/
+Seen/preferences/distributions/original configuration/shortcut/full backup/defaults/startup and
+absent geometry are preserved. Exactly two RuntimeDirectory changes deploy the managed ADE5
+worker in Ubuntu/Debian; old D9 remains intact, singleton0/old proxies0. This deliberate route
+transition differs from earlier updates that preserved Workers byte-for-byte.
+
+The140-ID audit remains source triage, not a passed-feature tally. Notification/settings, display/
+summon/app branding/updater and typed Inbox outcome/masking work remains. Actual read-only Inbox
+retains a forbidden failure; GitLab is unconfigured, stopped-phone results prove no reachability.
+Mac119/graph/spec140/204 are source guards; native Mac/x64/live permissions/browser/phone/physical
+input/accessibility/Shell/signing/clean-machine/full migration remain open. ReleaseQualified=false;
+actual timings/hashes and retained failures are in [qualification](windows-qualification.md).
 
 ## Release status
 

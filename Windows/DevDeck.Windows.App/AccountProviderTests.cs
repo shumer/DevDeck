@@ -171,7 +171,7 @@ internal static class AccountProviderTests
         Require(result.CardID == card.Id && captured.Select(value => value.Operation).SequenceEqual(new[] { "remote.snapshot", "remote.verify" })
             && reads == 1 && captured[0].Request.Accounts[0].Token == "Owned in-memory token"
             && captured[1].Request.Accounts[0].Token == "Owned explicit replacement"
-            && captured[1].Request.CardID == "verify." + LabID,
+            && captured[1].Request.CardID == "verify",
             "Actual snapshot/verify did not reach the fake sender with their distinct admitted credentials.");
         owned.RequireUnchanged();
         var snapshotAccount = captured[0].Request.Accounts[0];

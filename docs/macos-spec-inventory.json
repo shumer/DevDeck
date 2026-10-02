@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedOn": "2026-10-01",
+  "reviewedOn": "2026-10-03",
   "featureIDs": [
     "CAT-01",
     "CAT-02",
@@ -151,8 +151,8 @@
     },
     {
       "path": "Package.swift",
-      "sha256": "502b5356bb97356e8d43d5c969390bbd5f95c6b2b27f58ac2b77f15a75d1dad8",
-      "bytes": 7246,
+      "sha256": "1da5284831731207efe5fdf6b9d64e6218dc5af74642d3271c5915124ff385fe",
+      "bytes": 7299,
       "entryPoints": [],
       "localizedControls": []
     },
@@ -13400,8 +13400,8 @@
     },
     {
       "path": "docs/development.md",
-      "sha256": "2a6733fddb2dc6465c03dfbb11d46346ce9e5c09d1f2b7ecf72219077592856d",
-      "bytes": 12563
+      "sha256": "9a687edbaa6d1e436d9951616d0e8b47f5ac7547b467decd38952e790a452b59",
+      "bytes": 13468
     },
     {
       "path": "docs/github-api.md",

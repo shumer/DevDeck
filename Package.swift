@@ -135,7 +135,7 @@ let package = Package(
                 "DevDeckTests/AttentionTests.swift", "DevDeckTests/GitHubInboxTests.swift",
                 "DevDeckTests/CommandRunnerTests.swift", "DevDeckTests/LocalisationTests.swift",
             ],
-            sources: portableCases.map { "DevDeckTests/\($0).swift" } + ["PortableTests/main.swift", "PortableTests/PlatformTests.swift", "PortableTests/WorkerTests.swift", "PortableTests/WorkerRemoteTests.swift", "PortableTests/WorkerAttentionTests.swift", "PortableTests/WorkerVisibilityTests.swift", "PortableTests/WorkerPowerOffTests.swift", "PortableTests/WorkerPowerOffRaceTests.swift", "PortableTests/WorkerCheckoutTests.swift", "PortableTests/WorkerInboxAttentionTests.swift"]
+            sources: portableCases.map { "DevDeckTests/\($0).swift" } + ["PortableTests/main.swift", "PortableTests/PlatformTests.swift", "PortableTests/WorkerTests.swift", "PortableTests/WorkerRemoteTests.swift", "PortableTests/WorkerAttentionTests.swift", "PortableTests/WorkerVisibilityTests.swift", "PortableTests/WorkerPowerOffTests.swift", "PortableTests/WorkerPowerOffRaceTests.swift", "PortableTests/WorkerCheckoutTests.swift", "PortableTests/WorkerInboxAttentionTests.swift", "PortableTests/WorkerRemoteCompletenessTests.swift"]
         ),
     ]
 )

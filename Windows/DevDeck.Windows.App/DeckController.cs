@@ -225,10 +225,24 @@ internal sealed partial class DeckController
     {
         if (!logWindows.TryGetValue(project.Id, out var window)) {
             window = new LogWindow(this, project, live); logWindows.Add(project.Id, window);
-            window.Closed += (_, _) => logWindows.Remove(project.Id);
+            var owned = window;
+            window.IsVisibleChanged += (_, _) => {
+                if (logWindows.TryGetValue(project.Id, out var current) && ReferenceEquals(current, owned))
+                    ReconcileLogPresentation(project.Id);
+            };
+            window.Closed += (_, _) => {
+                if (!logWindows.TryGetValue(project.Id, out var current) || !ReferenceEquals(current, owned)) return;
+                logWindows.Remove(project.Id);
+                ReconcileLogPresentation(project.Id);
+            };
         }
         window.Show(); window.WindowState = WindowState.Normal; window.Activate();
+        ReconcileLogPresentation(project.Id);
         return window;
+    }
+    private void ReconcileLogPresentation(string id)
+    {
+        foreach (var card in cards.Where(card => card.Reference.Id == id)) card.ReconcileLogPresentation();
     }
     internal async Task<WorkerLogs?> ReadLogsAsync(ProjectReference project, CancellationToken cancellation)
     {
@@ -417,7 +431,7 @@ internal sealed partial class DeckController
     }
     internal async Task VerifyTokenAsync(RemoteAccountSettings account, string token, string distribution, CancellationToken cancellation)
     {
-        var request = new RemoteRequest("verify." + account.Id, account.Provider == "gitlab" ? "mergeRequests" : "pullRequests",
+        var request = new RemoteRequest("verify", account.Provider == "gitlab" ? "mergeRequests" : "pullRequests",
             [RemoteAccountApplicability.Credential(account, token)]);
         if (RemoteRequestSender is {} send) {
             cancellation.ThrowIfCancellationRequested();

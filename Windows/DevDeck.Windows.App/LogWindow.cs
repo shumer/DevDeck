@@ -16,6 +16,7 @@ namespace DevDeck.Windows.App;
 internal sealed class LogWindow : Window
 {
     private readonly DeckController controller;
+    private readonly Func<ProjectReference,CancellationToken,Task<WorkerLogs?>> logsReader;
     private ProjectReference project;
     private readonly TextBox lines = new() { Text = Text.L("card.log.reading"), IsReadOnly = true, FontFamily = new("Consolas"), FontSize = 12,
         TextWrapping = TextWrapping.NoWrap, Foreground = CardTheme.Ink, Background = CardTheme.PanelBackground, BorderThickness = new(0),
@@ -37,9 +38,11 @@ internal sealed class LogWindow : Window
     internal void Search(string value, bool backwards = false) { query.Text = value; Find(backwards); }
     internal string Selection => lines.SelectedText;
 
-    internal LogWindow(DeckController controller, ProjectReference project, bool live = true)
+    internal LogWindow(DeckController controller, ProjectReference project, bool live = true,
+        Func<ProjectReference,CancellationToken,Task<WorkerLogs?>>? logsReader = null)
     {
         this.controller = controller; this.project = project;
+        this.logsReader = logsReader ?? controller.ReadLogsAsync;
         Title = "DevDeck · " + (project.Title ?? project.Id) + " · " + Text.L("card.log.window.subtitle");
         Width = 900; Height = 560; MinWidth = 640; MinHeight = 320; Background = CardTheme.PanelBackground;
         var saved = controller.Settings.LogWindowList.FirstOrDefault(item => item.CardID == project.Id);
@@ -71,8 +74,8 @@ internal sealed class LogWindow : Window
         follow.Click += (_, _) => { if (IsFollowing) ScrollToEnd(); };
         DockPanel.SetDock(footer, Dock.Bottom); content.Children.Add(footer); content.Children.Add(lines); Content = content;
         lines.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, args) => {
-            if (!applying && Math.Abs(args.VerticalChange) > 0.1 && args.OriginalSource is ScrollViewer scroll && scroll.VerticalOffset < scroll.ScrollableHeight - 16)
-                follow.IsChecked = false;
+            if (!applying && Math.Abs(args.VerticalChange) > 0.1 && args.OriginalSource is ScrollViewer scroll)
+                follow.IsChecked = scroll.VerticalOffset >= scroll.ScrollableHeight - 16;
         }));
         PreviewKeyDown += (_, args) => {
             if (args.Key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { search.Visibility = Visibility.Visible; query.Focus(); query.SelectAll(); args.Handled = true; }
@@ -90,7 +93,7 @@ internal sealed class LogWindow : Window
     internal void UpdateProject(ProjectReference current)
     {
         if (current.Distribution != project.Distribution || current.Path != project.Path || current.Kind != project.Kind) {
-            Latest = null; source.Text = Text.L("card.log.reading"); lines.Clear(); file.Visibility = Visibility.Collapsed; terminal.IsEnabled = current.Kind == "ddev";
+            Latest = null; source.Text = Text.L("card.log.reading"); ChangeView(lines.Clear); file.Visibility = Visibility.Collapsed; terminal.IsEnabled = current.Kind == "ddev";
         }
         project = current;
         heading.Text = project.Title ?? project.Id;
@@ -103,9 +106,7 @@ internal sealed class LogWindow : Window
         source.Text = logs.Source ?? Text.L("card.log.source");
         var text = logs.Lines.Length == 0 ? logs.Detail ?? Text.L("card.log.nothing") : string.Join(Environment.NewLine, logs.Lines);
         if (text == lines.Text) return;
-        applying = true;
-        try { var offset = lines.VerticalOffset; lines.Text = text; lines.UpdateLayout(); if (IsFollowing) lines.ScrollToEnd(); else lines.ScrollToVerticalOffset(offset); }
-        finally { applying = false; }
+        ChangeView(() => { var offset = lines.VerticalOffset; lines.Text = text; lines.UpdateLayout(); if (IsFollowing) lines.ScrollToEnd(); else lines.ScrollToVerticalOffset(offset); });
     }
     internal Task RefreshAsync() => ReadAsync();
     private async Task ReadAsync()
@@ -113,12 +114,18 @@ internal sealed class LogWindow : Window
         if (closed || reading || !IsVisible || WindowState == WindowState.Minimized) return;
         reading = true;
         var requested = project;
-        try { if (await controller.ReadLogsAsync(requested, lifetime.Token) is { } logs && !closed && requested == project) Apply(logs); }
+        try { if (await logsReader(requested, lifetime.Token) is { } logs && !closed && requested == project) Apply(logs); }
         catch (OperationCanceledException) { }
-        catch (IOException error) { if (!closed) source.Text = Text.Failure(error); }
+        catch (IOException error) { if (!closed && requested == project) source.Text = Text.Failure(error); }
         finally { reading = false; if (closed) lifetime.Dispose(); }
     }
-    private void ScrollToEnd() { applying = true; try { lines.ScrollToEnd(); } finally { applying = false; } }
+    private void ChangeView(Action change)
+    {
+        var previous = applying; applying = true;
+        try { change(); lines.UpdateLayout(); }
+        finally { applying = previous; }
+    }
+    private void ScrollToEnd() => ChangeView(lines.ScrollToEnd);
     private void Find(bool backwards)
     {
         if (query.Text.Length == 0 || lines.Text.Length == 0) return;
@@ -126,6 +133,7 @@ internal sealed class LogWindow : Window
         var index = backwards ? lines.Text.LastIndexOf(query.Text, begin, StringComparison.CurrentCultureIgnoreCase) : lines.Text.IndexOf(query.Text, begin, StringComparison.CurrentCultureIgnoreCase);
         if (index < 0) index = backwards ? lines.Text.LastIndexOf(query.Text, StringComparison.CurrentCultureIgnoreCase) : lines.Text.IndexOf(query.Text, StringComparison.CurrentCultureIgnoreCase);
         if (index < 0) { source.Text = Text.L("windows.logNoMatch"); return; }
-        follow.IsChecked = false; lines.Select(index, query.Text.Length); lines.ScrollToLine(lines.GetLineIndexFromCharacterIndex(index));
+        follow.IsChecked = false;
+        ChangeView(() => { lines.Select(index, query.Text.Length); lines.ScrollToLine(lines.GetLineIndexFromCharacterIndex(index)); });
     }
 }

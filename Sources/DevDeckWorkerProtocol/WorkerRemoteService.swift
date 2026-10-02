@@ -255,7 +255,16 @@ public struct WorkerRemoteService: Sendable {
         let model = GitHubAccount(id: account.id, label: account.label, apiBaseURL: URL(string: account.endpoint)!, organizations: account.organizations)
         let tokens = InMemoryTokenStore(tokens: [model.tokenKey: token])
         await cache.invalidate(account: account, provider: "github")
-        let client = GitHubClient(transport: APITransport(client: http), tokenStore: tokens, settings: model.settings(basedOn: .default), tokenKey: model.tokenKey)
+        // The shared bulk helper replenishes its queue after every completion. Preserve the
+        // worker's cancellation boundary before a cancelled child delegates another request.
+        struct ReadAdmissionHTTP: HTTPClient {
+            let base: any HTTPClient
+            func send(_ request: HTTPRequest) async throws -> HTTPResponse {
+                try Task.checkCancellation()
+                return try await base.send(request)
+            }
+        }
+        let client = GitHubClient(transport: APITransport(client: ReadAdmissionHTTP(base: http)), tokenStore: tokens, settings: model.settings(basedOn: .default), tokenKey: model.tokenKey)
         let service = NotificationsService(client: client, accountID: account.id)
         do {
             let targets: [String]
@@ -263,7 +272,11 @@ public struct WorkerRemoteService: Sendable {
             else { targets = ids }
             guard targets.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 32 && $0.utf8.allSatisfy { $0 >= 48 && $0 <= 57 } }) else { throw Self.invalid() }
             try Task.checkCancellation()
-            for (index, id) in targets.enumerated() { try Task.checkCancellation(); try await service.markRead(id); onProgress?("marking:\(index + 1):\(targets.count)") }
+            let failures = await service.markRead(targets, concurrency: 6) { done in
+                onProgress?("marking:\(done):\(targets.count)")
+            }
+            try Task.checkCancellation()
+            if let refusal = failures.values.first { throw refusal }
         } catch {
             throw WorkerRemoteError(code: "remoteActionFailed", message: "GitHub could not mark notifications as read. Check notification permissions and refresh; some threads may already be read.")
         }

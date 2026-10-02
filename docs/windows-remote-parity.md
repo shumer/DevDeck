@@ -7,7 +7,7 @@ configuration, native notification delivery or the full product. Current Mac dra
 have module lifetime; Windows explicitly clears window-local drafts on close. Earlier wording
 describing identical window-only lifetime was too broad.
 
-2026-10-01. Target: behavior implemented in the current Mac sources. Windows runs natively;
+Historical2026-10-01 audit. Target: behavior implemented in the Mac sources. Windows runs natively;
 the shared Swift API workspaces run in WSL. This is a source/fixture audit, not live account certification.
 
 | Behavior | Mac reference | Windows audit / correction |
@@ -22,7 +22,7 @@ the shared Swift API workspaces run in WSL. This is a source/fixture audit, not 
 | Per-account URL browser/profile | LinkOpener / ModuleContext | Retained; public GitHub, enterprise GitHub and configured GitLab host dashboard routing checked |
 | Multiple-account badges and explicit scope | Mac shared workspace and account forms | Retained row badges; added account selection to existing Windows cards, avoiding card recreation |
 | Account setup and discoverable card visibility | CardCatalog / DeckMenu | Fixed account-only setup: startup and verified account saves create shared PR/Inbox (on), Actions (off), GitLab MR (on). Four types always listed in tray and Settings/Cards; local visibility grouped in tray. Hidden legacy cards and custom scopes retain IDs/placements; new built-ins follow all provider accounts |
-| Individual Inbox read and personal notification preservation | NotificationsService / InboxCard | Existing per-thread validated PATCH and paged non-personal rest-read retained; read rows have no read action |
+| Individual Inbox read and personal notification preservation | NotificationsService / InboxCard | Per-thread validated PATCH and paged non-personal rest-read retained. Current worker uses shared bounded6 replenishing bulk processing, aggregate failure after admitted targets and cancellation admission before underlying HTTP. Read rows have no read action; typed per-thread outcomes/optimistic-mask refinement remain separate. ADR0045 |
 | Read all, bounded by newest notification displayed per account | NotificationsService.markAllRead / inbox controller | Restored explicit per-account PUT with displayed timestamp; missing/negative/future/ambiguous cutoff rejected |
 | Mutation progress, failure feedback, cancellation and duplicate action guard | Inbox progress state | Added gathering/marking/all feedback, cancel, disabled controls, refresh and inline sanitized failure |
 | Inbox reason labels, unread/personal counts, age, priority and capped total | InboxSnapshot / InboxItem / InboxCard | Restored unread count (previously all rows), priority order, reason badges, age and actionable verdict |
@@ -38,7 +38,23 @@ the shared Swift API workspaces run in WSL. This is a source/fixture audit, not 
 | Settings browser check | Mac account forms | Added browser/profile test action to Windows account form |
 | Unsaved token draft while switching accounts/pages | Mac account section draft dictionaries | Restored window-local/account-specific memory; closing clears drafts, verification/storage remain explicit |
 
-## Qualification and remaining gates
+## Current scoped checkpoint — 2026-10-03
+
+Preview118080/package781a6f is qualified and active for [ADR0045](adr/0045-windows-completeness-logs-accounts-inbox.md).
+Unchanged raw GitHub/GitLab endpoints survive quiet metadata saves. Explicit replacement retains
+normalization/write/commit/old-target cleanup and guarded endpoint-field synchronization; a later
+saved-token check uses the committed target. Literal `verify` supports128-byte account IDs without
+adding the former seven-byte prefix. Raw inactive/duplicate/null scopes and password drafts remain.
+These are owned fake credential/request checks, not live token-writing or permission acceptance.
+
+The exact package passed components6/native1593/installer8/read-only7local+2remote/render372.
+Core226/worker382 results are reused by70/208 identical inputs; new ADE5 runtime25/Git90 are separate
+actual checks. The real read-only probe loaded five PR rows without failures and fourteen Inbox
+rows alongside one typed forbidden account failure. GitLab had no configured account. No live
+notification read mutation was invoked; browser identity and that account's permissions remain
+unqualified. See [qualification](windows-qualification.md) for current hashes/limits/preservation.
+
+## Historical qualification and remaining gates
 
 Final package/native/layout results are recorded in `.local_docs/EVIDENCE.md` and `windows-remote-*`
 reports: Swift 291/0, Core 54/0, Windows/WSL 84/0, native UI 340/0, installer 8/0 and 96 synthetic
@@ -50,7 +66,7 @@ qualification is recorded in `windows-remote-accounts.json`; no notification mut
 by this probe. GitLab has no configured account. Browser login/notification delivery, native Mac
 execution and x64/desktop/network/signing gates remain open.
 
-The live read-only probe returned four PRs (one blocked, MC/DR), nineteen Actions runs (four failed)
+The historical live read-only probe returned four PRs (one blocked, MC/DR), nineteen Actions runs (four failed)
 without account failures. Inbox retained thirteen unread/four personal notifications alongside one
 account's forbidden access failure. This demonstrates partial-failure preservation on real data;
 that account's notification access still needs investigation. No notification was marked read, no

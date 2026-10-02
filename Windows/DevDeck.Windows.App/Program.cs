@@ -19,12 +19,40 @@ internal static class Program
         string Option(string key, string fallback) => Array.IndexOf(args, key) is var index && index >= 0 && index + 1 < args.Length ? args[index + 1] : fallback;
         var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var path = Option("--settings", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DevDeck", "windows-settings.json"));
-        using var instance = args.Contains("--settings-provenance-check") || args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--sample-render") || args.Contains("--tray-artwork") || args.Contains("--tray-attention-artwork") || args.Contains("--window-check") ? null : new SingleInstance(path);
+        using var instance = args.Contains("--completeness-accounts-check") || args.Contains("--completeness-logs-check") || args.Contains("--settings-provenance-check") || args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--sample-render") || args.Contains("--tray-artwork") || args.Contains("--tray-attention-artwork") || args.Contains("--window-check") ? null : new SingleInstance(path);
         if (instance is { Acquired: false }) return 0;
         application.Startup += async (_, _) =>
         {
             try
             {
+                if (args.Contains("--completeness-logs-check") || args.Contains("--completeness-accounts-check")) {
+                    var checks = new System.Collections.Generic.List<object>();
+                    var component = args.Contains("--completeness-logs-check") ? "logs" : "accounts";
+                    var scenario = Option("--completeness-" + component + "-case", component == "logs" ? "header-toggle" : "endpoint-github");
+                    var report = Option("--report", Path.Combine(Path.GetTempPath(), "devdeck-completeness-" + component + ".json"));
+                    try {
+                        if (component == "logs") {
+                            if (scenario == "all") await LogCompletenessTests.RunAsync(application, checks);
+                            else await LogCompletenessTests.RunRedAsync(application, checks, scenario);
+                        } else {
+                            if (scenario == "all") await AccountCompletenessTests.RunAsync(application, checks);
+                            else await AccountCompletenessTests.RunRedAsync(application, checks, scenario);
+                        }
+                        File.WriteAllText(report, System.Text.Json.JsonSerializer.Serialize(new {
+                            componentOnly = true, releaseQualified = false, scenario, checks, completed = true,
+                            passed = checks.Count, failed = 0
+                        }));
+                        application.Shutdown();
+                    } catch (Exception error) {
+                        // Keep the positive owned-body premises when the retained old behavior fails.
+                        File.WriteAllText(report, System.Text.Json.JsonSerializer.Serialize(new {
+                            componentOnly = true, releaseQualified = false, scenario, checks, completed = false,
+                            error = error.Message, exceptionType = error.GetType().FullName, stackTrace = error.StackTrace
+                        }));
+                        application.Shutdown(1);
+                    }
+                    return;
+                }
                 if (args.Contains("--settings-provenance-check")) {
                     var checks = new System.Collections.Generic.List<object>();
                     var scenario = Option("--settings-provenance-case", "all");

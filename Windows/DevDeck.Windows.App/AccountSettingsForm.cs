@@ -39,6 +39,8 @@ internal sealed class AccountSettingsForm : SettingsForm
     private string presentedProvider;
     private long organizationRevision, repositoryRevision, savedOrganizationRevision, savedRepositoryRevision;
     private long replacementRevision;
+    private long endpointRevision;
+    private bool syncingCommittedEndpoint;
     private bool tokenPresent, tokenActionPending;
     private readonly TextBlock tokenPresence = new() { TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock tokenResult = new() { TextWrapping = TextWrapping.Wrap, Margin = new(0,8,0,8) };
@@ -132,11 +134,14 @@ internal sealed class AccountSettingsForm : SettingsForm
             endpointDrafts[presentedProvider] = endpoint.Text;
             endpoint.Text = endpointDrafts[next]; presentedProvider = next; ApplyProviderPresentation();
         };
-        foreach (var field in new[] { label, endpoint, organizations, repositories }) Watch(field);
+        foreach (var field in new[] { label, organizations, repositories }) Watch(field);
         organizations.TextChanged += (_, _) => organizationRevision++;
         repositories.TextChanged += (_, _) => repositoryRevision++;
         browser.ValueChanged += (_,_) => Changed(); foreach (var field in new[] { enabled, reviews, blocked, runs }) Watch(field);
-        endpoint.TextChanged += (_,_) => { tokenResult.Text=""; UpdateTokenPresentation(); };
+        endpoint.TextChanged += (_,_) => {
+            if (syncingCommittedEndpoint) return;
+            endpointRevision++; Changed(); tokenResult.Text=""; UpdateTokenPresentation();
+        };
         Loaded += async (_, _) => await DiscoverDistributionsAsync();
     }
     private void ApplyProviderPresentation()
@@ -294,12 +299,15 @@ internal sealed class AccountSettingsForm : SettingsForm
             changed("");
         });
     }
-    private RemoteAccountSettings Draft()
+    private RemoteAccountSettings Draft(bool normalizeEndpoint = false)
     {
         string[] Split(string value) => value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var kind = (string)provider.SelectedItem;
         var github = RemoteAccountApplicability.HasGitHubScopes(kind);
-        var account = new RemoteAccountSettings(id, label.Text.Trim(), kind, endpoint.Text.Trim().TrimEnd('/'),
+        var enteredEndpoint = endpoint.Text;
+        var chosenEndpoint = !normalizeEndpoint && original is { } saved && string.Equals(enteredEndpoint, saved.Endpoint, StringComparison.Ordinal)
+            ? saved.Endpoint : enteredEndpoint.Trim().TrimEnd('/');
+        var account = new RemoteAccountSettings(id, label.Text.Trim(), kind, chosenEndpoint,
             !github || original is not null && organizationRevision == savedOrganizationRevision ? original?.Organizations.ToArray() ?? [] : Split(organizations.Text),
             !github || original is not null && repositoryRevision == savedRepositoryRevision ? original?.Repositories.ToArray() ?? [] : Split(repositories.Text),
             enabled.IsChecked == true, browser.BrowserID, browser.SelectedProfile, reviews.IsChecked == true, blocked.IsChecked == true,
@@ -324,7 +332,8 @@ internal sealed class AccountSettingsForm : SettingsForm
     private async Task SaveTokenAsync()
     {
         if (!Live) return;
-        var account = Draft(); var value = token.Password;
+        var account = Draft(normalizeEndpoint: true); var value = token.Password;
+        var capturedEndpointRevision = endpointRevision; var capturedOwnerGeneration = OwnerGeneration;
         var capturedOrganizationRevision = organizationRevision; var capturedRepositoryRevision = repositoryRevision;
         if (value.Length == 0) throw new InvalidOperationException(Text.L("windows.validationToken"));
         Message.Text = Text.L("windows.verifying");
@@ -335,6 +344,15 @@ internal sealed class AccountSettingsForm : SettingsForm
         write(account, value);
         await PersistAsync(account, capturedOrganizationRevision, capturedRepositoryRevision, credentialSaved: true);
         if (previous is not null && previous.CredentialTarget != account.CredentialTarget) write(previous, null);
+        if (CurrentOwner(capturedOwnerGeneration) && endpointRevision == capturedEndpointRevision
+            && original?.CredentialTarget == account.CredentialTarget
+            && Controller.Settings.AccountList.Any(current => current.Id == account.Id && current.CredentialTarget == account.CredentialTarget)
+            && endpoint.Text != account.Endpoint) {
+            syncingCommittedEndpoint = true;
+            try { endpoint.Text = account.Endpoint; }
+            finally { syncingCommittedEndpoint = false; }
+            UpdateTokenPresentation();
+        }
         token.Clear(); Message.Text = Text.L("token.works"); Message.Foreground = System.Windows.Media.Brushes.SeaGreen;
     }
     public override void Dispose() { base.Dispose(); token.Clear(); }

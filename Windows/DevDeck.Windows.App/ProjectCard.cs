@@ -161,7 +161,7 @@ internal sealed class ProjectCard : Window
         settingsButton = CardTheme.Button(Text.L("menu.settings"), () => { controller.ShowSettings("project:" + Reference.Id); return Task.CompletedTask; }, "settings", iconOnly: true);
         settingsButton.Margin = new(0); settingsButton.Background = Brushes.Transparent;
         DockPanel.SetDock(settingsButton, Dock.Right); header.Children.Add(settingsButton);
-        logButton = CardTheme.Button(Text.L("menu.card.showLog"), ShowLogsAsync, "log", iconOnly: true);
+        logButton = CardTheme.Button(Text.L("menu.card.showLog"), () => controller.ToggleLogsAsync(Reference), "log", iconOnly: true);
         logButton.Background = Brushes.Transparent; DockPanel.SetDock(logButton, Dock.Right); header.Children.Add(logButton);
         refreshButton = CardTheme.Button(Text.L("menu.refresh"), RefreshAsync);
         refreshButton.Content = timestamp; refreshButton.Padding = new(0); refreshButton.Margin = new(2,0,0,0);
@@ -225,6 +225,7 @@ internal sealed class ProjectCard : Window
         Closed += (_, _) => { closed = true; lifetime.Cancel(); operation?.Cancel(); phonePopup.IsOpen = false; if (ContextMenu is not null) ContextMenu.IsOpen = false; };
         Loaded += (_, _) => { if (deckVisible) DesktopRecovery.EnsureReachable(this); };
         if (!Reference.HasLocalFolder) { ApplySnapshot(new(Reference.Id,"unavailable",null,null,null,null)); LastRefreshSucceeded = true; }
+        ReconcileLogPresentation();
     }
 
     private void PopulateContextMenu()
@@ -432,6 +433,21 @@ internal sealed class ProjectCard : Window
     }
 
     internal Task ShowLogsAsync() { controller.ShowLogs(Reference); return Task.CompletedTask; }
+    internal void ReconcileLogPresentation()
+    {
+        if (closed) return;
+        var showing = controller.IsShowingLogs(Reference.Id);
+        var label = Text.L(showing ? "menu.card.hideLog" : "menu.card.showLog");
+        logButton.ToolTip = label;
+        System.Windows.Automation.AutomationProperties.SetName(logButton,label);
+        if (showing) CardTheme.Emphasize(logButton,CardTheme.Blue);
+        else {
+            logButton.Foreground = CardTheme.Ink; logButton.FontWeight = FontWeights.Normal;
+            logButton.Background = logButton.BorderBrush = Brushes.Transparent;
+            if (logButton.Content is Panel panel && panel.Children.Count > 0 && panel.Children[0] is System.Windows.Shapes.Path icon)
+                icon.Stroke = CardTheme.Ink;
+        }
+    }
     private void UpdatePhoneContent()
     {
         var link = CurrentPhoneLink;

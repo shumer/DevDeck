@@ -199,9 +199,20 @@ expectation in ProjectTests is projected back to its original Mac branch. Shared
 also require native Mac tests/build; hashes cannot prove runtime behaviour. The new portability
 workflow defines that gate, but defining a workflow does not mean it has run remotely.
 
-The initial worker supports hello, DDEV discovery and DDEV/Arc status only. Production worker
-runtime deployment and a Windows host remain separate stages; do not run a Linux container build
-artifact in another distro without checking ABI/runtime dependencies.
+The historical initial worker supported hello, DDEV discovery and DDEV/Arc status only. Current
+operations are listed in [worker protocol](worker-protocol.md); package/runtime deployment needs
+its own qualification. Do not run a Linux container build artifact in another distro without
+checking ABI/runtime dependencies.
+
+The current [completeness checkpoint](adr/0045-windows-completeness-logs-accounts-inbox.md) retains
+isolated native component entry points. On an owned package use
+`DevDeck.Windows.exe --completeness-logs-check --completeness-logs-case all --report <owned-report>`
+or `--completeness-accounts-check --completeness-accounts-case all --report <owned-report>`.
+Each `all` entry emits three final groups; positive `premiseOnly` receipts are never passed tests.
+Named baseline cases belong to retained old immutable artifacts, not current aggregate acceptance.
+Fixtures own temporary settings/windows/fake IO; full Core separately writes and finally deletes
+a UUID-owned synthetic Windows vault entry. Live project/provider probes are read-only and are
+separate from these fixtures. Byte-identical input reuse is stated explicitly, not another run.
 
 `Tools/WorkerSmoke/verify_protocol.py -- <worker-command>` exercises the actual stdin/stdout
 transport, including oversize recovery and EOF exit, without querying existing stacks.

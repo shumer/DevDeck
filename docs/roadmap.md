@@ -189,6 +189,16 @@
 
 ## Windows migration in progress
 
+- Current Windows completeness fixes are qualified and active118080/package781a6f: log Follow/
+  current-target/header state, unchanged raw account metadata endpoints,128-byte verification IDs,
+  guarded replacement→stored checks and shared bounded6 Inbox bulk reads. Components6/native1593/
+  installer8/read-only9/render372 pass; Core226/worker382 are reused by70/208 identical inputs,
+  while ADE5 runtime25/Git90 are new checks. Nine widgets/settings remain, with only two admitted
+  runtime-route transitions. See [ADR0045](adr/0045-windows-completeness-logs-accounts-inbox.md).
+  This scoped batch leaves notification/settings, typed Inbox outcomes, display/summon/branding/
+  updater implementation and native Mac/x64/live identity/phone/input/Shell/signing/clean-machine/
+  full migration gates open; no release is claimed.
+
 - The [Mac functional specification](macos-functional-spec.md) now enumerates 140 source-referenced
   acceptance items and explicit Windows gaps. Source/control/resource drift is checked by
   `scripts/check-macos-spec.py`; presentation fixtures cannot certify production worker fields.

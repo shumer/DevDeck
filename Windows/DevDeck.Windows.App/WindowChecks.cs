@@ -33,6 +33,8 @@ internal static class WindowChecks
         await checkProgress.RunAsync("AccountProviderTests.RunAsync", () => AccountProviderTests.RunAsync(application,checks));
         await checkProgress.RunAsync("AccountTokenActionTests.RunAsync", () => AccountTokenActionTests.RunAsync(application,checks));
         await checkProgress.RunAsync("SettingsProvenanceTests.RunAsync", () => SettingsProvenanceTests.RunAsync(application,checks));
+        await checkProgress.RunAsync("LogCompletenessTests.RunAsync", () => LogCompletenessTests.RunAsync(application,checks));
+        await checkProgress.RunAsync("AccountCompletenessTests.RunAsync", () => AccountCompletenessTests.RunAsync(application,checks));
         await checkProgress.RunAsync("SettingsGeometryTests.RunAsync", () => SettingsGeometryTests.RunAsync(application,checks));
         await checkProgress.RunAsync("SettingsSidebarTests.RunAsync", () => SettingsSidebarTests.RunAsync(application,checks));
         await checkProgress.RunAsync("SettingsSidebarPublicationTests.RunAsync", () => SettingsSidebarPublicationTests.RunAsync(application,checks));

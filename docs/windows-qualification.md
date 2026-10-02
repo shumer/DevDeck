@@ -1,6 +1,60 @@
-# Windows qualification — 2026-10-02
+# Windows qualification — 2026-10-03
 
-Current SET-08 checkpoint: Preview78356/package9e1090ab67b94081853edfd12e72554e is qualified and
+Current scoped completeness checkpoint: Preview118080/package781a6f1f941948a88d79463178da0fb8 is
+qualified and active for the log/account/Inbox fixes in
+[ADR0045](adr/0045-windows-completeness-logs-accounts-inbox.md). Most suite observations were collected
+on2026-10-02 UTC; final activation verification was confirmed on the new local day. This is a
+development checkpoint, not full Mac parity or a Windows release. SET-08/ACC-03/provider history
+below remains valid historical evidence.
+
+| Completeness evidence | Actual result and limit |
+| --- | --- |
+| Same-source publisher | exit0/21.19s within300s; frozen481 inputs/package identity |
+| Native components |logs3/0 exit0/2.88s and accounts3/0 exit0/8.83s, each within180s; formal premises not counted as passed groups |
+| Full native exact package |1593/0, exit0/212.97s within420s; prior two-write replacement assertion retained |
+| Installer exact package |8/0, exit0/25.40s within180s; identical manifest/owned fixture, no wrapper restoration |
+| Real read-only integration |7local+2remote, exit0/12.62s within180s; checkoutCommandsInvoked/inboxReadMutationInvoked/powerOffLifecycleInvoked=false |
+| Synthetic artwork |372 completed six-language scenes, exit0/400.17s within1200s outer/30s per child; eight EN/RU frames visually reviewed, not all372 |
+| Explicitly reused Core |focused4/full226 original exit0/0.33s/61.01s within60/420s;70 Core/Test/locale inputs identical, not rerun |
+| Explicitly reused worker |focused3/full382 original exit0/5.75s/2.94s within180/240s;208 shared/worker/portable/package inputs identical, release/archive execution reused |
+| New worker runtime |ADE5/F683 generic16+Arc4+metadata5=25, exit0/19.98s within420s in Ubuntu24.04/Debian; original settings/backup/runtime retained |
+| New owned Git |ordinary30/0 exit0/6.68s and fake-local promisor60/0 exit0/6.62s, each within420s; no user repository/global config/network mutation or general offline guarantee |
+| Activation/preservation |78356→118080, updater exit0/120.10s and corrected-datetime verifier exit0/113.49s, each within180s/no timeout. Nine0x80080 HWNDs and all card/ID/XY/compact/raw scope/account/Seen/preferences/distributions/configuration/shortcut/full backup/defaults/startup preserved; absent geometry omitted; exactly two admitted RuntimeDirectory transitions to ADE5, old D9 intact, singleton0/old proxies0 |
+| Mac/spec |Fresh source guards exit0:119 frozen files/active Mac graph and140 unique IDs/204 references; no native Mac build/UI claim |
+
+Final481-file source snapshot SHA256
+`FB2862E9CF6458662CC17C04922CCC608F530F1328DE0AFCC732F3FE358756DA`, App
+`F27D8B58D538CC64CB385984AF7F7E8EB7A25B33E2DD6A7E519CF80402732AB2` and manifest
+`A0A538E7A4348AF41DD87E54F5BB56B8ECB6E5DB4112360FF2D9D8E5BA283278` bind the current packaged gates.
+Worker archive `ADE5D13DCC1233431F4B075820A2A67F2B585EF56E9A4D41CDF8E3A922FB2236` and binary
+`F6839158CB8ADA40B140B5FE09FB2BAC127FF3E075EAEB5765ECF199D4F73386` replace the selected runtime routes;
+old D9 files remain. The older null-token wire6 receipt was not requalified for this new archive.
+
+Nine retained behavioral failures have meaningful green counterparts: three log and three account
+old-body Windows cases, two worker bulk cases and the normalized replacement→stored-check case.
+The first8854 full run exited1/35.84s and caught a replacement regression; the original two-write
+assertion was preserved. Normalization-only c11fa4 follow-up exited1/1.93s before the guarded field
+sync. These are retained failure history, not nine additional passed component groups. An initial
+activation guard rejected a mismatched proof schema before stopping anything; the first verifier
+then rejected automatically parsed datetime input. Corrected helpers used the existing distinct
+EOF proofs and exact ISO strings. Their failed receipts remain; no product/source change was
+needed for these helper defects and the completed verifier confirms the current owner.
+
+The real read-only probe found seven stopped local cards, two Arc editor origins and five DDEV
+version lines. Phone NotRunning is honest unavailable state, not phone reachability. PR loaded
+five rows without failures; Inbox retained fourteen rows and a typed forbidden account failure.
+GitLab was unconfigured. No live notification mutation or complete account-permission acceptance
+is inferred. Components use owned fake IO; actual configured integration is read-only. Full Core
+separately writes and finally deletes a UUID-owned synthetic native Windows vault entry.
+
+Before these fixes, the140-ID source audit at973b564 classified58 implemented,25 adapted,46 partial,
+9 missing,1 internal and1 planned. This historical triage is not a passed-feature tally. Remaining
+notification/settings, typed Inbox outcomes, display/summon/app branding/updater implementation,
+native Mac/x64/live permissions/browser/phone/physical input/accessibility/Shell/signing/clean-machine
+gates keep fullParityConfirmed=false and releaseQualified=false. The private reviewer handoff and
+qualification helpers remain uncommitted.
+
+Historical SET-08 checkpoint: Preview78356/package9e1090ab67b94081853edfd12e72554e was qualified and
 active for the Windows running-copy provenance adaptation. General shows immutable startup
 informational/assembly version, App-module MVID and separate process/module locations. MVID is
 neither whole-package identity nor release trust; native Mac and full migration remain unqualified.
@@ -127,7 +181,7 @@ as do provenance/display/summon/updater/native Mac/x64/phone/shell/signing/clean
 and full migration gates. This unsigned development Preview remains `releaseQualified=false`.
 See [ADR0042](adr/0042-windows-account-provider-applicability.md).
 
-Historical2026-10-01 checkpoint follows; these older counts/PIDs do not replace the current SET-08 receipt.
+Historical2026-10-01 checkpoint follows; these older counts/PIDs do not replace the current completeness receipt.
 
 Latest complete-contract/tray checkpoint: Core65/0, native UI437/0, installer8/0 and read-only
 seven-local/two-remote integration exit0. The new49 native checks cover branded glyph pixels in

@@ -22,6 +22,11 @@ uses the current address/browser/profile; custom GitHub API endpoints ask for an
 token page. Checking a saved token keeps the replacement draft and metadata errors, using the
 exact committed account and configured worker route. These local actions are qualified in the
 development Preview; live provider permissions and browser identity remain external gates.
+The current Windows development checkpoint fixes log Follow and current-target feedback,
+quiet account edits with legacy endpoint slashes, maximum-length account verification IDs and
+bounded Inbox read-rest processing. Its locally qualified subset is active; the full migration
+remains incomplete. See [ADR0045](docs/adr/0045-windows-completeness-logs-accounts-inbox.md) and
+[qualification](docs/windows-qualification.md) for actual results and remaining gates.
 The tray's Cards section and Settings/Cards list every remote card, with local projects grouped in
 the tray. Verified GitHub account setup shows Pull requests and Inbox for all accounts; Actions
 starts hidden. GitLab setup shows Merge requests. Existing account-only settings acquire these
@@ -252,7 +257,8 @@ preserved, with absent geometry still omitted and no old singleton or worker pro
 spec140/204 remain intact; worker379/runtime16/Arc4/metadata5/Git30+60 evidence is reused by exact hash.
 Saved-token checks use an isolated exact-route client and preserve autosave errors and attention;
 late identity/password/owner changes cannot publish a result. The older nonempty-replacement
-maximum-ID namespace and slash-normalizing metadata limitations remain. This is an unsigned
+maximum-ID namespace and slash-normalizing metadata limitations remained at that checkpoint;
+the later [ADR0045](docs/adr/0045-windows-completeness-logs-accounts-inbox.md) closes those narrow paths. This is an unsigned
 development Preview with releaseQualified=false; no full migration or live provider/browser proof.
 See [ADR0043](docs/adr/0043-windows-account-token-actions.md) and the
 [qualification record](docs/windows-qualification.md).
@@ -264,7 +270,7 @@ Hosted execution can show a dotnet executable and a different App DLL. Newer dis
 not replace the startup record, and only the admitted original informational version reaches
 CheckNow; an assembly-version display fallback never becomes updater input.
 
-The current SET-08 adaptation is qualified and active in Preview78356/package
+The historical SET-08 adaptation was qualified and active in Preview78356/package
 9e1090ab67b94081853edfd12e72554e: Core focused4/full226, provenance component16/0, fullnative1587/0,
 installer8/0 and read-only7local+2remote pass. Completed372 six-language synthetic scenes include30
 provenance scenes; eight English/Russian frames were visually reviewed. The verified same-package

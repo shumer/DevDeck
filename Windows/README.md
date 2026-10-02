@@ -616,7 +616,7 @@ worker379/runtime16/Arc4/metadata5/Git30+60 are reused by exact hash.
 The30 native groups use owned stores, fake credentials/openers/verifiers and one owned fake child
 through the actual worker manager; they do not qualify real accounts, WSL API requests or browser
 identity. The existing nonempty replacement's maximum128-byte account-ID namespace limitation and
-legacy slash-bound metadata-save limitation remain; stored checks preserve the exact saved slash
+legacy slash-bound metadata-save limitation remained at that checkpoint; stored checks preserve the exact saved slash
 and use a bounded fixed verification namespace. Native Mac/x64/live permissions/browser/phone/
 display/shell/signing/clean-machine and full migration gates stay open. Expanded SET-08 provenance
 was absent at this ACC-03 checkpoint; the later Windows adaptation follows.
@@ -641,7 +641,7 @@ disables the check even when an assembly-version fallback is visible. No automat
 occurs on arrival. Mac marketing/build-counter, translocation and update-install behavior remain
 separate adaptations or external gates.
 
-Current Preview78356/package9e1090ab67b94081853edfd12e72554e is qualified and active: Core focused4/
+Historical SET-08 Preview78356/package9e1090ab67b94081853edfd12e72554e was qualified and active: Core focused4/
 full226, provenance16/0 in11.30s, fullnative1587/0 in208.14s, installer8/0 in24.08s and read-only
 7local+2remote in11.88s pass on the correlated final App/manifest. Completed372 synthetic scenes
 include30 provenance scenes across six languages; eight English/Russian frames were inspected.
@@ -655,6 +655,44 @@ project integration is actual read-only configured project/provider work. The fu
 separately cleans up its UUID-owned synthetic real vault entry. None proves live identity,
 provider/project mutations or native Mac qualification.
 See [ADR0044](../docs/adr/0044-windows-running-build-provenance.md) and
+[qualification](../docs/windows-qualification.md); releaseQualified=false.
+
+## Completeness fixes — 2026-10-03
+
+Current Preview118080/package781a6f1f941948a88d79463178da0fb8 is qualified and active for this
+scoped development batch. Programmatic log updates retain Follow; manual scroll/search retain
+their intentional Follow behavior. Header/context log state follows the retained window, and
+late responses/errors for an older project reference cannot repaint its replacement. Hiding a
+widget preserves independently opened logs; hiding/minimizing the log stops automatic reads.
+
+Quiet metadata edits preserve an unchanged exact saved GitHub/GitLab endpoint and credential
+target, including legacy trailing slashes. Explicit nonempty token replacement keeps normalization
+and verify→write→commit→old-target cleanup. Its guarded committed endpoint echo enables the next
+saved-token check without creating another dirty/autosave edit or overwriting a newer draft.
+Literal verification cardID `verify` admits128-byte ASCII/multibyte account IDs. These fixes
+supersede the narrow ID/slash limitations recorded at the historical ACC-03 checkpoint above.
+
+Worker Inbox thread/read-rest processing now uses the shared replenishing six-request bulk helper;
+individual failures do not omit later admitted targets, and completion reports the aggregate
+failure. Cancellation admission remains before underlying HTTP. Protocol1 and the existing error
+schema remain; per-thread physical outcomes/optimistic-mask refinements are separate work.
+
+Six native component groups, fullnative1593, installer8, read-only7local+2remote and372 fresh
+six-language synthetic scenes pass on the same App/manifest; eight EN/RU scenes were visually
+reviewed. Core226 and worker382 are explicitly reused through70/208 identical inputs. New ADE5/F683
+runtime25 and owned Git30+promisor60 pass in Ubuntu24.04/Debian. Only78356 was replaced; nine
+0x80080 HWNDs, IDs/XY/compact/raw accounts/scopes/Seen/preferences/distributions/configuration/
+shortcut/full backup/defaults/startup and absent geometry are preserved, with exactly two admitted
+RuntimeDirectory transitions to the new hash-addressed worker. Old D9 remains intact; singleton0
+and old worker proxies0. No complete Windows release or full Mac parity is claimed.
+
+The real read-only probe retained an Inbox forbidden-account failure; GitLab was unconfigured.
+Stopped local sites reported Phone NotRunning, so phone reachability is unverified. Component
+fixtures use owned fake dependencies; real configured integration is read-only, while full Core
+separately cleans up its UUID-owned synthetic native vault entry. Settings/notification behavior,
+display/summon/app branding/updater implementation and native Mac/x64/live permissions/browser/
+phone/physical input/accessibility/Shell/signing/clean-machine gates remain open. See
+[ADR0045](../docs/adr/0045-windows-completeness-logs-accounts-inbox.md) and
 [qualification](../docs/windows-qualification.md); releaseQualified=false.
 
 ## Remaining release work
