@@ -17,6 +17,11 @@ compact controls and muted colours. The tray groups shared account/project/revie
 notifications are opt-in, quiet on the first check and configurable per account/project.
 Known WSL, project-tool, account and credential errors include translated guidance in six languages.
 Windows settings have a searchable sidebar and contextual forms with configuration autosave.
+Account settings offer provider token-creation pages and a separate saved-token check. Creation
+uses the current address/browser/profile; custom GitHub API endpoints ask for an explicit HTTPS
+token page. Checking a saved token keeps the replacement draft and metadata errors, using the
+exact committed account and configured worker route. These local actions are qualified in the
+development Preview; live provider permissions and browser identity remain external gates.
 The tray's Cards section and Settings/Cards list every remote card, with local projects grouped in
 the tray. Verified GitHub account setup shows Pull requests and Inbox for all accounts; Actions
 starts hidden. GitLab setup shows Merge requests. Existing account-only settings acquire these
@@ -211,8 +216,9 @@ Mac119/product graph/spec140/204 remain intact. Original reopen/closing and Arc-
 failures remain retained. The existing footer passed actual bounds and stays unchanged.
 
 SET-02 remains partial for OS sidebar metrics and physical display acceptance; size stores no XY or
-monitor identity. Token creation and empty-field verification of an existing token remain missing
-local functions. Account browser Test already reads the current draft at click; live signed-in
+monitor identity. At this SET-02 checkpoint, token creation and empty-field verification of an
+existing token were missing; the later ACC-03 checkpoint below qualifies those local actions.
+Account browser Test already reads the current draft at click; live signed-in
 identity is a separate gate. Fresh/missing settings default120 seconds, legacy omitted intervals
 retain60; Actions repositories are per-account, with Mac's deck-wide/Actions-off-disabled watchlist
 still partial. SET-08, updater install/notes, full summon and native Mac/x64/live identity/phone/
@@ -226,14 +232,29 @@ changes, while outgoing GitLab credentials project empty unused scopes. GitHub s
 arrays until the user edits a scope; queued field revisions preserve later edits and invalid active
 scope still fails closed. Browser Test uses the current endpoint/browser/profile draft.
 
-The provider subset is qualified and active in Preview39204/package
+The historical provider checkpoint was qualified and activated in Preview39204/package
 99b3f7da4605432e9bba23fcf965ce5d: actual Core focused4/full222, native1541/0 exit0/170.35s, installer8/0
 exit0/23.64s and read-only7local+2remote exit0/9.62s. Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. Provider26 fake-body groups
 are included in full1541; unchanged-worker wire6 proves null-token admission only. Worker379/runtime
 16/Arc4/metadata5/ownedGit30+promisor60 are reused. Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0.
-Mac119/product graph/spec140/204 remain intact. Token creation/stored-empty Verify, live identities,
-broader settings/display/shell/native Mac/x64/signing and full migration gates remain open.
+Mac119/product graph/spec140/204 remained intact. Token creation/stored-empty Verify were separate
+local gaps at that checkpoint; live identities and broader settings/display/shell/native Mac/x64/
+signing/full migration gates remain open.
 See [ADR0042](docs/adr/0042-windows-account-provider-applicability.md).
+
+The current ACC-03 checkpoint is qualified and active in Preview68312/package
+04928307578842e6b1c3337fdf206cf0: Core focused4/full226, token component30/0, fullnative1571/0,
+installer8/0, read-only7local+2remote and342 six-language synthetic views including30 token scenes
+pass. Only recorded39204 was replaced; all nine0x80080 widgets and prior settings/IDs/positions/
+compact/scopes/accounts/preferences/distributions/configuration/shortcut/defaults/startup were
+preserved, with absent geometry still omitted and no old singleton or worker proxies. Mac119/graph/
+spec140/204 remain intact; worker379/runtime16/Arc4/metadata5/Git30+60 evidence is reused by exact hash.
+Saved-token checks use an isolated exact-route client and preserve autosave errors and attention;
+late identity/password/owner changes cannot publish a result. The older nonempty-replacement
+maximum-ID namespace and slash-normalizing metadata limitations remain. This is an unsigned
+development Preview with releaseQualified=false; no full migration or live provider/browser proof.
+See [ADR0043](docs/adr/0043-windows-account-token-actions.md) and the
+[qualification record](docs/windows-qualification.md).
 
 Pull requests across every account a token can see - yours and the ones waiting on your
 review - worst first:

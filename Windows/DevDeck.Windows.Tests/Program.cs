@@ -26,7 +26,7 @@ if (args.Contains("--live-remote"))
         var accounts = settings.AccountList.Where(account => account.Enabled && account.Provider == provider).ToArray();
         if (accounts.Length == 0) { results.Add(new { kind, configured = false }); continue; }
         try {
-            var credentials = accounts.Select(account => new RemoteCredential(account.Id,account.Label,account.Endpoint,account.Organizations,account.Repositories,vault.Read(account))).ToArray();
+            var credentials = accounts.Select(account => RemoteAccountApplicability.Credential(account,vault.Read(account))).ToArray();
             var response = await worker.CallAsync("remote.snapshot",timeout:TimeSpan.FromMinutes(3),remote:new("owned.read-only."+kind,kind,credentials));
             var snapshot = response.Remote ?? throw new WorkerException("remoteMissing","Remote snapshot missing.");
             results.Add(new { kind, configured = true, success = true, accounts = accounts.Length, total = snapshot.Total, rows = snapshot.Rows.Length,
@@ -149,6 +149,12 @@ if (args.Contains("--account-provider-core-only")) {
     return failed == 0 ? 0 : 1;
 }
 
+if (args.Contains("--account-token-core-only")) {
+    await AccountTokenChecks.RunAsync(Check);
+    Console.WriteLine($"Windows checks: {passed} passed, {failed} failed.");
+    return failed == 0 ? 0 : 1;
+}
+
 await Check("shared attention equal-time titles use Mac natural numbers while priority dedupe and case ties remain stable", () => {
     var previous = System.Globalization.CultureInfo.CurrentCulture;
     try {
@@ -189,6 +195,7 @@ await SettingsAtomicChecks.RunAsync(Check);
 await SettingsSidebarChecks.RunAsync(Check);
 await SettingsGeometryChecks.RunAsync(Check);
 await AccountProviderChecks.RunAsync(Check);
+await AccountTokenChecks.RunAsync(Check);
 
 await Check("catalog project presentation uses Arc DDEV plain kind order and natural title numbers", () => {
     var cards = new[] {

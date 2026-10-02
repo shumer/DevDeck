@@ -22,6 +22,7 @@ internal sealed class SettingsWindow : Window
     private readonly Dictionary<string,SettingsSidebarRow> sidebarRows = new(StringComparer.Ordinal);
     private readonly Dictionary<string,bool> tokenAvailability = new(StringComparer.Ordinal);
     private readonly Func<RemoteAccountSettings,bool> tokenAvailable;
+    private readonly Func<AccountFormBinding,AccountSettingsForm>? accountFormFactory;
     private readonly DeckController controller;
     private readonly bool live;
     private readonly Func<SettingsRemovalRequest,bool>? confirmation;
@@ -41,16 +42,63 @@ internal sealed class SettingsWindow : Window
     private Button? saveArrangement, applyArrangement, forgetArrangement;
     private bool arrangementAction;
     private bool changing, allowingClose, sidebarClosed;
+    private long tokenOwnerGeneration;
+    private int tokenOwnerTransitions;
     private string selected = "general";
     private sealed record Entry(string ID, string Title, string Detail, bool Heading = false, bool Hint = false,
         string Kind = "", bool Dimmed = false, Brush? Dot = null, string Module = "");
     private sealed record Choice(string ID, string Title) { public override string ToString() => Title; }
+    internal sealed record AccountFormBinding(DeckController Controller, SettingsWindow Owner, bool Live,
+        RemoteAccountSettings? Account, string NewProvider, Func<SettingsRemovalRequest,bool>? Confirmation,
+        Action<string> Changed, Action<string> CredentialChanged, bool TokenPresent,
+        Func<bool> OwnerCurrent, Func<long> OwnerGeneration, Action<RemoteAccountSettings,bool> PresenceChanged);
     internal ScrollViewer Page => page;
     internal string SelectedPage => selected;
     internal ListBox Navigation => navigation;
     internal TextBox Search => search;
     internal bool GeometryOwnerClosed => sidebarClosed;
     internal bool GeometryPersistenceEnabled => live;
+    private bool IsTokenOwnerCurrent(AccountSettingsForm? candidate) =>
+        Dispatcher.CheckAccess() && !Dispatcher.HasShutdownStarted && !sidebarClosed && tokenOwnerTransitions == 0
+        && candidate is not null && !candidate.FormDisposed && ReferenceEquals(form, candidate)
+        && ReferenceEquals(page.Content, candidate) && controller.IsSettingsOwnerCurrent(this);
+    private IDisposable BeginTokenOwnerTransition()
+    {
+        tokenOwnerGeneration++; tokenOwnerTransitions++;
+        return new TokenOwnerTransition(this);
+    }
+    private sealed class TokenOwnerTransition(SettingsWindow owner) : IDisposable
+    {
+        private SettingsWindow? current = owner;
+        public void Dispose()
+        {
+            if (current is not { } remaining) return;
+            current = null; remaining.tokenOwnerTransitions--;
+        }
+    }
+    private void PublishTokenPresence(AccountSettingsForm? candidate, RemoteAccountSettings account, bool present, long generation)
+    {
+        if (!Dispatcher.CheckAccess()) {
+            Dispatcher.BeginInvoke(new Action(() => PublishTokenPresence(candidate, account, present, generation)));
+            return;
+        }
+        if (generation != tokenOwnerGeneration || !IsTokenOwnerCurrent(candidate)
+            || candidate!.CommittedTokenAccount is not { } committed || committed.Id != account.Id
+            || committed.Provider != account.Provider || committed.Endpoint != account.Endpoint
+            || committed.CredentialTarget != account.CredentialTarget
+            || controller.Settings.AccountList.FirstOrDefault(current => current.Id == account.Id)?.CredentialTarget != account.CredentialTarget) return;
+        tokenAvailability[account.CredentialTarget] = present;
+        candidate!.ReconcileTokenPresence(present);
+        ReloadNavigation();
+    }
+    private void ReconcileCommittedTokenPresence(AccountSettingsForm? candidate, string accountID)
+    {
+        if (!IsTokenOwnerCurrent(candidate)) return;
+        var account = controller.Settings.AccountList.FirstOrDefault(current => current.Id == accountID);
+        if (account is not null && candidate!.CommittedTokenAccount?.CredentialTarget == account.CredentialTarget
+            && tokenAvailability.TryGetValue(account.CredentialTarget, out var present))
+            candidate!.ReconcileTokenPresence(present);
+    }
     internal void ReconcileDeckModes()
     {
         if (selected != "deck") return;
@@ -101,6 +149,11 @@ internal sealed class SettingsWindow : Window
     }
     internal async Task<bool> CloseSettingsAsync()
     {
+        using var transition = BeginTokenOwnerTransition();
+        return await CloseSettingsCoreAsync();
+    }
+    private async Task<bool> CloseSettingsCoreAsync()
+    {
         resizeEntry = null; geometryGeneration++;
         if (form is not null) await form.FlushAsync();
         if (form?.HasUncommittedChanges == true) { IsEnabled = true; return false; }
@@ -109,9 +162,11 @@ internal sealed class SettingsWindow : Window
     }
 
     internal SettingsWindow(DeckController controller, bool live = true, Func<SettingsRemovalRequest,bool>? confirmation = null,
-        Func<RemoteAccountSettings,bool>? tokenAvailable = null)
+        Func<RemoteAccountSettings,bool>? tokenAvailable = null,
+        Func<AccountFormBinding,AccountSettingsForm>? accountFormFactory = null)
     {
         this.controller = controller; this.live = live; this.confirmation = confirmation;
+        this.accountFormFactory = accountFormFactory;
         this.tokenAvailable = tokenAvailable ?? (live ? controller.Tokens.HasToken : _ => false);
         Title = Text.L("settings.window.title");
         var workArea = GeometryWorkArea();
@@ -178,10 +233,11 @@ internal sealed class SettingsWindow : Window
         Closing += async (_, args) => {
             resizeEntry = null; geometryGeneration++;
             if (allowingClose) return;
+            using var transition = BeginTokenOwnerTransition();
             args.Cancel = true; IsEnabled = false;
             // Finish the native Closing callback before asking WPF to close again after autosave.
             await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
-            await CloseSettingsAsync();
+            await CloseSettingsCoreAsync();
         };
         SourceInitialized += (_, _) => {
             geometrySource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
@@ -190,6 +246,7 @@ internal sealed class SettingsWindow : Window
         StateChanged += (_, _) => { resizeEntry = null; geometryGeneration++; };
         Closed += (_, _) => {
             sidebarClosed = true; resizeEntry = null; geometryGeneration++;
+            tokenOwnerGeneration++;
             geometrySource?.RemoveHook(GeometryHook); geometrySource = null;
             form?.Dispose(); tokenDrafts.Clear(); tokenAvailability.Clear(); sidebarRows.Clear();
         };
@@ -268,6 +325,7 @@ internal sealed class SettingsWindow : Window
     internal async Task SelectPageAsync(string id)
     {
         if (changing) return;
+        using var transition = BeginTokenOwnerTransition();
         changing = true;
         try {
             if (form is not null) await form.FlushAsync();
@@ -433,6 +491,7 @@ internal sealed class SettingsWindow : Window
     }
     private void ShowPage()
     {
+        tokenOwnerGeneration++;
         builtinVisibility.Clear(); customVisibility.Clear();
         arrangementName = null; arrangements = null; saveArrangement = null; applyArrangement = null; forgetArrangement = null;
         deckFloating = null; deckLocked = null; wifVisibility = null; wifCompact = null;
@@ -440,14 +499,28 @@ internal sealed class SettingsWindow : Window
             form = new ProjectSettingsForm(controller, controller.Settings.Cards.FirstOrDefault(card => "project:" + card.Project.Id == selected), live, id => { selected = id.Length == 0 ? RemovalFallback(selected) : "project:" + id; ReloadNavigation(); if (id.Length == 0) { form?.Dispose(); form = null; ShowPage(); } }, confirmation: confirmation); page.Content = form;
         } else if (selected.StartsWith("account:", StringComparison.Ordinal) || selected.StartsWith("new-account", StringComparison.Ordinal)) {
             var draftKey = selected;
-            var accountForm = new AccountSettingsForm(controller, controller.Settings.AccountList.FirstOrDefault(account => "account:" + account.Id == selected), live, id => {
+            var original = controller.Settings.AccountList.FirstOrDefault(account => "account:" + account.Id == selected);
+            AccountSettingsForm? accountForm = null;
+            var binding = new AccountFormBinding(controller, this, live, original,
+                selected == "new-account:gitlab" ? "gitlab" : "github", confirmation, id => {
                 if (id.Length == 0 || draftKey.StartsWith("new-account", StringComparison.Ordinal)) tokenDrafts.Remove(draftKey);
                 if (id.Length > 0 && controller.Settings.AccountList.FirstOrDefault(account => account.Id == id) is { } committed
                     && !tokenAvailability.ContainsKey(committed.CredentialTarget)) ReconcileAccountSidebar(id, refreshAvailability: true);
+                ReconcileCommittedTokenPresence(accountForm, id);
                 selected = id.Length == 0 ? RemovalFallback(selected) : "account:" + id; ReloadNavigation();
                 if (id.Length == 0) { form?.Dispose(); form = null; ShowPage(); }
-            }, selected == "new-account:gitlab" ? "gitlab" : "github", confirmation,
-                credentialChanged: id => ReconcileAccountSidebar(id, refreshAvailability: true));
+            }, id => {
+                    ReconcileAccountSidebar(id, refreshAvailability: true);
+                    ReconcileCommittedTokenPresence(accountForm, id);
+                },
+                original is not null && tokenAvailability.TryGetValue(original.CredentialTarget, out var cachedPresent) && cachedPresent,
+                () => IsTokenOwnerCurrent(accountForm), () => tokenOwnerGeneration,
+                (account, publishedPresent) => PublishTokenPresence(accountForm, account, publishedPresent, tokenOwnerGeneration));
+            accountForm = accountFormFactory is { } create ? create(binding) : new AccountSettingsForm(
+                binding.Controller, binding.Account, binding.Live, binding.Changed, binding.NewProvider, binding.Confirmation,
+                credentialChanged: binding.CredentialChanged, tokenPresent: binding.TokenPresent,
+                ownerCurrent: binding.OwnerCurrent, ownerGeneration: binding.OwnerGeneration,
+                storedPresenceChanged: binding.PresenceChanged);
             accountForm.TokenDraft = tokenDrafts.TryGetValue(draftKey, out var draft) ? draft : ""; form = accountForm; page.Content = form;
         } else page.Content = selected switch { "deck" => DeckPage(), "cards" => CardsPage(), "notifications" => NotificationSettingsWindow.CreateContent(controller), _ => GeneralPage() };
         page.ScrollToTop();

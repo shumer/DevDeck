@@ -11,15 +11,23 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (args.Contains("--account-token-fake-worker")) return AccountTokenActionTests.RunFakeWorker(args);
         string Option(string key, string fallback) => Array.IndexOf(args, key) is var index && index >= 0 && index + 1 < args.Length ? args[index + 1] : fallback;
         var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var path = Option("--settings", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DevDeck", "windows-settings.json"));
-        using var instance = args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--sample-render") || args.Contains("--tray-artwork") || args.Contains("--tray-attention-artwork") || args.Contains("--window-check") ? null : new SingleInstance(path);
+        using var instance = args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--sample-render") || args.Contains("--tray-artwork") || args.Contains("--tray-attention-artwork") || args.Contains("--window-check") ? null : new SingleInstance(path);
         if (instance is { Acquired: false }) return 0;
         application.Startup += async (_, _) =>
         {
             try
             {
+                if (args.Contains("--account-token-check")) {
+                    var checks = new System.Collections.Generic.List<object>();
+                    var scenario = Option("--account-token-case", "creation");
+                    await AccountTokenActionTests.RunAsync(application, checks, scenario == "all" ? null : scenario);
+                    File.WriteAllText(Option("--report", Path.Combine(Path.GetTempPath(), "devdeck-account-token-checks.json")), System.Text.Json.JsonSerializer.Serialize(new { passed = checks.Count, failed = 0, componentOnly = true, releaseQualified = false, checks }));
+                    application.Shutdown(); return;
+                }
                 if (args.Contains("--account-provider-check")) {
                     var checks = new System.Collections.Generic.List<object>();
                     var scenario=Option("--account-provider-case","form");
@@ -84,7 +92,10 @@ internal static class Program
                     var sample = SampleDeck.Controller(application);
                     Text.Use(Option("--language", "en"));
                     Window card;
-                    if (args.Contains("--sample-account-provider")) {
+                    if (args.Contains("--sample-account-token")) {
+                        card = await AccountTokenSamples.WindowAsync(application,Option("--sample-variant","github-present"));
+                    }
+                    else if (args.Contains("--sample-account-provider")) {
                         card = await AccountProviderSamples.WindowAsync(application,Option("--sample-variant","existing-github"));
                     }
                     else if (args.Contains("--sample-settings-geometry")) {
@@ -192,10 +203,10 @@ internal static class Program
             }
             catch (Exception error)
             {
-                if (args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--window-check") || args.Contains("--sample-render") || args.Contains("--tray-attention-artwork"))
+                if (args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--integration-check") || args.Contains("--window-check") || args.Contains("--sample-render") || args.Contains("--tray-attention-artwork"))
                 {
                     var report = Option("--report", Path.Combine(Path.GetTempPath(), "devdeck-windows-integration.json"));
-                    if (args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--window-check"))
+                    if (args.Contains("--account-token-check") || args.Contains("--account-provider-check") || args.Contains("--settings-geometry-check") || args.Contains("--sidebar-check") || args.Contains("--tray-actions-check") || args.Contains("--window-check"))
                         await File.WriteAllTextAsync(report, System.Text.Json.JsonSerializer.Serialize(new { error = error.Message, exceptionType = error.GetType().FullName, hresult = error.HResult, stackTrace = error.StackTrace, releaseQualified = false }));
                     else
                         await File.WriteAllTextAsync(report, System.Text.Json.JsonSerializer.Serialize(new { error = error.Message, releaseQualified = false }));

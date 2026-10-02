@@ -20,7 +20,9 @@ internal abstract class SettingsForm : UserControl, IDisposable
     private readonly SemaphoreSlim saveGate = new(1,1);
     private bool dirty, disposed, saveFailed;
     private long editRevision;
+    private int autosavePauses;
     protected bool IsDisposed => disposed;
+    internal bool FormDisposed => disposed;
     internal bool HasUncommittedChanges => dirty || saveFailed;
     protected bool Autosaves;
     protected SettingsForm(DeckController controller, bool live)
@@ -28,15 +30,44 @@ internal abstract class SettingsForm : UserControl, IDisposable
         Controller = controller; Live = live;
         debounce.Tick += async (_, _) => { debounce.Stop(); await FlushAsync(); };
     }
-    protected void Changed() { editRevision++; if (Live && Autosaves && !disposed) { dirty = true; debounce.Stop(); debounce.Start(); } }
+    protected void Changed() { editRevision++; if (Live && Autosaves && !disposed) { dirty = true; debounce.Stop(); if (autosavePauses == 0) debounce.Start(); } }
     protected void Watch(TextBox field) => field.TextChanged += (_, _) => Changed();
     protected void Watch(ComboBox field) => field.SelectionChanged += (_, _) => Changed();
     protected void Watch(CheckBox field) => field.Click += (_, _) => Changed();
     public async Task FlushAsync()
     {
-        debounce.Stop(); await saveGate.WaitAsync();
-        try { if(saveFailed&&!disposed)dirty=true; while (dirty && !disposed) { dirty = false; await SaveMetadataQuietlyAsync(); } }
+        debounce.Stop(); if (autosavePauses > 0 || disposed) return;
+        await saveGate.WaitAsync();
+        try { if (autosavePauses > 0) return; if(saveFailed&&!disposed)dirty=true; while (dirty && !disposed && autosavePauses == 0) { dirty = false; await SaveMetadataQuietlyAsync(); } }
         finally { saveGate.Release(); }
+    }
+    // Stop both new and already-queued autosaves before waiting for an admitted save
+    // to finish. The lease never holds saveGate across an external read-only action.
+    protected async Task<IDisposable> PauseAutosaveAsync(CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        if (disposed) throw new OperationCanceledException(cancellation);
+        autosavePauses++; debounce.Stop();
+        var lease = new AutosavePause(this);
+        try {
+            await saveGate.WaitAsync(cancellation);
+            saveGate.Release();
+            cancellation.ThrowIfCancellationRequested();
+            if (disposed) throw new OperationCanceledException(cancellation);
+            return lease;
+        } catch { lease.Dispose(); throw; }
+    }
+    private void ResumeAutosave()
+    {
+        autosavePauses--;
+        if (autosavePauses == 0 && !disposed && Live && Autosaves && dirty) {
+            debounce.Stop(); debounce.Start();
+        }
+    }
+    private sealed class AutosavePause(SettingsForm owner) : IDisposable
+    {
+        private SettingsForm? current = owner;
+        public void Dispose() { var retained = current; current = null; retained?.ResumeAutosave(); }
     }
     private async Task SaveMetadataQuietlyAsync()
     {

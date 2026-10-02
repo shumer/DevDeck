@@ -148,9 +148,9 @@ Native Linux/Windows x64 and clean-machine qualification remain separate gates.
   https://www.swift.org/install/linux/ubuntu/24_04/
 - .NET 10 LTS support policy: https://dotnet.microsoft.com/en-us/platform/support/policy
 
-## Account provider applicability checkpoint — 2026-10-02
+## Historical account provider applicability checkpoint — 2026-10-02
 
-The Windows provider subset is qualified and active in Preview39204/package
+The Windows provider subset was qualified and activated in Preview39204/package
 99b3f7da4605432e9bba23fcf965ce5d. GitLab instance Address/help replace unsupported GitHub scope/run controls;
 Notifications exposes a not-applicable dash. Retained draft switching and first-commit provider lock
 preserve identity. Applicable per-request projection sends empty unused GL scopes without rewriting
@@ -162,10 +162,38 @@ Final Core focused4/full222, native1541/0 exit0/170.35s, installer8/0 exit0/23.6
 full suite; wire6 checks unchanged-worker null-token admission only. Worker379/runtime16/Arc4/
 metadata5/Git30+60 are reused. Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0. Mac119/active graph/spec140/204 stay intact.
 
-This does not close missing provider-token creation/stored-empty Verify, live API/credential/browser
-identity, deck-wide Actions watchlist, provenance/display/summon/updater or required Mac/x64/manual/
-phone/shell/signing/clean-machine release gates. Earlier failed candidate runs remain retained.
+Provider-token creation/stored-empty Verify were separate missing local functions at this
+checkpoint; the subsequent ACC-03 subset below qualifies them. Live API/credential/browser identity,
+deck-wide Actions watchlist, provenance/display/summon/updater and required Mac/x64/manual/phone/
+shell/signing/clean-machine release gates remain open. Earlier failed candidate runs are retained.
 See [ADR0042](adr/0042-windows-account-provider-applicability.md).
+
+## Account token actions checkpoint — 2026-10-02
+
+The qualified ACC-03 subset adds current-provider creation URLs, a blank explicit Enterprise page
+prompt and read-only stored Verify/empty Return while retaining existing nonempty replacement
+writes. Exact committed credentials/full-route/form-epoch/replacement-revision guards and scoped
+autosave suspension keep token feedback separate from metadata errors, card polling and attention.
+GetExactAsync reuses only the same full configured route and replaces only a mismatched check
+client; legacy reuse is unchanged. Five lazy per-distribution slots now include distinct local and
+remote settingsChecks clients beside ordinary local/shared remote/checkout. No worker operation,
+schema/default or frozen Mac UI changes were required.
+
+Current Preview68312/package04928307578842e6b1c3337fdf206cf0 passed Core focused4/full226, component
+30/0 in32.83s, fullnative1571/0 in189.8s, installer8/0 in24.29s, read-only7local+2remote in12.09s
+and342 synthetic scenes including30 token scenes across six languages. Six new English/Russian
+scenes were visually reviewed. Only recorded39204 was replaced, preserving all nine0x80080 HWNDs,
+IDs/XY/compact/raw accounts/scopes/preferences/distributions/configuration/shortcut/full backup/
+defaults/startup; absent geometry stays omitted, singleton0/old proxies0. Mac119/graph/spec140/204
+pass; exact d9fc85/abd86a worker379/runtime16/Arc4/metadata5/Git30+60 evidence is reused.
+
+The component uses fake readers/verifiers/openers and one owned fake stdin/stdout worker through
+the real manager; no real provider mutation or browser identity is qualified. Older nonempty
+replacement maximum-ID namespace and slash-bound metadata limitations remain. Expanded SET-08
+provenance is still unimplemented; native Mac/x64/live identity/permissions/browser/phone/display/input/accessibility/
+shell/signing/clean-machine, updater/summon and full migration gates remain open.
+See [ADR0043](adr/0043-windows-account-token-actions.md) and [qualification](windows-qualification.md).
+This development Preview remains releaseQualified=false; M5/M7 and full migration are not complete.
 
 ## Release status
 

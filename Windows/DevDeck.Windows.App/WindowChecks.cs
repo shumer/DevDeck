@@ -31,6 +31,7 @@ internal static class WindowChecks
         var checks = new List<object>();
         using var checkProgress = new NativeCheckProgress(report, () => checks.Count);
         await checkProgress.RunAsync("AccountProviderTests.RunAsync", () => AccountProviderTests.RunAsync(application,checks));
+        await checkProgress.RunAsync("AccountTokenActionTests.RunAsync", () => AccountTokenActionTests.RunAsync(application,checks));
         await checkProgress.RunAsync("SettingsGeometryTests.RunAsync", () => SettingsGeometryTests.RunAsync(application,checks));
         await checkProgress.RunAsync("SettingsSidebarTests.RunAsync", () => SettingsSidebarTests.RunAsync(application,checks));
         await checkProgress.RunAsync("SettingsSidebarPublicationTests.RunAsync", () => SettingsSidebarPublicationTests.RunAsync(application,checks));

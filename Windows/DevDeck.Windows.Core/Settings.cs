@@ -211,10 +211,15 @@ public sealed class WorkerManager : IAsyncDisposable
 {
     private readonly Func<WorkerSettings, WorkerClient> create;
     private readonly Dictionary<(string Distribution, bool Remote), WorkerClient> workers = new();
+    private readonly Dictionary<(string Distribution, bool Remote), WorkerSettings> routes = new();
     private readonly SemaphoreSlim gate = new(1);
     public WorkerManager(Func<WorkerSettings, WorkerClient>? create = null) => this.create = create
         ?? (settings => new WorkerClient(settings.Distribution, WorkerClient.WslStart(settings.Distribution, settings.RuntimeDirectory, settings.Language)));
-    public async Task<WorkerClient> GetAsync(WorkerSettings settings, bool remote = false)
+    public Task<WorkerClient> GetAsync(WorkerSettings settings, bool remote = false) =>
+        GetCoreAsync(settings, remote, requireExactRoute: false);
+    public Task<WorkerClient> GetExactAsync(WorkerSettings settings, bool remote = false) =>
+        GetCoreAsync(settings, remote, requireExactRoute: true);
+    private async Task<WorkerClient> GetCoreAsync(WorkerSettings settings, bool remote, bool requireExactRoute)
     {
         await gate.WaitAsync().ConfigureAwait(false);
         try
@@ -222,14 +227,16 @@ public sealed class WorkerManager : IAsyncDisposable
             var key = (settings.Distribution, remote);
             if (workers.TryGetValue(key, out var worker))
             {
-                if (worker.IsConnected) return worker;
+                if (worker.IsConnected && (!requireExactRoute || routes.TryGetValue(key, out var route) && route == settings)) return worker;
                 workers.Remove(key);
+                routes.Remove(key);
                 await worker.DisposeAsync().ConfigureAwait(false);
             }
             worker = create(settings);
             try { await worker.CallAsync("hello").ConfigureAwait(false); }
             catch { await worker.DisposeAsync().ConfigureAwait(false); throw; }
             workers.Add(key, worker);
+            routes[key] = settings;
             return worker;
         }
         finally { gate.Release(); }
@@ -239,7 +246,10 @@ public sealed class WorkerManager : IAsyncDisposable
         await gate.WaitAsync().ConfigureAwait(false);
         try {
             foreach (var key in workers.Keys.Where(key => key.Distribution == distribution).ToArray())
-                if (workers.Remove(key, out var worker)) await worker.DisposeAsync().ConfigureAwait(false);
+                if (workers.Remove(key, out var worker)) {
+                    routes.Remove(key);
+                    await worker.DisposeAsync().ConfigureAwait(false);
+                }
         }
         finally { gate.Release(); }
     }
@@ -247,6 +257,6 @@ public sealed class WorkerManager : IAsyncDisposable
     {
         await gate.WaitAsync().ConfigureAwait(false);
         try { foreach (var worker in workers.Values) await worker.DisposeAsync().ConfigureAwait(false); workers.Clear(); }
-        finally { gate.Release(); }
+        finally { routes.Clear(); gate.Release(); }
     }
 }

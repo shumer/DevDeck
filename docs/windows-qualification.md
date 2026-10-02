@@ -1,7 +1,50 @@
 # Windows qualification — 2026-10-02
 
-Provider applicability checkpoint — 2026-10-02: Preview39204/package
-99b3f7da4605432e9bba23fcf965ce5d is qualified and active for this subset. The prior SET-02 package3779 was
+Current ACC-03 checkpoint: Preview68312/package04928307578842e6b1c3337fdf206cf0 is qualified and
+active for provider creation pages and separate/empty-input stored-token checks. Only the recorded
+provider owner39204 was replaced. Earlier provider/SET-02 checkpoints below remain historical valid
+evidence, not the current executable or a completed migration.
+
+| ACC-03 evidence | Actual result and limit |
+| --- | --- |
+| Core helper/full suite | Actual apphost focused4 exit0/0.37s and full226 exit0/59.84s; separate before/after artifact identity, not RID-package hash equality |
+| Token component |30/0, exit0/32.83s;12 six-language presentation/creation groups plus18 functional groups, using owned fake dependencies and one fake child through the actual manager |
+| Full native exact package |1571/0, exit0/189.8s, complete report within420s; no assertion/count relaxation |
+| Installer exact package |8/0, exit0/24.29s, identical before/after manifest, no wrapper restoration, identical owned installer fixture |
+| Read-only integration |7local+2remote, exit0/12.09s, exact inventory/isolated channels/shared cadence; checkoutCommandsInvoked, inboxReadMutationInvoked and powerOffLifecycleInvoked all false |
+| Synthetic artwork |342 completed fresh scenes, including30 token scenes in six languages, exit0/338.97s within1200s; final App/manifest unchanged. Six new English/Russian scenes visually reviewed |
+| Activation/preservation |39204→68312; all nine0x80080 HWNDs, IDs/XY/compact/raw accounts/scopes/preferences/distributions/original configuration/shortcut/full backup/defaults/startup preserved; absent geometry omitted, singleton0/old worker proxies0 |
+| Worker/runtime |Exact d9fc85 archive/abd86a binary baseline379/runtime16/Arc4/metadata5/ownedGit30+promisor60 reused, not newly rerun or rebuilt |
+| Mac/spec |Fresh guards:119 frozen files/active graph and140 features/204 references intact; no native Mac build/UI claim |
+
+Final473-file source snapshot SHA256
+`A34F5C43F307CA0A8431CC7EE3AB7FEE90B7DF471680C20DC3A5900863D92948`, App
+`2126D1557187A8094F25FC31A262839F4BBDCBFF6D91C73702190AB4223A0415` and manifest
+`8C3FB513177E66F10339706A53C7B2A0ED3190925D2DA8FBED58371E182A90D6` correlate the frozen candidate.
+The native/installer/read-only/render receipts refer to that exact package.
+
+Retained history includes the60.2s old-baseline harness timeout caused by a missing CLI catch route;
+it was not a missing-function proof. The corrected baseline captured three actual old-body reds,
+and an independent exact-route baseline caught stale worker reuse before GetExactAsync. A preceding
+component failed after2.87s because a new-account fixture had not selected its asserted browser/
+profile. Explicit selection/changed-ticket premises fixed only the fixture; all30 grouped assertions
+and counts remained, and every final gate used the newly frozen package. Older provider failures
+below remain separate historical evidence.
+
+Owned token checks use fake credential reads/writes, browser/API bodies and one fake worker child;
+they do not access real user accounts, WSL provider HTTP or a real browser. The full Windows Core
+suite separately writes/replaces/deletes a UUID-owned synthetic Credential Manager entry with
+finally cleanup. Read-only integration invokes no project lifecycle or provider/Inbox mutation.
+Five lazy ownership slots per distribution include separate local/remote settingsChecks clients;
+the new remote slot's exact-route bookkeeping is proven by the fake child, not live credentials.
+
+Live provider permissions/browser identity, old nonempty replacement maximum-ID namespace and
+slash-normalizing metadata limitations, SET-08/display/summon/updater/native Mac/x64/phone/physical
+input/accessibility/shell/signing/clean-machine/full migration remain open. No merge/release is
+qualified; releaseQualified=false. See [ADR0043](adr/0043-windows-account-token-actions.md).
+
+Historical provider applicability checkpoint — 2026-10-02: Preview39204/package
+99b3f7da4605432e9bba23fcf965ce5d was qualified and activated for this subset. The prior SET-02 package3779 was
 restored as owner6168 after an external reboot, then only that recorded owner was replaced.
 Earlier PID627264 and the dated matrix below are historical.
 
@@ -11,7 +54,7 @@ Earlier PID627264 and the dated matrix below are historical.
 | Provider bodies |26 owned fake request/credential/browser/discovery groups included in fullnative; historical standalone26 exit0/41.37s remains distinct |
 | Full native exact package |1541/0, observed exit0/170.35s; original assertions/count retained |
 | Installer exact package |8/0, exit0/23.64s, identical manifest/no wrapper restoration |
-| Read-only integration |7local+2remote, exit0/9.62s; isolated channels/shared cadence/tray/capabilities pass; lifecycle/provider/read mutation flags false |
+| Read-only integration |7local+2remote, exit0/9.62s; isolated channels/shared cadence/tray/capabilities pass; checkout/Inbox/power-off invocation flags false |
 | Exact unchanged worker wire |6 null-token validation/admission checks; no HTTP or live identity |
 | Synthetic artwork |Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. |
 | Preservation |Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0. |
@@ -29,12 +72,13 @@ fix. NativeCheckProgress remains diagnostic, and every new source change require
 Provider26 uses fake credential/browser bodies without real user account writes. The full Core
 Windows suite separately writes/replaces/deletes a UUID-owned synthetic Credential Manager entry
 with finally cleanup. Read-only integration does not perform provider/lifecycle/Inbox mutation.
-Live credentials/HTTP/permissions/browser identity and missing token creation/stored-empty Verify
-remain open, as do provenance/display/summon/updater/native Mac/x64/phone/shell/signing/clean-machine
+Token creation/stored-empty Verify remained missing at this checkpoint and are qualified in the
+subsequent ACC-03 subset above. Live credentials/HTTP/permissions/browser identity remain open,
+as do provenance/display/summon/updater/native Mac/x64/phone/shell/signing/clean-machine
 and full migration gates. This unsigned development Preview remains `releaseQualified=false`.
 See [ADR0042](adr/0042-windows-account-provider-applicability.md).
 
-Historical2026-10-01 checkpoint follows; these older counts/PIDs do not replace the current ACCOUNT receipt.
+Historical2026-10-01 checkpoint follows; these older counts/PIDs do not replace the current ACC-03 receipt.
 
 Latest complete-contract/tray checkpoint: Core65/0, native UI437/0, installer8/0 and read-only
 seven-local/two-remote integration exit0. The new49 native checks cover branded glyph pixels in

@@ -450,9 +450,10 @@ reds and the Arc-link fixture diagnostic remain retained. The UI failure proof i
 failure and checks exact owned target/backup bytes; Core's actual atomic failure proof is separate.
 Actual footer bounds passed and the original footer remains unchanged.
 
-Account token creation and empty-field verification of an existing credential remain missing local
-functions; explicit nonempty verify/save/replace and Return routing retain qualified fake-body
-proofs. Account browser Test already reads current draft browser/profile/endpoint at click; picker/
+At this SET-02 checkpoint, account token creation and empty-field verification of an existing
+credential were missing local functions; the later ACC-03 checkpoint below qualifies them.
+Explicit nonempty verify/save/replace and Return routing retain qualified fake-body proofs.
+Account browser Test already reads current draft browser/profile/endpoint at click; picker/
 fallback proof does not establish a live signed-in launch. Fresh/missing settings default120 seconds;
 legacy omitted RefreshSeconds retains60. Actions repositories remain per-account rather than Mac's
 deck-wide watchlist disabled while Actions is off. These ACC-03/09/SET-11 wording corrections add no
@@ -571,16 +572,56 @@ validation; only explicit comma edits reparse them. Captured revisions preserve 
 pending save. New GitLab accounts store empty scopes/failed-run false. Test uses the current valid
 endpoint/browser/profile; nonempty token save/Return retain the guarded verify/write/commit path.
 
-Preview39204/package99b3f7da4605432e9bba23fcf965ce5d qualifies this subset: Core focused4/
+The historical Preview39204/package99b3f7da4605432e9bba23fcf965ce5d qualified this subset: Core focused4/
 full222, native1541/0 exit0/170.35s, installer8/0 exit0/23.64s and read-only7local+2remote exit0/
 9.62s. Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. The26 provider groups drive real form/controller bodies with fake request,
 credential/browser/discovery dependencies. Six exact unchanged-worker wire checks have no usable
 token/HTTP call; worker379/runtime16/Arc4/metadata5/Git30+60 remain reused qualification.
 Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0. Mac119/graph/spec140/204 remain unchanged.
 
-Token-creation links, empty-field stored-token Verify, live credentials/browser identity and the
-deck-wide Actions watchlist remain separate gaps. SET-08/display/summon/update/release gates remain
-open. [ADR0042](../docs/adr/0042-windows-account-provider-applicability.md).
+Token-creation links and empty-field stored-token Verify were separate local gaps then, closed by
+the later ACC-03 subset below. Live credentials/browser identity and the deck-wide Actions watchlist
+remain open, alongside SET-08/display/summon/update/release gates.
+[ADR0042](../docs/adr/0042-windows-account-provider-applicability.md).
+
+## Account token actions
+
+Create token opens GitHub's hosted page or the current GitLab instance-prefix page using the
+selected browser/profile. Other GitHub API endpoints show a blank Enterprise token-page prompt
+with the exact captured API address for context. Return and Escape cancel; explicit Open uses
+the bounded HTTPS address once without storing it. Creating a link does not require a complete
+new-account name/scope draft or perform a credential read, worker acquisition or provider mutation.
+
+Verify saved token and an empty replacement Return check the committed credential once through
+the isolated configured settingsChecks route. A half-entered replacement is preserved; nonempty
+Verify and save retains its existing verified write/commit/cleanup path. Cached presence is distinct
+from API acceptance or repository/Inbox/Actions permission. Identity, full worker route, password
+revision and form-owner epoch guard the result. Token feedback keeps ordinary metadata errors;
+stored verification writes no credentials/metadata and resets no attention, queues or check time.
+
+Each distribution can now own five lazy channels: ordinary local, shared remote, checkout,
+settingsChecks local and settingsChecks remote. GetExactAsync changes only a mismatched check
+client; legacy worker reuse is unchanged. These are logical ownership slots, not five mandatory
+running processes.
+
+Preview68312/package04928307578842e6b1c3337fdf206cf0 is qualified and active: Core focused4/full226,
+component30/0 in32.83s, fullnative1571/0 in189.8s, installer8/0 in24.29s and read-only7local+2remote
+in12.09s pass. Completed342 synthetic scenes include30 token scenes in six languages; six new
+English/Russian scenes were visually reviewed. All use the correlated final App/manifest.
+Only recorded39204 was replaced; all nine0x80080 HWNDs and prior IDs/XY/compact/raw accounts/scopes/
+preferences/distributions/configuration/shortcut/full backup/defaults/startup are preserved,
+absent geometry stays omitted, singleton0/old proxies0. Mac119/graph/spec140/204 remain intact;
+worker379/runtime16/Arc4/metadata5/Git30+60 are reused by exact hash.
+
+The30 native groups use owned stores, fake credentials/openers/verifiers and one owned fake child
+through the actual worker manager; they do not qualify real accounts, WSL API requests or browser
+identity. The existing nonempty replacement's maximum128-byte account-ID namespace limitation and
+legacy slash-bound metadata-save limitation remain; stored checks preserve the exact saved slash
+and use a bounded fixed verification namespace. Native Mac/x64/live permissions/browser/phone/
+display/shell/signing/clean-machine and full migration gates stay open. Expanded SET-08 provenance
+remains unimplemented.
+See [ADR0043](../docs/adr/0043-windows-account-token-actions.md) and
+[qualification](../docs/windows-qualification.md); releaseQualified=false.
 
 ## Remaining release work
 

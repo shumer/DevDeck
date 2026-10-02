@@ -22,7 +22,7 @@ internal sealed partial class DeckController
     private readonly Func<string?> arrangementNameProvider;
     private readonly SettingsStore store;
     private readonly WorkerManager workers = new();
-    private readonly WorkerManager settingsChecks = new();
+    private readonly WorkerManager settingsChecks;
     private readonly List<ProjectCard> cards = [];
     private readonly Dictionary<string, CardSettings> localConfigurations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, RemoteCardSettings> remoteConfigurations = new(StringComparer.Ordinal);
@@ -81,9 +81,11 @@ internal sealed partial class DeckController
         Func<string[],bool>? powerOffConfirmation = null,
         Func<string,Task<IDDEVPowerOffEndpoint>>? powerOffEndpointFactory = null,
         Func<string,Task<IWorkInFlightEndpoint>>? checkoutEndpointFactory = null, Action<CheckoutTarget>? checkoutTerminalOpener = null,
-        Action<DeckSettings>? settingsGeometryCommit = null)
+        Action<DeckSettings>? settingsGeometryCommit = null,
+        Func<WorkerSettings,WorkerClient>? settingsCheckWorkerFactory = null)
     {
         this.application = application; this.store = store; this.live = live;
+        settingsChecks = new(settingsCheckWorkerFactory);
         this.settingsGeometryCommit = settingsGeometryCommit ?? store.Save;
         this.dashboardOpener = dashboardOpener ?? ((browser,profile,address) => BrowserLaunch.Open(browser,profile,address));
         this.arrangementNameProvider = arrangementNameProvider ?? (() => ArrangementNameDialog.Show(settingsWindow));
