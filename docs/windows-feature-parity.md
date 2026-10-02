@@ -2,7 +2,7 @@
 
 The authoritative acceptance inventory is now the [Mac functional specification](macos-functional-spec.md):
 140 source-referenced behaviors covering defaults, persistence, side effects, failures and complete
-flows. This page retains historical completed evidence. Its earlier broad rows must not be read as
+flows. This page retains historical completed evidence. Current provider applicability is qualified and active in Preview39204; its exact final1541/installer8/read-only9/render312 checkpoint and remaining gaps are recorded at the end. Its earlier broad rows must not be read as
 proof of all newly enumerated scenarios. Arc org/site/hosted/template links, local editor and DDEV
 templates/kinds and generic Detect/caption/separate opening URL now have implementation and
 qualification below. Settings keyboard/check behavior and browser discovery/profile/fallback are
@@ -58,6 +58,7 @@ Mac execution is unavailable; findings below are source-level comparisons plus W
 | Settings sidebar and search | SettingsWindowController / SettingsListView | Missing: one long local-project page and extra windows | Present — flat natural account/project groups preserve saved ties independent of deck order; current hidden local owners supply Running/Busy dots. Disabled entries remain selectable with dimmed icon/title and undimmed dot. Exact-target cached credential availability and list-only reconciliation preserve drafts/password/focus/search/scroll/attention/check time. SET-04 qualified at601784 and retained active627264; historical Core214/native1492/synthetic252, ADR0040. SET-02 OS metrics/SET-08 and live/accessibility/native gates remain separate |
 | Settings window size | SettingsWindowController frame autosave / measured scroll layout | Resizable1020×720/min880×440, size lost on reopen | Partial — normal-user-completed width/height persistence qualified/active627264, preserving forms/drafts/focus/CTS/runtime and latest metadata merge; effective supported-area clamp never rewrites chosen size. Windows resizable-width adaptation, no XY/display homes. Actual Core4/full218/native1515/installer8/synthetic282/read-only7+2 pass; OS sidebar metrics/physical display acceptance remain open. ADR0041 |
 | Settings contextual navigation | module settingsTarget / showSetting | Generic settings opens | Local card opens its project; single-account remote card/error opens its account; multi-account card opens Cards |
+| Provider-specific account fields and request scopes | AccountSettingsForms / GitLabAccount | GitLab exposed GitHub filters/failed-run controls; unused legacy scopes were sent and reparsed | Qualified/active39204: retained provider-specific form/Notifications, Address before token, new-draft switch then provider lock; inactive GL arrays/preferences and raw unedited GH arrays preserved, empty GL request projection, guarded explicit scope edits/revisions and actual current-Draft Test fake proof. Core4/full222/native1541 pass; live identity and ACC-03 token actions remain open. ADR0042 |
 | Autosave configuration, explicit verified token save | SettingsForm / AccountSettingsForms | Partial: project/account metadata needs Save | Quiet serialized saves keep fields editable, retain scoped answers and guard invalid drafts; nonempty token Return uses explicit verify/save. Native delayed-save/concurrent-flush/keyboard/fake-body checks pass and are active. Token creation and empty-field stored Verify remain missing local functions; real token acceptance remains open |
 | Scoped health row and removal confirmation | local/Arc modules / SettingsListView | Generic Saved overwrote feedback; checks had no fresh owning row; removal lacked confirmation | Dedicated row uses original worker summary and rejects changed identity/generation/lifetime; relevant edits auto-check. Ephemeral project.check and separate transport isolate drafts from live observations. One cancel-default removal path. Worker317/Core96/native1034 pass; active Preview preserves old settings |
 | Deck floating/lock/arrange/arrangements | DeckSettingsPage / menu | Available mainly in tray; partial settings | Floating/lock/saved arrangements in Deck page; tray tidy measures native visible heights, uses 12-DIP gaps/column wrapping and preserves anchor/snapshots. Header/context/settings compact controls added |
@@ -485,3 +486,22 @@ partial. Provider applicability work is not shipped/qualified by this geometry p
 sidebar metrics, XY/display homes/DPI, SET-08, updater install/notes, full summon and native Mac/x64/
 live identity/phone/physical input/accessibility/display/shell/signing/clean-machine/full migration
 remain open. See [ADR0041](adr/0041-windows-settings-window-size-persistence.md).
+
+Provider applicability qualified and active — 2026-10-02: Preview39204/package
+99b3f7da4605432e9bba23fcf965ce5d separates GitLab instance/token help from GitHub scopes/failed-run fields.
+Notifications renders GL failed-run as noninteractive not-applicable without erasing stored bits.
+New-draft provider switching retains controls/drafts, and commit locks the provider/permanent ID.
+GitLab request arrays are empty while saved inactive data stays exact, including duplicates/order/
+null elements/raw over-limit entries. Unedited GH arrays still fail strict validation when invalid;
+explicit edits use existing comma parsing, with captured revisions retaining later pending edits.
+New GL commits empty scopes/false runs; actual Test reads current endpoint/browser/profile draft.
+
+Actual Core4/full222, finalnative1541/0 exit0/170.35s, installer8/0 exit0/23.64s with unchanged
+manifest/no restoration and read-only7local+2remote exit0/9.62s pass. Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. Provider26
+fake-body groups are included, distinct from historical standalone26/41.37s. Wire6 is null-token
+admission without HTTP; d9fc85/abd86a worker379/runtime16/Arc4/metadata5/Git30+60 remain reused.
+Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0. Mac119graph/spec140/204 remain intact. Historical failures are retained;
+bounded fixture focus preparation did not relax assertions or change production behavior.
+ACC-03 missing local token actions, live provider/browser identity, SET-08, SET-11 deck-wide watchlist,
+display/summon/updater/native Mac/x64/network/phone/accessibility/shell/signing/release/full migration
+remain open. [ADR0042](adr/0042-windows-account-provider-applicability.md).

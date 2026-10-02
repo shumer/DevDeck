@@ -557,6 +557,31 @@ Unknown worker rejection messages use safe generic guidance. Owned fake-process 
 reconnecting a failed distro does not replace another distro's healthy session; actual WSL shutdown
 and Docker recovery still need controlled acceptance.
 
+## Provider-specific account settings
+
+GitLab has an instance Address before the token and provider-specific help/browser/profile. GitHub
+organizations/repositories and failed-run switches are hidden for GitLab; Notifications shows an
+accessible not-applicable dash for that failed-run preference. New unsaved provider switching keeps
+endpoint/scope drafts in place, then the first commit locks provider and keeps the account ID.
+
+Native request credentials validate the current account and project unused GitLab scope fields to
+empty arrays. Stored inactive arrays and failed-run bits stay untouched, including settings-valid
+raw/duplicate/null-element entries. Unedited GitHub arrays stay exact and still face strict worker
+validation; only explicit comma edits reparse them. Captured revisions preserve edits made during a
+pending save. New GitLab accounts store empty scopes/failed-run false. Test uses the current valid
+endpoint/browser/profile; nonempty token save/Return retain the guarded verify/write/commit path.
+
+Preview39204/package99b3f7da4605432e9bba23fcf965ce5d qualifies this subset: Core focused4/
+full222, native1541/0 exit0/170.35s, installer8/0 exit0/23.64s and read-only7local+2remote exit0/
+9.62s. Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. The26 provider groups drive real form/controller bodies with fake request,
+credential/browser/discovery dependencies. Six exact unchanged-worker wire checks have no usable
+token/HTTP call; worker379/runtime16/Arc4/metadata5/Git30+60 remain reused qualification.
+Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0. Mac119/graph/spec140/204 remain unchanged.
+
+Token-creation links, empty-field stored-token Verify, live credentials/browser identity and the
+deck-wide Actions watchlist remain separate gaps. SET-08/display/summon/update/release gates remain
+open. [ADR0042](../docs/adr/0042-windows-account-provider-applicability.md).
+
 ## Remaining release work
 
 Expanded display/shortcut/recovery checks, remaining feature and diagnostic wording parity,

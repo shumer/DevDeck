@@ -55,6 +55,7 @@ link templates; tokens and project command execution remain outside that present
 | remote.verify | success/error | Minimal read-only identity query; does not return token or identity |
 | remote.markRead | success/error | Marks 1–50 validated numeric notification IDs for exactly one account |
 | remote.markRest | success/error | Marks non-personal unread notifications from at most ten pages; preserves reviews/mentions/assignments/security |
+| remote.markAll | success/error | Marks all notifications up to a validated `lastReadAt` cutoff for exactly one GitHub inbox account |
 
 DDEV status exports optional versionsLine from the shared config formatter (for example,
 php 8.4 · mysql 8.0). It is independent of Arc engineVersion and runtime state. Legacy responses
@@ -125,7 +126,7 @@ and Docker's published-port ownership for preflight. A conflict fails before any
 the worker never stops the stack holding the port. Restart does not start another stack if Stop failed.
 Windows serializes project mutations across its distro workers because Docker is shared.
 
-Remote requests carry `remote: {cardID, kind, accounts, threadIDs?}`. Each account contains stable id,
+Remote requests carry `remote: {cardID, kind, accounts, threadIDs?, lastReadAt?}`. Each account contains stable id,
 label, HTTPS endpoint, organizations, repositories and optional token. Kinds are pullRequests, inbox,
 actions and mergeRequests. Tokens travel only through stdin; no disk/environment fallback exists.
 They live in a per-request in-memory store. Upstream errors are converted to sanitized failure kinds.
@@ -134,7 +135,9 @@ are bounded to 64 provider/account/endpoint/credential scopes and retain validat
 clients, token stores or authorization headers. Unscoped requests get fresh transports. Notification
 mutations invalidate the account cache. Inbox snapshots optionally carry pollIntervalSeconds (60–86400).
 Requests validate account counts/IDs, endpoints, repository slugs and tokens before querying.
-Notification mutations require one account and strictly numeric thread IDs; all-read is not exposed.
+Notification mutations require one account. Individual thread targets must be strictly numeric;
+`remote.markAll` instead requires absent thread IDs and a finite positive Unix `lastReadAt` cutoff
+no more than300 seconds in the future. It uses the shared notification service's all-read path.
 Partial mutation failure instructs refresh because already-completed patches cannot be rolled back.
 Remote snapshots include rows, partial failures, caps and shared attention metadata with dedup keys.
 Snapshots/status/action responses may additionally carry `attention: {scope, items, alerts,

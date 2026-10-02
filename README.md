@@ -219,6 +219,22 @@ still partial. SET-08, updater install/notes, full summon and native Mac/x64/liv
 physical input/accessibility/display/shell/signing/clean-machine/full migration remain open.
 See [ADR0041](docs/adr/0041-windows-settings-window-size-persistence.md).
 
+Windows account settings now follow the provider: GitLab shows its instance Address and token help,
+with no GitHub scope or failed-run controls. New unsaved accounts retain drafts while switching
+provider; provider locks after commit. Inactive saved GitLab arrays/preferences survive unrelated
+changes, while outgoing GitLab credentials project empty unused scopes. GitHub sends exact saved
+arrays until the user edits a scope; queued field revisions preserve later edits and invalid active
+scope still fails closed. Browser Test uses the current endpoint/browser/profile draft.
+
+The provider subset is qualified and active in Preview39204/package
+99b3f7da4605432e9bba23fcf965ce5d: actual Core focused4/full222, native1541/0 exit0/170.35s, installer8/0
+exit0/23.64s and read-only7local+2remote exit0/9.62s. Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. Provider26 fake-body groups
+are included in full1541; unchanged-worker wire6 proves null-token admission only. Worker379/runtime
+16/Arc4/metadata5/ownedGit30+promisor60 are reused. Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0.
+Mac119/product graph/spec140/204 remain intact. Token creation/stored-empty Verify, live identities,
+broader settings/display/shell/native Mac/x64/signing and full migration gates remain open.
+See [ADR0042](docs/adr/0042-windows-account-provider-applicability.md).
+
 Pull requests across every account a token can see - yours and the ones waiting on your
 review - worst first:
 

@@ -1,31 +1,40 @@
-# Windows qualification — 2026-10-01
+# Windows qualification — 2026-10-02
 
-Candidate note — 2026-10-02: `codex/windows-wsl2` is a work-in-progress source branch, with no
-merge or release. The qualified SET-02 geometry checkpoint was restored as Preview6168 after
-an external Windows restart; its package and retained settings were verified. The earlier
-Preview627264 is historical
-([ADR0041](adr/0041-windows-settings-window-size-persistence.md)); ACCOUNT is not activated.
+Provider applicability checkpoint — 2026-10-02: Preview39204/package
+99b3f7da4605432e9bba23fcf965ce5d is qualified and active for this subset. The prior SET-02 package3779 was
+restored as owner6168 after an external reboot, then only that recorded owner was replaced.
+Earlier PID627264 and the dated matrix below are historical.
 
-| ACCOUNT candidate evidence | Status |
+| ACCOUNT evidence | Actual result and limit |
 | --- | --- |
-| Core provider applicability | Focused4/full222 passed on the recorded apphost artifact |
-| Native provider component |26 passed using owned fake request/credential/browser dependencies; no live HTTP or browser identity claim |
-| Unchanged worker null-token wire admission |6 passed; validation/credentials admission only, not a live provider call |
-| Full native candidate | Expected1541 is **not qualified**: two420-second timeouts and one91-second French project-geometry failure are retained; the fresh diagnostic package exited1 after98.45 seconds at the synthetic keyboard-focus prerequisite in `VisibilitySettingsTests`, after394 checks were recorded |
+| Core provider applicability | Actual apphost focused4/full222 passed; full222 exit0/58.62s, artifact before/after correlation separate from RID package |
+| Provider bodies |26 owned fake request/credential/browser/discovery groups included in fullnative; historical standalone26 exit0/41.37s remains distinct |
+| Full native exact package |1541/0, observed exit0/170.35s; original assertions/count retained |
+| Installer exact package |8/0, exit0/23.64s, identical manifest/no wrapper restoration |
+| Read-only integration |7local+2remote, exit0/9.62s; isolated channels/shared cadence/tray/capabilities pass; lifecycle/provider/read mutation flags false |
+| Exact unchanged worker wire |6 null-token validation/admission checks; no HTTP or live identity |
+| Synthetic artwork |Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. |
+| Preservation |Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0. |
+| Worker/runtime |379/runtime16/Arc4/metadata5/ownedGit30+promisor60 reused from unchanged d9fc85/abd86a, not another ACCOUNT worker run |
+| Mac/spec |119 frozen files/active graph and140 features/204 references intact; no native Mac build/UI claim |
 
-The fresh diagnostic package compiled with zero warnings/errors; focused4/full222 Core checks
-passed on its source snapshot. Geometry and arrangement groups completed during the failed full
-native run; this does not qualify the full suite or establish a fix for earlier failures.
-Fresh diagnostic source qualification is pending. No312-view artwork, new read-only7+2 integration,
-new installer or replacement Preview qualification is claimed. Diagnostics in
-[NativeCheckProgress](../Windows/DevDeck.Windows.App/NativeCheckProgress.cs),
-[SettingsGeometryTests](../Windows/DevDeck.Windows.App/SettingsGeometryTests.cs) and
-[ArrangementNameDialogTests](../Windows/DevDeck.Windows.App/ArrangementNameDialogTests.cs) record
-phase/failure facts; they do not establish a fix. Existing diagnostic entry points are
-`--window-check --report <path>`, `--account-provider-check` and `--settings-geometry-check`.
-Partial progress counts are not passed qualification. The dated checkpoint below is historical;
-its earlier results do not qualify this ACCOUNT candidate. Native Mac/x64/live identity/phone/
-display/shell/signing and full migration gates remain open.
+App72C9390873D35DBAF59F9301D15D57871263FD898B25B4649E9479C1C5BF6711 and
+manifest657C85E6548C75E1F18D9D158738839B0D53F050DA682D597B851CD58CD052BF correlate this package.
+Earlier two420-second timeouts/French zero-controls failure and the98.45-second focus-prerequisite
+failure remain retained. Partial394/775 progress is historical diagnostic data, superseded only by
+the completed exact-package1541 result. Bounded existing owned-window focus preparation changed the
+fixture with strict assertions/count intact; it does not classify earlier timeouts or prove a reboot
+fix. NativeCheckProgress remains diagnostic, and every new source change requires fresh qualification.
+
+Provider26 uses fake credential/browser bodies without real user account writes. The full Core
+Windows suite separately writes/replaces/deletes a UUID-owned synthetic Credential Manager entry
+with finally cleanup. Read-only integration does not perform provider/lifecycle/Inbox mutation.
+Live credentials/HTTP/permissions/browser identity and missing token creation/stored-empty Verify
+remain open, as do provenance/display/summon/updater/native Mac/x64/phone/shell/signing/clean-machine
+and full migration gates. This unsigned development Preview remains `releaseQualified=false`.
+See [ADR0042](adr/0042-windows-account-provider-applicability.md).
+
+Historical2026-10-01 checkpoint follows; these older counts/PIDs do not replace the current ACCOUNT receipt.
 
 Latest complete-contract/tray checkpoint: Core65/0, native UI437/0, installer8/0 and read-only
 seven-local/two-remote integration exit0. The new49 native checks cover branded glyph pixels in
@@ -93,5 +102,8 @@ workers; these checks must not interrupt unrelated running projects on the devel
 The earlier five manual feasibility checks do not qualify all later UI changes.
 
 Exact development package/configuration paths, test logs and machine-specific reports are stored in
-.local_docs; use its CODEX.md and TODO.md for current execution state. No commit, push or release has
-been made. See [migration plan](windows-migration.md) and [Windows host instructions](../Windows/README.md).
+.local_docs; use its CODEX.md and TODO.md for current execution state.
+Code was committed and pushed only to the work-in-progress `codex/windows-wsl2` branch; no PR,
+merge, tag or release was created. Main remains unchanged. Private .local_docs handoff/receipts,
+user settings and generated SDK/package artifacts remain excluded. Subsequent fixture/docs changes
+are recorded separately; a published source branch is not release qualification. See [migration plan](windows-migration.md) and [Windows host instructions](../Windows/README.md).

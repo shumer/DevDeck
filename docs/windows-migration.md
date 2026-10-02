@@ -148,6 +148,25 @@ Native Linux/Windows x64 and clean-machine qualification remain separate gates.
   https://www.swift.org/install/linux/ubuntu/24_04/
 - .NET 10 LTS support policy: https://dotnet.microsoft.com/en-us/platform/support/policy
 
+## Account provider applicability checkpoint — 2026-10-02
+
+The Windows provider subset is qualified and active in Preview39204/package
+99b3f7da4605432e9bba23fcf965ce5d. GitLab instance Address/help replace unsupported GitHub scope/run controls;
+Notifications exposes a not-applicable dash. Retained draft switching and first-commit provider lock
+preserve identity. Applicable per-request projection sends empty unused GL scopes without rewriting
+saved arrays/preferences. GH arrays remain exact until explicit edits, retaining pending revisions
+and fail-closed active validation. Current-Draft Browser Test has actual fake-button evidence.
+
+Final Core focused4/full222, native1541/0 exit0/170.35s, installer8/0 exit0/23.64s and read-only
+7local+2remote exit0/9.62s pass. Completed312 six-language synthetic views include30 provider scenes; App/manifest match the final package. Provider26 fake-body groups are retained in the
+full suite; wire6 checks unchanged-worker null-token admission only. Worker379/runtime16/Arc4/
+metadata5/Git30+60 are reused. Only restored owner6168 was replaced by39204. All nine0x80080 HWNDs and prior card IDs/XY/compact/raw scopes/accounts/preferences/distributions/original configuration/shortcut/full backup/defaults/startup are preserved; absent size stays omitted, singleton0 and old worker proxies0. Mac119/active graph/spec140/204 stay intact.
+
+This does not close missing provider-token creation/stored-empty Verify, live API/credential/browser
+identity, deck-wide Actions watchlist, provenance/display/summon/updater or required Mac/x64/manual/
+phone/shell/signing/clean-machine release gates. Earlier failed candidate runs remain retained.
+See [ADR0042](adr/0042-windows-account-provider-applicability.md).
+
 ## Release status
 
 M0/M1 safeguards and M2/M3 foundations are implemented and locally tested. M4/M5 include local and

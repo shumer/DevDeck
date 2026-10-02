@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Threading;
 using DevDeck.Windows.Core;
 
@@ -41,9 +42,10 @@ internal static class VisibilitySettingsTests
         Require(form.HasUncommittedChanges && failure.Length > 0, "The invalid-draft fixture must have a current unsaved error.");
         var drafts = Field<Dictionary<string,string>>(fixture.Window, "tokenDrafts");
         drafts["account:synthetic.github"] = "synthetic window-only token draft";
-        fixture.Window.Show(); fixture.Window.Activate(); fixture.Window.UpdateLayout();
-        folder.Focus(); folder.Select(3, 7); await Dispatcher.Yield(DispatcherPriority.Background);
-        Require(folder.IsKeyboardFocused, "The synthetic folder must own focus before visibility reconciliation.");
+        fixture.Window.Show(); await FocusOwnedAsync(fixture.Window,folder);
+        folder.Select(3, 7); await PumpAsync(fixture.Window);
+        Require(folder.IsKeyboardFocused, "The synthetic folder must own focus before visibility reconciliation."
+            +(folder.IsKeyboardFocused?"":" "+FocusDiagnostic(fixture.Window,folder)));
         var page = fixture.Window.Page.Content; var selected = fixture.Window.SelectedPage;
         await fixture.Controller.SetCardVisibleAsync("arc.primary", false);
         Require(!fixture.Store.Load().Cards.Single(card => card.Project.Id == "arc.primary").Enabled
@@ -165,6 +167,46 @@ internal static class VisibilitySettingsTests
             && Named<TextBox>(form, "account.name").Text == "Uncommitted own title" && ReferenceEquals(page, fixture.Window.Page.Content),
             "A different or unknown permanent ID changes the selected project's visibility or unsaved draft.");
         checks.Add(new { name=language+".visibility.settings.otherIdentity", exactPermanentID=true, unrelatedFormAndDraftUntouched=true });
+    }
+
+    private static async Task PumpAsync(SettingsWindow window)
+    {
+        window.UpdateLayout();
+        for(var turn=0;turn<3;turn++)await Dispatcher.Yield(DispatcherPriority.Background);
+        window.UpdateLayout();
+    }
+    private static async Task FocusOwnedAsync(SettingsWindow window,FrameworkElement control)
+    {
+        await PumpAsync(window);control.BringIntoView();await PumpAsync(window);
+        var ready=window.IsVisible&&control.IsLoaded&&control.IsVisible&&control.IsEnabled&&control.Focusable
+            &&PresentationSource.FromVisual(control)is not null;
+        Require(ready,"The owned visibility focus field is not loaded, connected and available."
+            +(ready?"":" "+FocusDiagnostic(window,control)));
+        var bounds=control.TransformToAncestor(window.Page).TransformBounds(new Rect(new Point(),control.RenderSize));
+        var inViewport=bounds.Height>0&&bounds.Bottom>0&&bounds.Top<window.Page.ViewportHeight
+            &&window.Page.ViewportWidth>0&&window.Page.ViewportHeight>0;
+        Require(inViewport,"The owned visibility focus field is not rendered in its page viewport."
+            +(inViewport?"":" "+FocusDiagnostic(window,control)));
+        var activated=window.Activate();await PumpAsync(window);Keyboard.Focus(control);await PumpAsync(window);
+        Require(control.IsKeyboardFocused,"The rendered owned visibility field did not obtain keyboard focus."
+            +(control.IsKeyboardFocused?"":" "+FocusDiagnostic(window,control,activated)));
+    }
+    private static string FocusDiagnostic(SettingsWindow window,FrameworkElement control,bool? activated=null)
+    {
+        static double? Finite(double value)=>double.IsFinite(value)?value:null;
+        var focused=Keyboard.FocusedElement;
+        return System.Text.Json.JsonSerializer.Serialize(new {
+            activated,active=window.IsActive,windowVisible=window.IsVisible,windowLoaded=window.IsLoaded,
+            windowEnabled=window.IsEnabled,windowState=window.WindowState.ToString(),
+            contentType=window.Page.Content?.GetType().Name,
+            fieldType=control.GetType().Name,loaded=control.IsLoaded,visible=control.IsVisible,
+            enabled=control.IsEnabled,focusable=control.Focusable,keyboardFocused=control.IsKeyboardFocused,
+            connected=PresentationSource.FromVisual(control)is not null,
+            measureValid=control.IsMeasureValid,arrangeValid=control.IsArrangeValid,
+            width=Finite(control.ActualWidth),height=Finite(control.ActualHeight),
+            viewportWidth=Finite(window.Page.ViewportWidth),viewportHeight=Finite(window.Page.ViewportHeight),
+            focusedType=focused?.GetType().Name,focusedIsField=ReferenceEquals(focused,control)
+        },WorkerProtocol.Json);
     }
 
     private static bool Shown(ProjectSettingsForm form) => Named<CheckBox>(form, "account.showOnDeck").IsChecked == true;
