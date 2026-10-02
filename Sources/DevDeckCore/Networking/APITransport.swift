@@ -58,7 +58,9 @@ public actor APITransport {
                 return try await handle(response, for: request)
             } catch let error as APIError {
                 guard retryPolicy.shouldRetry(error, afterAttempt: attempt) else { throw error }
+#if canImport(OSLog)
                 Log.network.debug("Retrying after \(error.displayMessage, privacy: .public)")
+#endif
             }
         }
     }

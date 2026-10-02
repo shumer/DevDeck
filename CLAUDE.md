@@ -30,6 +30,15 @@ committed on an unrun suite.
 
 ## Toolchain constraints
 
+Windows migration is authorized; see `docs/windows-migration.md` and ADR 0023. Keep the existing
+macOS product graph, runtime defaults, UI/resources and release assets intact. Linux changes use
+compile-time platform branches and a separate UI-free test runner. Run
+`python3 scripts/check-macos-contract.py` and `bash scripts/run-portable-tests.sh` for shared changes;
+these supplement, rather than replace, the native Mac suite/build required before a commit.
+Worker/Windows-only targets stay outside the Mac graph during the initial migration. Never mark
+the migration release-ready without native Mac validation. Tokens use macOS Keychain or Windows
+OS credential storage; Linux workers do not persist tokens. Python probes are diagnostic tools.
+
 Xcode is **not** installed - only the Command Line Tools. Consequences that keep coming back:
 
 - `swift test` does not work: no `XCTest`, no `swift-testing`. The suite is the executable
@@ -50,7 +59,7 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
 - **Tests are offline and instant.** No network, no Keychain, no `UserDefaults`, no real
   sleeping. Use `FakeHTTPClient`, `InMemoryTokenStore`, `InMemoryPreferences`,
   `RecordingSleeper`, `MutableDateProvider`. Live checks belong in `Tools/Smoke`.
-- **Tokens only ever go to the Keychain.** Never into the repository, `UserDefaults`, a
+- **macOS tokens only ever go to the Keychain; Windows tokens use OS credential storage.** Never into the repository, `UserDefaults`, a
   dotfile, a log line or a commit. A stored token is never written back into a text field -
   the settings row says one exists, and typing replaces it. How an item is protected follows
   from `CodeIdentity.current()` through `KeychainAccessPolicy`, never from a build flag: open

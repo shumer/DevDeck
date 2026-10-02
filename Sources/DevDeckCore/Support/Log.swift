@@ -1,4 +1,5 @@
 import Foundation
+#if canImport(OSLog)
 import OSLog
 
 /// Shared loggers. Subsystem is fixed so `log stream --predicate` filters work in development.
@@ -10,3 +11,9 @@ public enum Log {
     public static let storage = Logger(subsystem: subsystem, category: "storage")
     public static let app = Logger(subsystem: subsystem, category: "app")
 }
+#else
+// Protocol stdout must contain only frames; native logging is supplied by the host later.
+public enum Log {
+    public static let subsystem = "com.shumer.devdeck"
+}
+#endif

@@ -1,0 +1,127 @@
+name: Windows package dry run
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  workers:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: x64
+          - runner: ubuntu-24.04-arm
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    container: swift:6.3.3-jammy
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/run-portable-tests.sh
+      - run: swift build -c release --product DevDeckWorker -Xswiftc -warnings-as-errors
+      - run: python3 Tools/WorkerSmoke/verify_protocol.py -- .build/release/DevDeckWorker --distribution PackageSmoke
+      - run: python3 Tools/WorkerSmoke/verify_interactive.py --distribution PackageSmoke -- .build/release/DevDeckWorker --distribution PackageSmoke
+      - run: bash Tools/WorkerSmoke/package_runtime.sh .build /tmp/devdeck-worker release
+      - run: mkdir -p .localtools && tar -C /tmp/devdeck-worker --sort=name --mtime=2026-01-01 --owner=0 --group=0 -cf .localtools/worker-linux-${{ matrix.architecture }}.tar .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worker-linux-${{ matrix.architecture }}
+          path: .localtools/worker-linux-${{ matrix.architecture }}.tar
+          retention-days: 7
+  windows:
+    needs: workers
+    strategy:
+      matrix:
+        include:
+          - runner: windows-2025
+            runtime: win-x64
+          - runner: windows-11-arm
+            runtime: win-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: worker-linux-*
+          path: .localtools
+          merge-multiple: true
+      - run: dotnet run --project Windows/DevDeck.Windows.Tests/DevDeck.Windows.Tests.csproj
+      - run: ./Windows/build.ps1 -Runtime ${{ matrix.runtime }} -Output "$env:RUNNER_TEMP/DevDeckPackage" -Version '0.0.0-windows-dry-run'
+      - name: Native widget and translated layout regression
+        shell: pwsh
+        run: |
+          $report = "$env:RUNNER_TEMP/windows-widget-checks.json"
+          $processReport = "$env:RUNNER_TEMP/windows-widget-process.json"
+          foreach ($path in @($report, $processReport)) {
+            if (Test-Path -LiteralPath $path) { throw 'Native widget reports must be fresh.' }
+          }
+          $package = "$env:RUNNER_TEMP/DevDeckPackage"
+          $start = [System.Diagnostics.ProcessStartInfo]::new("$env:RUNNER_TEMP/DevDeckPackage/DevDeck.Windows.exe")
+          $start.UseShellExecute = $false
+          $start.CreateNoWindow = $true
+          $start.WorkingDirectory = $package
+          foreach ($argument in @('--window-check', '--report', $report)) { $start.ArgumentList.Add($argument) }
+          $process = $null
+          $observedExitCode = $null
+          $timedOut = $false
+          $reaped = $false
+          $cleanupError = $null
+          $elapsed = [System.Diagnostics.Stopwatch]::StartNew()
+          try {
+            $process = [System.Diagnostics.Process]::Start($start)
+            if (-not $process.WaitForExit(420000)) {
+              $timedOut = $true
+              throw 'Native widget checks timed out.'
+            }
+            $observedExitCode = $process.ExitCode
+            if ($observedExitCode -ne 0) { throw 'Native widget checks failed.' }
+            if (-not (Test-Path -LiteralPath $report -PathType Leaf) -or (Get-Item -LiteralPath $report).Length -le 0) {
+              throw 'Native widget check report is absent or empty.'
+            }
+            $result = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+            if ($result.nativeWindows -ne $true -or $result.passed -ne 1541 -or $result.failed -ne 0) {
+              throw 'Native widget check report is incomplete.'
+            }
+          } finally {
+            if ($null -ne $process) {
+              try {
+                if (-not $process.HasExited) { $process.Kill($true) }
+                $reaped = $process.WaitForExit(10000)
+                if ($reaped) { $observedExitCode = $process.ExitCode }
+              } catch {
+                $cleanupError = $_.Exception.GetType().FullName
+              } finally {
+                $process.Dispose()
+              }
+            }
+            $elapsed.Stop()
+            @{ observedExitCode = $observedExitCode; timedOut = $timedOut; reaped = $reaped;
+               cleanupError = $cleanupError; limitSeconds = 420;
+               elapsedSeconds = [Math]::Round($elapsed.Elapsed.TotalSeconds, 2);
+               releaseQualified = $false } | ConvertTo-Json | Set-Content -LiteralPath $processReport -Encoding utf8
+            if ($null -ne $process -and (-not $reaped -or $null -ne $cleanupError)) {
+              throw 'The exact owned native widget process could not be reaped.'
+            }
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Windows-widget-checks-${{ matrix.runtime }}
+          path: |
+            ${{ runner.temp }}/windows-widget-checks.json
+            ${{ runner.temp }}/windows-widget-checks.json.progress.json
+            ${{ runner.temp }}/windows-widget-process.json
+          retention-days: 7
+      - run: ./Windows/test-install.ps1 -Package "$env:RUNNER_TEMP/DevDeckPackage" -Report "$env:RUNNER_TEMP/windows-installer-tests.json"
+      - shell: pwsh
+        run: |
+          $package = "$env:RUNNER_TEMP/DevDeckPackage"
+          Compress-Archive -Path "$package/*" -DestinationPath "Windows-DevDeck-dry-run-${{ matrix.runtime }}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-DevDeck-${{ matrix.runtime }}
+          path: Windows-DevDeck-dry-run-${{ matrix.runtime }}.zip
+          retention-days: 7
+# Dry-run artifacts only. Existing Mac release workflow and DevDeck-*.zip assets are untouched.

@@ -268,7 +268,7 @@ public struct LocalProjectService: Sendable {
     public static func detachedCommand(_ command: String, log: URL, pidFile: URL) -> String {
         let quoted = shellQuoted(command)
         return ": > \(shellQuoted(log.path)); "
-            + "nohup /bin/zsh -lc \(quoted) >> \(shellQuoted(log.path)) 2>&1 & "
+            + "nohup \(ShellCommandRunner.defaultShell) -lc \(quoted) >> \(shellQuoted(log.path)) 2>&1 & "
             + "echo $! > \(shellQuoted(pidFile.path))"
     }
 

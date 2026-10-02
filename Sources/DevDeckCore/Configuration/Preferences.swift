@@ -14,6 +14,7 @@ public protocol PreferencesBackend: AnyObject, Sendable {
     func set(_ value: Bool, forKey key: String)
 }
 
+#if os(macOS)
 extension UserDefaults: PreferencesBackend, @unchecked @retroactive Sendable {
     public func hasValue(forKey key: String) -> Bool {
         object(forKey: key) != nil
@@ -27,6 +28,7 @@ extension UserDefaults: PreferencesBackend, @unchecked @retroactive Sendable {
         set(string as Any?, forKey: key)
     }
 }
+#endif
 
 public final class InMemoryPreferences: PreferencesBackend, @unchecked Sendable {
     private let lock = NSLock()
@@ -66,9 +68,16 @@ public final class InMemoryPreferences: PreferencesBackend, @unchecked Sendable 
 public final class Preferences: @unchecked Sendable {
     private let backend: PreferencesBackend
 
+#if os(macOS)
     public init(backend: PreferencesBackend = UserDefaults.standard) {
         self.backend = backend
     }
+#else
+    public init(backend: PreferencesBackend = InMemoryPreferences()) {
+        // Windows owns persisted configuration; a worker must not create parallel defaults.
+        self.backend = backend
+    }
+#endif
 
     // MARK: Cards
 

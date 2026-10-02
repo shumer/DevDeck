@@ -1,5 +1,8 @@
 # Development
 
+The isolated [Windows / WSL probe](windows-probe.md) has its own .NET build and live checks.
+It does not replace or change the macOS build and offline suite described below.
+
 ## Toolchain
 
 Swift 6.3 from the Command Line Tools. **Xcode is not installed and not required.**
@@ -172,3 +175,37 @@ The full checklist, and why it is worded as strictly as it is, is at the top of 
 
 Comments explain *why*, not *what*. If a line needs a comment to say what it does, rename
 something instead.
+
+## Windows migration development
+
+Before selecting or declaring a parity change complete, read the affected feature IDs in
+[the Mac functional specification](macos-functional-spec.md), including its acceptance scenarios.
+Record Windows source and evidence for complete flows, not just a synthetic view. Run
+`python3 scripts/check-macos-spec.py` to detect source/resource/control inventory drift; review
+changed behavior before explicitly refreshing its baseline with `--refresh`. This complements
+the frozen Mac contract and required native tests/build, and cannot certify behavioral parity.
+
+The [full plan](windows-migration.md) and [ADR 0023](adr/0023-windows-shell-and-wsl-worker.md)
+describe the separate Windows shell and shared Swift worker. This is work in progress.
+
+For Linux shared code, run `bash scripts/run-portable-tests.sh` and
+`swift build -Xswiftc -warnings-as-errors`, using a separate scratch path if the checkout is also
+used on Mac. Swift 6.3.3's official `swift:6.3.3-noble` container can mount the repository read-only
+with a named volume for the SwiftPM cache. These checks do not start existing projects.
+
+`python3 scripts/check-macos-contract.py` checks the preserved Mac shell, resources, scripts,
+tests and active manifest against `docs/migration/macos-baseline.json`. The conditional Linux
+expectation in ProjectTests is projected back to its original Mac branch. Shared source changes
+also require native Mac tests/build; hashes cannot prove runtime behaviour. The new portability
+workflow defines that gate, but defining a workflow does not mean it has run remotely.
+
+The initial worker supports hello, DDEV discovery and DDEV/Arc status only. Production worker
+runtime deployment and a Windows host remain separate stages; do not run a Linux container build
+artifact in another distro without checking ABI/runtime dependencies.
+
+`Tools/WorkerSmoke/verify_protocol.py -- <worker-command>` exercises the actual stdin/stdout
+transport, including oversize recovery and EOF exit, without querying existing stacks.
+`Tools/WorkerSmoke/check_existing.py` can read DDEV inventory or explicitly selected Arc paths
+through that worker; its reports contain typed state fields and it issues no lifecycle commands.
+Run these separately from the offline suite. Initial native Ubuntu checks passed using an
+isolated runtime under `.localtools`; Debian's older glibc requires separate runtime qualification.

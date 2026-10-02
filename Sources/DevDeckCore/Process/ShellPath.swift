@@ -23,7 +23,11 @@ public actor ShellPath {
 
     /// Where things live when the shell cannot be asked at all. Both Homebrew prefixes, because
     /// an Apple-silicon Mac and an Intel one disagree.
+#if os(macOS)
     public static let fallback = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+#else
+    public static let fallback = "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+#endif
 
     private var resolved: String?
     private var isResolving = false

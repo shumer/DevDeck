@@ -5,6 +5,7 @@ import PackageDescription
 // concurrency, while the AppKit/SwiftUI shell stays on the 5 mode where main-actor
 // isolation of the framework types is inferred rather than enforced.
 // See docs/adr/0002-spm-only-toolchain.md.
+#if os(macOS)
 let package = Package(
     name: "DevDeck",
     platforms: [.macOS(.v14)],
@@ -94,3 +95,48 @@ let package = Package(
         ),
     ]
 )
+#else
+// The macOS graph above remains unchanged while the WSL worker shares only headless modules.
+let portableCases = [
+    "CoreNetworkingTests", "CoreConfigurationTests", "GitHubTests", "GitLabTests",
+    "GitHubActionsTests", "GitHubAccountsTests", "ArcTests", "DDEVTests", "ProjectTests",
+    "UpdateTests", "IdentityTests", "CheckSummaryTests", "Fixtures",
+]
+let package = Package(
+    name: "DevDeck",
+    products: [
+        .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
+        .library(name: "GitHubKit", targets: ["GitHubKit"]),
+        .library(name: "GitLabKit", targets: ["GitLabKit"]),
+        .library(name: "ArcKit", targets: ["ArcKit"]),
+        .library(name: "DDEVKit", targets: ["DDEVKit"]),
+        .library(name: "ProjectKit", targets: ["ProjectKit"]),
+        .executable(name: "DevDeckWorker", targets: ["DevDeckWorker"]),
+    ],
+    targets: [
+        .target(name: "DevDeckCore"),
+        .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
+        .target(name: "GitLabKit", dependencies: ["DevDeckCore"]),
+        .target(name: "ArcKit", dependencies: ["DevDeckCore"]),
+        .target(name: "DDEVKit", dependencies: ["DevDeckCore"]),
+        .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+        .target(name: "WSLProcessSupport", cSettings: [.unsafeFlags(["-Wall", "-Wextra", "-Werror"])]),
+        .target(name: "DevDeckWorkerProtocol", dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "WSLProcessSupport"]),
+        .executableTarget(name: "DevDeckWorker", dependencies: ["DevDeckWorkerProtocol"]),
+        .executableTarget(name: "DevDeckWorkerLiveTests", dependencies: ["DevDeckCore", "DevDeckWorkerProtocol"], path: "Tools/WorkerSmoke/Swift"),
+        .target(name: "TestHarness", dependencies: ["DevDeckCore"], path: "Tests/TestHarness"),
+        .executableTarget(
+            name: "DevDeckPortableTests",
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckWorkerProtocol", "TestHarness"],
+            path: "Tests",
+            exclude: [
+                "TestHarness", "DevDeckTests/main.swift", "DevDeckTests/PresentationTests.swift",
+                "DevDeckTests/CheckoutAndVectorTests.swift", "DevDeckTests/DeckTests.swift",
+                "DevDeckTests/AttentionTests.swift", "DevDeckTests/GitHubInboxTests.swift",
+                "DevDeckTests/CommandRunnerTests.swift", "DevDeckTests/LocalisationTests.swift",
+            ],
+            sources: portableCases.map { "DevDeckTests/\($0).swift" } + ["PortableTests/main.swift", "PortableTests/PlatformTests.swift", "PortableTests/WorkerTests.swift", "PortableTests/WorkerRemoteTests.swift", "PortableTests/WorkerAttentionTests.swift", "PortableTests/WorkerVisibilityTests.swift", "PortableTests/WorkerPowerOffTests.swift", "PortableTests/WorkerPowerOffRaceTests.swift", "PortableTests/WorkerCheckoutTests.swift", "PortableTests/WorkerInboxAttentionTests.swift"]
+        ),
+    ]
+)
+#endif

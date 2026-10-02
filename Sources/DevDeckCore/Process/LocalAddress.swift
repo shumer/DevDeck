@@ -22,6 +22,7 @@ public enum LocalAddress {
 
     /// Every IPv4 address on a real interface, best first.
     public static func addresses() -> [String] {
+#if os(macOS)
         var head: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&head) == 0, let first = head else { return [] }
         defer { freeifaddrs(head) }
@@ -58,6 +59,10 @@ public enum LocalAddress {
 
         // `en0` before `en1` before the rest: the first is wifi, which is what a phone is on.
         return found.sorted { $0.name < $1.name }.map(\.address)
+#else
+        // A WSL virtual interface is not proof of phone reachability; the Windows host owns LAN discovery.
+        return []
+#endif
     }
 
     /// Whether the site behind this URL is served by this machine, whatever name it goes by.

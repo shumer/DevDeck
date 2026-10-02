@@ -1,5 +1,7 @@
 import Foundation
+#if os(macOS)
 import Security
+#endif
 
 /// Who signed a piece of code, as far as the Keychain and the updater care.
 ///
@@ -23,6 +25,7 @@ public enum CodeIdentity {
 
     /// The running process.
     public static func current() -> Kind {
+#if os(macOS)
         var code: SecCode?
         guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { return .unsigned }
         var staticCode: SecStaticCode?
@@ -30,17 +33,25 @@ public enum CodeIdentity {
             return .unsigned
         }
         return kind(of: staticCode)
+#else
+        return .unsigned
+#endif
     }
 
     /// A bundle on disk, for the updater to ask about a build before it replaces itself with it.
     public static func kind(ofBundleAt url: URL) -> Kind {
+#if os(macOS)
         var staticCode: SecStaticCode?
         guard SecStaticCodeCreateWithPath(url as CFURL, [], &staticCode) == errSecSuccess, let staticCode else {
             return .unsigned
         }
         return kind(of: staticCode)
+#else
+        return .unsigned
+#endif
     }
 
+#if os(macOS)
     private static func kind(of code: SecStaticCode) -> Kind {
         var information: CFDictionary?
         let flags = SecCSFlags(rawValue: kSecCSSigningInformation)
@@ -64,6 +75,7 @@ public enum CodeIdentity {
         }
         return .adHoc
     }
+#endif
 }
 
 /// How the stored tokens are protected, which follows from how the app is signed.

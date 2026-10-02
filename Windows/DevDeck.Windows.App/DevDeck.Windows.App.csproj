@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>DevDeck.Windows</AssemblyName>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../DevDeck.Windows.Core/DevDeck.Windows.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="BrandMarks.json" LogicalName="DevDeck.Windows.BrandMarks" />
+    <None Include="../../.localtools/worker-linux-*.tar" Link="workers/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../ThirdParty/QRCoder-LICENSE.txt" Link="licenses/QRCoder-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

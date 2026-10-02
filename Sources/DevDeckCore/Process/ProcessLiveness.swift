@@ -1,4 +1,8 @@
+#if os(macOS)
 import Darwin
+#else
+import Glibc
+#endif
 import Foundation
 
 /// Whether a process id is still alive.

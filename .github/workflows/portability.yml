@@ -1,0 +1,34 @@
+name: Migration portability
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos-contract:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-macos-contract.py
+      - run: ./run-tests.sh
+      - run: swift build -Xswiftc -warnings-as-errors
+  linux:
+    runs-on: ubuntu-24.04
+    container: swift:6.3.3-noble
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/run-portable-tests.sh
+      - run: swift build -Xswiftc -warnings-as-errors
+      - run: python3 Tools/WorkerSmoke/verify_protocol.py -- .build/debug/DevDeckWorker --distribution ProtocolSmoke
+      - run: python3 Tools/WorkerSmoke/verify_interactive.py --distribution ProtocolSmoke -- .build/debug/DevDeckWorker --distribution ProtocolSmoke
+      - run: swift run -Xswiftc -warnings-as-errors DevDeckWorkerLiveTests
+      - run: python3 Tools/WorkerSmoke/verify_lifecycle.py -- .build/debug/DevDeckWorker --distribution LifecycleSmoke
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet run --project Windows/DevDeck.Windows.Tests/DevDeck.Windows.Tests.csproj
+      - run: dotnet build Windows/DevDeck.Windows.App/DevDeck.Windows.App.csproj

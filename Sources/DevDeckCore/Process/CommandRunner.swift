@@ -1,4 +1,7 @@
 import Foundation
+#if os(Linux)
+import Glibc
+#endif
 
 public struct CommandResult: Sendable, Equatable {
     public let exitCode: Int32
@@ -110,7 +113,19 @@ public enum CommandError: Error, Sendable, Equatable {
 public struct ShellCommandRunner: CommandRunning {
     private let shell: String
 
-    public init(shell: String = "/bin/zsh") {
+    public static var defaultShell: String {
+#if os(macOS)
+        return "/bin/zsh"
+#else
+        if let entry = getpwuid(getuid()), let path = entry.pointee.pw_shell {
+            let shell = String(cString: path)
+            if shell.hasPrefix("/"), FileManager.default.isExecutableFile(atPath: shell) { return shell }
+        }
+        return "/bin/bash"
+#endif
+    }
+
+    public init(shell: String = ShellCommandRunner.defaultShell) {
         self.shell = shell
     }
 

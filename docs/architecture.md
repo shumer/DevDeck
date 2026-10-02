@@ -26,6 +26,56 @@ that reaches for a window cannot be covered by it.
 
 ## Data flow
 
+The [Mac functional specification](macos-functional-spec.md) is the source-referenced migration
+acceptance contract. It distinguishes shipping Mac behavior from internal helpers/planned cards,
+Windows adaptations and missing complete flows. Its hash/control inventory detects scope drift;
+fixtures supplying example fields do not prove production worker export.
+
+Windows `DeckTrayArtwork` ports the original `DeckIcon` DD stack geometry, transparent letters and
+four attention shapes. `TrayIcon` caches owned multi-size icons, follows taskbar theme/DPI changes,
+re-registers on TaskbarCreated and disposes native resources after replacement/deletion. Shared
+worker attention tiers choose artwork; tooltip counts stay in the existing digest path.
+
+Windows migration adds a separate native Windows shell and Linux-only Swift worker beside these
+layers. The existing macOS shell and package graph remain in place. The worker reuses the Core
+and integration modules, with a [versioned protocol](worker-protocol.md) over stdin/stdout and
+one distribution identity per process. Each distribution lazily gets independent local and remote
+connections so API latency cannot hold project status/actions/logs. A native ten-second local
+loop shares an explicit refreshCycle; WorkerDDEVInventory coalesces DDEV list requests for that
+cycle. Manual/import/action observations invalidate or bypass it. Cycle/task storage is bounded
+and workers retain no tokens. See [ADR 0023](adr/0023-windows-shell-and-wsl-worker.md) and
+[ADR 0028](adr/0028-local-poll-cycles.md).
+
+Optional Arc configuration flows through the existing shared `ArcProject`; its local editor URL
+returns in the worker status. Native `ProjectLinks` resolves saved typed templates, and
+`ProjectLinkEditor` preserves enabled state and kind. Hosted-only Arc cards resolve their settings
+without worker polling, then keep their ID when a folder is attached. See [ADR 0029](adr/0029-arc-options-and-project-link-templates.md).
+
+Plain-project `project.probe` invokes the existing portable ProjectProbe without shell or network
+work. Native Detect offers results explicitly and preserves chosen caption/health/name/opening URL;
+changed-folder results are discarded. Optional subtitle/openURL map through the original
+LocalProject, whose blank opening address retains health fallback. Native glyph selection mirrors
+ProjectKind's whole-word vocabulary. See [ADR 0030](adr/0030-shared-project-detection-and-separate-open-url.md).
+
+The WPF shell uses `CardTheme` for local/remote widget surfaces and controls. `WidgetWindow` sets
+`WS_EX_TOOLWINDOW` and clears `WS_EX_APPWINDOW` on each widget HWND after creation/mode changes,
+preserving layered transparency and desktop/floating placement. `ShowInTaskbar=false` alone did not
+exclude the transparent cards from Alt+Tab. Settings, account, log and expanded-list windows keep
+normal shell participation. A synthetic native check covers these flags and placement transitions.
+
+Windows-only worker adapters export the existing Swift attention/alert builders, ProjectWatch and
+StateSettler. All-account failure remains a failed fetch with sanitized diagnostic attention. Each
+worker runs in one language; original localization/plural tables are packaged without changing Mac
+resources. Windows merges scopes into a tiered tray/list, stores at most 200 seen alert IDs, and
+keeps the first observation after launch/reconnect quiet. Shell_NotifyIconW preserves shared no-sound
+alerts and click targets. Notification preference changes do not restart project workers; changes to
+project configuration wait for active actions. Full native shell/recovery qualification remains open.
+
+The Windows Core `FailureText` maps stable worker/host codes to six-language actionable presentation.
+`HostFailure` keeps runtime setup, credential-vault and browser failures typed without coupling the
+Core to WPF. Protocol messages remain fixed English; unknown worker messages are not displayed.
+Missing WSL executables become IO failures so an unavailable distro remains isolated during startup.
+
 ```
 DeckController (@MainActor)
    ├─ owns CardState<…> for each card, and one RefreshSource per remote card

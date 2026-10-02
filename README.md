@@ -2,9 +2,222 @@
 
 Desktop panels for the things a developer checks twenty times a day: open pull requests,
 review requests, deploys. Frosted cards that sit on the macOS desktop behind your windows,
-plus a menu-bar item with the count.
+plus a branded menu-bar item whose tooltip counts what needs attention.
 
 Native macOS, built from a SwiftPM package with no Xcode required.
+
+A separate [Windows / WSL feasibility probe](docs/windows-probe.md) is available for evaluating
+desktop-window behaviour and disposable WSL process control. It is an experiment, not a Windows
+release of the application. A [full Windows migration plan](docs/windows-migration.md) is now
+being implemented: the native macOS shell stays in place, with shared Swift integrations behind
+a separate native Windows/WSL shell. The [Windows development preview](Windows/README.md) includes
+local/remote cards, lifecycle controls, logs and per-project Ubuntu/Debian workers. Its widgets stay
+out of Alt+Tab in desktop and floating modes; settings and logs remain ordinary windows. Cards use
+compact controls and muted colours. The tray groups shared account/project/review attention;
+notifications are opt-in, quiet on the first check and configurable per account/project.
+Known WSL, project-tool, account and credential errors include translated guidance in six languages.
+Windows settings have a searchable sidebar and contextual forms with configuration autosave.
+The tray's Cards section and Settings/Cards list every remote card, with local projects grouped in
+the tray. Verified GitHub account setup shows Pull requests and Inbox for all accounts; Actions
+starts hidden. GitLab setup shows Merge requests. Existing account-only settings acquire these
+defaults once; saved hidden states, custom scopes and existing card IDs/positions are preserved.
+Windows column arrangement uses measured visible-card heights and 12-DIP gaps, wrapping at the work
+area edge while keeping the deck anchor. A header chevron and card context menu switch between compact
+and full views; contextual settings also expose compact mode. Each card retains its saved preference.
+During a project command, the compact cancellation button stays icon-sized; changing the card view
+keeps cancellation available and preserves operation progress.
+Local cards show Git branches with a clear fork glyph and include live searchable logs, terminal
+following, repository/tool links and conditional
+phone QR links through the Windows LAN address. The QR window explains unavailable addresses;
+project settings accept an optional address already reachable from the phone. Copy closes the QR,
+and new status updates replace its URL. The icon hides while stopped or working;
+short tool/site groups share a row. The [parity audit](docs/windows-feature-parity.md)
+records checked behavior and the remaining differences.
+The [Mac functional specification](docs/macos-functional-spec.md) defines 140 migration acceptance
+items with source references, defaults, complete flows and explicit Windows gaps. Windows now uses
+the original DD panel-stack tray glyph: a ring for stuck work, an ink dot for something to fix and
+a red dot when somebody is waiting. The glyph follows the system taskbar theme and icon size.
+Windows DDEV cards now show the configured PHP and database versions beside the framework and
+checkout name, including stopped/paused projects. Versions come from the existing shared parser
+through the production worker. Mailpit/xhgui use the reported URLs and saved tool switches; new
+projects default xhgui off. Local cards share a ten-second poll and one DDEV inventory per cycle;
+GitHub/GitLab requests use an independent worker connection. [Metadata contract](docs/adr/0027-ddev-worker-metadata.md).
+Windows Arc settings now include organization/site, local origin/health path and custom Fusion
+commands. Hosted-only Arc cards work without a checkout; attaching one keeps the card ID. Typed
+link rows retain templates, disabled addresses and tool/site groups, including Arc `{org}`/`{site}`
+and DDEV `{site}`. Hosted links stay usable while stopped; local PageBuilder follows stack state.
+Plain Windows projects offer Detect using the same Compose/package/workspace/Make probe as Mac.
+It fills command/mode/Docker choices while preserving entered caption and health URL. A separate
+opening URL supports frontend/backend layouts; cards show caption/checkout beside the start command.
+The Windows Preview now includes the qualified settings/browser batch. Ctrl+F focuses search,
+arrows navigate the sidebar and removal asks first;
+Return in the token field runs the explicit verify/save action. Metadata autosave stays quiet and
+keeps fields editable; invalid edits remain available for correction before leaving the form.
+Arc/plain health checks show the original shared result in their own row, rerun after relevant
+edits and ignore replies for an older address. The read-only `project.check` operation uses a
+separate settings worker connection and leaves live card observations unchanged. Browser choices discover
+installed Edge, Chrome, Firefox, Brave, Vivaldi and Chromium; Chromium profiles show friendly names.
+Saved unavailable choices remain intact, Firefox profiles are ignored and failed browser launches
+fall back to the system default. Core96/0, portable worker317/0, native UI1034/0 and installer8/0
+pass; the updated Preview preserves existing settings and all nine widgets. Live browser identities,
+real account/token flows and native Mac/x64/external acceptance gates stay open. See
+[ADR0032](docs/adr/0032-windows-settings-checks-and-browser-choice.md).
+Full feature parity and [release qualification](docs/windows-qualification.md)
+are still pending.
+The Windows Preview now aligns tray and explicit column arrangement order: built-in cards,
+then Arc, DDEV and plain projects, with site2 before site10. Saved configuration order and hidden
+placements remain intact. Core104/0, native UI1041/0, installer8/0 and read-only integration pass;
+the updated Preview preserves all nine windows and existing settings. The shared worker remains
+the unchanged qualified317 baseline. Settings-sidebar live-state behavior and external release
+gates remain open. See
+[ADR0033](docs/adr/0033-windows-catalog-and-tidy-order.md).
+The Windows Preview now shows tray attention subtitles/account names and ages,
+with three rows per urgent tier, two informational rows and a submenu for additional items; a single
+leftover stays directly visible. An empty digest includes a local check time from the host's last
+validated worker attention observation, with the Mac's current-time fallback before any observation.
+Core112/0, native UI1103/0, installer8/0 and fresh read-only integration pass. Synthetic main,
+overflow, calm and browser views confirm that subtitles/ages/profile controls fit; the active
+Preview preserves all nine widgets and existing settings. The worker remains the unchanged
+qualified317 baseline for that batch. Tray deck actions and attention modifier alternates remain open.
+See [ADR0034](docs/adr/0034-windows-tray-attention-presentation.md).
+The Windows visibility/context batch is qualified and retained in Preview484424.
+Hide and contextual settings target the selected card's permanent ID; hiding retains its state and
+running operation, and open settings update the visibility switch without discarding an edited draft.
+Card menus also rebuild current compact/log/lock state on opening, offer Tidy and refresh all active
+cards, and expose Inbox read-rest/read-all actions using the displayed account cutoffs. Existing
+metadata autosave cannot undo a later hide. Worker requests gain an optional active-project
+context so hidden projects stop contributing local attention while their watch/status history remains.
+Core122/0, portable worker328/0, native UI1165/0 and installer8/0 pass, with a warning-free ARM64
+package, fresh read-only/runtime checks and sixty synthetic views. The owned update preserves all
+nine widgets, saved settings, original configuration/shortcut, defaults and startup. The original
+119 Mac files and product graph remain unchanged. All-DDEV poweroff qualification follows below;
+attention modifier actions remain open. See
+[ADR0035](docs/adr/0035-windows-card-visibility-and-retained-owners.md).
+The Windows command batch is qualified and retained in Preview484424: tray Open pull requests, refresh of all eligible active
+cards and saved arrangements. The dashboard uses the first enabled saved GitHub account's browser/
+profile, or the system default. Arrangements capture visibility, chosen compact flags and positions;
+menu checkmarks reflect the current full card layout. A localized name dialog supports Save/Return
+and Cancel/Escape; explicit Forget is available in the tray and settings. Applying retains existing
+card windows and running work, and Deck mode switches preserve attention and draft state.
+Core132/0, native1261/0, installer8/0, fresh read-only/runtime checks and84 synthetic views pass.
+The unchanged qualified worker328 archive/suite is reused, not rerun. The owned update preserves
+all nine widgets, IDs/settings/placements/compact/scopes/preferences/distributions and original
+configuration/shortcut/full backup/defaults/startup; Mac119/product graph remain unchanged.
+The all-DDEV poweroff qualification follows below.
+See [ADR0036](docs/adr/0036-windows-tray-deck-commands-and-arrangements.md).
+
+All-DDEV poweroff is qualified and active in Preview484424. The tray confirmation lists the configured
+DDEV-bearing WSL distributions and explains that the command stops all DDEV projects on connected
+Docker servers, including projects outside the deck or in other distributions, plus the router and
+SSH agent. Cancel is the default; Enter/Escape cancel and only an explicit Power off click confirms.
+The typed prepare/run/finalize/abort transaction stages every polling worker before serial commands,
+renews every actor before each route and never retries a lost run. Fresh physical outcomes and
+diagnostics update the same hidden/compact card owners without resetting metadata or alert queues.
+Core149/0, final worker345/0, native1328/0, installer8/0,102 synthetic views and fresh read-only7+2/
+runtime16/Arc4/metadata5 checks pass; Mac119/product graph/spec140/204 remain intact. Only the owned
+Preview437068 was replaced, preserving all nine widgets and prior settings/configuration/shortcut/
+backup/defaults/startup. Lifecycle qualification uses fake CLI runners; read-only capability checks
+invoke no real poweroff. See
+[ADR0037](docs/adr/0037-windows-ddev-poweroff-transaction.md). SET-04/TRAY-07 remained open at
+that poweroff checkpoint; later subsets follow. Native Mac/x64/live identities/phone/display/shell/
+signing/full migration gates remain open.
+
+Windows **Work in flight** was qualified in Preview484424 and is retained in Preview570836 without an account: one default-off
+card watches configured Arc/DDEV/plain checkouts, including hidden project cards. Typed offline
+worker reads, retained three/twelve-row and compact presentation, exact-distribution terminal
+targets, scoped informational attention and a shared provider→logs→checkout refresh cycle are
+included. Git children use `GIT_OPTIONAL_LOCKS=0`, `GIT_NO_LAZY_FETCH=1` and an explicit empty
+`GIT_ALLOW_PROTOCOL=` transport allowlist. Checking/partial/all-failed/stale results stay distinct;
+hidden reads retain their owner/cache without cancellation or stale attention. Settings also have
+narrow bounded recovery for atomic replacement error1175, with unchanged-file guards and no
+non-atomic fallback. Linux worker plural fallback uses original numeric `other` forms; Windows
+regenerates WIF wording with its six-language plural rules, preserving Mac resources and policy.
+
+Final Core183/0 (including13 atomic checks), worker367/0, native1396/0 with observed exit0,
+installer8/0,192 synthetic views, read-only7local+2remote/four independent channels/shared cadence,
+runtime16/Arc4/metadata5 and owned ordinary Git30/promisor60 checks pass. Mac119/product graph/
+spec140/204 stay intact. Only recorded446868 was replaced by484424/package
+02ea3db442754597aaeccb7315e1876d; all nine0x80080 widgets and prior IDs/settings/positions/compact/
+scopes/preferences/distributions/defaults/startup/original configuration/shortcut/full backup remain,
+singleton0 and old worker proxies0. Default-off WIF performs no Git reads in actual integration.
+Disposable Git fixtures qualify the installed Ubuntu/Debian paths; arbitrary repository programs,
+other object layouts/packages and native Mac/x64/live identities/phone/shell/signing remain open.
+At that WIF checkpoint, SET-04 sidebar order/dots/dimming remained incomplete. Its later qualified
+subset follows the attention checkpoint below.
+See [ADR0038](docs/adr/0038-windows-work-in-flight.md).
+
+Windows attention rows now offer a permitted alternate while Alt is held: exact personal Inbox
+mark-read takes precedence over remembered-project dismissal. The full attention list has explicit
+named actions. A notification without a web URL can still be read; its primary stays disabled.
+Read targets bind the original card, account, API endpoint and thread, with current-owner checks
+before credential access and the existing write RPC. Optimistic removal masks only the selected
+account/thread during a pending poll, preserving siblings and successful-check time. Hidden started
+work stays owned; lost writes are not replayed. Existing Inbox row/read-rest/read-all behavior remains.
+
+The supported TRAY-07 subset is qualified and active in Preview570836/package
+2cc50416402c48b9bab4ac6624d88107: Core202/0, worker379/0, native1468/0 observed exit0 in181.91s,
+installer8/0 exit0 in36.08s,228 six-language synthetic views and read-only7local+2remote exit0 in33.25s.
+The72 new native cases are a subset of that full run, not a separate final run. Runtime16/Arc4/
+metadata5, exact-worker owned Git30+promisor60 and Mac119/product graph/spec140/204 pass.
+Only recorded484424 was replaced; all nine0x80080 windows, prior IDs/positions/compact/scopes/
+preferences/accounts/distributions, original configuration/shortcut/full backup/defaults/startup,
+singleton0 and old worker proxies0 are preserved. The matrix remains partial for native updater
+installation/available-update notes. At that TRAY checkpoint SET-04 was still open. Full summon
+behavior and native Mac/x64/live identities/
+physical Alt/IME/screen-reader/display/phone/signing/clean-machine/full-migration gates stay open.
+Queued tests do not establish physical input or same-thread modal-menu isolation. See
+[ADR0039](docs/adr/0039-windows-attention-alternates-and-inbox-read.md).
+
+Windows settings now sort accounts together across providers and projects together across kinds,
+using natural title order while retaining saved ties and independent deck order. Running and busy
+dots come from the current local card owner, including hidden cards; failed polls keep the last
+accepted physical state. Disabled entries remain selectable with a dimmed icon/title and a full
+not-on-deck tooltip. Cached sidebar updates preserve the active form, drafts, password, focus/caret,
+search, selection and scroll. Showing a retained settings window catches up cached presentation
+without another credential lookup.
+
+At the SET-04 checkpoint, Preview601784/package9563ba2b2a4242fa9a58c76f8b166764 qualified:
+Core214/0 (12new), native1492/0 observed exit0/296.17s, installer8/0 exit0/118.88s,
+252 six-language synthetic views (24new settings views) and read-only7local+2remote exit0/32.34s.
+The24 new native cases are extracted from the final full run, `standaloneRun=false`; the separate
+24-case component run is historical. Final standalone legacy navigation68/0 exits0/11.83s.
+The exact unchanged TRAY worker379 and runtime16/Arc4/metadata5/owned Git90 proofs are reused,
+not rerun for this UI batch. Only recorded570836 was replaced, preserving all nine0x80080 windows,
+IDs/XY/compact/scopes/preferences/accounts/distributions/original configuration/shortcut/full backup/
+default settings/startup, singleton0 and old worker proxies0. Mac119/product graph/spec140/204 stay
+intact. Earlier c5 opening, e61 focus-premise and eced navigation-expectation failures remain retained.
+At that checkpoint TRAY-07 updater installation/notes, SET-02/08, full summon, native Mac/x64/live identities/phone/
+physical input/accessibility/display/shell/signing/clean-machine and full migration gates remain open.
+See [ADR0040](docs/adr/0040-windows-settings-sidebar-state-and-order.md).
+
+Windows now remembers settings width and height after a completed normal user resize. It keeps
+resizable width and height,1020×720-DIP defaults and880×440 minimum, adapting Mac's fixed width.
+Opening can temporarily clamp the effective size to a supported logical work area without rewriting
+the chosen size. Moves, initial/programmatic/page/search/sidebar layout and minimize/maximize do not
+save. The precise current-model write preserves the actual form/drafts/password/focus/error and
+pending checks, retained card owners, attention/Seen/queues/check time and polling; older queued
+metadata preserves the latest size. Save failures show a separate localized banner, and a later
+completed resize can retry. Starting close invalidates pending resize receipts before metadata Flush.
+
+This size subset is qualified and active in Preview627264/package3779f95e4665421bb0c218a54cea339e:
+actual apphost Core4/full218, native1515/0 observed exit0/232.51s, installer8/0 exit0/38.33s with
+the same manifest,282 six-language synthetic views (30geometry) and read-only7local+2remote exit0/
+45.58s pass. The23 new cases are extracted from that full run (`standaloneRun=false`); standalone
+component12a569's23/0 in31.75s is historical. Exact unchanged TRAY worker379/runtime16/Arc4/metadata5/
+owned Git30+promisor60 evidence is reused, not rerun. Only recorded601784 was replaced, preserving
+all nine0x80080 HWNDs, IDs/XY/compact/scopes/preferences/accounts/distributions/original configuration/
+shortcut/full backup/defaults/startup; absent saved size stays absent, singleton0/old proxies0.
+Mac119/product graph/spec140/204 remain intact. Original reopen/closing and Arc-link fixture-diagnostic
+failures remain retained. The existing footer passed actual bounds and stays unchanged.
+
+SET-02 remains partial for OS sidebar metrics and physical display acceptance; size stores no XY or
+monitor identity. Token creation and empty-field verification of an existing token remain missing
+local functions. Account browser Test already reads the current draft at click; live signed-in
+identity is a separate gate. Fresh/missing settings default120 seconds, legacy omitted intervals
+retain60; Actions repositories are per-account, with Mac's deck-wide/Actions-off-disabled watchlist
+still partial. SET-08, updater install/notes, full summon and native Mac/x64/live identity/phone/
+physical input/accessibility/display/shell/signing/clean-machine/full migration remain open.
+See [ADR0041](docs/adr/0041-windows-settings-window-size-persistence.md).
 
 Pull requests across every account a token can see - yours and the ones waiting on your
 review - worst first:
@@ -817,6 +1030,7 @@ command is done. Settings, General has the switch and a **Check Now** button wit
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) - modules, data flow, where to add a card
+- [docs/macos-functional-spec.md](docs/macos-functional-spec.md) - complete migration acceptance inventory; source behavior, Windows mapping and remaining gaps
 - [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next

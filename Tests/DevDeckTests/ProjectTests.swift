@@ -227,7 +227,11 @@ func runProjectTests(_ run: TestRun) async {
         _ = await service.perform(.start)
 
         let command = try expectNotNil(await runner.commands.first, "command")
+#if os(macOS)
         try expect(command.contains("nohup /bin/zsh -lc 'npm run dev'"), "the command runs under nohup")
+#else
+        try expect(command.contains("nohup \(ShellCommandRunner.defaultShell) -lc 'npm run dev'"), "the command runs under nohup")
+#endif
         try expect(command.contains(">> '\(files.log("ledwall").path)' 2>&1"),
                    "its output goes to the log rather than to a pipe nobody drains")
         try expect(command.contains("echo $! > '\(files.pid("ledwall").path)'"), "the pid is written down")
