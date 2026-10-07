@@ -468,11 +468,16 @@ public struct CardMetaBlock: View {
                     }
                     Spacer(minLength: 0)
                     if let trailing {
+                        // The trailing text wins the row over the leading one, since versions and
+                        // commands are the thing to read here, but it is never allowed to grow past
+                        // the row: fixed to its own width, one long command pushed the card out
+                        // of its panel.
                         Text(trailing)
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(DeckTheme.value.opacity(0.66))
                             .lineLimit(1)
-                            .fixedSize()
+                            .truncationMode(.middle)
+                            .layoutPriority(1)
                     }
                 }
                 .frame(height: Self.rowHeight)

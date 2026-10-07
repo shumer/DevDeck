@@ -148,6 +148,29 @@ public struct LocalProject: Sendable, Equatable, Codable, Identifiable {
     /// Nothing local can be done without a folder to do it in.
     public var supportsCommands: Bool { folderURL != nil && !startCommand.isEmpty }
 
+    /// The part of the start command worth the card's one short line: the last command of the
+    /// chain.
+    ///
+    /// A start command is often a chain: source an environment, start a database, change
+    /// directory, then run the thing. `dotnet run --launch-profile http` says what the project
+    /// is; the `source` and the `cd` before it are how it got there, and a hundred and fifty
+    /// characters of them pushed a whole card out of its panel.
+    public var startCommandSummary: String { Self.commandSummary(startCommand) }
+
+    /// The last command of a shell chain, trimmed. Splits on `&&`, `||`, `;` and a lone `&`,
+    /// which is a background job followed by the next command. A pipe is not split: a pipeline
+    /// is one command, and its last stage is rarely the one that matters.
+    public static func commandSummary(_ command: String) -> String {
+        let pattern = #"\s*(?:&&|\|\||;|(?<!&)&(?!&))\s*"#
+        guard let expression = try? NSRegularExpression(pattern: pattern) else { return command }
+        let range = NSRange(command.startIndex..<command.endIndex, in: command)
+        let separated = expression.stringByReplacingMatches(in: command, range: range, withTemplate: "\u{0}")
+        let parts = separated.split(separator: "\u{0}", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        return parts.last ?? command.trimmingCharacters(in: .whitespaces)
+    }
+
     public var healthCheckURL: URL? {
         let trimmed = healthURL.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }

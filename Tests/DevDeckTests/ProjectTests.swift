@@ -103,6 +103,29 @@ func runProjectTests(_ run: TestRun) async {
     await run.test("nothing local is offered without a folder and a command") {
         try expect(!makeProject(folder: nil).supportsCommands)
         try expect(!makeProject(startCommand: "").supportsCommands)
+    }
+
+    await run.test("the card shows the last command of a start chain, not the whole chain") {
+        try expectEqual(LocalProject.commandSummary("npm run dev"), "npm run dev")
+        try expectEqual(
+            LocalProject.commandSummary(
+                "docker start irhub-sql >/dev/null && source \"/Users/me/AI data/env.sh\" && cd src/API && dotnet run --launch-profile http"
+            ),
+            "dotnet run --launch-profile http",
+            "the environment and the cd are how it got there, not what it is"
+        )
+        try expectEqual(
+            LocalProject.commandSummary("npm run tailwind:dev & dotnet run --launch-profile http"),
+            "dotnet run --launch-profile http",
+            "a lone ampersand is a background job followed by the next command"
+        )
+        try expectEqual(LocalProject.commandSummary("make up; make logs"), "make logs")
+        try expectEqual(LocalProject.commandSummary("npm start || echo failed"), "echo failed")
+        try expectEqual(LocalProject.commandSummary("npm run dev | tee out.log"), "npm run dev | tee out.log",
+                        "a pipeline is one command")
+        try expectEqual(LocalProject.commandSummary("  bun run dev  "), "bun run dev")
+        try expectEqual(LocalProject.commandSummary(""), "")
+        try expectEqual(makeProject(startCommand: "cd api && make up").startCommandSummary, "make up")
         try expect(makeProject().supportsCommands)
     }
 

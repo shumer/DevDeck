@@ -142,6 +142,9 @@
   at the side it stood on, and goes home exactly when the monitor is back, because the shove
   macOS gives windows on a display change is no longer mistaken for a drag. See
   [adr/0022-the-deck-parks-folded.md](adr/0022-the-deck-parks-folded.md).
+- **A long start command no longer breaks a project card** - the card shows the last command of
+  the chain, `dotnet run --launch-profile http` rather than the `source` and `cd` before it, and
+  the meta row truncates instead of pushing the card out of its panel.
 - **Pull requests waiting for your review** on the same card as your own, from a second search
   in the same request.
 - **The branch on a card is a link** to the repository it came from, read from the checkout's

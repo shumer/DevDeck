@@ -576,6 +576,10 @@ field for a new one where Return or **Save Token** saves it, and a button to cre
 name and browser, for GitLab its address, and for GitHub the organisations under **Advanced**.
 Everything else applies as you change it.
 
+A project card shows the last command of its start chain, `dotnet run --launch-profile http` rather
+than the `source` and `cd` that lead up to it, and no text on a card can push the card out of its
+panel.
+
 Drag a panel anywhere; the position is remembered per card - **against the display it is on**,
 not as a point on the desktop. Unplug the monitor the deck lives on and the cards are parked on
 the screen that is left, folded to one row each and stacked in a single column at the side the

@@ -130,7 +130,7 @@ public struct LocalProjectCard: View {
                 branch: status.branch,
                 repositoryURL: status.repositoryURL,
                 leading: metaLeading,
-                trailing: project.startCommand,
+                trailing: project.startCommandSummary,
                 onOpenRepository: onOpen
             )
             chips
