@@ -39,8 +39,28 @@ Q1 acceptance does not establish the later POC answers.
 Dependencies were installed following [Swift's Windows instructions](https://www.swift.org/install/windows/).
 The Swift installer was verified against the SHA256 in the WinGet package manifest.
 GitHub CLI and Ubuntu-24.04 were installed after Q1 acceptance to prepare step 2.
-GitHub authentication and Linux user initialization are pending user action. No real WSL
-project commands have been tested yet. .NET 10 SDK installation is planned for step 4.
+GitHub CLI authentication was verified for the repository owner. The accepted step 1 was
+committed as 5dc5704 and pushed to poc/one-engine. Further exchanges use this branch.
+Ubuntu currently starts as root; Linux user initialization remains pending user action.
+.NET 10 SDK installation is planned for step 4.
+
+## Step 2 preliminary WSL lifecycle probe
+
+WSL 2.7.3.0 with Ubuntu-24.04 uses systemd. A neutral demo started two Python HTTP servers
+on ports 8765 and 8766 under a nohup bash wrapper. The first short launch did not produce a
+working service after the client exited, so an immediate background launch is not yet qualified.
+
+A repeat in a persistent demo directory kept the launching session open until both Linux
+listeners were present and Windows localhost requests returned HTTP 200. After every wsl.exe
+client exited, both ports still returned HTTP 200 at 99 seconds. No WSL client was kept open
+during that idle interval. Reading the stored PID and checking kill -0 used one WSL invocation.
+The wrapper and two Python processes were then stopped inside Linux; verification found no
+live probe processes and no listeners on either port, with zero remaining wsl.exe clients.
+
+This probe ran as root in the newly installed distribution. Repeat under the user's Linux
+account and through the actual command runner before Q3 acceptance. Investigate startup
+readiness, and test cancellation and timeout against Linux descendants as well as Windows
+clients. The distro must come from project configuration. Full Q3 remains untested.
 
 ## Implementation
 
