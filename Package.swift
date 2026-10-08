@@ -8,10 +8,13 @@ import PackageDescription
 #if os(Windows)
 let package = Package(
     name: "DevDeck",
+    defaultLocalization: "en",
     products: [
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
         .library(name: "GitHubKit", targets: ["GitHubKit"]),
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
+        .library(name: "DevDeckEngine", targets: ["DevDeckEngine"]),
+        .executable(name: "DevDeckEngineHost", targets: ["DevDeckEngineHost"]),
     ],
     targets: [
         .target(
@@ -20,10 +23,27 @@ let package = Package(
         ),
         .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
         .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+        .target(name: "DevDeckEngine", dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit"]),
+        .target(
+            name: "DevDeckLocalization", path: "Resources/Localizations",
+            sources: ["LocalizationResources.swift"],
+            resources: [.copy("en.lproj"), .copy("ru.lproj"), .copy("de.lproj"), .copy("it.lproj"), .copy("es.lproj"), .copy("fr.lproj")]
+        ),
+        .executableTarget(name: "DevDeckEngineHost", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]),
+        .executableTarget(name: "DevDeckEngineTests", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness"], path: "Tests/EngineTests"),
+        .executableTarget(
+            name: "DevDeckWSLSmoke",
+            dependencies: ["DevDeckCore", "ProjectKit"],
+            path: "Tools/Smoke/WSLLifecycle"
+        ),
+        .executableTarget(
+            name: "DevDeckNetworkSmoke", dependencies: ["DevDeckCore", "GitHubKit"],
+            path: "Tools/Smoke/Network"
+        ),
         .target(name: "TestHarness", dependencies: ["DevDeckCore"], path: "Tests/TestHarness"),
         .executableTarget(
             name: "DevDeckWindowsCoreTests",
-            dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit", "TestHarness"],
+            dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit", "DevDeckEngine", "TestHarness"],
             path: "Tests/WindowsCoreTests"
         ),
     ]
@@ -31,6 +51,7 @@ let package = Package(
 #else
 let package = Package(
     name: "DevDeck",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
@@ -38,6 +59,8 @@ let package = Package(
         .library(name: "ArcKit", targets: ["ArcKit"]),
         .library(name: "DDEVKit", targets: ["DDEVKit"]),
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
+        .library(name: "DevDeckEngine", targets: ["DevDeckEngine"]),
+        .executable(name: "DevDeckEngineHost", targets: ["DevDeckEngineHost"]),
         .library(name: "DevDeckUI", targets: ["DevDeckUI"]),
         .executable(name: "DevDeck", targets: ["DevDeckApp"]),
     ],
@@ -61,6 +84,14 @@ let package = Package(
 
         // Projects that are neither: a folder, a command and a health URL.
         .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+        .target(name: "DevDeckEngine", dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit"]),
+        .target(
+            name: "DevDeckLocalization", path: "Resources/Localizations",
+            sources: ["LocalizationResources.swift"],
+            resources: [.copy("en.lproj"), .copy("ru.lproj"), .copy("de.lproj"), .copy("it.lproj"), .copy("es.lproj"), .copy("fr.lproj")]
+        ),
+        .executableTarget(name: "DevDeckEngineHost", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]),
+        .executableTarget(name: "DevDeckEngineTests", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness"], path: "Tests/EngineTests"),
 
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(
@@ -101,7 +132,8 @@ let package = Package(
         .executableTarget(
             name: "DevDeckSmoke",
             dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit"],
-            path: "Tools/Smoke"
+            path: "Tools/Smoke",
+            exclude: ["WSLLifecycle", "Network", "Invoke-NetworkSmoke.ps1"]
         ),
 
         // Minimal test framework. XCTest and swift-testing both need a full Xcode

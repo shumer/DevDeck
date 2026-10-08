@@ -5,7 +5,8 @@
 - Step 1 accepted with an external Swift 6.4 WinSDK warning exception: native Windows core
   and a separate offline test executable; Windows and user-run Mac evidence
   is tracked in [the POC report](poc/one-engine-report.md).
-- Step 2: prepare branch exchange, then engine and host, real GitHub and WSL lifecycle checks.
+- Step 2: native engine and JSONL host, translated models and WSL lifecycle checks implemented;
+  live GitHub evidence and Mac verification remain part of its acceptance gate.
 - Then, in acceptance order: cross-platform golden transcripts, a thin WPF shell, measurements.
 
 ## Done

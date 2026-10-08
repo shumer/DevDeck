@@ -43,6 +43,24 @@ public struct LocalProjectService: Sendable {
     private let sleeper: any Sleeper
     private let files: ProjectRuntimeFiles
 
+    #if os(Windows)
+    public init(
+        project: LocalProject,
+        runner: any CommandRunning,
+        httpClient: any HTTPClient = URLSessionHTTPClient.makeDefault(timeout: 3),
+        clock: any DateProvider = SystemDateProvider(),
+        sleeper: any Sleeper = TaskSleeper(),
+        files: ProjectRuntimeFiles = .standard()
+    ) {
+        self.project = project
+        self.runner = runner
+        self.httpClient = httpClient
+        self.clock = clock
+        self.sleeper = sleeper
+        self.files = files
+    }
+
+    #else
     public init(
         project: LocalProject,
         runner: any CommandRunning = ShellCommandRunner(),
@@ -58,6 +76,8 @@ public struct LocalProjectService: Sendable {
         self.sleeper = sleeper
         self.files = files
     }
+
+    #endif
 
     public var logURL: URL { files.log(project.id) }
 
@@ -103,12 +123,7 @@ public struct LocalProjectService: Sendable {
         let repositoryURL = GitCheckout.originWebURL(in: folder)
         #if os(Windows)
         let pid = await windowsStoredPID(in: folder)
-        let isAlive: Bool
-        if let pid {
-            isAlive = (try? await runner.run("kill -0 \(pid)", in: folder, timeout: 3))?.succeeded == true
-        } else {
-            isAlive = false
-        }
+        let isAlive = pid != nil
         #else
         let pid = storedPID()
         let isAlive = pid.map(ProcessLiveness.isAlive) ?? false
@@ -231,12 +246,18 @@ public struct LocalProjectService: Sendable {
 
     private func start(in folder: URL) async -> CommandResult? {
         #if os(Windows)
+        if await status().isRunning {
+            return CommandResult(exitCode: 0, standardOutput: "", standardError: "")
+        }
+        guard !Task.isCancelled else { return nil }
         let runtime = Self.windowsRuntimeDirectory
         let log = "\(runtime)/\(Self.shellQuoted(project.id + ".log"))"
         let pidFile = "\(runtime)/\(Self.shellQuoted(project.id + ".pid"))"
         let launch: String
         if project.holdsProcess {
-            launch = "nohup /bin/bash -lc \(Self.shellQuoted(project.startCommand)) >> \(log) 2>&1 < /dev/null & echo $! > \(pidFile)"
+            launch = "nohup setsid /bin/bash -lc \(Self.shellQuoted(project.startCommand)) >> \(log) 2>&1 < /dev/null & "
+                + "pid=$!; boot=$(cat /proc/sys/kernel/random/boot_id); started=$(awk '{print $22}' /proc/$pid/stat); "
+                + "printf '%s %s %s\\n' $pid $boot $started > \(pidFile)"
         } else {
             launch = "{ \(project.startCommand) ; } >> \(log) 2>&1"
         }
@@ -274,6 +295,7 @@ public struct LocalProjectService: Sendable {
         } else {
             guard let pid = await windowsStoredPID(in: folder) else { return nil }
             command = Self.killTreeCommand(pid: pid)
+                + "; sleep 0.3; " + Self.killWindowsTreeCommand(pid: pid)
         }
         let result = try? await runner.run(command, in: folder, timeout: 30)
         if result?.succeeded == true {
@@ -305,9 +327,22 @@ public struct LocalProjectService: Sendable {
     // Runtime files belong to the Linux process and survive a Windows engine restart.
     private static let windowsRuntimeDirectory = "\"$HOME/.local/share/DevDeckPOC/projects\""
 
+    private static func killWindowsTreeCommand(pid: Int32) -> String {
+        "ktk() { local child; for child in $(pgrep -P $1 2>/dev/null); do ktk $child; done; "
+            + "kill -KILL $1 2>/dev/null || true; }; ktk \(pid); "
+            + "kill -KILL -- -\(pid) 2>/dev/null || true; "
+            + "ps -eo pgid=,stat= | awk -v group=\(pid) '$1 == group && $2 !~ /^Z/ { found=1 } END { exit found }'"
+    }
+
     private func windowsStoredPID(in folder: URL) async -> Int32? {
         guard let result = try? await runner.run(
-            "cat \(Self.windowsRuntimeDirectory)/\(Self.shellQuoted(project.id + ".pid"))", in: folder, timeout: 3
+            "read -r pid boot started < \(Self.windowsRuntimeDirectory)/\(Self.shellQuoted(project.id + ".pid")) || exit 1; "
+                + "case $pid in ''|*[!0-9]*) exit 1 ;; esac; test $pid -gt 1 && "
+                + "test \"$boot\" = \"$(cat /proc/sys/kernel/random/boot_id)\" && "
+                + "test \"$started\" = \"$(awk '{print $22}' /proc/$pid/stat 2>/dev/null)\" && "
+                + "test \"$(awk '{print $3}' /proc/$pid/stat 2>/dev/null)\" != Z && "
+                + "kill -0 $pid 2>/dev/null && printf '%s' $pid",
+            in: folder, timeout: 3
         ), result.succeeded else { return nil }
         guard let pid = Int32(result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)),
               pid > 0 else { return nil }

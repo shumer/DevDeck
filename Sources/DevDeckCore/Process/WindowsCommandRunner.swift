@@ -5,7 +5,7 @@ import Foundation
 public struct ShellCommandRunner: CommandRunning {
     public let distribution: String
 
-    public init(distribution: String = "Ubuntu-24.04") {
+    public init(distribution: String) {
         self.distribution = distribution
     }
 
@@ -43,12 +43,30 @@ public struct ShellCommandRunner: CommandRunning {
         private let process = Process()
         private var cancelled = false
         private var timedOut = false
+        private var finished = false
+        private var cleanupStarted = false
+        private var cleanupFailed = false
+        private var launched = false
+        private let cleanupGroup = DispatchGroup()
+        private var distribution = ""
+        private let operation = UUID().uuidString
 
         func cancel(timeout: Bool = false) {
             lock.lock()
-            defer { lock.unlock() }
+            if finished { lock.unlock(); return }
             if timeout { timedOut = true } else { cancelled = true }
-            if process.isRunning { process.terminate() }
+            let shouldClean = launched && !cleanupStarted
+            if shouldClean { cleanupStarted = true; cleanupGroup.enter() }
+            lock.unlock()
+            guard shouldClean else { return }
+            DispatchQueue.global().async {
+                let succeeded = self.cleanupLinuxProcesses()
+                self.lock.lock()
+                self.cleanupFailed = !succeeded
+                if self.process.isRunning { self.process.terminate() }
+                self.lock.unlock()
+                self.cleanupGroup.leave()
+            }
         }
 
         func run(
@@ -58,14 +76,18 @@ public struct ShellCommandRunner: CommandRunning {
             let systemRoot = ProcessInfo.processInfo.environment["SystemRoot"] ?? "C:\\Windows"
             process.executableURL = URL(fileURLWithPath: systemRoot)
                 .appendingPathComponent("System32/wsl.exe")
+            let state = "\"$HOME/.local/share/DevDeckPOC/commands/\(operation)\""
+            let child = "export DEVDECK_POC_OPERATION=\(operation); echo $$ > \(state)/pid; test ! -e \(state)/cancel || exit 125; exec bash -lc \(Self.quoted(command))"
+            let supervisor = "mkdir -p \(state) && { setsid bash -lc \(Self.quoted(child)) & child=$!; wait $child; code=$?; rm -rf \(state); exit $code; }"
             process.arguments = ["-d", distribution, "--cd", Self.linuxPath(directory, distribution),
-                                 "--", "bash", "-lc", command]
+                                 "--exec", "bash", "-lc", supervisor]
             let output = Pipe()
             let error = Pipe()
             process.standardOutput = output
             process.standardError = error
             process.standardInput = FileHandle.nullDevice
             lock.lock()
+            self.distribution = distribution
             if cancelled {
                 lock.unlock()
                 throw CancellationError()
@@ -74,6 +96,7 @@ public struct ShellCommandRunner: CommandRunning {
                 lock.unlock()
                 throw CommandError.launchFailed(error.localizedDescription)
             }
+            launched = true
             lock.unlock()
             let watchdog = DispatchWorkItem { self.cancel(timeout: true) }
             DispatchQueue.global().asyncAfter(deadline: .now() + max(0, timeout), execute: watchdog)
@@ -88,11 +111,17 @@ public struct ShellCommandRunner: CommandRunning {
             }
             process.waitUntilExit()
             group.wait()
+            lock.lock()
+            finished = true
+            lock.unlock()
+            cleanupGroup.wait()
             watchdog.cancel()
             lock.lock()
             let wasCancelled = cancelled
             let wasTimedOut = timedOut
+            let didFailCleanup = cleanupFailed
             lock.unlock()
+            if didFailCleanup { throw CommandError.launchFailed("Could not verify WSL process cleanup.") }
             if wasCancelled { throw CancellationError() }
             if wasTimedOut { throw CommandError.timedOut("WSL command") }
             return CommandResult(
@@ -100,6 +129,71 @@ public struct ShellCommandRunner: CommandRunning {
                 standardOutput: String(decoding: outputData, as: UTF8.self),
                 standardError: String(decoding: errorData, as: UTF8.self)
             )
+        }
+
+        private func cleanupLinuxProcesses() -> Bool {
+            let state = "\"$HOME/.local/share/DevDeckPOC/commands/\(operation)\""
+            let script = """
+            state=\(state)
+            mkdir -p "$state"; touch "$state/cancel"
+            for attempt in $(seq 1 30); do
+                test -s "$state/pid" && break
+                sleep 0.1
+            done
+            pid=$(cat "$state/pid" 2>/dev/null || true)
+            case "$pid" in ''|*[!0-9]*) pid=0 ;; esac
+            test "$pid" -gt 1 || pid=0
+            targets=""
+            freeze_tree() {
+                local target=$1 child
+                kill -STOP "$target" 2>/dev/null || return 0
+                targets="$target $targets"
+                for child in $(pgrep -P "$target" 2>/dev/null); do freeze_tree "$child"; done
+            }
+            if test "$pid" -gt 1; then freeze_tree "$pid"; fi
+            for target in $(ps -eo pid=,pgid= | awk -v group="$pid" '$2 == group { print $1 }'); do
+                freeze_tree "$target"
+            done
+            for directory in /proc/[0-9]*; do
+                if grep -azqFx 'DEVDECK_POC_OPERATION=\(operation)' "$directory/environ" 2>/dev/null; then
+                    freeze_tree "${directory##*/}"
+                fi
+            done
+            if test "$pid" -gt 1; then kill -TERM -- "-$pid" 2>/dev/null || true; fi
+            for target in $targets; do kill -TERM "$target" 2>/dev/null || true; done
+            for target in $targets; do kill -CONT "$target" 2>/dev/null || true; done
+            sleep 0.3
+            if test "$pid" -gt 1; then kill -KILL -- "-$pid" 2>/dev/null || true; fi
+            for target in $targets; do kill -KILL "$target" 2>/dev/null || true; done
+            for attempt in $(seq 1 10); do
+                live=0
+                for target in $targets; do
+                    if test -r /proc/$target/stat && test "$(awk '{print $3}' /proc/$target/stat)" != Z; then live=1; fi
+                done
+                if test "$live" = 0 && ! ps -eo pgid=,stat= | awk -v group="$pid" '$1 == group && $2 !~ /^Z/ { found=1 } END { exit !found }'; then
+                    if test "$pid" -gt 1; then rm -rf "$state"; fi
+                    exit 0
+                fi
+                sleep 0.1
+            done
+            exit 1
+            """
+            let cleanup = Process()
+            cleanup.executableURL = process.executableURL
+            cleanup.arguments = ["-d", distribution, "--exec", "bash", "-lc", script]
+            cleanup.standardInput = FileHandle.nullDevice
+            cleanup.standardOutput = FileHandle.nullDevice
+            cleanup.standardError = FileHandle.nullDevice
+            do { try cleanup.run() } catch { return false }
+            let watchdog = DispatchWorkItem { if cleanup.isRunning { cleanup.terminate() } }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 8, execute: watchdog)
+            cleanup.waitUntilExit()
+            watchdog.cancel()
+            return cleanup.terminationStatus == 0
+        }
+
+        private static func quoted(_ value: String) -> String {
+            "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
         }
 
         private static func linuxPath(_ directory: URL, _ distribution: String) -> String {

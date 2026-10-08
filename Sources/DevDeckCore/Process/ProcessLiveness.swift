@@ -1,26 +1,4 @@
-#if os(Windows)
-import Foundation
-
-/// Linux process identifiers are checked inside their owning WSL distribution.
-public enum ProcessLiveness {
-    public static func isAlive(_ pid: Int32, distribution: String) -> Bool {
-        guard pid > 0 else { return false }
-        let process = Process()
-        let systemRoot = ProcessInfo.processInfo.environment["SystemRoot"] ?? "C:\\Windows"
-        process.executableURL = URL(fileURLWithPath: systemRoot).appendingPathComponent("System32/wsl.exe")
-        process.arguments = ["-d", distribution, "--", "kill", "-0", String(pid)]
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return false }
-        let watchdog = DispatchWorkItem { if process.isRunning { process.terminate() } }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 3, execute: watchdog)
-        process.waitUntilExit()
-        watchdog.cancel()
-        return process.terminationStatus == 0
-    }
-}
-#else
+#if !os(Windows)
 import Darwin
 import Foundation
 

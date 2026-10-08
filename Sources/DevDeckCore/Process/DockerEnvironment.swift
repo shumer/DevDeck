@@ -66,6 +66,18 @@ public struct DockerEnvironment: Sendable {
     private let clock: any DateProvider
     private let workingDirectory: URL
 
+    #if os(Windows)
+    public init(
+        runner: any CommandRunning,
+        clock: any DateProvider = SystemDateProvider(),
+        workingDirectory: URL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+    ) {
+        self.runner = runner
+        self.clock = clock
+        self.workingDirectory = workingDirectory
+    }
+
+    #else
     public init(
         runner: any CommandRunning = ShellCommandRunner(),
         clock: any DateProvider = SystemDateProvider(),
@@ -75,6 +87,8 @@ public struct DockerEnvironment: Sendable {
         self.clock = clock
         self.workingDirectory = workingDirectory
     }
+
+    #endif
 
     public func status() async -> DockerStatus {
         guard let result = try? await runner.run(Self.probeCommand, in: workingDirectory, timeout: 20) else {

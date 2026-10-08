@@ -45,6 +45,47 @@ definitions module did not fix a clean build.
 Mac acceptance is performed on a Mac using `./run-tests.sh` and a warning-free `swift build`.
 Record those results separately in [the POC report](poc/one-engine-report.md).
 
+## One-engine host and lifecycle checks
+
+Build native Windows products from Developer PowerShell:
+
+```powershell
+swift build --product DevDeckEngineHost -Xswiftc -warnings-as-errors
+swift build --product DevDeckEngineTests -Xswiftc -warnings-as-errors
+swift run --skip-build DevDeckEngineTests
+swift build --product DevDeckWSLSmoke -Xswiftc -warnings-as-errors
+swift build --product DevDeckNetworkSmoke -Xswiftc -warnings-as-errors
+```
+
+The host reads `%LOCALAPPDATA%/DevDeckPOC/config.json`, or an explicit `--config` path on
+either platform. Configuration contains no credentials. Project distribution is required;
+the runner has no default distro. Send protocol v2 JSON lines with session.start and the
+display's visible frame, then card.measured, card.invoke or card.setExpanded. Credentials
+arrive only through credentials.set on stdin. EOF cancels and awaits active work.
+
+Run the separate WSL smoke executable with start, status, stop, cancel or timeout.
+Live checks use a neutral Python demo, and are not part of the offline suite. Cancellation
+and timeout include a child that escapes into its own session and ignores inherited TERM.
+Verify both ports and Linux descendants. For persistence without any wsl.exe clients, this
+machine requires `%USERPROFILE%/.wslconfig` with `[general] instanceIdleTimeout=-1`.
+It applies to all WSL distributions and was approved explicitly. Only the POC distro was restarted.
+
+The network smoke tool checks real PR fetching through PullRequestsService, REST ETag/304
+through GitHubClient and a rejected fixture credential. PR GraphQL POST requests do not
+support ETag/304; the REST check is separate. Run the hidden-input helper yourself:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools/Smoke/Invoke-NetworkSmoke.ps1
+```
+
+The execution policy applies only to that PowerShell process. The helper passes the credential
+through redirected stdin, retains it only in memory and prints counts and check results.
+It never fetches credentials from GitHub CLI. Do not redirect or record interactive credential input.
+The temporary helper is needed before the WPF Credential Manager command exists in step 4.
+
+On Mac, `./run-tests.sh` without filters now also runs DevDeckEngineTests. A filtered run
+keeps its existing behavior. Step 2 Mac results must be supplied separately by the user.
+
 ## Commands
 
 ```bash

@@ -26,19 +26,35 @@ that reaches for a window cannot be covered by it.
 
 ## Windows POC boundary
 
-The Windows package branch builds only `DevDeckCore`, `GitHubKit`, `ProjectKit` and the
-separate `DevDeckWindowsCoreTests` executable. The Mac package declaration stays in its
-original branch. The engine and its JSON-lines host belong to the next POC step.
+The Windows package branch builds `DevDeckCore`, `GitHubKit`, `ProjectKit`, `DevDeckEngine`
+and the native Windows `DevDeckEngineHost`. The engine and host are also available in the
+Mac package graph. `DevDeckApp` and `DevDeckUI` do not use the POC engine yet.
+Offline tests and live smoke tools are separate executables.
 
 Windows uses in-memory token stores, an unsigned code identity, stderr diagnostics and a
 file-backed preferences store under `%LOCALAPPDATA%/DevDeckPOC`. Writes are atomic and
 failed writes retain the previous in-memory state. Tokens are never preferences.
 
-The Windows `ShellCommandRunner` starts `wsl.exe` with a selected distribution and a Linux
-working directory, streams both output pipes, and handles timeout and task cancellation.
-`LocalProjectService` starts detached bash commands and keeps runtime PID files in WSL.
-Process liveness is checked in the owning distribution; health checks use the Windows HTTP
-client. Real project lifecycle checks are part of the next step's acceptance.
+The Windows `ShellCommandRunner` uses `wsl.exe --exec` with the distribution from project
+configuration and a Linux working directory. A separate Linux process group identifies each
+operation. Cancellation and timeout freeze and collect descendants, send TERM and then KILL,
+and verify Linux cleanup before closing the Windows client. `LocalProjectService` launches a
+detached bash session and stores PID, Linux boot identity and process start time in WSL.
+Reading and validating that record, including kill -0, uses one WSL invocation.
+GitHub and project health requests run natively on Windows.
+
+Default WSL idle shutdown invalidates detached-project persistence on this machine. The POC
+requires the explicitly approved global `[general] instanceIdleTimeout=-1` setting. This is
+an environment prerequisite, not a hidden client session. See the lifecycle evidence in
+[the POC report](poc/one-engine-report.md).
+
+The engine owns translated list and project models, expansion, action availability, refresh
+policy, state settling and a measured single-column layout. The host reads bounded UTF-8
+JSON lines from stdin and writes protocol v2 events with increasing revisions to stdout.
+Diagnostics use fixed stderr messages; credentials remain in an in-memory token store.
+The host carries the six existing localization tables. Windows expands plural forms directly
+from stringsdict because Foundation's format-marker expansion crashes; Mac keeps its original
+Foundation path. WPF rendering belongs to a later accepted step.
 
 The Mac login-shell PATH probe and LAN-interface probe are excluded from the Windows POC
 build. Foundation supplies the geometry types when CoreGraphics is unavailable.
