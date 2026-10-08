@@ -3,80 +3,222 @@ import Foundation
 import GitHubKit
 import ProjectKit
 
+public struct CardBadge: Codable, Sendable {
+    public let text: String
+    public let tone: String
+}
+
+public struct ListCardHero: Codable, Sendable {
+    public let number: String
+    public let unit: String
+    public let badge: CardBadge?
+}
+
+public struct ListCardRow: Codable, Sendable {
+    public let tone: String
+    public let chips: [CardBadge]
+    public let title: String
+    public let trailing: String
+    public let action: String
+    public let glyph: String?
+}
+
+public struct CardFooter: Codable, Sendable {
+    public let text: String
+}
+
+public struct CardExpander: Codable, Sendable {
+    public let hiddenCount: Int
+    public let isExpanded: Bool
+    public let label: String
+}
+
+public struct ListCardModel: Codable, Sendable {
+    public let id: String
+    public let kind: String
+    public let mark: String
+    public let title: String
+    public let timeText: String
+    public let hero: ListCardHero
+    public let rows: [ListCardRow]
+    public let footer: CardFooter
+    public let expander: CardExpander?
+}
+
+public struct ProjectCardHero: Codable, Sendable {
+    public let tone: String
+    public let state: String
+    public let note: String?
+}
+
+public struct ProjectCardMeta: Codable, Sendable {
+    public let leading: String
+}
+
+public struct ProjectCardChip: Codable, Sendable {
+    public let label: String
+    public let tone: String
+    public let isEnabled: Bool
+    public let action: String
+}
+
+public struct ProjectCardAction: Codable, Sendable {
+    public let id: String
+    public let label: String
+    public let glyph: String
+    public let role: String
+    public let isEnabled: Bool
+    public let isBusy: Bool
+}
+
+public struct ProjectCardBranch: Codable, Sendable {
+    public let name: String
+}
+
+public struct ProjectCardModel: Codable, Sendable {
+    public let id: String
+    public let kind: String
+    public let mark: String
+    public let title: String
+    public let timeText: String
+    public let hero: ProjectCardHero
+    public let meta: [ProjectCardMeta]
+    public let chips: [ProjectCardChip]
+    public let actions: [ProjectCardAction]
+    public let branch: ProjectCardBranch?
+}
+
+public enum CardModel: Codable, Sendable {
+    case list(ListCardModel)
+    case project(ProjectCardModel)
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(String.self, forKey: .kind) {
+        case "list":
+            self = .list(try ListCardModel(from: decoder))
+        case "project":
+            self = .project(try ProjectCardModel(from: decoder))
+        default:
+            throw DecodingError.dataCorruptedError(
+                forKey: .kind, in: container, debugDescription: "Unknown card kind.")
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        switch self {
+        case .list(let model):
+            try model.encode(to: encoder)
+        case .project(let model):
+            try model.encode(to: encoder)
+        }
+    }
+}
+
 enum CardModels {
-    static func time(_ date: Date?) -> String {
+    static func time(_ date: Date?, timeZone: TimeZone) -> String {
         guard let date else { return "" }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.timeZone = timeZone
         formatter.dateFormat = "HH:mm:ss"
         return formatter.string(from: date)
     }
 
-    static func pulls(_ state: CardState<PullRequestsSnapshot>, expanded: Bool) -> JSONValue {
-        var model: [String: JSONValue] = [
-            "id": "github.pullRequests", "kind": "list", "mark": "github",
-            "title": .string(L("card.chrome.pulls")), "timeText": .string(time(state.updatedAt)),
-        ]
+    static func pulls(_ state: CardState<PullRequestsSnapshot>, expanded: Bool, timeZone: TimeZone)
+        -> ListCardModel
+    {
         guard let snapshot = state.value else {
-            model["hero"] = ["number": "", "unit": .string(state.failure?.displayMessage ?? L("card.pill.loading"))]
-            model["rows"] = []; model["footer"] = ["text": ""]
-            return .object(model)
+            return ListCardModel(
+                id: "github.pullRequests", kind: "list", mark: "github",
+                title: L("card.chrome.pulls"), timeText: time(state.updatedAt, timeZone: timeZone),
+                hero: ListCardHero(
+                    number: "", unit: state.failure?.displayMessage ?? L("card.pill.loading"), badge: nil),
+                rows: [], footer: CardFooter(text: ""), expander: nil
+            )
         }
-        let badge: JSONValue
-        if let failure = state.failure { badge = ["text": .string(failure.displayMessage), "tone": "bad"] }
-        else if snapshot.blockedCount > 0 { badge = ["text": .string(L("card.pill.blocked", snapshot.blockedCount)), "tone": "bad"] }
-        else if snapshot.reviewRequestCount > 0 { badge = ["text": .string(L("card.pill.toReview", snapshot.reviewRequestCount)), "tone": "alert"] }
-        else { badge = ["text": .string(snapshot.totalCount == 0 ? L("card.pill.clear") : L("card.pill.onTrack")), "tone": "good"] }
-        model["hero"] = ["number": .string(String(snapshot.totalCount)), "unit": .string(L("card.open")), "badge": badge]
-        let count = CardMetrics.rowCount(total: snapshot.pullRequests.count, isExpanded: expanded)
-        model["rows"] = .array(snapshot.prioritized(limit: count).map { pull in
-            var chips: [JSONValue] = []
-            if let key = pull.ticket.key { chips.append(["text": .string(key), "tone": "quiet"]) }
-            var row: [String: JSONValue] = [
-                "tone": .string(pull.health == .ready ? "good" : pull.health == .blocked ? "bad" : "alert"),
-                "chips": .array(chips), "title": .string(pull.ticket.subject),
-                "trailing": .string(pull.statusCode), "action": .string("pull." + pull.id),
-            ]
-            if pull.isReviewRequest { row["glyph"] = "eye" }
-            return .object(row)
-        })
+        let badge: CardBadge
+        if let failure = state.failure {
+            badge = CardBadge(text: failure.displayMessage, tone: "bad")
+        } else if snapshot.blockedCount > 0 {
+            badge = CardBadge(text: L("card.pill.blocked", snapshot.blockedCount), tone: "bad")
+        } else if snapshot.reviewRequestCount > 0 {
+            badge = CardBadge(text: L("card.pill.toReview", snapshot.reviewRequestCount), tone: "alert")
+        } else {
+            badge = CardBadge(
+                text: snapshot.totalCount == 0 ? L("card.pill.clear") : L("card.pill.onTrack"), tone: "good")
+        }
+        let rowCount = CardMetrics.rowCount(total: snapshot.pullRequests.count, isExpanded: expanded)
+        let rows = snapshot.prioritized(limit: rowCount).map { pull in
+            let chips = pull.ticket.key.map { [CardBadge(text: $0, tone: "quiet")] } ?? []
+            return ListCardRow(
+                tone: pull.health == .ready ? "good" : pull.health == .blocked ? "bad" : "alert",
+                chips: chips, title: pull.ticket.subject, trailing: pull.statusCode,
+                action: "pull." + pull.id, glyph: pull.isReviewRequest ? "eye" : nil
+            )
+        }
+        let expander: CardExpander?
         if CardMetrics.showsExpander(total: snapshot.pullRequests.count) {
-            let hidden = max(0, snapshot.pullRequests.count - count)
-            model["expander"] = ["hiddenCount": .number(Double(hidden)), "isExpanded": .bool(expanded),
-                                  "label": .string(expanded ? L("card.showLess") : L("card.showMore", hidden))]
+            let hiddenCount = max(0, snapshot.pullRequests.count - rowCount)
+            expander = CardExpander(
+                hiddenCount: hiddenCount, isExpanded: expanded,
+                label: expanded ? L("card.showLess") : L("card.showMore", hiddenCount))
+        } else {
+            expander = nil
         }
-        var footer = snapshot.failures.summary ?? L("card.footer.pair", LN("card.repos", snapshot.repositoryCount), LN("card.orgs", snapshot.organizationCount))
-        let beyond = CardMetrics.hiddenWhenExpanded(total: snapshot.pullRequests.count)
-        if expanded, beyond > 0 { footer += L("card.notShown", beyond) }
-        model["footer"] = ["text": .string(footer)]
-        return .object(model)
+        var footer =
+            snapshot.failures.summary
+            ?? L(
+                "card.footer.pair", LN("card.repos", snapshot.repositoryCount),
+                LN("card.orgs", snapshot.organizationCount))
+        let hiddenWhenExpanded = CardMetrics.hiddenWhenExpanded(total: snapshot.pullRequests.count)
+        if expanded, hiddenWhenExpanded > 0 {
+            footer += L("card.notShown", hiddenWhenExpanded)
+        }
+        return ListCardModel(
+            id: "github.pullRequests", kind: "list", mark: "github",
+            title: L("card.chrome.pulls"), timeText: time(state.updatedAt, timeZone: timeZone),
+            hero: ListCardHero(number: String(snapshot.totalCount), unit: L("card.open"), badge: badge),
+            rows: rows, footer: CardFooter(text: footer), expander: expander
+        )
     }
 
-    static func project(_ project: LocalProject, status: LocalProjectStatus, busy: Bool) -> JSONValue {
-        let label: String
+    static func project(_ project: LocalProject, status: LocalProjectStatus, busy: Bool, timeZone: TimeZone)
+        -> ProjectCardModel
+    {
+        let stateLabel: String
         switch status.state {
-        case .running: label = L("card.state.running")
-        case .starting: label = L("card.state.starting")
-        case .working: label = status.detail ?? L("card.state.working")
-        case .stopped: label = L("card.state.stopped")
-        case .unavailable: label = L("card.state.notConfigured")
+        case .running: stateLabel = L("card.state.running")
+        case .starting: stateLabel = L("card.state.starting")
+        case .working: stateLabel = status.detail ?? L("card.state.working")
+        case .stopped: stateLabel = L("card.state.stopped")
+        case .unavailable: stateLabel = L("card.state.notConfigured")
         }
         let action = status.isRunning || status.state == .starting ? "stop" : "start"
-        var hero: [String: JSONValue] = ["tone": .string(status.isRunning ? "good" : busy ? "accent" : "quiet"), "state": .string(label)]
-        if let detail = status.detail { hero["note"] = .string(detail) }
-        var model: [String: JSONValue] = [
-            "id": .string("project." + project.id), "kind": "project", "mark": "project",
-            "title": .string(L("project.section.project") + " · " + project.displayTitle),
-            "timeText": .string(time(status.checkedAt)), "hero": .object(hero),
-            "meta": [["leading": .string(project.folderURL?.lastPathComponent ?? "")]],
-            "chips": [["label": .string(L("card.action.openSite")), "tone": "accent",
-                       "isEnabled": .bool(status.isRunning), "action": "site"]],
-            "actions": [["id": .string(action), "label": .string(action == "start" ? L("card.action.start") : L("card.action.stop")),
-                         "glyph": .string(action == "start" ? "play.fill" : "power"), "role": "primary",
-                         "isEnabled": .bool(!busy && project.supportsCommands), "isBusy": .bool(busy)]],
-        ]
-        if let branch = status.branch { model["branch"] = ["name": .string(branch)] }
-        return .object(model)
+        return ProjectCardModel(
+            id: "project." + project.id, kind: "project", mark: "project",
+            title: L("project.section.project") + " · " + project.displayTitle,
+            timeText: time(status.checkedAt, timeZone: timeZone),
+            hero: ProjectCardHero(
+                tone: status.isRunning ? "good" : busy ? "accent" : "quiet", state: stateLabel,
+                note: status.detail),
+            meta: [ProjectCardMeta(leading: project.folderURL?.lastPathComponent ?? "")],
+            chips: [
+                ProjectCardChip(
+                    label: L("card.action.openSite"), tone: "accent",
+                    isEnabled: status.isRunning && project.siteURL != nil, action: "site")
+            ],
+            actions: [
+                ProjectCardAction(
+                    id: action, label: action == "start" ? L("card.action.start") : L("card.action.stop"),
+                    glyph: action == "start" ? "play.fill" : "power", role: "primary",
+                    isEnabled: !busy && project.supportsCommands, isBusy: busy)
+            ],
+            branch: status.branch.map { ProjectCardBranch(name: $0) }
+        )
     }
 }

@@ -6,7 +6,10 @@
   and a separate offline test executable; Windows and user-run Mac evidence
   is tracked in [the POC report](poc/one-engine-report.md).
 - Step 2: native engine and JSONL host, translated models and WSL lifecycle checks implemented;
-  live GitHub evidence and Mac verification remain part of its acceptance gate.
+  user-run Mac checks passed on bb50b7b. Follow-up review fixes and persistence without a
+  global WSL setting passed. Native Windows projects, multiple project cards, Job Object
+  cleanup and independent Stop passed live checks. Live GitHub evidence, new Mac checks and
+  user acceptance remain pending.
 - Then, in acceptance order: cross-platform golden transcripts, a thin WPF shell, measurements.
 
 ## Done

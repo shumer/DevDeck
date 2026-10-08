@@ -1,182 +1,134 @@
 # One-engine POC report
 
-Date: 2026-10-08. Scope: accepted step 1 and step 2 implementation on Windows x64.
+Date: 2026-10-08. Branch: poc/one-engine. Only steps 1 and 2 are in scope.
 
-## Acceptance status
+## Answers and acceptance
 
-| Question | Result | Evidence or remaining work |
+| Question | Answer | Evidence or remaining gate |
 | --- | --- | --- |
-| Q1: native Windows core | Accepted with an external toolchain exception | Project code builds without warnings. Remaining warnings originate in the Swift 6.4 WinSDK module, tracked by swiftlang/swift#91000. Windows tests: 8 passed, 0 failed. User-run Mac tests: 405 passed, 0 failed; Mac build has no warnings. |
-| Q2: real authenticated GitHub | Live result pending | Native host and GitHubKit integration build. User-operated hidden-input smoke check is ready. Offline unauthorized-card checks pass in en and ru. PR GraphQL and REST ETag/304 are separate checks. |
-| Q3: real WSL lifecycle | Verified with an explicit environment prerequisite; acceptance pending | Native host start/health/restart discovery/stop pass. Linux timeout and cancellation cleanup pass. Default WSL idle shutdown fails persistence; approved instanceIdleTimeout=-1 is required. |
-| Q4: identical transcripts | Not started | Engine, host and cross-platform transcript tests await earlier acceptance. |
+| Q1: native Windows core | Yes, accepted with a toolchain exception | Project code builds without warnings; Windows core tests: 8 passed, 0 failed. Swift 6.4 WinSDK warnings are external, swiftlang/swift#91000. Recheck with the release containing the fix. |
+| Q2: authenticated GitHub | Live result pending | Native GitHubKit and host integration build. The user accepted the GraphQL/REST distinction. Hidden-input Invoke-NetworkSmoke.ps1 remains user-operated. |
+| Q3: WSL project lifetime | Yes in live checks, acceptance pending | Default instanceIdleTimeout, independent project WSL client, more than 5 minutes without an engine, discovery by a new engine, tree cleanup and natural distro idle shutdown. |
+| Q3b: Windows folder projects | Yes in live checks, acceptance pending | Native Node LTS Start, engine EOF survival, new-engine discovery, Job Object Stop and parent/child cancellation/timeout cleanup passed. WSL and Windows Stop isolation passed in one engine. |
+| Q4: identical transcripts | Not started | Gated on Q2, Q3 and Q3b acceptance. |
 | Q5: thin WPF shell | Not started | No Windows desktop shell exists yet. |
-| Q6: measurements | Not started | Host size, startup, idle memory, CPU and mixed-DPI behavior remain unmeasured. |
+| Q6: measurements | Not started | Runtime size, startup, 10-minute idle memory/CPU and mixed-DPI checks are pending. |
 
-The user accepted Q1 on 2026-10-08 with the external WinSDK warning exception. Step 2 may
-proceed after GitHub CLI authentication and the initial branch push. Recheck a clean Windows
-build when a Swift release fixes issue 91000, and record whether the external warnings disappear.
-Q1 acceptance does not establish the later POC answers.
+Recommendation: continue evaluating the native engine after step 2 acceptance. Do not start
+step 3 while Q2, Q3 or Q3b remains unaccepted. Windows ARM64 is untested.
 
 ## Environment
 
-| Tool or location | Value |
+| Tool | Version or location |
 | --- | --- |
-| Architecture | AMD64, x86_64-unknown-windows-msvc |
-| Swift | Swift 6.4, swift-6.4-RELEASE, assertions enabled |
-| Swift compiler | %LOCALAPPDATA%/Programs/Swift/Toolchains/6.4.0+Asserts/usr/bin |
-| Swift SDK | %LOCALAPPDATA%/Programs/Swift/Platforms/6.4.0/Windows.platform/Developer/SDKs/Windows.sdk |
-| Visual Studio Build Tools | 2022, installer package 17.14.41, installation version 17.14.37710.0 |
-| Build Tools location | C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools |
+| Windows architecture | AMD64, x86_64-unknown-windows-msvc |
+| Swift | 6.4, swift-6.4-RELEASE, assertions enabled |
+| Visual Studio Build Tools | 2022, 17.14.37710.0; installer package 17.14.41 |
 | Windows SDK | 10.0.22621.0 |
 | Git | 2.54.0.windows.1 |
-| GitHub CLI | 2.102.0 |
+| GitHub CLI | 2.102.0, authenticated by the user |
 | WSL | 2.7.3.0, kernel 6.6.114.1 |
-| POC distribution | Ubuntu-24.04, initialized by user; live checks use a normal Linux account |
+| Distribution | Ubuntu-24.04, normal Linux account initialized by the user |
+| Node LTS | 24.20.0, installed through winget OpenJS.NodeJS.LTS |
+| Node executable used for Q3b | C:/Program Files/nodejs/node.exe |
 | Checkout | C:/src/DevDeck |
-| Branch | poc/one-engine |
+| .NET 10 SDK | Planned for step 4 |
 
-Dependencies were installed following [Swift's Windows instructions](https://www.swift.org/install/windows/).
-The Swift installer was verified against the SHA256 in the WinGet package manifest.
-GitHub CLI and Ubuntu-24.04 were installed after Q1 acceptance to prepare step 2.
-GitHub CLI authentication was verified for the repository owner. The accepted step 1 was
-committed as 5dc5704 and pushed to poc/one-engine. Further exchanges use this branch.
-The user initialized a normal Linux account. Project configuration selects Ubuntu-24.04;
-no WSL default distribution is used.
-.NET 10 SDK installation is planned for step 4.
+The existing NVM Node 20.20.2 precedes the new installation in registry PATH. The neutral
+live project explicitly selects the installed Node 24 executable. The runner reads machine
+and user PATH from the registry on each launch and leaves the user's version-manager choice
+unchanged. Dependencies follow [Swift's Windows installation instructions](https://www.swift.org/install/windows/).
 
-## Step 2 preliminary WSL lifecycle probe
+## Mac evidence supplied by the user
 
-WSL 2.7.3.0 with Ubuntu-24.04 uses systemd. A neutral demo started two Python HTTP servers
-on ports 8765 and 8766 under a nohup bash wrapper. The first short launch did not produce a
-working service after the client exited, so an immediate background launch is not yet qualified.
+On the Q1 patch over f8db218: run-tests.sh reported 405 passed, 0 failed; swift build had no
+warnings; the Mac Package.swift branch was byte-for-byte identical to main. Q1 was accepted
+with the external [Swift issue 91000](https://github.com/swiftlang/swift/issues/91000) exception.
 
-A repeat in a persistent demo directory kept the launching session open until both Linux
-listeners were present and Windows localhost requests returned HTTP 200. After every wsl.exe
-client exited, both ports still returned HTTP 200 at 99 seconds. No WSL client was kept open
-during that idle interval. Reading the stored PID and checking kill -0 used one WSL invocation.
-The wrapper and two Python processes were then stopped inside Linux; verification found no
-live probe processes and no listeners on either port, with zero remaining wsl.exe clients.
+On bb50b7b: run-tests.sh main suite reported 405 passed, 0 failed; engine tests reported
+5 passed, 0 failed, with the Windows-only test skipped; swift build had no warnings;
+build.sh built the application. These were run by the user on a Mac.
 
-These short preliminary probes were insufficient: a longer check under the normal Linux
-account later found that Ubuntu had shut down. A subsequent invocation showed a new Linux
-boot time, and both servers were gone. nohup and setsid do not prevent WSL idle shutdown.
+The follow-up changes require new user-run Mac checks. The portable engine suite now has
+8 tests; Windows adds one liveness test. No Mac check was run or claimed on this Windows machine.
+The Mac package branch is unchanged from bb50b7b. DevDeckApp and DevDeckUI are unchanged.
 
-With explicit user approval, `%USERPROFILE%/.wslconfig` was created with `[general]` and
-`instanceIdleTimeout=-1`. This disables automatic distro shutdown globally. Only Ubuntu-24.04
-was explicitly restarted; other distributions were not stopped. The setting is documented
-by [Microsoft](https://learn.microsoft.com/en-us/windows/wsl/wsl-config#general-wsl-settings)
-and supported by the installed WSL 2.7.3 source. Systemd alone does not guarantee persistence.
+## Q2 evidence and remaining live check
 
-## Step 2 implementation and verification
+PRs use authenticated GraphQL POST through PullRequestsService. ETag/304 is a separate REST
+GET /user check. GraphQL POST is not claimed to support ETag/304. Offline unauthorized-card
+checks pass in en and ru. The user will run the live hidden-input helper and supply its result.
+The helper sends the credential through stdin, uses memory only and never reads GitHub CLI credentials.
 
-DevDeckEngine and DevDeckEngineHost build natively for Windows x64. No Swift engine or UI
-runs inside WSL. The host also has a Mac target, but step 2 Mac verification is pending user
-execution. DevDeckApp and DevDeckUI remain unchanged. Package.swift now adds the engine,
-host, resource and offline-test targets to the Mac graph; the byte-identical claim below
-applies only to the accepted step 1 patch.
+## Q3 evidence
 
-The JSONL host accepts protocol v2 intents, bounds each line to 1 MiB, correlates intent
-events by id and emits monotonic revisions. Invalid input is never copied to diagnostics.
-EOF cancels and awaits pending work. Credentials enter through stdin and remain memory-only.
-Models use the existing PR ordering, ticket split, statusCode, blocked count, footer and
-localization tables. The engine owns action availability and measured layout. Project polls
-use StateSettler; PR polling uses RefreshPolicy and retains the last good CardState on failure.
+nohup without an active WSL client failed under the default idle policy. A temporary global
+instanceIdleTimeout=-1 workaround was tested, then removed at the user's request. Only
+Ubuntu-24.04 was explicitly restarted; other distributions were not stopped.
 
-Windows Foundation crashed while expanding a stringsdict plural marker. The Windows adapter
-now reads the existing plural dictionaries and selects the count form before formatting.
-The Mac plural implementation is preserved. English and Russian counts, including 11 and
-21, are covered by offline tests.
+The independent foreground WSL client passed two 325-second checks with no engine and
+HTTP 200 on ports 8765 and 8766. The final standalone check measured 325.2892 seconds.
+One WSL session used two Windows forwarding processes. A new engine reported running;
+Stop left no live demo Linux processes, no listeners and no WSL clients. Ubuntu stopped
+naturally after 15.763 seconds, without a terminate or shutdown command after Stop.
+No global idle-policy override is required.
 
-The native host's real project checks observe starting followed by running from Windows
-localhost health. After host exit, a new host discovers the project as running. Stop removes
-the Linux wrapper and both Python servers: ports 8765 and 8766 are free, and no demo processes
-remain. These results require the approved WSL idle setting. A separate 184.3-second idle
-check sampled Windows process presence every five seconds, observed zero wsl.exe clients
-throughout and received HTTP 200 from both ports at the end.
+Cancellation and timeout checks include a child in a separate Linux session. Cleanup validates
+Linux processes and process groups, rather than only the Windows wsl.exe process. PID, boot
+identity, start time and kill -0 are checked in one invocation of the configured distribution.
+Cold-start preparation has a separate 30-second allowance.
 
-Cancellation and timeout checks run a TERM-ignoring wrapper with a child in a separate Linux
-session. Both checks verify no live Linux process remains, not merely the disappearance of
-wsl.exe. The runner uses --exec to avoid an extra shell expanding PID variables. Cleanup
-collects descendants before sending signals and tags operation descendants in their Linux
-environment so a changed process group does not lose ownership. Project PID records also include boot identity
-and start time to reject stale or reused PIDs. PID validation and kill -0 share one invocation.
-The unused Windows ProcessLiveness implementation has been removed.
+## Q3b implementation and evidence
 
-DevDeckEngineTests reports **6 passed, 0 failed** on Windows; the Windows core suite remains
-**8 passed, 0 failed**. The host black-box check accepts an exact-1-MiB CRLF message, rejects
-oversized and malformed messages, emits only valid ordered JSON events, does not echo input
-and exits cleanly on EOF. The Mac engine suite skips the Windows
-single-invocation liveness check. run-tests.sh now includes the engine tests on an unfiltered
-Mac run; those new results must not be confused with the accepted step 1 results below.
+Project location is derived in the engine: drive-letter folders use Windows; wsl.localhost
+and wsl$ UNC paths supply their distribution; Linux paths require distribution in that project.
+Configuration uses a projects array. PR, WSL and Windows project cards share one engine.
+Each project has independent action, polling and smoothing state.
 
-The live network helper is compiled and awaits a user-entered credential through hidden
-PowerShell input. It prints only counts, rate-limit metadata and check results. It does not
-read GitHub CLI tokens. PowerShell execution-policy blocking was handled with a policy limited
-to that helper process. No authenticated network result has been claimed yet.
+Windows commands use cmd.exe /d /s /c through a detached DevDeckProcessHost. The named Job
+Object has no KILL_ON_JOB_CLOSE. The process host retains an inherited job handle so its name
+can be reopened by a new engine. A private hidden console permits Ctrl+C from an attaching
+controller without touching engine JSONL streams. Stop falls back to TerminateJobObject and
+checks zero active members. PID files contain creation time, checked using a fresh process
+handle and job membership; numeric handles are never persisted in those files.
 
-Q2 has a specification mismatch: PullRequestsService uses GraphQL POST, whereas GitHub's
-[conditional-request support](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api)
-applies to GET. The existing PR query is retained. The live tool separately checks authenticated
-PR fetching and REST /user ETag/304 through GitHubClient. This distinction requires explicit
-acceptance; no PR response is claimed to return 304.
+The exact nested Node command from the POC, including a quoted executable path containing
+spaces, started parent and child HTTP servers on 8775 and 8776. Both answered HTTP 200 after
+engine EOF. A new engine found running and Stop freed both ports. Generic native timeout
+and cancellation captured both Node PIDs and waited for both process handles to signal exit.
+Temporary command jobs use KILL_ON_JOB_CLOSE; project jobs do not. A live PATH check replaced
+the smoke process's inherited PATH with an unavailable folder, then verified that node was
+found through the runner's refreshed registry PATH.
 
-Recommendation: keep step 3 gated on step 2 acceptance, live Q2 evidence and user-run Mac
-checks. Q3 is viable with the approved global idle-policy prerequisite, and is not viable
-on the observed default idle policy.
+Engine EOF during startup cleaned five owned Windows processes and removed the PID record.
+A startup whose health URL never answered cleaned four owned processes after its readiness
+deadline and removed the record. The host uses a separate 3-second health HTTP client, keeping
+GitHub request timeout independent of project readiness.
 
-## Implementation
+Both projects then survived 328.1293 seconds without an engine, with HTTP 200 on all four ports
+and exactly two WSL forwarding processes. A new engine discovered both. Stop of Windows left
+both WSL ports serving; restarting Windows and stopping WSL left both Windows ports serving.
+Final Stop freed all four ports, with no owned Node processes, live demo Linux processes or
+WSL clients. Ubuntu stopped naturally after 15.9557 seconds. No WSL terminate or shutdown was
+used after Stop.
+See [the process-lifetime decision](../adr/0023-project-process-lifetime.md).
 
-The Windows package branch builds the three core targets and a separate test executable.
-For step 1, the original Mac package declaration was compared with the baseline and was unchanged.
-DevDeckApp and DevDeckUI sources were not modified.
+## Engine review fixes and Windows verification
 
-Windows uses FoundationNetworking when available, in-memory tokens, unsigned code identity,
-stderr logging, Foundation geometry and atomic file preferences. Foundation's Windows
-UserDefaults has an unavailable Sendable conformance, so the Mac backend is guarded and
-Windows uses the file backend instead. The login-shell PATH and LAN probes are excluded.
+Card models, nested fields and event envelopes are typed Codable structures; JSONValue has
+been removed. Protocol v2 keeps its wire shape. Card clocks use local time, and tests pass
+explicit time zones, including a non-UTC case. The site effect opens LocalProject.siteURL;
+healthURL remains the probe. Swift statements and names follow CONTRIBUTING.md.
 
-The Windows command runner selects a WSL distribution, streams both pipes and supports task
-cancellation and timeout. Local project runtime files live in WSL, with bash for detached
-starts and liveness checks in the owning distribution. These adapters have not yet passed
-real WSL lifecycle acceptance at the time of the step 1 record. Step 2 evidence is above.
+Windows builds use swift build -Xswiftc -warnings-as-errors. Offline results: 8 core tests
+and 9 engine tests, all passed. Bounded-input JSONL smoke verifies malformed input, protocol
+version, the 1 MiB limit, monotonic revisions and EOF without echoing input or credentials.
+Logs and intermediate checks stay outside the repository.
 
-## Step 1 verification
-
-Command, from a Visual Studio Developer PowerShell with Swift's runtime paths:
-
-```powershell
-swift build --product DevDeckWindowsCoreTests -Xswiftc -warnings-as-errors
-```
-
-The first successful build completed in 56.93 seconds. A separate clean build completed in
-95.63 seconds and emitted 12 SDK warning diagnostics, each rendered twice. These are build
-measurements, not application startup measurements. The diagnostic is the wchar_t module
-lookup problem described in [Swift issue 91000](https://github.com/swiftlang/swift/issues/91000).
-The warning appears despite warnings-as-errors. Diagnostics were not suppressed.
-
-The deprecated native build backend reproduced the SDK warning. A source-level import and
-an implicit compiler import of Clang's standard definitions module did not remove the warning
-from a clean build; neither experimental workaround is retained in the project.
-
-The separate Windows test executable reports **8 passed, 0 failed**:
-
-- Conditional response cache and ETag propagation using fixture HTTP responses.
-- Unauthorized response stays an error and is not retried.
-- Standard Windows token stores are isolated and memory-only.
-- Windows code identity is unsigned.
-- Detached commands select bash and preserve quoted input.
-- Existing project health status rules.
-- Preference persistence, value types and removal across reopening.
-- Failed preference writes retain the previous state.
-
-The failure-write test deliberately emits a fixed stderr diagnostic. During step 1, no live credential was
-requested or used. git diff --check passes. Only neutral fixture data was added.
-
-The user ran Mac checks on the step 1 patch applied over f8db218: run-tests.sh reported
-**405 passed, 0 failed**, and swift build completed without warnings. The user also verified
-that the Mac portion of Package.swift is byte-for-byte identical to main. These checks were
-performed by the user on a Mac, not on this Windows machine. Windows ARM64 remains untested.
+Q1 build measurements: initial build 56.93 seconds; clean build 95.63 seconds with 12 external
+SDK warning diagnostics, each rendered twice. These are build times, not application startup
+measurements. The deprecated build backend and Clang import experiments did not remove the
+external warning; no suppression or workaround is retained.
 
 ## Accepted step 1 conditional code by file
 
@@ -208,7 +160,7 @@ Same counting convention as the step 1 record, including preserved Mac branches.
 
 | File | Conditional lines |
 | --- | --- |
-| `Package.swift` | 131 |
+| `Package.swift` | 134 |
 | `Sources/DevDeckCore/Cards/DeckLayout.swift` | 1 |
 | `Sources/DevDeckCore/Cards/DeckParking.swift` | 1 |
 | `Sources/DevDeckCore/Cards/PanelPlacement.swift` | 1 |
@@ -219,11 +171,17 @@ Same counting convention as the step 1 record, including preserved Mac branches.
 | `Sources/DevDeckCore/Networking/HTTPClient.swift` | 1 |
 | `Sources/DevDeckCore/Process/CommandRunner.swift` | 133 |
 | `Sources/DevDeckCore/Process/DockerEnvironment.swift` | 18 |
+| `Sources/DevDeckCore/Process/NativeWindowsCommandRunner.swift` | 206 |
 | `Sources/DevDeckCore/Process/ProcessLiveness.swift` | 15 |
-| `Sources/DevDeckCore/Process/WindowsCommandRunner.swift` | 220 |
+| `Sources/DevDeckCore/Process/WindowsCommandRunner.swift` | 230 |
+| `Sources/DevDeckCore/Process/WindowsEnvironment.swift` | 34 |
+| `Sources/DevDeckCore/Process/WindowsProcessSupport.swift` | 260 |
+| `Sources/DevDeckCore/Process/WindowsProjectHost.swift` | 45 |
+| `Sources/DevDeckCore/Process/WindowsProjectLauncher.swift` | 114 |
 | `Sources/DevDeckCore/Security/CodeIdentity.swift` | 42 |
 | `Sources/DevDeckCore/Security/TokenStore.swift` | 92 |
 | `Sources/DevDeckCore/Support/Log.swift` | 23 |
-| `Sources/DevDeckEngineHost/main.swift` | 2 |
-| `Sources/ProjectKit/LocalProjectService.swift` | 122 |
-| `Tests/EngineTests/main.swift` | 11 |
+| `Sources/DevDeckEngineHost/main.swift` | 14 |
+| `Sources/DevDeckProcessHost/main.swift` | 13 |
+| `Sources/ProjectKit/LocalProjectService.swift` | 204 |
+| `Tests/EngineTests/main.swift` | 14 |

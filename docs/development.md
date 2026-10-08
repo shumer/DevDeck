@@ -51,24 +51,39 @@ Build native Windows products from Developer PowerShell:
 
 ```powershell
 swift build --product DevDeckEngineHost -Xswiftc -warnings-as-errors
+swift build --product DevDeckProcessHost -Xswiftc -warnings-as-errors
 swift build --product DevDeckEngineTests -Xswiftc -warnings-as-errors
 swift run --skip-build DevDeckEngineTests
 swift build --product DevDeckWSLSmoke -Xswiftc -warnings-as-errors
 swift build --product DevDeckNetworkSmoke -Xswiftc -warnings-as-errors
+swift build --product DevDeckWindowsSmoke -Xswiftc -warnings-as-errors
 ```
 
 The host reads `%LOCALAPPDATA%/DevDeckPOC/config.json`, or an explicit `--config` path on
-either platform. Configuration contains no credentials. Project distribution is required;
-the runner has no default distro. Send protocol v2 JSON lines with session.start and the
+either platform. Configuration contains no credentials and uses a projects array. A drive-letter
+folder runs natively on Windows. A wsl.localhost or wsl$ UNC path supplies the distribution;
+a Linux path requires distribution in that project. The runner has no default distro.
+An optional project siteURL opens the site independently
+of project.healthURL, which remains the health probe. Send protocol v2 JSON lines with session.start and the
 display's visible frame, then card.measured, card.invoke or card.setExpanded. Credentials
 arrive only through credentials.set on stdin. EOF cancels and awaits active work.
 
 Run the separate WSL smoke executable with start, status, stop, cancel or timeout.
 Live checks use a neutral Python demo, and are not part of the offline suite. Cancellation
 and timeout include a child that escapes into its own session and ignores inherited TERM.
-Verify both ports and Linux descendants. For persistence without any wsl.exe clients, this
-machine requires `%USERPROFILE%/.wslconfig` with `[general] instanceIdleTimeout=-1`.
-It applies to all WSL distributions and was approved explicitly. Only the POC distro was restarted.
+Verify both ports and Linux descendants. A running held project owns an independent WSL
+client after the engine exits; Stop releases it. Keep instanceIdleTimeout at its default.
+The POC no longer requires a global .wslconfig idle-policy change. The short timeout smoke
+warms the configured distribution first so cold boot time is not mistaken for command time.
+
+Keep DevDeckProcessHost.exe beside DevDeckEngineHost.exe. Native projects use named Job Objects
+retained by their independent process hosts. Logs and PID creation times live under
+%LOCALAPPDATA%/DevDeckPOC/projects. Stop tries Ctrl+C in the project's private console, then
+terminates the job if needed. Generic command cancellation and timeout verify zero job members.
+Run DevDeckWindowsSmoke with cancel or timeout to check a Node parent and child, or path to
+verify registry PATH replaces a stale process environment. Set
+DEVDECK_SMOKE_NODE to the Node executable when a version manager takes precedence in PATH.
+Install Node LTS through winget install --id OpenJS.NodeJS.LTS --exact.
 
 The network smoke tool checks real PR fetching through PullRequestsService, REST ETag/304
 through GitHubClient and a rejected fixture credential. PR GraphQL POST requests do not
@@ -84,7 +99,8 @@ It never fetches credentials from GitHub CLI. Do not redirect or record interact
 The temporary helper is needed before the WPF Credential Manager command exists in step 4.
 
 On Mac, `./run-tests.sh` without filters now also runs DevDeckEngineTests. A filtered run
-keeps its existing behavior. Step 2 Mac results must be supplied separately by the user.
+keeps its existing behavior. The user supplied successful Mac results for bb50b7b;
+follow-up changes require another user-run Mac check.
 
 ## Commands
 

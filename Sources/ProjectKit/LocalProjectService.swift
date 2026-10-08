@@ -208,7 +208,7 @@ public struct LocalProjectService: Sendable {
         let deadline = clock.now.addingTimeInterval(timeout)
         var latest = await status()
 
-        while !latest.isRunning, clock.now < deadline {
+        while !latest.isRunning, clock.now < deadline, !Task.isCancelled {
             // A process that died on its own is a failure, not something to keep waiting on.
             if latest.state == .stopped, project.holdsProcess { break }
             try? await sleeper.sleep(seconds: pollInterval)
@@ -246,25 +246,58 @@ public struct LocalProjectService: Sendable {
 
     private func start(in folder: URL) async -> CommandResult? {
         #if os(Windows)
-        if await status().isRunning {
+        let currentStatus = await status()
+        if currentStatus.isRunning || currentStatus.pid != nil {
             return CommandResult(exitCode: 0, standardOutput: "", standardError: "")
         }
         guard !Task.isCancelled else { return nil }
-        let runtime = Self.windowsRuntimeDirectory
-        let log = "\(runtime)/\(Self.shellQuoted(project.id + ".log"))"
-        let pidFile = "\(runtime)/\(Self.shellQuoted(project.id + ".pid"))"
-        let launch: String
-        if project.holdsProcess {
-            launch = "nohup setsid /bin/bash -lc \(Self.shellQuoted(project.startCommand)) >> \(log) 2>&1 < /dev/null & "
-                + "pid=$!; boot=$(cat /proc/sys/kernel/random/boot_id); started=$(awk '{print $22}' /proc/$pid/stat); "
-                + "printf '%s %s %s\\n' $pid $boot $started > \(pidFile)"
-        } else {
-            launch = "{ \(project.startCommand) ; } >> \(log) 2>&1"
+        if let native = runner as? NativeWindowsCommandRunner {
+            return try? native.startProject(project.id, command: project.startCommand, in: folder)
         }
-        return try? await runner.run(
-            "mkdir -p \(runtime) && { : > \(log) || exit $?; \(launch); }", in: folder,
-            timeout: project.holdsProcess ? 30 : 900
-        )
+        let runtimeDirectory = Self.windowsRuntimeDirectory
+        let logPath = "\(runtimeDirectory)/\(Self.shellQuoted(project.id + ".log"))"
+        guard project.holdsProcess else {
+            let command = "mkdir -p \(runtimeDirectory) && { \(project.startCommand); } > \(logPath) 2>&1"
+            return try? await runner.run(command, in: folder, timeout: 900)
+        }
+        guard let launcher = runner as? any DetachedProjectLaunching else { return nil }
+        let pidPath = "\(runtimeDirectory)/\(Self.shellQuoted(project.id + ".pid"))"
+        let cancellationPath = "\(runtimeDirectory)/\(Self.shellQuoted(project.id + ".cancel"))"
+        let preparation = "mkdir -p \(runtimeDirectory) && rm -f \(pidPath) \(cancellationPath)"
+        guard let prepared = try? await runner.run(preparation, in: folder, timeout: 30),
+              prepared.succeeded, !Task.isCancelled else { return nil }
+
+        // Keeping the WSL client alive prevents idle shutdown without changing global settings.
+        let launchScript = """
+        {
+            export DEVDECK_POC_PROJECT=\(Self.shellQuoted(project.id))
+            pid=$$
+            boot=$(cat /proc/sys/kernel/random/boot_id)
+            started=$(awk '{print $22}' /proc/$pid/stat)
+            printf '%s %s %s\\n' $pid $boot $started > \(pidPath).tmp || exit $?
+            mv \(pidPath).tmp \(pidPath) || exit $?
+            test ! -e \(cancellationPath) || exit 125
+            exec /bin/bash -lc \(Self.shellQuoted(project.startCommand))
+        } > \(logPath) 2>&1 < /dev/null
+        """
+        guard let client = try? launcher.launchProject(launchScript, in: folder) else { return nil }
+        let readiness = """
+        for attempt in $(seq 1 30); do
+            test -s \(pidPath) && exit 0
+            sleep 0.1
+        done
+        exit 1
+        """
+        do {
+            let result = try await runner.run(readiness, in: folder, timeout: 5)
+            if !result.succeeded {
+                await cleanFailedWindowsStart(client, cancelFile: cancellationPath, readiness: readiness, in: folder)
+            }
+            return result
+        } catch {
+            await cleanFailedWindowsStart(client, cancelFile: cancellationPath, readiness: readiness, in: folder)
+            return nil
+        }
         #else
         try? FileManager.default.createDirectory(at: files.directory, withIntermediateDirectories: true)
 
@@ -288,14 +321,16 @@ public struct LocalProjectService: Sendable {
 
     private func stop(in folder: URL) async -> CommandResult? {
         #if os(Windows)
+        if let native = runner as? NativeWindowsCommandRunner {
+            return try? await native.stopProject(project.id)
+        }
         let trimmed = project.stopCommand.trimmingCharacters(in: .whitespaces)
         let command: String
         if !trimmed.isEmpty {
             command = trimmed
         } else {
             guard let pid = await windowsStoredPID(in: folder) else { return nil }
-            command = Self.killTreeCommand(pid: pid)
-                + "; sleep 0.3; " + Self.killWindowsTreeCommand(pid: pid)
+            command = Self.killWindowsTreeCommand(pid: pid, projectID: project.id)
         }
         let result = try? await runner.run(command, in: folder, timeout: 30)
         if result?.succeeded == true {
@@ -327,14 +362,63 @@ public struct LocalProjectService: Sendable {
     // Runtime files belong to the Linux process and survive a Windows engine restart.
     private static let windowsRuntimeDirectory = "\"$HOME/.local/share/DevDeckPOC/projects\""
 
-    private static func killWindowsTreeCommand(pid: Int32) -> String {
-        "ktk() { local child; for child in $(pgrep -P $1 2>/dev/null); do ktk $child; done; "
-            + "kill -KILL $1 2>/dev/null || true; }; ktk \(pid); "
-            + "kill -KILL -- -\(pid) 2>/dev/null || true; "
-            + "ps -eo pgid=,stat= | awk -v group=\(pid) '$1 == group && $2 !~ /^Z/ { found=1 } END { exit found }'"
+    private func cleanFailedWindowsStart(
+        _ client: DetachedProjectClient, cancelFile: String, readiness: String, in folder: URL
+    ) async {
+        // Cleanup must have its own cancellation context after the engine closes stdin.
+        await Task.detached {
+            _ = try? await runner.run("touch \(cancelFile); \(readiness)", in: folder, timeout: 5)
+            _ = await stop(in: folder)
+            client.terminate()
+        }.value
+    }
+
+    private static func killWindowsTreeCommand(pid: Int32, projectID: String) -> String {
+        // Freeze and collect ownership before a wrapper can exit and reparent its children.
+        """
+        targets=""
+        freeze_tree() {
+            local target=$1 child
+            kill -STOP "$target" 2>/dev/null || return 0
+            targets="$target $targets"
+            for child in $(pgrep -P "$target" 2>/dev/null); do
+                freeze_tree "$child"
+            done
+        }
+        freeze_tree \(pid)
+        for target in $(ps -eo pid=,pgid= | awk '$2 == \(pid) { print $1 }'); do
+            freeze_tree "$target"
+        done
+        for directory in /proc/[0-9]*; do
+            if grep -azqFx \(Self.shellQuoted("DEVDECK_POC_PROJECT=" + projectID)) "$directory/environ" 2>/dev/null; then
+                freeze_tree "${directory##*/}"
+            fi
+        done
+        for target in $targets; do kill -TERM "$target" 2>/dev/null || true; done
+        for target in $targets; do kill -CONT "$target" 2>/dev/null || true; done
+        sleep 0.3
+        kill -KILL -- -\(pid) 2>/dev/null || true
+        for target in $targets; do kill -KILL "$target" 2>/dev/null || true; done
+        for attempt in $(seq 1 10); do
+            live=0
+            for target in $targets; do
+                if test -r /proc/$target/stat && test "$(awk '{print $3}' /proc/$target/stat)" != Z; then
+                    live=1
+                fi
+            done
+            if test "$live" = 0 && ! ps -eo pgid=,stat= | awk '$1 == \(pid) && $2 !~ /^Z/ { found=1 } END { exit !found }'; then
+                exit 0
+            fi
+            sleep 0.1
+        done
+        exit 1
+        """
     }
 
     private func windowsStoredPID(in folder: URL) async -> Int32? {
+        if let native = runner as? NativeWindowsCommandRunner {
+            return native.projectPID(project.id)
+        }
         guard let result = try? await runner.run(
             "read -r pid boot started < \(Self.windowsRuntimeDirectory)/\(Self.shellQuoted(project.id + ".pid")) || exit 1; "
                 + "case $pid in ''|*[!0-9]*) exit 1 ;; esac; test $pid -gt 1 && "

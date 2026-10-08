@@ -38,17 +38,34 @@ failed writes retain the previous in-memory state. Tokens are never preferences.
 The Windows `ShellCommandRunner` uses `wsl.exe --exec` with the distribution from project
 configuration and a Linux working directory. A separate Linux process group identifies each
 operation. Cancellation and timeout freeze and collect descendants, send TERM and then KILL,
-and verify Linux cleanup before closing the Windows client. `LocalProjectService` launches a
-detached bash session and stores PID, Linux boot identity and process start time in WSL.
+and verify Linux cleanup before closing the Windows client. `LocalProjectService` launches
+one independent Windows WSL client for each held project command. CreateProcessW uses
+DETACHED_PROCESS and CREATE_NEW_PROCESS_GROUP, with only NUL in the inherited handle list.
+The foreground Linux command runs through setsid --wait and stores PID, boot identity and
+process start time in WSL. Successful starts close the Windows process handle without stopping it.
 Reading and validating that record, including kill -0, uses one WSL invocation.
 GitHub and project health requests run natively on Windows.
 
-Default WSL idle shutdown invalidates detached-project persistence on this machine. The POC
-requires the explicitly approved global `[general] instanceIdleTimeout=-1` setting. This is
-an environment prerequisite, not a hidden client session. See the lifecycle evidence in
+The independent project client keeps the configured distribution active under the default
+WSL idle policy. After Stop releases the client, the distribution can stop automatically.
+The earlier global instanceIdleTimeout=-1 workaround was removed and is not a prerequisite.
+See the lifecycle evidence in
 [the POC report](poc/one-engine-report.md).
 
-The engine owns translated list and project models, expansion, action availability, refresh
+The engine resolves each configured project's runner from its folder. Drive-letter paths use
+NativeWindowsCommandRunner; WSL UNC paths supply their distribution and Linux paths require
+an explicit distribution. Each project owns separate polling, action and smoothing state.
+Windows project commands run through cmd.exe in an independent DevDeckProcessHost and a
+named Job Object without KILL_ON_JOB_CLOSE. The process host retains an inherited job handle
+and a private hidden console. Stop sends Ctrl+C through an attaching controller, then uses
+TerminateJobObject if needed and verifies cleanup. PID records are checked against creation
+time and membership using fresh handles. Generic commands use temporary jobs with automatic
+cleanup. PATH is refreshed from machine and user registry values for every native launch.
+
+The engine owns typed Codable list and project models and a typed protocol envelope.
+Card time uses the local time zone; offline fixtures supply an explicit time zone.
+The site chip opens LocalProject.siteURL, with a separate optional siteURL in engine configuration.
+The engine owns expansion, action availability, refresh
 policy, state settling and a measured single-column layout. The host reads bounded UTF-8
 JSON lines from stdin and writes protocol v2 events with increasing revisions to stdout.
 Diagnostics use fixed stderr messages; credentials remain in an in-memory token store.

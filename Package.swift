@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
         .library(name: "DevDeckEngine", targets: ["DevDeckEngine"]),
         .executable(name: "DevDeckEngineHost", targets: ["DevDeckEngineHost"]),
+        .executable(name: "DevDeckProcessHost", targets: ["DevDeckProcessHost"]),
     ],
     targets: [
         .target(
@@ -30,10 +31,12 @@ let package = Package(
             resources: [.copy("en.lproj"), .copy("ru.lproj"), .copy("de.lproj"), .copy("it.lproj"), .copy("es.lproj"), .copy("fr.lproj")]
         ),
         .executableTarget(name: "DevDeckEngineHost", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]),
+        .executableTarget(name: "DevDeckProcessHost", dependencies: ["DevDeckCore"]),
+        .executableTarget(name: "DevDeckWindowsSmoke", dependencies: ["DevDeckCore", "DevDeckEngine"], path: "Tools/WindowsLifecycle"),
         .executableTarget(name: "DevDeckEngineTests", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness"], path: "Tests/EngineTests"),
         .executableTarget(
             name: "DevDeckWSLSmoke",
-            dependencies: ["DevDeckCore", "ProjectKit"],
+            dependencies: ["DevDeckCore", "ProjectKit", "DevDeckEngine"],
             path: "Tools/Smoke/WSLLifecycle"
         ),
         .executableTarget(

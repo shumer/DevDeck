@@ -2,7 +2,7 @@
 import Foundation
 
 /// Runs project commands in one explicitly selected WSL distribution.
-public struct ShellCommandRunner: CommandRunning {
+public struct ShellCommandRunner: CommandRunning, DetachedProjectLaunching {
     public let distribution: String
 
     public init(distribution: String) {
@@ -53,10 +53,16 @@ public struct ShellCommandRunner: CommandRunning {
 
         func cancel(timeout: Bool = false) {
             lock.lock()
-            if finished { lock.unlock(); return }
+            if finished {
+                lock.unlock()
+                return
+            }
             if timeout { timedOut = true } else { cancelled = true }
             let shouldClean = launched && !cleanupStarted
-            if shouldClean { cleanupStarted = true; cleanupGroup.enter() }
+            if shouldClean {
+                cleanupStarted = true
+                cleanupGroup.enter()
+            }
             lock.unlock()
             guard shouldClean else { return }
             DispatchQueue.global().async {
@@ -77,10 +83,14 @@ public struct ShellCommandRunner: CommandRunning {
             process.executableURL = URL(fileURLWithPath: systemRoot)
                 .appendingPathComponent("System32/wsl.exe")
             let state = "\"$HOME/.local/share/DevDeckPOC/commands/\(operation)\""
-            let child = "export DEVDECK_POC_OPERATION=\(operation); echo $$ > \(state)/pid; test ! -e \(state)/cancel || exit 125; exec bash -lc \(Self.quoted(command))"
-            let supervisor = "mkdir -p \(state) && { setsid bash -lc \(Self.quoted(child)) & child=$!; wait $child; code=$?; rm -rf \(state); exit $code; }"
-            process.arguments = ["-d", distribution, "--cd", Self.linuxPath(directory, distribution),
-                                 "--exec", "bash", "-lc", supervisor]
+            let child =
+                "export DEVDECK_POC_OPERATION=\(operation); echo $$ > \(state)/pid; test ! -e \(state)/cancel || exit 125; exec bash -lc \(Self.quoted(command))"
+            let supervisor =
+                "mkdir -p \(state) && { setsid bash -lc \(Self.quoted(child)) & child=$!; wait $child; code=$?; rm -rf \(state); exit $code; }"
+            process.arguments = [
+                "-d", distribution, "--cd", Self.linuxPath(directory, distribution),
+                "--exec", "bash", "-lc", supervisor,
+            ]
             let output = Pipe()
             let error = Pipe()
             process.standardOutput = output
@@ -134,50 +144,50 @@ public struct ShellCommandRunner: CommandRunning {
         private func cleanupLinuxProcesses() -> Bool {
             let state = "\"$HOME/.local/share/DevDeckPOC/commands/\(operation)\""
             let script = """
-            state=\(state)
-            mkdir -p "$state"; touch "$state/cancel"
-            for attempt in $(seq 1 30); do
-                test -s "$state/pid" && break
-                sleep 0.1
-            done
-            pid=$(cat "$state/pid" 2>/dev/null || true)
-            case "$pid" in ''|*[!0-9]*) pid=0 ;; esac
-            test "$pid" -gt 1 || pid=0
-            targets=""
-            freeze_tree() {
-                local target=$1 child
-                kill -STOP "$target" 2>/dev/null || return 0
-                targets="$target $targets"
-                for child in $(pgrep -P "$target" 2>/dev/null); do freeze_tree "$child"; done
-            }
-            if test "$pid" -gt 1; then freeze_tree "$pid"; fi
-            for target in $(ps -eo pid=,pgid= | awk -v group="$pid" '$2 == group { print $1 }'); do
-                freeze_tree "$target"
-            done
-            for directory in /proc/[0-9]*; do
-                if grep -azqFx 'DEVDECK_POC_OPERATION=\(operation)' "$directory/environ" 2>/dev/null; then
-                    freeze_tree "${directory##*/}"
-                fi
-            done
-            if test "$pid" -gt 1; then kill -TERM -- "-$pid" 2>/dev/null || true; fi
-            for target in $targets; do kill -TERM "$target" 2>/dev/null || true; done
-            for target in $targets; do kill -CONT "$target" 2>/dev/null || true; done
-            sleep 0.3
-            if test "$pid" -gt 1; then kill -KILL -- "-$pid" 2>/dev/null || true; fi
-            for target in $targets; do kill -KILL "$target" 2>/dev/null || true; done
-            for attempt in $(seq 1 10); do
-                live=0
-                for target in $targets; do
-                    if test -r /proc/$target/stat && test "$(awk '{print $3}' /proc/$target/stat)" != Z; then live=1; fi
+                state=\(state)
+                mkdir -p "$state"; touch "$state/cancel"
+                for attempt in $(seq 1 30); do
+                    test -s "$state/pid" && break
+                    sleep 0.1
                 done
-                if test "$live" = 0 && ! ps -eo pgid=,stat= | awk -v group="$pid" '$1 == group && $2 !~ /^Z/ { found=1 } END { exit !found }'; then
-                    if test "$pid" -gt 1; then rm -rf "$state"; fi
-                    exit 0
-                fi
-                sleep 0.1
-            done
-            exit 1
-            """
+                pid=$(cat "$state/pid" 2>/dev/null || true)
+                case "$pid" in ''|*[!0-9]*) pid=0 ;; esac
+                test "$pid" -gt 1 || pid=0
+                targets=""
+                freeze_tree() {
+                    local target=$1 child
+                    kill -STOP "$target" 2>/dev/null || return 0
+                    targets="$target $targets"
+                    for child in $(pgrep -P "$target" 2>/dev/null); do freeze_tree "$child"; done
+                }
+                if test "$pid" -gt 1; then freeze_tree "$pid"; fi
+                for target in $(ps -eo pid=,pgid= | awk -v group="$pid" '$2 == group { print $1 }'); do
+                    freeze_tree "$target"
+                done
+                for directory in /proc/[0-9]*; do
+                    if grep -azqFx 'DEVDECK_POC_OPERATION=\(operation)' "$directory/environ" 2>/dev/null; then
+                        freeze_tree "${directory##*/}"
+                    fi
+                done
+                if test "$pid" -gt 1; then kill -TERM -- "-$pid" 2>/dev/null || true; fi
+                for target in $targets; do kill -TERM "$target" 2>/dev/null || true; done
+                for target in $targets; do kill -CONT "$target" 2>/dev/null || true; done
+                sleep 0.3
+                if test "$pid" -gt 1; then kill -KILL -- "-$pid" 2>/dev/null || true; fi
+                for target in $targets; do kill -KILL "$target" 2>/dev/null || true; done
+                for attempt in $(seq 1 10); do
+                    live=0
+                    for target in $targets; do
+                        if test -r /proc/$target/stat && test "$(awk '{print $3}' /proc/$target/stat)" != Z; then live=1; fi
+                    done
+                    if test "$live" = 0 && ! ps -eo pgid=,stat= | awk -v group="$pid" '$1 == group && $2 !~ /^Z/ { found=1 } END { exit !found }'; then
+                        if test "$pid" -gt 1; then rm -rf "$state"; fi
+                        exit 0
+                    fi
+                    sleep 0.1
+                done
+                exit 1
+                """
             let cleanup = Process()
             cleanup.executableURL = process.executableURL
             cleanup.arguments = ["-d", distribution, "--exec", "bash", "-lc", script]

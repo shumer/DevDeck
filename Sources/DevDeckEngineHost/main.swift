@@ -20,11 +20,27 @@ do {
     }
     let config = try EngineConfiguration.load(from: configFile)
     #if os(Windows)
-    let runner = ShellCommandRunner(distribution: config.project.distribution)
+    var runners: [String: any CommandRunning] = [:]
+    for project in config.projects {
+        switch project.executionLocation {
+        case .windows:
+            runners[project.id] = NativeWindowsCommandRunner()
+        case .wsl(let distribution, _):
+            runners[project.id] = ShellCommandRunner(distribution: distribution)
+        case nil:
+            throw EngineProtocolError.invalidConfiguration
+        }
+    }
+    let runner: any CommandRunning = NativeWindowsCommandRunner()
     #else
     let runner = ShellCommandRunner()
+    let runners: [String: any CommandRunning] = [:]
     #endif
-    let engine = DevDeckEngine(configuration: config, runner: runner, localizationRoot: LocalizationResources.root) { data in
+    let engine = DevDeckEngine(
+        configuration: config, runner: runner, projectRunners: runners,
+        projectHTTP: URLSessionHTTPClient.makeDefault(timeout: 3),
+        localizationRoot: LocalizationResources.root
+    ) { data in
         FileHandle.standardOutput.write(data)
     }
     let input = AsyncStream<Data>(bufferingPolicy: .bufferingOldest(32)) { continuation in
@@ -38,14 +54,20 @@ do {
                     if byte == 10 {
                         if pending.last == 13 { pending.removeLast() }
                         if !oversized, !pending.isEmpty {
-                            if case .dropped = continuation.yield(pending) { diagnostic("Input queue is full.") }
+                            if case .dropped = continuation.yield(pending) {
+                                diagnostic("Input queue is full.")
+                            }
                         }
-                        pending.removeAll(keepingCapacity: true); oversized = false
+                        pending.removeAll(keepingCapacity: true)
+                        oversized = false
                     } else if !oversized {
                         if pending.count >= 1_048_576 && !(pending.count == 1_048_576 && byte == 13) {
                             diagnostic("Input message exceeds 1 MiB.")
-                            pending.removeAll(keepingCapacity: true); oversized = true
-                        } else { pending.append(byte) }
+                            pending.removeAll(keepingCapacity: true)
+                            oversized = true
+                        } else {
+                            pending.append(byte)
+                        }
                     }
                 }
             }
@@ -54,8 +76,9 @@ do {
         }
     }
     for await line in input {
-        do { await engine.handle(try EngineIntent.decode(line)) }
-        catch { diagnostic("Invalid protocol message.") }
+        do { await engine.handle(try EngineIntent.decode(line)) } catch {
+            diagnostic("Invalid protocol message.")
+        }
     }
     await engine.shutdown()
 } catch {
