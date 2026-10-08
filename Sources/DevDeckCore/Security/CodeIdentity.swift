@@ -1,5 +1,7 @@
 import Foundation
+#if !os(Windows)
 import Security
+#endif
 
 /// Who signed a piece of code, as far as the Keychain and the updater care.
 ///
@@ -21,6 +23,11 @@ public enum CodeIdentity {
         }
     }
 
+    #if os(Windows)
+    public static func current() -> Kind { .unsigned }
+
+    public static func kind(ofBundleAt url: URL) -> Kind { .unsigned }
+    #else
     /// The running process.
     public static func current() -> Kind {
         var code: SecCode?
@@ -64,6 +71,7 @@ public enum CodeIdentity {
         }
         return .adHoc
     }
+    #endif
 }
 
 /// How the stored tokens are protected, which follows from how the app is signed.

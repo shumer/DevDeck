@@ -5,6 +5,30 @@ import PackageDescription
 // concurrency, while the AppKit/SwiftUI shell stays on the 5 mode where main-actor
 // isolation of the framework types is inferred rather than enforced.
 // See docs/adr/0002-spm-only-toolchain.md.
+#if os(Windows)
+let package = Package(
+    name: "DevDeck",
+    products: [
+        .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
+        .library(name: "GitHubKit", targets: ["GitHubKit"]),
+        .library(name: "ProjectKit", targets: ["ProjectKit"]),
+    ],
+    targets: [
+        .target(
+            name: "DevDeckCore",
+            exclude: ["Process/ShellPath.swift", "Process/LocalAddress.swift"]
+        ),
+        .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
+        .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+        .target(name: "TestHarness", dependencies: ["DevDeckCore"], path: "Tests/TestHarness"),
+        .executableTarget(
+            name: "DevDeckWindowsCoreTests",
+            dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit", "TestHarness"],
+            path: "Tests/WindowsCoreTests"
+        ),
+    ]
+)
+#else
 let package = Package(
     name: "DevDeck",
     platforms: [.macOS(.v14)],
@@ -94,3 +118,4 @@ let package = Package(
         ),
     ]
 )
+#endif

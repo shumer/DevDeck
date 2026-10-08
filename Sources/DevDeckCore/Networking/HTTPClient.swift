@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// The one seam every network test goes through.
 public protocol HTTPClient: Sendable {

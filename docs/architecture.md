@@ -24,6 +24,25 @@ The rule that keeps this honest: **`DevDeckCore` and every integration module mu
 be testable without AppKit**. The suite is a plain executable running head-less, so anything
 that reaches for a window cannot be covered by it.
 
+## Windows POC boundary
+
+The Windows package branch builds only `DevDeckCore`, `GitHubKit`, `ProjectKit` and the
+separate `DevDeckWindowsCoreTests` executable. The Mac package declaration stays in its
+original branch. The engine and its JSON-lines host belong to the next POC step.
+
+Windows uses in-memory token stores, an unsigned code identity, stderr diagnostics and a
+file-backed preferences store under `%LOCALAPPDATA%/DevDeckPOC`. Writes are atomic and
+failed writes retain the previous in-memory state. Tokens are never preferences.
+
+The Windows `ShellCommandRunner` starts `wsl.exe` with a selected distribution and a Linux
+working directory, streams both output pipes, and handles timeout and task cancellation.
+`LocalProjectService` starts detached bash commands and keeps runtime PID files in WSL.
+Process liveness is checked in the owning distribution; health checks use the Windows HTTP
+client. Real project lifecycle checks are part of the next step's acceptance.
+
+The Mac login-shell PATH probe and LAN-interface probe are excluded from the Windows POC
+build. Foundation supplies the geometry types when CoreGraphics is unavailable.
+
 ## Data flow
 
 ```

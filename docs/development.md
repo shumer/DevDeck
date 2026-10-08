@@ -19,6 +19,32 @@ That single fact shapes the project:
   deployment target stays at macOS 14. The release workflow therefore runs on `macos-26`; the test
   workflow stays on `macos-15`, which keeps the code honest about building on the older SDK.
 
+## Windows core POC
+
+Use Swift 6.4 for Windows x64, Visual Studio 2022 Build Tools with the x64 C++ tools,
+and Windows SDK 10.0.22621.0. Install dependencies following the
+[Swift Windows instructions](https://www.swift.org/install/windows/), then open a new
+Developer PowerShell for Visual Studio so the compiler, linker and runtime paths are available.
+Use a short checkout path and set `core.longpaths=true` and `core.autocrlf=false` locally.
+
+```powershell
+swift build --product DevDeckWindowsCoreTests -Xswiftc -warnings-as-errors
+swift run --skip-build DevDeckWindowsCoreTests
+```
+
+The product builds `DevDeckCore`, `GitHubKit` and `ProjectKit` as dependencies. Its tests use
+fixture HTTP responses, in-memory tokens and temporary preference files. WSL is needed when
+project commands are exercised in the later engine step.
+
+Swift 6.4 currently emits a Windows SDK module warning about `wchar_t`, matching
+[Swift issue 91000](https://github.com/swiftlang/swift/issues/91000). Project code builds without
+warnings. Q1 is accepted with this external Swift 6.4 WinSDK exception. Recheck a clean build
+when the toolchain fix is released. Diagnostics stay enabled; preloading Clang's standard
+definitions module did not fix a clean build.
+
+Mac acceptance is performed on a Mac using `./run-tests.sh` and a warning-free `swift build`.
+Record those results separately in [the POC report](poc/one-engine-report.md).
+
 ## Commands
 
 ```bash

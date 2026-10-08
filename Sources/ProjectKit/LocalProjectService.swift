@@ -101,8 +101,18 @@ public struct LocalProjectService: Sendable {
 
         let branch = GitCheckout.branch(in: folder)
         let repositoryURL = GitCheckout.originWebURL(in: folder)
+        #if os(Windows)
+        let pid = await windowsStoredPID(in: folder)
+        let isAlive: Bool
+        if let pid {
+            isAlive = (try? await runner.run("kill -0 \(pid)", in: folder, timeout: 3))?.succeeded == true
+        } else {
+            isAlive = false
+        }
+        #else
         let pid = storedPID()
         let isAlive = pid.map(ProcessLiveness.isAlive) ?? false
+        #endif
         let hasLog = FileManager.default.fileExists(atPath: logURL.path)
 
         guard let healthURL = project.healthCheckURL else {
@@ -220,6 +230,21 @@ public struct LocalProjectService: Sendable {
     }
 
     private func start(in folder: URL) async -> CommandResult? {
+        #if os(Windows)
+        let runtime = Self.windowsRuntimeDirectory
+        let log = "\(runtime)/\(Self.shellQuoted(project.id + ".log"))"
+        let pidFile = "\(runtime)/\(Self.shellQuoted(project.id + ".pid"))"
+        let launch: String
+        if project.holdsProcess {
+            launch = "nohup /bin/bash -lc \(Self.shellQuoted(project.startCommand)) >> \(log) 2>&1 < /dev/null & echo $! > \(pidFile)"
+        } else {
+            launch = "{ \(project.startCommand) ; } >> \(log) 2>&1"
+        }
+        return try? await runner.run(
+            "mkdir -p \(runtime) && { : > \(log) || exit $?; \(launch); }", in: folder,
+            timeout: project.holdsProcess ? 30 : 900
+        )
+        #else
         try? FileManager.default.createDirectory(at: files.directory, withIntermediateDirectories: true)
 
         guard project.holdsProcess else {
@@ -237,9 +262,27 @@ public struct LocalProjectService: Sendable {
             in: folder,
             timeout: 30
         )
+        #endif
     }
 
     private func stop(in folder: URL) async -> CommandResult? {
+        #if os(Windows)
+        let trimmed = project.stopCommand.trimmingCharacters(in: .whitespaces)
+        let command: String
+        if !trimmed.isEmpty {
+            command = trimmed
+        } else {
+            guard let pid = await windowsStoredPID(in: folder) else { return nil }
+            command = Self.killTreeCommand(pid: pid)
+        }
+        let result = try? await runner.run(command, in: folder, timeout: 30)
+        if result?.succeeded == true {
+            _ = try? await runner.run(
+                "rm -f \(Self.windowsRuntimeDirectory)/\(Self.shellQuoted(project.id + ".pid"))", in: folder, timeout: 3
+            )
+        }
+        return result
+        #else
         let trimmed = project.stopCommand.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty {
             let result = try? await runner.run(
@@ -255,7 +298,22 @@ public struct LocalProjectService: Sendable {
         let result = try? await runner.run(Self.killTreeCommand(pid: pid), in: folder, timeout: 30)
         forgetPID()
         return result
+        #endif
     }
+
+    #if os(Windows)
+    // Runtime files belong to the Linux process and survive a Windows engine restart.
+    private static let windowsRuntimeDirectory = "\"$HOME/.local/share/DevDeckPOC/projects\""
+
+    private func windowsStoredPID(in folder: URL) async -> Int32? {
+        guard let result = try? await runner.run(
+            "cat \(Self.windowsRuntimeDirectory)/\(Self.shellQuoted(project.id + ".pid"))", in: folder, timeout: 3
+        ), result.succeeded else { return nil }
+        guard let pid = Int32(result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)),
+              pid > 0 else { return nil }
+        return pid
+    }
+    #endif
 
     // MARK: The commands
 
@@ -267,8 +325,13 @@ public struct LocalProjectService: Sendable {
     /// for a dev server is forever. `nohup` is what lets it outlive this app.
     public static func detachedCommand(_ command: String, log: URL, pidFile: URL) -> String {
         let quoted = shellQuoted(command)
+        #if os(Windows)
+        let shell = "/bin/bash"
+        #else
+        let shell = "/bin/zsh"
+        #endif
         return ": > \(shellQuoted(log.path)); "
-            + "nohup /bin/zsh -lc \(quoted) >> \(shellQuoted(log.path)) 2>&1 & "
+            + "nohup \(shell) -lc \(quoted) >> \(shellQuoted(log.path)) 2>&1 & "
             + "echo $! > \(shellQuoted(pidFile.path))"
     }
 

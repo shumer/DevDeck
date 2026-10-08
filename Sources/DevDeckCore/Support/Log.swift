@@ -1,3 +1,4 @@
+#if !os(Windows)
 import Foundation
 import OSLog
 
@@ -10,3 +11,20 @@ public enum Log {
     public static let storage = Logger(subsystem: subsystem, category: "storage")
     public static let app = Logger(subsystem: subsystem, category: "app")
 }
+#else
+import Foundation
+
+/// Windows diagnostics use stderr because stdout belongs to the engine protocol.
+public enum Log {
+    public static let network = WindowsLogger()
+    public static let refresh = WindowsLogger()
+    public static let storage = WindowsLogger()
+    public static let app = WindowsLogger()
+}
+
+public struct WindowsLogger: Sendable {
+    public func debug(_ message: String) {
+        FileHandle.standardError.write(Data((message + "\n").utf8))
+    }
+}
+#endif

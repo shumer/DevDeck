@@ -1,5 +1,13 @@
 # Roadmap
 
+## In progress: one-engine Windows POC
+
+- Step 1 accepted with an external Swift 6.4 WinSDK warning exception: native Windows core
+  and a separate offline test executable; Windows and user-run Mac evidence
+  is tracked in [the POC report](poc/one-engine-report.md).
+- Step 2: prepare branch exchange, then engine and host, real GitHub and WSL lifecycle checks.
+- Then, in acceptance order: cross-platform golden transcripts, a thin WPF shell, measurements.
+
 ## Done
 
 - **Foundation** - configuration, card catalog and layout, HTTP transport with conditional

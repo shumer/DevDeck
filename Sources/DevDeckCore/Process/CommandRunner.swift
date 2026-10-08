@@ -107,6 +107,7 @@ public enum CommandError: Error, Sendable, Equatable {
 /// `docker` working, both being in `/usr/local/bin`, while `npx` reported "command not found"
 /// from a machine that plainly has it. `ShellPath` asks an interactive shell once and every
 /// command gets the answer.
+#if !os(Windows)
 public struct ShellCommandRunner: CommandRunning {
     private let shell: String
 
@@ -256,6 +257,8 @@ public struct ShellCommandRunner: CommandRunning {
         )
     }
 }
+
+#endif
 
 /// Test double: answers from a script of prefixes without touching the shell.
 public actor StubCommandRunner: CommandRunning {
