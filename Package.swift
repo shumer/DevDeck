@@ -5,6 +5,51 @@ import PackageDescription
 // concurrency, while the AppKit/SwiftUI shell stays on the 5 mode where main-actor
 // isolation of the framework types is inferred rather than enforced.
 // See docs/adr/0002-spm-only-toolchain.md.
+//
+// Windows builds only the portable layers: the engine and its shell come in later steps of
+// docs/windows-migration.md, and nothing that draws is ever built there.
+// See docs/adr/0023-project-process-lifetime.md for the process host.
+#if os(Windows)
+let package = Package(
+    name: "DevDeck",
+    products: [
+        .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
+        .library(name: "GitHubKit", targets: ["GitHubKit"]),
+        .library(name: "ProjectKit", targets: ["ProjectKit"]),
+        .executable(name: "DevDeckProcessHost", targets: ["DevDeckProcessHost"]),
+    ],
+    targets: [
+        // The login-shell PATH and the local address lookup are Mac-only and have no Windows twin.
+        .target(
+            name: "DevDeckCore",
+            exclude: ["Process/ShellPath.swift", "Process/LocalAddress.swift"]
+        ),
+        .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
+        .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+
+        // Holds a native Windows project's Job Object, so the project outlives the engine.
+        .executableTarget(name: "DevDeckProcessHost", dependencies: ["DevDeckCore"]),
+
+        // Live check of HTTPS, proxies and certificates through FoundationNetworking.
+        .executableTarget(
+            name: "DevDeckNetworkSmoke",
+            dependencies: ["DevDeckCore", "GitHubKit"],
+            path: "Tools/WindowsNetworkSmoke",
+            exclude: ["Invoke-NetworkSmoke.ps1"]
+        ),
+
+        .target(name: "TestHarness", dependencies: ["DevDeckCore"], path: "Tests/TestHarness"),
+
+        // The Windows-only checks: HTTP caching, in-memory tokens, the detached command, file
+        // preferences. The shared logic is covered by DevDeckTests on the Mac.
+        .executableTarget(
+            name: "DevDeckWindowsCoreTests",
+            dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit", "TestHarness"],
+            path: "Tests/WindowsCoreTests"
+        ),
+    ]
+)
+#else
 let package = Package(
     name: "DevDeck",
     platforms: [.macOS(.v14)],
@@ -94,3 +139,4 @@ let package = Package(
         ),
     ]
 )
+#endif

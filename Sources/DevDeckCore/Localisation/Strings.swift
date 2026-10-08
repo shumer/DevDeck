@@ -117,7 +117,25 @@ public enum Strings {
     /// language decides how many forms there are, because Russian has three where English has two
     /// and no amount of string joining gets that right.
     public static func plural(_ key: String, _ count: Int) -> String {
-        String(format: string(key), locale: locale, count)
+        #if os(Windows)
+        // Windows Foundation cannot expand the stringsdict format marker safely.
+        let (chosen, fallback) = store.bundles
+        for bundle in [chosen, fallback].compactMap({ $0 }) {
+            let file = bundle.bundleURL.appendingPathComponent("Localizable.stringsdict")
+            guard let data = try? Data(contentsOf: file),
+                  let table = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+                  let entry = table[key] as? [String: Any],
+                  let forms = entry["count"] as? [String: String] else { continue }
+            let language = bundle.bundleURL.lastPathComponent.replacingOccurrences(of: ".lproj", with: "")
+            let category = PluralCategory.of(count, language: language)
+            if let format = forms[category.rawValue] ?? forms[PluralCategory.other.rawValue] {
+                return String(format: format, locale: locale, count)
+            }
+        }
+        return key
+        #else
+        return String(format: string(key), locale: locale, count)
+        #endif
     }
 
     /// The locale the numbers and the plural rules are read in.

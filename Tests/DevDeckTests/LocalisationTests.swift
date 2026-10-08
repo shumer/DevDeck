@@ -24,13 +24,21 @@ private func keys(of language: String) throws -> Set<String> {
 }
 
 private func pluralKeys(of language: String) throws -> [String: Set<String>] {
+    try pluralForms(of: language).mapValues { Set($0.keys) }
+}
+
+/// Every counted key of one language, with the text of each of its forms.
+private func pluralForms(of language: String) throws -> [String: [String: String]] {
     let url = localisationRoot.appendingPathComponent("\(language).lproj/Localizable.stringsdict")
     let data = try Data(contentsOf: url)
     let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
     guard let table = plist as? [String: [String: Any]] else { return [:] }
     return table.reduce(into: [:]) { result, entry in
         guard let rules = entry.value["count"] as? [String: Any] else { return }
-        result[entry.key] = Set(rules.keys.filter { !$0.hasPrefix("NSString") })
+        result[entry.key] = rules.reduce(into: [:]) { forms, rule in
+            guard !rule.key.hasPrefix("NSString"), let text = rule.value as? String else { return }
+            forms[rule.key] = text
+        }
     }
 }
 
@@ -152,6 +160,23 @@ func runLocalisationTests(_ run: TestRun) async {
         Strings.use(.english, lookingIn: localisationRoot)
         try expectEqual(LN("attention.summary.waiting", 1), "1 waiting on you")
         try expectEqual(LN("attention.summary.waiting", 4), "4 waiting on you")
+    }
+
+    await run.test("the plural rules Windows carries agree with the ones Foundation reads") {
+        // Foundation on Windows cannot expand a stringsdict, so the form is picked by hand there.
+        // Here both run side by side, for every language, every counted key and enough numbers
+        // to pass through each of Russian's teens.
+        for language in AppLanguage.allCases where language != .system {
+            Strings.use(language, lookingIn: localisationRoot)
+            for (key, forms) in try pluralForms(of: language.rawValue) {
+                for count in 0...125 {
+                    let category = PluralCategory.of(count, language: language.rawValue)
+                    let form = try expectNotNil(forms[category.rawValue] ?? forms["other"], "\(language.rawValue) \(key) \(category.rawValue)")
+                    let byHand = String(format: form, locale: Strings.locale, count)
+                    try expectEqual(byHand, LN(key, count), "\(language.rawValue) \(key) at \(count)")
+                }
+            }
+        }
     }
 
     // Back to English, which is what the rest of the suite reads its expectations in.

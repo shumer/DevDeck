@@ -59,6 +59,24 @@ The default build system also prints a run of `ld: warning: search path ... not 
 about a directory the Command Line Tools do not have. They are the toolchain's, not this
 package's, and the CI warning check runs under Xcode where they do not appear.
 
+## Building on Windows
+
+Windows 11 22H2 or later, with the Swift toolchain for Windows and the Visual Studio build tools it
+asks for. The same `Package.swift` builds a smaller graph there: the core, `GitHubKit`,
+`ProjectKit`, `DevDeckProcessHost`, the Windows suite and the network smoke check. Nothing that
+draws is built on Windows yet; see [windows-migration.md](windows-migration.md).
+
+```powershell
+swift build                                   # the Windows graph
+swift run DevDeckWindowsCoreTests             # offline: HTTP cache, tokens, file preferences, commands
+swift build --product DevDeckNetworkSmoke     # then Tools/WindowsNetworkSmoke/Invoke-NetworkSmoke.ps1
+```
+
+The suite needs no WSL distribution. Starting and stopping real projects in WSL and in Windows
+folders is checked live until the engine host lands and those scenarios become standing checks.
+Mac changes are checked on the Mac and Windows changes on Windows: a branch that touches both is
+merged when both are green.
+
 ## Tests
 
 `Tests/DevDeckTests` is a plain executable. Add a `func runXTests(_ run: TestRun) async` and

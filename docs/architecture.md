@@ -154,6 +154,12 @@ log file and a process id per project under Application Support - see
 [adr/0007-plain-projects.md](adr/0007-plain-projects.md). Everything else is the same shape:
 the health URL decides "running", and the branch comes from `.git/HEAD`.
 
+How the process is started, found again and stopped is not the service's business: it asks a
+`ProjectProcessLauncher`. The Mac has one, `ShellProjectLauncher`; Windows has one for projects
+inside WSL and one for projects in Windows folders. Each one keeps its process alive when the app
+quits and stops the whole tree, not just the process it recorded - see
+[adr/0023-project-process-lifetime.md](adr/0023-project-process-lifetime.md).
+
 ## The Docker gate
 
 `DockerEnvironment` in `DevDeckCore` runs one probe for the whole deck at the top of the local
@@ -601,6 +607,30 @@ Two rules keep the layout honest when a translation is longer than the English:
 Terms are not translated: `pull request`, `merge request`, `pipeline`, `commit`, `Docker`,
 `DDEV`, `Arc XP`. Logs stay English. See
 [adr/0020-six-languages.md](adr/0020-six-languages.md).
+
+## Windows portability
+
+The deck is heading for one engine and two thin shells - see
+[adr/0024-one-engine-two-shells.md](adr/0024-one-engine-two-shells.md) and
+[windows-migration.md](windows-migration.md). Today `DevDeckCore`, `GitHubKit` and `ProjectKit`
+build on Windows 11 from the same `Package.swift`, which has a Windows graph of its own: no AppKit
+targets, no `KeychainACL`, plus `DevDeckProcessHost`, the Windows suite and a network smoke check.
+
+Where the platforms differ, the difference is a type picked at construction, not a branch inside
+shared logic:
+
+| Concern | Mac | Windows |
+| --- | --- | --- |
+| Running a command | `ShellCommandRunner`, login zsh | `WSLCommandRunner` in one distribution, or `NativeWindowsCommandRunner` |
+| A project's process | `ShellProjectLauncher` | `WSLProjectLauncher`, `NativeWindowsProjectLauncher` with `DevDeckProcessHost` |
+| Preferences | `UserDefaults` | `FilePreferencesBackend`, `%LOCALAPPDATA%\DevDeck\preferences.json` |
+| Tokens | Keychain | in memory only; Credential Manager belongs to the Windows shell |
+| HTTP | `URLSession` | `URLSession` from FoundationNetworking |
+| Plural forms | the stringsdict, through Foundation | `PluralCategory`, because Foundation on Windows cannot expand it |
+
+`PluralCategory` is checked against Foundation on the Mac for every language, every counted key
+and every count up to 125, so the two cannot drift. The few Mac-only files that remain shared,
+`ShellPath` and `LocalAddress`, are excluded from the Windows graph by name.
 
 ## Concurrency
 

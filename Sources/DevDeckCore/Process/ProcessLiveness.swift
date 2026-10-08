@@ -1,3 +1,4 @@
+#if !os(Windows)
 import Darwin
 import Foundation
 
@@ -14,3 +15,4 @@ public enum ProcessLiveness {
         return errno == EPERM
     }
 }
+#endif

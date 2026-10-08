@@ -176,11 +176,13 @@
 
 ## Next
 
-1. **Bundle versions on the project card** - live version per environment, which needs an org
+1. **Windows** - one engine, two thin shells, Windows 11 only. The core already builds there; the
+   order of work is [windows-migration.md](windows-migration.md), and M-1, the portable core, is in.
+2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
-2. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
+3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
-3. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
+4. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
    Tailscale for the rest. The QR code covers the same network; this covers the customer on a
    call.
 
@@ -188,4 +190,6 @@
 
 - WidgetKit widgets in Notification Center. They need Xcode and their own refresh budget; the
   panels already sit on the desktop. Revisit only if Xcode gets installed.
-- Windows or Linux. Decided against - see [adr/0001-native-macos-app.md](adr/0001-native-macos-app.md).
+- Linux. Windows was decided against in [adr/0001-native-macos-app.md](adr/0001-native-macos-app.md)
+  and then taken up in [adr/0024-one-engine-two-shells.md](adr/0024-one-engine-two-shells.md);
+  Linux has not been asked for.

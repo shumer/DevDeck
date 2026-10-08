@@ -35,14 +35,36 @@ public struct ProjectRuntimeFiles: Sendable {
 /// Both are handled the same way - output goes to a log file, the process id is written down -
 /// so that "is it up" can always be answered by asking the health URL rather than by
 /// remembering what kind of command it was.
+///
+/// How a process is started, found again and stopped depends on where it runs, and belongs to a
+/// `ProjectProcessLauncher`. Everything else here is the same on every platform.
 public struct LocalProjectService: Sendable {
     private let project: LocalProject
-    private let runner: any CommandRunning
     private let httpClient: any HTTPClient
     private let clock: any DateProvider
     private let sleeper: any Sleeper
     private let files: ProjectRuntimeFiles
+    private let launcher: any ProjectProcessLauncher
 
+    #if os(Windows)
+    /// There is no default runner on Windows: whether a project runs natively or inside a WSL
+    /// distribution, and which one, comes from the project's folder, so the caller always says.
+    public init(
+        project: LocalProject,
+        runner: any CommandRunning,
+        httpClient: any HTTPClient = URLSessionHTTPClient.makeDefault(timeout: 3),
+        clock: any DateProvider = SystemDateProvider(),
+        sleeper: any Sleeper = TaskSleeper(),
+        files: ProjectRuntimeFiles = .standard()
+    ) {
+        self.project = project
+        self.httpClient = httpClient
+        self.clock = clock
+        self.sleeper = sleeper
+        self.files = files
+        self.launcher = Self.launcher(for: project, runner: runner, files: files)
+    }
+    #else
     public init(
         project: LocalProject,
         runner: any CommandRunning = ShellCommandRunner(),
@@ -52,11 +74,28 @@ public struct LocalProjectService: Sendable {
         files: ProjectRuntimeFiles = .standard()
     ) {
         self.project = project
-        self.runner = runner
         self.httpClient = httpClient
         self.clock = clock
         self.sleeper = sleeper
         self.files = files
+        self.launcher = Self.launcher(for: project, runner: runner, files: files)
+    }
+    #endif
+
+    /// The launcher for where this project runs, picked from the runner the caller supplied.
+    private static func launcher(
+        for project: LocalProject,
+        runner: any CommandRunning,
+        files: ProjectRuntimeFiles
+    ) -> any ProjectProcessLauncher {
+        #if os(Windows)
+        if let native = runner as? NativeWindowsCommandRunner {
+            return NativeWindowsProjectLauncher(project: project, runner: native)
+        }
+        return WSLProjectLauncher(project: project, runner: runner)
+        #else
+        return ShellProjectLauncher(project: project, runner: runner, files: files)
+        #endif
     }
 
     public var logURL: URL { files.log(project.id) }
@@ -101,8 +140,8 @@ public struct LocalProjectService: Sendable {
 
         let branch = GitCheckout.branch(in: folder)
         let repositoryURL = GitCheckout.originWebURL(in: folder)
-        let pid = storedPID()
-        let isAlive = pid.map(ProcessLiveness.isAlive) ?? false
+        let pid = await launcher.livePID(in: folder)
+        let isAlive = pid != nil
         let hasLog = FileManager.default.fileExists(atPath: logURL.path)
 
         guard let healthURL = project.healthCheckURL else {
@@ -183,7 +222,7 @@ public struct LocalProjectService: Sendable {
         let deadline = clock.now.addingTimeInterval(timeout)
         var latest = await status()
 
-        while !latest.isRunning, clock.now < deadline {
+        while !latest.isRunning, clock.now < deadline, !Task.isCancelled {
             // A process that died on its own is a failure, not something to keep waiting on.
             if latest.state == .stopped, project.holdsProcess { break }
             try? await sleeper.sleep(seconds: pollInterval)
@@ -220,41 +259,20 @@ public struct LocalProjectService: Sendable {
     }
 
     private func start(in folder: URL) async -> CommandResult? {
-        try? FileManager.default.createDirectory(at: files.directory, withIntermediateDirectories: true)
-
-        guard project.holdsProcess else {
-            // A command that returns on its own is simply run and waited for; its output still
-            // goes to the log, because that is where the card's Logs button looks.
-            return try? await runner.run(
-                Self.foregroundCommand(project.startCommand, log: logURL),
-                in: folder,
-                timeout: 900
-            )
+        #if os(Windows)
+        // A second Start while the first one is still coming up must not launch a second copy:
+        // on Windows the engine and its shell can both be restarted while a project keeps running.
+        let current = await status()
+        if current.isRunning || current.pid != nil {
+            return CommandResult(exitCode: 0, standardOutput: "", standardError: "")
         }
-
-        return try? await runner.run(
-            Self.detachedCommand(project.startCommand, log: logURL, pidFile: pidURL),
-            in: folder,
-            timeout: 30
-        )
+        guard !Task.isCancelled else { return nil }
+        #endif
+        return await launcher.start(in: folder)
     }
 
     private func stop(in folder: URL) async -> CommandResult? {
-        let trimmed = project.stopCommand.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty {
-            let result = try? await runner.run(
-                Self.foregroundCommand(trimmed, log: logURL),
-                in: folder,
-                timeout: 300
-            )
-            forgetPID()
-            return result
-        }
-
-        guard let pid = storedPID() else { return nil }
-        let result = try? await runner.run(Self.killTreeCommand(pid: pid), in: folder, timeout: 30)
-        forgetPID()
-        return result
+        await launcher.stop(in: folder)
     }
 
     // MARK: The commands
@@ -267,8 +285,13 @@ public struct LocalProjectService: Sendable {
     /// for a dev server is forever. `nohup` is what lets it outlive this app.
     public static func detachedCommand(_ command: String, log: URL, pidFile: URL) -> String {
         let quoted = shellQuoted(command)
+        #if os(Windows)
+        let shell = "/bin/bash"
+        #else
+        let shell = "/bin/zsh"
+        #endif
         return ": > \(shellQuoted(log.path)); "
-            + "nohup /bin/zsh -lc \(quoted) >> \(shellQuoted(log.path)) 2>&1 & "
+            + "nohup \(shell) -lc \(quoted) >> \(shellQuoted(log.path)) 2>&1 & "
             + "echo $! > \(shellQuoted(pidFile.path))"
     }
 
@@ -294,15 +317,11 @@ public struct LocalProjectService: Sendable {
 
     // MARK: The pid file
 
+    #if !os(Windows)
+    /// The process id on record, alive or not. On Windows the record lives with the process,
+    /// inside WSL or the process host, and is read through the launcher instead.
     public func storedPID() -> Int32? {
-        guard
-            let text = try? String(contentsOf: pidURL, encoding: .utf8),
-            let value = Int32(text.trimmingCharacters(in: .whitespacesAndNewlines))
-        else { return nil }
-        return value
+        ShellProjectLauncher.readPID(at: pidURL)
     }
-
-    private func forgetPID() {
-        try? FileManager.default.removeItem(at: pidURL)
-    }
+    #endif
 }

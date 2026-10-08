@@ -1,6 +1,7 @@
 # 0001 - Native macOS app, not cross-platform
 
-Status: accepted, 2026-08-02
+Status: accepted, 2026-08-02. Amended by [0024](0024-one-engine-two-shells.md): the Mac app stays
+native, and Windows gets a thin shell over a shared engine instead of a rewrite.
 
 ## Context
 

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public struct TransportResponse: Sendable, Equatable {
     public let body: Data
@@ -58,7 +61,11 @@ public actor APITransport {
                 return try await handle(response, for: request)
             } catch let error as APIError {
                 guard retryPolicy.shouldRetry(error, afterAttempt: attempt) else { throw error }
+                #if !os(Windows)
                 Log.network.debug("Retrying after \(error.displayMessage, privacy: .public)")
+                #else
+                Log.network.debug("Retrying request.")
+                #endif
             }
         }
     }

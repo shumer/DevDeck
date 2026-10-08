@@ -1,6 +1,8 @@
 import Foundation
+#if !os(Windows)
 import KeychainACL
 import Security
+#endif
 
 public struct TokenKey: Sendable, Hashable {
     public let service: String
@@ -15,7 +17,11 @@ public struct TokenKey: Sendable, Hashable {
 }
 
 public enum TokenStoreError: Error, Sendable, Equatable {
+    #if os(Windows)
+    case keychain(Int32)
+    #else
     case keychain(OSStatus)
+    #endif
     case readOnly
     case invalidEncoding
 }
@@ -29,6 +35,7 @@ public protocol TokenStore: Sendable {
 
 /// The Keychain is the only place a token is persisted. It is never written to the repo,
 /// to `UserDefaults`, or to a dotfile in the project.
+#if !os(Windows)
 public struct KeychainTokenStore: TokenStore {
     /// Who signed the running app, which decides how an item is protected. See
     /// `KeychainAccessPolicy`.
@@ -126,6 +133,8 @@ public struct KeychainTokenStore: TokenStore {
     }
 }
 
+#endif
+
 /// Reads tokens from the process environment. Used by the smoke-test tool and by anyone
 /// running the app from a shell that already exports `GITHUB_TOKEN` or `GITLAB_TOKEN`.
 public struct EnvironmentTokenStore: TokenStore {
@@ -173,7 +182,11 @@ public struct CompositeTokenStore: TokenStore {
     }
 
     public static func standard() -> CompositeTokenStore {
+        #if os(Windows)
+        CompositeTokenStore([InMemoryTokenStore()])
+        #else
         CompositeTokenStore([KeychainTokenStore(), EnvironmentTokenStore()])
+        #endif
     }
 
     public func token(for key: TokenKey) throws -> String? {
