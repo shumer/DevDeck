@@ -12,6 +12,9 @@
   windows, failure rendering and self-contained delivery builder are implemented. The user-run
   hidden token command and Q5 acceptance remain.
 - Step 5 measurements start only after Q5 acceptance.
+- After the POC: the Windows card style is chosen, the same deck on Windows materials
+  (Acrylic, system corners, Segoe UI Variable, Cascadia Mono, Fluent icons, the Mac's tones).
+  See [windows-style.md](windows-style.md) and its reference mock.
 
 ## Done
 
