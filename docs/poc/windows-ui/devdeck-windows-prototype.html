@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevDeck Windows UI prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --wallpaper-0: #07101d;
+      --wallpaper-1: #102540;
+      --wallpaper-2: #203d6b;
+      --ribbon-a: rgba(49, 113, 211, 0.48);
+      --ribbon-b: rgba(78, 202, 211, 0.28);
+      --surface-solid: #1c1c20;
+      --surface: rgba(28, 28, 32, 0.78);
+      --surface-raised: rgba(255, 255, 255, 0.075);
+      --surface-hover: rgba(255, 255, 255, 0.115);
+      --surface-pressed: rgba(255, 255, 255, 0.17);
+      --surface-selected: rgba(96, 205, 255, 0.13);
+      --border: rgba(255, 255, 255, 0.18);
+      --border-strong: rgba(255, 255, 255, 0.3);
+      --divider: rgba(255, 255, 255, 0.11);
+      --text-primary: #f7f7f8;
+      --text-secondary: #c7c7ce;
+      --text-tertiary: #94949d;
+      --accent: #60cdff;
+      --accent-ink: #06151d;
+      --good: #6ccb9f;
+      --good-soft: rgba(108, 203, 159, 0.13);
+      --info: #60cdff;
+      --info-soft: rgba(96, 205, 255, 0.13);
+      --alert: #f6d365;
+      --alert-soft: rgba(246, 211, 101, 0.13);
+      --bad: #ff8f9a;
+      --bad-soft: rgba(255, 143, 154, 0.11);
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.38), 0 4px 14px rgba(0, 0, 0, 0.3);
+      --focus: #9dddff;
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --wallpaper-0: #dbeaff;
+      --wallpaper-1: #c5d9f6;
+      --wallpaper-2: #99b8e4;
+      --ribbon-a: rgba(58, 116, 210, 0.3);
+      --ribbon-b: rgba(41, 160, 173, 0.24);
+      --surface-solid: #f7f7f9;
+      --surface: rgba(247, 247, 249, 0.8);
+      --surface-raised: rgba(0, 0, 0, 0.055);
+      --surface-hover: rgba(0, 0, 0, 0.09);
+      --surface-pressed: rgba(0, 0, 0, 0.14);
+      --surface-selected: rgba(0, 103, 165, 0.1);
+      --border: rgba(0, 0, 0, 0.16);
+      --border-strong: rgba(0, 0, 0, 0.28);
+      --divider: rgba(0, 0, 0, 0.1);
+      --text-primary: #17171a;
+      --text-secondary: #5d5d65;
+      --text-tertiary: #7b7b84;
+      --accent: #0067a5;
+      --accent-ink: #ffffff;
+      --good: #087f5b;
+      --good-soft: rgba(8, 127, 91, 0.1);
+      --info: #0067a5;
+      --info-soft: rgba(0, 103, 165, 0.1);
+      --alert: #8a5d00;
+      --alert-soft: rgba(138, 93, 0, 0.1);
+      --bad: #c42b3a;
+      --bad-soft: rgba(196, 43, 58, 0.08);
+      --shadow: 0 18px 44px rgba(41, 58, 82, 0.22), 0 4px 14px rgba(41, 58, 82, 0.16);
+      --focus: #005a9e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      color: var(--text-primary);
+      background: var(--wallpaper-0);
+      overflow-x: hidden;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .desktop {
+      min-height: 100vh;
+      position: relative;
+      isolation: isolate;
+      padding: 24px clamp(18px, 4vw, 64px) 64px;
+      background:
+        radial-gradient(circle at 78% 14%, var(--ribbon-b) 0 19%, transparent 44%),
+        radial-gradient(circle at 20% 74%, var(--ribbon-a) 0 25%, transparent 51%),
+        linear-gradient(135deg, var(--wallpaper-0), var(--wallpaper-1) 53%, var(--wallpaper-2));
+    }
+
+    .desktop::before,
+    .desktop::after {
+      content: "";
+      position: fixed;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: 46% 54% 54% 46%;
+      filter: blur(2px);
+      transform: rotate(-22deg);
+    }
+
+    .desktop::before {
+      width: 54vw;
+      height: 34vw;
+      left: -9vw;
+      bottom: -5vw;
+      background: linear-gradient(145deg, rgba(36, 102, 201, 0.7), rgba(48, 142, 210, 0.12));
+    }
+
+    .desktop::after {
+      width: 50vw;
+      height: 30vw;
+      right: -9vw;
+      top: -10vw;
+      background: linear-gradient(145deg, rgba(69, 188, 198, 0.38), rgba(48, 118, 210, 0.08));
+    }
+
+    .preview-shell {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 30px;
+      padding: 10px 10px 10px 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-solid);
+      box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    @supports ((backdrop-filter: blur(24px)) or (-webkit-backdrop-filter: blur(24px))) {
+      .preview-bar,
+      .card-window,
+      .toast {
+        background: var(--surface);
+        backdrop-filter: blur(28px) saturate(145%);
+        -webkit-backdrop-filter: blur(28px) saturate(145%);
+      }
+    }
+
+    .preview-title {
+      min-width: 0;
+    }
+
+    .preview-title strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+
+    .preview-title span {
+      display: block;
+      margin-top: 2px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .preview-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .control-button,
+    .segment-button {
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text-primary);
+      background: var(--surface-raised);
+      cursor: pointer;
+      transition: background 90ms ease, border-color 90ms ease, transform 60ms ease;
+    }
+
+    .control-button:hover,
+    .segment-button:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .control-button:active,
+    .segment-button:active,
+    .action-button:active,
+    .chip-button:active,
+    .row-button:active,
+    .icon-button:active {
+      transform: translateY(1px);
+    }
+
+    .control-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .segment {
+      display: inline-flex;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .segment-button {
+      height: 28px;
+      padding: 0 10px;
+      border-color: transparent;
+      background: transparent;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .segment-button[aria-pressed="true"] {
+      background: var(--surface-selected);
+      border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+      color: var(--accent);
+    }
+
+    .theme-icon,
+    .button-icon,
+    .header-icon,
+    .chevron,
+    .status-icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .deck {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(320px, 420px);
+      justify-content: center;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .deck-column {
+      display: grid;
+      gap: 12px;
+    }
+
+    .card-window {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface-solid);
+      box-shadow: var(--shadow);
+      transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease;
+    }
+
+    .card-window::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(148deg, rgba(255, 255, 255, 0.07), transparent 38%);
+    }
+
+    .card-window:hover {
+      border-color: var(--border-strong);
+      box-shadow: 0 22px 52px rgba(0, 0, 0, 0.44), 0 5px 16px rgba(0, 0, 0, 0.32);
+      transform: translateY(-1px);
+    }
+
+    [data-theme="light"] .card-window:hover {
+      box-shadow: 0 22px 52px rgba(41, 58, 82, 0.25), 0 5px 16px rgba(41, 58, 82, 0.18);
+    }
+
+    .card-inner {
+      position: relative;
+      z-index: 1;
+      padding: 13px 14px 14px;
+    }
+
+    .card-header {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      min-height: 22px;
+      gap: 8px;
+    }
+
+    .header-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.055em;
+    }
+
+    .header-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+
+    .header-time {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .normal-content {
+      display: block;
+    }
+
+    .failure-content {
+      display: none;
+      position: relative;
+      min-height: 126px;
+      margin-top: 12px;
+      padding: 16px 16px 15px 18px;
+      border-radius: 11px;
+      background: var(--bad-soft);
+    }
+
+    .failure-content::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      border-radius: 3px;
+      background: var(--bad);
+    }
+
+    [data-engine="stopped"] .normal-content {
+      display: none;
+    }
+
+    [data-engine="stopped"] .failure-content {
+      display: block;
+    }
+
+    .failure-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--bad);
+      font-size: 18px;
+      font-weight: 650;
+    }
+
+    .failure-copy {
+      margin: 8px 0 0 24px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .failure-meta {
+      margin: 7px 0 0 24px;
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    .list-hero {
+      display: flex;
+      align-items: baseline;
+      min-height: 46px;
+      padding: 7px 0 5px;
+    }
+
+    .hero-number {
+      font-family: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+      font-size: 29px;
+      font-weight: 650;
+      letter-spacing: -0.025em;
+    }
+
+    .hero-unit {
+      margin-left: 7px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .hero-badge {
+      margin-left: auto;
+      color: var(--alert);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .rows {
+      border-top: 1px solid var(--divider);
+    }
+
+    .row-button {
+      width: 100%;
+      min-height: 32px;
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 7px;
+      padding: 3px 4px;
+      border: 0;
+      border-bottom: 1px solid var(--divider);
+      color: var(--text-primary);
+      background: transparent;
+      border-radius: 5px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 90ms ease, transform 60ms ease;
+    }
+
+    .row-button:hover {
+      background: var(--surface-hover);
+    }
+
+    .row-dot,
+    .state-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent);
+    }
+
+    .tone-alert {
+      color: var(--alert);
+    }
+
+    .tone-good {
+      color: var(--good);
+    }
+
+    .tone-info {
+      color: var(--info);
+    }
+
+    .tone-bad {
+      color: var(--bad);
+    }
+
+    .mini-chip {
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 6px;
+      border-radius: 5px;
+      background: var(--alert-soft);
+      color: var(--alert);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.035em;
+    }
+
+    .row-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .row-trailing {
+      color: var(--alert);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 29px;
+      padding-top: 8px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    .icon-button {
+      width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text-secondary);
+      background: transparent;
+      cursor: pointer;
+      transition: background 90ms ease, border-color 90ms ease, transform 60ms ease;
+    }
+
+    .icon-button:hover {
+      border-color: var(--border);
+      background: var(--surface-hover);
+      color: var(--text-primary);
+    }
+
+    .chevron {
+      width: 13px;
+      height: 13px;
+      transition: transform 120ms ease;
+    }
+
+    [aria-expanded="true"] .chevron {
+      transform: rotate(180deg);
+    }
+
+    .details-panel {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 150ms ease;
+    }
+
+    .details-panel > div {
+      overflow: hidden;
+    }
+
+    .details-panel.is-open {
+      grid-template-rows: 1fr;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 5px 12px;
+      margin-top: 8px;
+      padding: 10px 11px;
+      border: 1px solid var(--divider);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.08);
+      font-size: 11px;
+    }
+
+    .details-label {
+      color: var(--text-tertiary);
+    }
+
+    .details-value {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-secondary);
+    }
+
+    .project-state-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .project-state {
+      font-family: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: -0.015em;
+    }
+
+    .project-pid {
+      margin-left: auto;
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .project-context {
+      display: grid;
+      gap: 3px;
+      margin-top: 5px;
+    }
+
+    .project-branch {
+      color: var(--info);
+      font-size: 12px;
+    }
+
+    .project-command {
+      overflow: hidden;
+      color: var(--text-secondary);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chips,
+    .actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chips {
+      margin-top: 10px;
+    }
+
+    .actions {
+      margin-top: 10px;
+    }
+
+    .chip-button,
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      background: var(--surface-raised);
+      cursor: pointer;
+      transition: background 90ms ease, border-color 90ms ease, transform 60ms ease, opacity 90ms ease;
+    }
+
+    .chip-button {
+      min-height: 27px;
+      padding: 0 9px;
+      border-color: color-mix(in srgb, var(--good) 20%, transparent);
+      border-radius: 6px;
+      color: var(--good);
+      background: var(--good-soft);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .action-button {
+      min-height: 32px;
+      padding: 0 11px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .chip-button:hover,
+    .action-button:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-hover);
+    }
+
+    .action-button.primary {
+      border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .action-button.danger {
+      border-color: color-mix(in srgb, var(--bad) 42%, transparent);
+      color: var(--bad);
+      background: var(--bad-soft);
+    }
+
+    .action-button[disabled],
+    .chip-button[disabled] {
+      opacity: 0.38;
+      cursor: default;
+      transform: none;
+    }
+
+    .spinner {
+      width: 12px;
+      height: 12px;
+      display: none;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 700ms linear infinite;
+    }
+
+    .is-busy .spinner {
+      display: inline-block;
+    }
+
+    .toast-region {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .toast {
+      min-width: 260px;
+      max-width: 360px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      background: var(--surface-solid);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 140ms ease, transform 140ms ease;
+    }
+
+    .toast.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast-title {
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .toast-copy {
+      margin-top: 3px;
+      color: var(--text-secondary);
+      font-size: 11px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 780px) {
+      .desktop {
+        padding-inline: 14px;
+      }
+
+      .preview-bar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .preview-controls {
+        justify-content: flex-start;
+      }
+
+      .deck {
+        grid-template-columns: minmax(0, 420px);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+      }
+    }
+
+    @media (forced-colors: active) {
+      :root,
+      [data-theme="light"] {
+        --surface-solid: Canvas;
+        --surface: Canvas;
+        --surface-raised: ButtonFace;
+        --surface-hover: Highlight;
+        --surface-pressed: Highlight;
+        --surface-selected: Highlight;
+        --border: CanvasText;
+        --border-strong: CanvasText;
+        --divider: CanvasText;
+        --text-primary: CanvasText;
+        --text-secondary: CanvasText;
+        --text-tertiary: GrayText;
+        --accent: Highlight;
+        --accent-ink: HighlightText;
+        --good: CanvasText;
+        --info: CanvasText;
+        --alert: CanvasText;
+        --bad: CanvasText;
+        --good-soft: Canvas;
+        --info-soft: Canvas;
+        --alert-soft: Canvas;
+        --bad-soft: Canvas;
+        --shadow: none;
+      }
+
+      .desktop,
+      .desktop::before,
+      .desktop::after {
+        background: Canvas;
+      }
+
+      .card-window,
+      .preview-bar,
+      .toast {
+        border-width: 2px;
+        backdrop-filter: none;
+      }
+
+      .row-dot,
+      .state-dot {
+        border: 1px solid CanvasText;
+      }
+    }
+  </style>
+</head>
+<body data-theme="dark" data-engine="running">
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+    <symbol id="icon-source" viewBox="0 0 24 24">
+      <circle cx="6" cy="5" r="2.2"></circle>
+      <circle cx="18" cy="7" r="2.2"></circle>
+      <circle cx="8" cy="19" r="2.2"></circle>
+      <path d="M7.8 6.3l8.1.2M7 7l1 9.8M17 9l-7.2 8.1"></path>
+    </symbol>
+    <symbol id="icon-project" viewBox="0 0 24 24">
+      <path d="M4 6.5h6l2 2H20v9H4z"></path>
+      <path d="M7 13h10"></path>
+    </symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="3.5"></circle>
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"></path>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24">
+      <path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5z"></path>
+    </symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24">
+      <path d="M7 9l5 5 5-5"></path>
+    </symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24">
+      <path d="M8 5l11 7-11 7z"></path>
+    </symbol>
+    <symbol id="icon-stop" viewBox="0 0 24 24">
+      <path d="M12 3v9"></path>
+      <path d="M7 6.5a8 8 0 1 0 10 0"></path>
+    </symbol>
+    <symbol id="icon-restart" viewBox="0 0 24 24">
+      <path d="M20 7v5h-5"></path>
+      <path d="M19 12a7 7 0 1 0-1.4 4.2"></path>
+    </symbol>
+    <symbol id="icon-link" viewBox="0 0 24 24">
+      <path d="M14 5h5v5"></path>
+      <path d="M11 13l8-8"></path>
+      <path d="M19 14v5H5V5h5"></path>
+    </symbol>
+    <symbol id="icon-alert" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"></circle>
+      <path d="M12 7v6"></path>
+      <path d="M12 17h.01"></path>
+    </symbol>
+  </svg>
+
+  <main class="desktop">
+    <div class="preview-shell">
+      <header class="preview-bar">
+        <div class="preview-title">
+          <strong>DevDeck for Windows</strong>
+          <span>Interactive Fluent UI concept</span>
+        </div>
+        <div class="preview-controls">
+          <div class="segment" role="group" aria-label="Engine state">
+            <button class="segment-button" type="button" data-engine-choice="running" aria-pressed="true">Working</button>
+            <button class="segment-button" type="button" data-engine-choice="stopped" aria-pressed="false">Engine stopped</button>
+          </div>
+          <button class="control-button" type="button" id="theme-toggle" aria-pressed="false">
+            <svg class="theme-icon" aria-hidden="true"><use href="#icon-sun"></use></svg>
+            <span>Light theme</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="deck" aria-label="DevDeck cards">
+        <article class="card-window list-card" aria-labelledby="pull-title">
+          <div class="card-inner">
+            <header class="card-header">
+              <div class="header-mark">
+                <svg class="header-icon" aria-hidden="true"><use href="#icon-source"></use></svg>
+                <span>GITHUB</span>
+              </div>
+              <div class="header-title" id="pull-title">Pull requests</div>
+              <time class="header-time">14:32:08</time>
+            </header>
+
+            <div class="normal-content">
+              <div class="list-hero">
+                <span class="hero-number">1</span>
+                <span class="hero-unit">open</span>
+                <span class="hero-badge">1 ready</span>
+              </div>
+              <div class="rows">
+                <button class="row-button" type="button" id="pr-row" aria-expanded="false" aria-controls="pr-details">
+                  <span class="row-dot tone-alert" aria-hidden="true"></span>
+                  <span class="mini-chip">READY</span>
+                  <span class="row-title">DEMO-123 Demo update</span>
+                  <span class="row-trailing">RV</span>
+                </button>
+              </div>
+              <div class="details-panel" id="pr-details">
+                <div>
+                  <div class="details-grid">
+                    <span class="details-label">Repository</span>
+                    <span class="details-value">Demo</span>
+                    <span class="details-label">Address</span>
+                    <span class="details-value">example.invalid</span>
+                    <span class="details-label">Status</span>
+                    <span class="details-value">Ready for review</span>
+                  </div>
+                </div>
+              </div>
+              <footer class="card-footer">
+                <span>1 repository</span>
+                <button class="icon-button" type="button" id="pr-expand" aria-label="Show pull request details" aria-expanded="false" aria-controls="pr-details">
+                  <svg class="chevron" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+                </button>
+              </footer>
+            </div>
+
+            <div class="failure-content" role="status">
+              <div class="failure-title">
+                <svg class="status-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+                <span>Engine stopped</span>
+              </div>
+              <p class="failure-copy">Card data is unavailable.</p>
+              <p class="failure-meta">Demo · example.invalid</p>
+            </div>
+          </div>
+        </article>
+
+        <div class="deck-column">
+          <article class="card-window project-card" data-project="wsl" data-project-state="running" aria-labelledby="wsl-title">
+            <div class="card-inner">
+              <header class="card-header">
+                <div class="header-mark">
+                  <svg class="header-icon" aria-hidden="true"><use href="#icon-project"></use></svg>
+                  <span>PROJECT</span>
+                </div>
+                <div class="header-title" id="wsl-title">Sample WSL</div>
+                <time class="header-time">14:32:08</time>
+              </header>
+
+              <div class="normal-content">
+                <div class="project-state-row">
+                  <span class="state-dot tone-good" aria-hidden="true"></span>
+                  <span class="project-state">Running</span>
+                  <span class="project-pid">pid 2410</span>
+                </div>
+                <div class="project-context">
+                  <span class="project-branch">DEMO-123</span>
+                  <span class="project-command">Demo · WSL 2</span>
+                </div>
+                <div class="chips">
+                  <button class="chip-button site-button" type="button">
+                    <svg class="button-icon" aria-hidden="true"><use href="#icon-link"></use></svg>
+                    Open site
+                  </button>
+                </div>
+                <div class="details-panel project-details" id="wsl-details">
+                  <div>
+                    <div class="details-grid">
+                      <span class="details-label">Address</span>
+                      <span class="details-value">example.invalid</span>
+                      <span class="details-label">Host</span>
+                      <span class="details-value">WSL 2</span>
+                      <span class="details-label">Project</span>
+                      <span class="details-value">Demo</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="actions">
+                  <button class="action-button danger state-action" type="button">
+                    <svg class="button-icon" aria-hidden="true"><use href="#icon-stop"></use></svg>
+                    <span class="state-action-label">Stop</span>
+                  </button>
+                  <button class="action-button restart-action" type="button">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <svg class="button-icon restart-icon" aria-hidden="true"><use href="#icon-restart"></use></svg>
+                    <span>Restart</span>
+                  </button>
+                  <button class="icon-button details-button" type="button" aria-label="Show Sample WSL details" aria-expanded="false" aria-controls="wsl-details">
+                    <svg class="chevron" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="failure-content" role="status">
+                <div class="failure-title">
+                  <svg class="status-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+                  <span>Engine stopped</span>
+                </div>
+                <p class="failure-copy">Project status is unavailable.</p>
+                <p class="failure-meta">Sample WSL · Demo</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card-window project-card" data-project="windows" data-project-state="stopped" aria-labelledby="windows-title">
+            <div class="card-inner">
+              <header class="card-header">
+                <div class="header-mark">
+                  <svg class="header-icon" aria-hidden="true"><use href="#icon-project"></use></svg>
+                  <span>PROJECT</span>
+                </div>
+                <div class="header-title" id="windows-title">Sample Windows</div>
+                <time class="header-time">14:32:05</time>
+              </header>
+
+              <div class="normal-content">
+                <div class="project-state-row">
+                  <span class="state-dot" aria-hidden="true"></span>
+                  <span class="project-state">Stopped</span>
+                  <span class="project-pid"></span>
+                </div>
+                <div class="project-context">
+                  <span class="project-branch">DEMO-123</span>
+                  <span class="project-command">Demo · Windows process host</span>
+                </div>
+                <div class="chips">
+                  <button class="chip-button site-button" type="button">
+                    <svg class="button-icon" aria-hidden="true"><use href="#icon-link"></use></svg>
+                    Open site
+                  </button>
+                </div>
+                <div class="details-panel project-details" id="windows-details">
+                  <div>
+                    <div class="details-grid">
+                      <span class="details-label">Address</span>
+                      <span class="details-value">example.invalid</span>
+                      <span class="details-label">Host</span>
+                      <span class="details-value">Windows process host</span>
+                      <span class="details-label">Project</span>
+                      <span class="details-value">Demo</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="actions">
+                  <button class="action-button primary state-action" type="button">
+                    <svg class="button-icon" aria-hidden="true"><use href="#icon-play"></use></svg>
+                    <span class="state-action-label">Start</span>
+                  </button>
+                  <button class="action-button restart-action" type="button" hidden>
+                    <span class="spinner" aria-hidden="true"></span>
+                    <svg class="button-icon restart-icon" aria-hidden="true"><use href="#icon-restart"></use></svg>
+                    <span>Restart</span>
+                  </button>
+                  <button class="icon-button details-button" type="button" aria-label="Show Sample Windows details" aria-expanded="false" aria-controls="windows-details">
+                    <svg class="chevron" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="failure-content" role="status">
+                <div class="failure-title">
+                  <svg class="status-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+                  <span>Engine stopped</span>
+                </div>
+                <p class="failure-copy">Project status is unavailable.</p>
+                <p class="failure-meta">Sample Windows · Demo</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast-region" aria-live="polite" aria-atomic="true">
+      <div class="toast" id="toast">
+        <div class="toast-title" id="toast-title">Action sent</div>
+        <div class="toast-copy" id="toast-copy">Demo</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const body = document.body;
+    const themeButton = document.getElementById("theme-toggle");
+    const themeLabel = themeButton.querySelector("span");
+    const themeUse = themeButton.querySelector("use");
+    const engineButtons = [...document.querySelectorAll("[data-engine-choice]")];
+    const toast = document.getElementById("toast");
+    const toastTitle = document.getElementById("toast-title");
+    const toastCopy = document.getElementById("toast-copy");
+    let toastTimer;
+
+    function showToast(title, copy) {
+      window.clearTimeout(toastTimer);
+      toastTitle.textContent = title;
+      toastCopy.textContent = copy;
+      toast.classList.add("is-visible");
+      toastTimer = window.setTimeout(() => toast.classList.remove("is-visible"), 1900);
+    }
+
+    function setTheme(theme) {
+      const isLight = theme === "light";
+      body.dataset.theme = theme;
+      themeButton.setAttribute("aria-pressed", String(isLight));
+      themeLabel.textContent = isLight ? "Dark theme" : "Light theme";
+      themeUse.setAttribute("href", isLight ? "#icon-moon" : "#icon-sun");
+    }
+
+    themeButton.addEventListener("click", () => {
+      setTheme(body.dataset.theme === "dark" ? "light" : "dark");
+    });
+
+    engineButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const choice = button.dataset.engineChoice;
+        body.dataset.engine = choice;
+        engineButtons.forEach((item) => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        showToast(choice === "running" ? "Engine connected" : "Engine stopped", choice === "running" ? "Card data restored" : "Failure presentation applied to every card");
+      });
+    });
+
+    function setDetails(button, panel) {
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      const next = !expanded;
+      button.setAttribute("aria-expanded", String(next));
+      panel.classList.toggle("is-open", next);
+    }
+
+    const prPanel = document.getElementById("pr-details");
+    const prRow = document.getElementById("pr-row");
+    const prExpand = document.getElementById("pr-expand");
+
+    function togglePullDetails() {
+      const next = prExpand.getAttribute("aria-expanded") !== "true";
+      prExpand.setAttribute("aria-expanded", String(next));
+      prRow.setAttribute("aria-expanded", String(next));
+      prExpand.setAttribute("aria-label", next ? "Hide pull request details" : "Show pull request details");
+      prPanel.classList.toggle("is-open", next);
+    }
+
+    prRow.addEventListener("click", togglePullDetails);
+    prExpand.addEventListener("click", togglePullDetails);
+
+    document.querySelectorAll(".details-button").forEach((button) => {
+      const panel = document.getElementById(button.getAttribute("aria-controls"));
+      button.addEventListener("click", () => {
+        setDetails(button, panel);
+        const expanded = button.getAttribute("aria-expanded") === "true";
+        button.setAttribute("aria-label", `${expanded ? "Hide" : "Show"} ${button.closest(".project-card").querySelector(".header-title").textContent} details`);
+      });
+    });
+
+    document.querySelectorAll(".site-button").forEach((button) => {
+      button.addEventListener("click", () => showToast("Open site", "example.invalid"));
+    });
+
+    function renderProject(card, state) {
+      const running = state === "running";
+      card.dataset.projectState = state;
+      const dot = card.querySelector(".state-dot");
+      const stateText = card.querySelector(".project-state");
+      const pid = card.querySelector(".project-pid");
+      const stateAction = card.querySelector(".state-action");
+      const stateActionLabel = card.querySelector(".state-action-label");
+      const stateActionUse = stateAction.querySelector("use");
+      const restart = card.querySelector(".restart-action");
+      dot.classList.toggle("tone-good", running);
+      stateText.textContent = running ? "Running" : "Stopped";
+      pid.textContent = running ? "pid 2410" : "";
+      stateActionLabel.textContent = running ? "Stop" : "Start";
+      stateActionUse.setAttribute("href", running ? "#icon-stop" : "#icon-play");
+      stateAction.classList.toggle("danger", running);
+      stateAction.classList.toggle("primary", !running);
+      restart.hidden = !running;
+    }
+
+    document.querySelectorAll(".project-card").forEach((card) => {
+      const stateAction = card.querySelector(".state-action");
+      const restartAction = card.querySelector(".restart-action");
+      stateAction.addEventListener("click", () => {
+        const next = card.dataset.projectState === "running" ? "stopped" : "running";
+        renderProject(card, next);
+        showToast(next === "running" ? "Project started" : "Project stopped", card.querySelector(".header-title").textContent);
+      });
+      restartAction.addEventListener("click", () => {
+        restartAction.classList.add("is-busy");
+        restartAction.disabled = true;
+        restartAction.querySelector(".restart-icon").style.display = "none";
+        showToast("Restarting project", card.querySelector(".header-title").textContent);
+        window.setTimeout(() => {
+          restartAction.classList.remove("is-busy");
+          restartAction.disabled = false;
+          restartAction.querySelector(".restart-icon").style.display = "";
+          showToast("Project running", card.querySelector(".header-title").textContent);
+        }, 1100);
+      });
+    });
+
+    const systemPrefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    setTheme(systemPrefersLight ? "light" : "dark");
+  </script>
+</body>
+</html>
