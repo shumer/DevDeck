@@ -63,6 +63,8 @@ time and membership using fresh handles. Generic commands use temporary jobs wit
 cleanup. PATH is refreshed from machine and user registry values for every native launch.
 
 The engine owns typed Codable list and project models and a typed protocol envelope.
+Card icon ids describe actions and meaning rather than naming platform glyphs. Each shell maps
+the shared values, including start, stop, restart, folder, terminal and review, to native icons.
 Card time uses the local time zone; offline fixtures supply an explicit time zone.
 The site chip opens LocalProject.siteURL, with a separate optional siteURL in engine configuration.
 The engine owns expansion, action availability, refresh
@@ -88,8 +90,9 @@ input.
 
 Each card is a borderless WPF window with ShowActivated and ShowInTaskbar disabled. The native
 handle also carries WS_EX_TOOLWINDOW and WS_EX_NOACTIVATE and returns MA_NOACTIVATE for mouse
-activation. A separate test executable exercises protocol order, fallback models, credential
-target naming and the real window styles. The release builder does not copy that test executable.
+activation. Windows supplies the outer window rounding through DWMWA_WINDOW_CORNER_PREFERENCE.
+A separate test executable exercises protocol order, fallback models, credential target naming
+and the real window styles. The release builder does not copy that test executable.
 
 Golden engine scenarios store protocol intentions and expected JSONL streams as test resources.
 They replay through fixed clocks, FakeHTTPClient, StubCommandRunner and LocalProjectService,

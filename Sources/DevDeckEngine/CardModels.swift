@@ -8,6 +8,21 @@ public struct CardBadge: Codable, Sendable {
     public let tone: String
 }
 
+public enum CardIcon: String, Codable, Sendable {
+    case start
+    case stop
+    case restart
+    case folder
+    case terminal
+    case log
+    case phone
+    case open
+    case review
+    case expand
+    case collapse
+    case branch
+}
+
 public struct ListCardHero: Codable, Sendable {
     public let number: String
     public let unit: String
@@ -20,7 +35,7 @@ public struct ListCardRow: Codable, Sendable {
     public let title: String
     public let trailing: String
     public let action: String
-    public let glyph: String?
+    public let glyph: CardIcon?
 }
 
 public struct CardFooter: Codable, Sendable {
@@ -65,7 +80,7 @@ public struct ProjectCardChip: Codable, Sendable {
 public struct ProjectCardAction: Codable, Sendable {
     public let id: String
     public let label: String
-    public let glyph: String
+    public let glyph: CardIcon
     public let role: String
     public let isEnabled: Bool
     public let isBusy: Bool
@@ -158,7 +173,7 @@ enum CardModels {
             return ListCardRow(
                 tone: pull.health == .ready ? "good" : pull.health == .blocked ? "bad" : "alert",
                 chips: chips, title: pull.ticket.subject, trailing: pull.statusCode,
-                action: "pull." + pull.id, glyph: pull.isReviewRequest ? "eye" : nil
+                action: "pull." + pull.id, glyph: pull.isReviewRequest ? .review : nil
             )
         }
         let expander: CardExpander?
@@ -215,7 +230,7 @@ enum CardModels {
             actions: [
                 ProjectCardAction(
                     id: action, label: action == "start" ? L("card.action.start") : L("card.action.stop"),
-                    glyph: action == "start" ? "play.fill" : "power", role: "primary",
+                    glyph: action == "start" ? .start : .stop, role: "primary",
                     isEnabled: !busy && project.supportsCommands, isBusy: busy)
             ],
             branch: status.branch.map { ProjectCardBranch(name: $0) }

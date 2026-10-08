@@ -13,14 +13,34 @@ public static class NativeMethods
     public const int ShowWindow = 0x0040;
     public const int MouseActivate = 0x0021;
     public const nint MouseNoActivate = 3;
+    public const int WindowCornerPreference = 33;
+    public const int RoundedWindowCorners = 2;
 
     public static nint ApplyCardWindowStyles(nint handle)
     {
         var styles = GetWindowLongPtr(handle, ExtendedStyleIndex);
         var updated = styles | ToolWindowStyle | NoActivateStyle;
         SetWindowLongPtr(handle, ExtendedStyleIndex, updated);
+        var cornerPreference = RoundedWindowCorners;
+        _ = DwmSetWindowAttribute(
+            handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
         return updated;
     }
+
+    public static int GetWindowCornerPreference(nint handle)
+    {
+        _ = DwmGetWindowAttribute(
+            handle, WindowCornerPreference, out var cornerPreference, Marshal.SizeOf<int>());
+        return cornerPreference;
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(
+        nint handle, int attribute, ref int value, int valueSize);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(
+        nint handle, int attribute, out int value, int valueSize);
 
     [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -24,11 +24,12 @@ public static class Program
     private static void ProtocolPreservesEngineModel()
     {
         const string json = """
-            {"protocolVersion":2,"revision":7,"event":"card.updated","card":{"id":"github.pullRequests","kind":"list","mark":"github","title":"Pull requests","timeText":"12:00:00","hero":{"number":"2","unit":"open","badge":{"text":"blocked","tone":"bad"}},"rows":[{"tone":"bad","chips":[],"title":"First","trailing":"CF","action":"pull.first"},{"tone":"good","chips":[],"title":"Second","trailing":"AP","action":"pull.second"}],"footer":{"text":"2 repos"}}}
+            {"protocolVersion":2,"revision":7,"event":"card.updated","card":{"id":"github.pullRequests","kind":"list","mark":"github","title":"Pull requests","timeText":"12:00:00","hero":{"number":"2","unit":"open","badge":{"text":"blocked","tone":"bad"}},"rows":[{"tone":"bad","chips":[],"title":"First","trailing":"CF","action":"pull.first","glyph":"review"},{"tone":"good","chips":[],"title":"Second","trailing":"AP","action":"pull.second"}],"footer":{"text":"2 repos"}}}
             """;
         var message = JsonSerializer.Deserialize<EngineEvent>(json) ?? throw new Exception();
         Equal("First", message.Card?.Rows[0].Title);
         Equal("Second", message.Card?.Rows[1].Title);
+        Equal("review", message.Card?.Rows[0].Glyph);
         Equal("blocked", message.Card?.Hero.Badge?.Text);
         Equal("bad", message.Card?.Hero.Badge?.Tone);
     }
@@ -80,6 +81,7 @@ public static class Program
         var styles = NativeMethods.GetWindowLongPtr(window.Handle, NativeMethods.ExtendedStyleIndex);
         True((styles & NativeMethods.ToolWindowStyle) != 0);
         True((styles & NativeMethods.NoActivateStyle) != 0);
+        Equal(NativeMethods.RoundedWindowCorners, NativeMethods.GetWindowCornerPreference(window.Handle));
         True(!window.ShowActivated);
         True(!window.ShowInTaskbar);
         if (before != 0)

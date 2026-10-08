@@ -4,6 +4,10 @@ The Windows POC uses .NET 10 WPF as a native shell around `DevDeckEngineHost`. T
 windows, the tray icon, Credential Manager access and URL launching. Text, card order, semantic
 tones, actions, availability and fallback card models come from the Swift engine.
 
+Card glyph values are semantic ids from the engine. The shell maps them to Windows glyphs.
+Card windows use the system DWM corner preference in addition to their nonactivating tool-window
+styles. The selected visual style in `docs/windows-style.md` is a separate post-POC task.
+
 Build the delivery directory from PowerShell:
 
 ```powershell

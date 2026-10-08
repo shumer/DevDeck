@@ -218,9 +218,18 @@ public static class CardRenderer
 
     private static string Glyph(string glyph) => glyph switch
     {
-        "play.fill" => "▶",
-        "power" => "⏻",
-        "eye" => "◉",
+        "start" => "▶",
+        "stop" => "⏻",
+        "restart" => "↻",
+        "folder" => "▱",
+        "terminal" => ">_",
+        "log" => "≡",
+        "phone" => "▣",
+        "open" => "↗",
+        "review" => "◉",
+        "expand" => "⌄",
+        "collapse" => "⌃",
+        "branch" => "⑂",
         _ => "",
     };
 

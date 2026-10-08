@@ -1,6 +1,7 @@
 # One-engine POC report
 
-Date: 2026-10-08. Branch: poc/one-engine. Steps 1 through 3 are accepted; step 4 is in progress.
+Date: 2026-10-08. Branch: poc/one-engine. Steps 1 through 4 are accepted; step 5 measurements
+are complete.
 
 ## Answers and acceptance
 
@@ -11,11 +12,13 @@ Date: 2026-10-08. Branch: poc/one-engine. Steps 1 through 3 are accepted; step 4
 | Q3: WSL project lifetime | Yes, accepted | Default instanceIdleTimeout, independent project WSL client, more than 5 minutes without an engine, discovery by a new engine, tree cleanup and natural distro idle shutdown. |
 | Q3b: Windows folder projects | Yes, accepted | Native Node LTS Start, engine EOF survival, new-engine discovery, Job Object Stop, registry PATH refresh and WSL project isolation passed. ADR 0023 is accepted. |
 | Q4: identical transcripts | Yes, accepted | All three committed scenarios are byte-identical on Windows and Mac in en and ru. |
-| Q5: thin WPF shell | Implementation ready for acceptance | The self-contained .NET 10 WPF shell shows PR, WSL and Windows project cards from engine models. The user ran the hidden token command, and the scoped Credential Manager entry is present. |
-| Q6: measurements | Not started | Runtime size, startup, 10-minute idle memory/CPU and mixed-DPI checks are pending. |
+| Q5: thin WPF shell | Yes, accepted | Models come only from the engine, windows do not activate or enter the taskbar, engine failure stays visible on cards, and tests stay outside the delivered executable. Appearance is outside POC acceptance. |
+| Q6: measurements | Yes, measured | Engine with its Swift runtime is 63.84 MiB; median first-card time is 1.442 seconds; 10-minute memory and CPU figures are recorded below. One 250% display was available, so mixed-DPI relocation was not tested. |
 
-Recommendation: continue the native engine POC through step 4. Step 5 remains gated on Q5
-acceptance. Windows ARM64 is untested.
+Recommendation: continue with the target architecture: one native Swift engine with thin native
+shells. Q1 through Q6 support this path, and the WSL-engine fallback is not needed. Before a
+Windows release, reduce or justify the 254.87 MiB self-contained package, test mixed-DPI movement
+with two displays and cover Windows ARM64. Implement the selected Windows style after the POC.
 
 ## Environment
 
@@ -60,8 +63,12 @@ UPDATE_GOLDEN_TRANSCRIPTS, and the working copy stayed clean. run-tests.sh repor
 the application. The user also verified that DevDeckApp and DevDeckUI were unchanged and
 accepted Q4.
 
-The step 4 changes require a new Mac run. No Mac check for step 4 was run or claimed on this
-Windows machine.
+On 46e92f9: run-tests.sh main suite reported 405 passed, 0 failed; engine tests reported
+11 passed, 0 failed; swift build had no warnings; build.sh built the application. The user also
+verified that DevDeckApp and DevDeckUI were unchanged and accepted Q5 for the thin-shell scope.
+
+The semantic icon and golden transcript changes after 46e92f9 require a new Mac run. No Mac
+check for those changes was run or claimed on this Windows machine.
 
 ## Q2 evidence
 
@@ -152,7 +159,7 @@ effects and obtains Credential Manager account ids from `shell.ready`. CredReadW
 use CRED_TYPE_GENERIC with the target `DevDeck/<account>`. `DevDeck.Shell.exe --set-token github`
 uses hidden console input and writes no credential to output, files or process arguments. The
 user ran the command, and a target-only check confirmed the `DevDeck/github` Credential Manager
-entry without reading or printing its secret. Q5 now awaits user acceptance.
+entry without reading or printing its secret.
 
 The C# review found no product decision about text, ordering, semantic tone, availability,
 update timing or persistence. It iterates arrays in engine order, maps engine tones and roles to
@@ -167,9 +174,37 @@ alive and replaced all three cards with the localized failure models supplied by
 The separate C# suite reports 4 passed and 0 failed. The .NET solution builds with warnings as
 errors and no warnings.
 
+The user accepted Q5 for the thin-shell contract. Visual appearance is not part of POC
+acceptance. The selected Windows style and its remaining engine fields are documented in
+`docs/windows-style.md` for a separate task after the POC.
+
 ![Three neutral cards rendered by the packaged WPF shell](windows-shell-cards.png)
 
 ![The same cards after the packaged engine was stopped](windows-shell-engine-stopped.png)
+
+## Q6 measurements
+
+Measurements used the final self-contained win-x64 release with three visible cards: pull
+requests, one WSL project and one Windows project. Five fresh process launches reached the first
+visible card in 2298.8, 2148.8, 1440.6, 1382.7 and 1442.4 milliseconds. The median was 1442.4
+milliseconds and the observed range was 1382.7 to 2298.8 milliseconds.
+
+`DevDeckEngineHost.exe` plus the 19 recursively imported Swift and redistributable DLLs occupies
+66,939,176 bytes, or 63.84 MiB. The localization bundle adds 275,700 bytes, or 0.26 MiB. The whole
+self-contained delivery, including the .NET shell and process host, occupies 267,250,727 bytes,
+or 254.87 MiB. No test file is present in that directory.
+
+After 600 seconds of idle time, all three card windows were still visible. The shell used 156.54
+MiB working set and 83.47 MiB private memory. The engine used 26.60 MiB working set and 6.26 MiB
+private memory. Over the following 30.008 seconds, Task Manager-style CPU normalized across 12
+logical processors averaged 0.0260% for the shell and 0.2083% for the engine. Both processes were
+stopped after the sample, and neither remained running.
+
+Only one monitor was connected. In the PerMonitorV2 process, it reported a physical work area of
+`[0, 0, 3840, 2040]`, scale 2.5 and window DPI 240. The shell sends `visibleFrame` and measured
+card sizes in physical pixels. The engine returns `topLeft` in those same units, and the shell
+passes it to SetWindowPos. A second monitor with a different scale was unavailable, so actual
+cross-monitor placement remains untested.
 
 ## Engine review fixes and Windows verification
 
@@ -177,6 +212,11 @@ Card models, nested fields and event envelopes are typed Codable structures; JSO
 been removed. Protocol v2 keeps its wire shape. Card clocks use local time, and tests pass
 explicit time zones, including a non-UTC case. The site effect opens LocalProject.siteURL;
 healthURL remains the probe. Swift statements and names follow CONTRIBUTING.md.
+
+Card icon ids are semantic contract values such as `start`, `stop`, `restart`, `folder`,
+`terminal` and `review`; platform icon names do not cross the protocol. The Windows shell owns
+the mapping to its glyphs. Card windows request system rounding through
+DWMWA_WINDOW_CORNER_PREFERENCE while retaining the accepted shell layout and styling.
 
 Windows builds use swift build -Xswiftc -warnings-as-errors. Offline results: 8 core tests
 and 12 engine tests, all passed. Bounded-input JSONL smoke verifies malformed input, protocol
