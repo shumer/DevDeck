@@ -98,9 +98,12 @@ through redirected stdin, retains it only in memory and prints counts and check 
 It never fetches credentials from GitHub CLI. Do not redirect or record interactive credential input.
 The temporary helper is needed before the WPF Credential Manager command exists in step 4.
 
-On Mac, `./run-tests.sh` without filters now also runs DevDeckEngineTests. A filtered run
-keeps its existing behavior. The user supplied successful Mac results for bb50b7b;
-follow-up changes require another user-run Mac check.
+On Mac, `./run-tests.sh` without filters also runs DevDeckEngineTests. A filtered run keeps its
+existing behavior. The user supplied successful Mac results for b5d01d3. Golden scenarios under
+Tests/EngineTests/Golden contain JSONL intentions and expected event streams. The engine test
+compares those streams as bytes on both platforms. To update an intentionally changed wire
+result, run DevDeckEngineTests once with UPDATE_GOLDEN_TRANSCRIPTS=1, inspect the complete diff,
+then run again without that variable.
 
 ## Commands
 

@@ -1,0 +1,3 @@
+{"protocolVersion":2,"id":"session","intent":"session.start","language":"ru","displays":[{"id":"display","visibleFrame":[0,0,1920,1040],"scale":1}]}
+{"protocolVersion":2,"id":"ready","intent":"credentials.set","account":"github","token":"fixture"}
+{"protocolVersion":2,"id":"blocked","intent":"credentials.set","account":"github","token":"fixture"}

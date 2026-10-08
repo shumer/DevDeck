@@ -1,21 +1,21 @@
 # One-engine POC report
 
-Date: 2026-10-08. Branch: poc/one-engine. Only steps 1 and 2 are in scope.
+Date: 2026-10-08. Branch: poc/one-engine. Steps 1 and 2 are accepted; step 3 is in progress.
 
 ## Answers and acceptance
 
 | Question | Answer | Evidence or remaining gate |
 | --- | --- | --- |
 | Q1: native Windows core | Yes, accepted with a toolchain exception | Project code builds without warnings; Windows core tests: 8 passed, 0 failed. Swift 6.4 WinSDK warnings are external, swiftlang/swift#91000. Recheck with the release containing the fix. |
-| Q2: authenticated GitHub | Live result pending | Native GitHubKit and host integration build. The user accepted the GraphQL/REST distinction. Hidden-input Invoke-NetworkSmoke.ps1 remains user-operated. |
-| Q3: WSL project lifetime | Yes in live checks, acceptance pending | Default instanceIdleTimeout, independent project WSL client, more than 5 minutes without an engine, discovery by a new engine, tree cleanup and natural distro idle shutdown. |
-| Q3b: Windows folder projects | Yes in live checks, acceptance pending | Native Node LTS Start, engine EOF survival, new-engine discovery, Job Object Stop and parent/child cancellation/timeout cleanup passed. WSL and Windows Stop isolation passed in one engine. |
-| Q4: identical transcripts | Not started | Gated on Q2, Q3 and Q3b acceptance. |
+| Q2: authenticated GitHub | Yes, accepted | The user ran Invoke-NetworkSmoke.ps1 with hidden credential input and accepted Q2. GraphQL PR fetching and REST /user ETag/304 remain separate checks. |
+| Q3: WSL project lifetime | Yes, accepted | Default instanceIdleTimeout, independent project WSL client, more than 5 minutes without an engine, discovery by a new engine, tree cleanup and natural distro idle shutdown. |
+| Q3b: Windows folder projects | Yes, accepted | Native Node LTS Start, engine EOF survival, new-engine discovery, Job Object Stop, registry PATH refresh and WSL project isolation passed. ADR 0023 is accepted. |
+| Q4: identical transcripts | Windows result pending Mac comparison | Three file-backed scenarios cover initial data, ready-to-blocked PR and project Start/Stop in en and ru. Windows compares emitted JSONL byte for byte with committed transcripts. |
 | Q5: thin WPF shell | Not started | No Windows desktop shell exists yet. |
 | Q6: measurements | Not started | Runtime size, startup, 10-minute idle memory/CPU and mixed-DPI checks are pending. |
 
-Recommendation: continue evaluating the native engine after step 2 acceptance. Do not start
-step 3 while Q2, Q3 or Q3b remains unaccepted. Windows ARM64 is untested.
+Recommendation: continue the native engine POC through step 3. Step 4 remains gated on Q4
+acceptance. Windows ARM64 is untested.
 
 ## Environment
 
@@ -49,16 +49,20 @@ On bb50b7b: run-tests.sh main suite reported 405 passed, 0 failed; engine tests 
 5 passed, 0 failed, with the Windows-only test skipped; swift build had no warnings;
 build.sh built the application. These were run by the user on a Mac.
 
-The follow-up changes require new user-run Mac checks. The portable engine suite now has
-8 tests; Windows adds one liveness test. No Mac check was run or claimed on this Windows machine.
-The Mac package branch is unchanged from bb50b7b. DevDeckApp and DevDeckUI are unchanged.
+On b5d01d3: run-tests.sh main suite reported 405 passed, 0 failed; engine tests reported
+8 passed, 0 failed; swift build had no warnings; build.sh built the application. The user
+also verified that DevDeckApp and DevDeckUI were unchanged. Q2, Q3, Q3b and ADR 0023 were
+accepted after these results.
 
-## Q2 evidence and remaining live check
+The step 3 golden files require a new Mac run to establish byte-identical output. No Mac check
+was run or claimed on this Windows machine.
+
+## Q2 evidence
 
 PRs use authenticated GraphQL POST through PullRequestsService. ETag/304 is a separate REST
 GET /user check. GraphQL POST is not claimed to support ETag/304. Offline unauthorized-card
-checks pass in en and ru. The user will run the live hidden-input helper and supply its result.
-The helper sends the credential through stdin, uses memory only and never reads GitHub CLI credentials.
+checks pass in en and ru. The user ran the hidden-input helper and accepted Q2. The helper sends
+the credential through stdin, uses memory only and never reads GitHub CLI credentials.
 
 ## Q3 evidence
 
@@ -113,6 +117,21 @@ WSL clients. Ubuntu stopped naturally after 15.9557 seconds. No WSL terminate or
 used after Stop.
 See [the process-lifetime decision](../adr/0023-project-process-lifetime.md).
 
+## Q4 golden transcripts
+
+Three scenarios keep their protocol v2 intentions and expected JSONL event streams in the
+repository. They use MutableDateProvider, explicit UTC, FakeHTTPClient and StubCommandRunner
+through LocalProjectService. The scenarios cover initial data and layout in English, a pull
+request moving from ready to blocked in Russian, and project Start followed by Stop in English.
+Tests compare the complete output as bytes without parsing or platform-specific normalization.
+
+Windows DevDeckEngineTests report 12 passed and 0 failed, including all three byte comparisons.
+Q4 remains pending until the same files pass on Mac. Step 4 has not started.
+
+For phase 1 after the POC, project launch behavior should move out of LocalProjectService into
+separate Mac, WSL and Windows types. LocalizationResources.swift should move from Resources to
+Sources. These follow-up changes are intentionally outside step 3.
+
 ## Engine review fixes and Windows verification
 
 Card models, nested fields and event envelopes are typed Codable structures; JSONValue has
@@ -154,13 +173,13 @@ logic. The new Windows adapter files are entirely conditional.
 | `Sources/DevDeckCore/Support/Log.swift` | 23 |
 | `Sources/ProjectKit/LocalProjectService.swift` | 78 |
 
-## Current step 2 conditional code by file
+## Current POC conditional code by file
 
 Same counting convention as the step 1 record, including preserved Mac branches.
 
 | File | Conditional lines |
 | --- | --- |
-| `Package.swift` | 134 |
+| `Package.swift` | 144 |
 | `Sources/DevDeckCore/Cards/DeckLayout.swift` | 1 |
 | `Sources/DevDeckCore/Cards/DeckParking.swift` | 1 |
 | `Sources/DevDeckCore/Cards/PanelPlacement.swift` | 1 |
@@ -183,5 +202,5 @@ Same counting convention as the step 1 record, including preserved Mac branches.
 | `Sources/DevDeckCore/Support/Log.swift` | 23 |
 | `Sources/DevDeckEngineHost/main.swift` | 14 |
 | `Sources/DevDeckProcessHost/main.swift` | 13 |
-| `Sources/ProjectKit/LocalProjectService.swift` | 204 |
+| `Sources/ProjectKit/LocalProjectService.swift` | 199 |
 | `Tests/EngineTests/main.swift` | 14 |

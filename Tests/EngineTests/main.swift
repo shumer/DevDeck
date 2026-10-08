@@ -300,4 +300,5 @@ await run.test("multiple project cards retain independent state and ordered plac
     try expect(projectCards.contains { $0.id == "project.demo-win" && $0.hero.tone == "good" })
     await engine.shutdown()
 }
+await runGoldenTranscriptTests(run)
 run.finish()

@@ -73,6 +73,11 @@ The host carries the six existing localization tables. Windows expands plural fo
 from stringsdict because Foundation's format-marker expansion crashes; Mac keeps its original
 Foundation path. WPF rendering belongs to a later accepted step.
 
+Golden engine scenarios store protocol intentions and expected JSONL streams as test resources.
+They replay through fixed clocks, FakeHTTPClient, StubCommandRunner and LocalProjectService,
+then compare every output byte. The same resources are compiled into the Mac and Windows engine
+test targets, so platform drift changes the comparison rather than a platform-specific fixture.
+
 The Mac login-shell PATH probe and LAN-interface probe are excluded from the Windows POC
 build. Foundation supplies the geometry types when CoreGraphics is unavailable.
 

@@ -3,11 +3,19 @@ import Foundation
 import GitHubKit
 import ProjectKit
 
+public protocol EngineProjectServing: Sendable {
+    func status() async -> LocalProjectStatus
+    func perform(_ action: LocalProjectAction) async -> CommandResult?
+    func waitUntilRunning(timeout: TimeInterval, pollInterval: TimeInterval) async -> LocalProjectStatus
+}
+
+extension LocalProjectService: EngineProjectServing {}
+
 public actor DevDeckEngine {
     private let configuration: EngineConfiguration
     private struct ProjectState {
         let configuration: EngineConfiguration.Project
-        let service: LocalProjectService
+        let service: any EngineProjectServing
         var status = LocalProjectStatus(state: .stopped)
         var busy = false
         var refreshTask: Task<Void, Never>?
@@ -36,6 +44,7 @@ public actor DevDeckEngine {
     public init(
         configuration: EngineConfiguration, runner: any CommandRunning,
         projectRunners: [String: any CommandRunning] = [:],
+        projectServices: [String: any EngineProjectServing] = [:],
         http: any HTTPClient = URLSessionHTTPClient.makeDefault(),
         projectHTTP: (any HTTPClient)? = nil,
         clock: any DateProvider = SystemDateProvider(), sleeper: any Sleeper = TaskSleeper(),
@@ -58,10 +67,11 @@ public actor DevDeckEngine {
                     "project." + project.id,
                     ProjectState(
                         configuration: project,
-                        service: LocalProjectService(
-                            project: project.model, runner: projectRunners[project.id] ?? runner,
-                            httpClient: projectHTTP ?? http, clock: clock, sleeper: sleeper,
-                            files: runtimeFiles))
+                        service: projectServices[project.id]
+                            ?? LocalProjectService(
+                                project: project.model, runner: projectRunners[project.id] ?? runner,
+                                httpClient: projectHTTP ?? http, clock: clock, sleeper: sleeper,
+                                files: runtimeFiles))
                 )
             })
     }

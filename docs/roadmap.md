@@ -5,12 +5,11 @@
 - Step 1 accepted with an external Swift 6.4 WinSDK warning exception: native Windows core
   and a separate offline test executable; Windows and user-run Mac evidence
   is tracked in [the POC report](poc/one-engine-report.md).
-- Step 2: native engine and JSONL host, translated models and WSL lifecycle checks implemented;
-  user-run Mac checks passed on bb50b7b. Follow-up review fixes and persistence without a
-  global WSL setting passed. Native Windows projects, multiple project cards, Job Object
-  cleanup and independent Stop passed live checks. Live GitHub evidence, new Mac checks and
-  user acceptance remain pending.
-- Then, in acceptance order: cross-platform golden transcripts, a thin WPF shell, measurements.
+- Step 2 accepted: authenticated GitHub, native engine and JSONL host, translated models,
+  independent WSL lifecycle and native Windows project lifecycle. Mac checks passed on b5d01d3.
+- Step 3: file-backed golden scenarios and byte comparisons are implemented on Windows;
+  the same committed transcripts require a Mac run before Q4 acceptance.
+- Then, in acceptance order: a thin WPF shell and measurements.
 
 ## Done
 

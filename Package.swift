@@ -33,7 +33,12 @@ let package = Package(
         .executableTarget(name: "DevDeckEngineHost", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]),
         .executableTarget(name: "DevDeckProcessHost", dependencies: ["DevDeckCore"]),
         .executableTarget(name: "DevDeckWindowsSmoke", dependencies: ["DevDeckCore", "DevDeckEngine"], path: "Tools/WindowsLifecycle"),
-        .executableTarget(name: "DevDeckEngineTests", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness"], path: "Tests/EngineTests"),
+        .executableTarget(
+            name: "DevDeckEngineTests",
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness"],
+            path: "Tests/EngineTests",
+            resources: [.copy("Golden")]
+        ),
         .executableTarget(
             name: "DevDeckWSLSmoke",
             dependencies: ["DevDeckCore", "ProjectKit", "DevDeckEngine"],
@@ -94,7 +99,12 @@ let package = Package(
             resources: [.copy("en.lproj"), .copy("ru.lproj"), .copy("de.lproj"), .copy("it.lproj"), .copy("es.lproj"), .copy("fr.lproj")]
         ),
         .executableTarget(name: "DevDeckEngineHost", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]),
-        .executableTarget(name: "DevDeckEngineTests", dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness"], path: "Tests/EngineTests"),
+        .executableTarget(
+            name: "DevDeckEngineTests",
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness"],
+            path: "Tests/EngineTests",
+            resources: [.copy("Golden")]
+        ),
 
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(

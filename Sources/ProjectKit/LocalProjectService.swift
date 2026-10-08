@@ -245,12 +245,12 @@ public struct LocalProjectService: Sendable {
     }
 
     private func start(in folder: URL) async -> CommandResult? {
-        #if os(Windows)
         let currentStatus = await status()
         if currentStatus.isRunning || currentStatus.pid != nil {
             return CommandResult(exitCode: 0, standardOutput: "", standardError: "")
         }
         guard !Task.isCancelled else { return nil }
+        #if os(Windows)
         if let native = runner as? NativeWindowsCommandRunner {
             return try? native.startProject(project.id, command: project.startCommand, in: folder)
         }
