@@ -123,13 +123,13 @@ func runConfigurationTests(_ run: TestRun) async {
         }
 
         let ordered = CardCatalog.projectOrder(
-            arc: [card("arc.project.b", "Morning Post"), card("arc.project.a", "The Daily")],
+            arc: [card("arc.project.b", "The Daily"), card("arc.project.a", "Morning Post")],
             ddev: [card("ddev.project.b", "investors"), card("ddev.project.a", "Intranet")],
             plain: [card("project.b", "site10"), card("project.a", "site2")]
         )
 
         try expectEqual(ordered.map(\.title), [
-            "The Daily", "Morning Post",      // Arc first, alphabetically
+            "Morning Post", "The Daily",      // Arc first, alphabetically
             "Intranet", "investors",       // then DDEV, and case does not decide it
             "site2", "site10",              // then the plain ones, with numbers read as numbers
         ])

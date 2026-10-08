@@ -16,7 +16,7 @@ review - worst first:
 │ ▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ │
 │ ● WORK PROJ-142 Add the article feed…   CF │
 │ ● WORK PROJ-77  Fix the image fill on…  CR │
-│ ● WORK 👁 PROJ-164 Approvers resource…    RV │
+│ ● WORK 👁 PROJ-164 Approvers resource…  RV │
 │           show 5 more ⌄                    │
 │ 4 repos · 2 orgs                           │
 └────────────────────────────────────────────┘
@@ -420,8 +420,8 @@ hour on a Monday morning.
 │ WORK IN FLIGHT                    09:14:22 │
 │ 3 in flight                    2 UNPUSHED  │
 │ ● acme-portal   feat/PROJ-77  4 changed ·… │
-│ ● newsroom-feed  main          2 unpushed   │
-│ ○ daily-web  main          1 changed    │
+│ ● newsroom-feed main          2 unpushed   │
+│ ○ daily-web     main          1 changed    │
 │ 9 checkouts watched                        │
 └────────────────────────────────────────────┘
 ```
