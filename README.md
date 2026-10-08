@@ -874,3 +874,6 @@ DevDeck is free to use, personally and at work, and the source is here to be rea
 open source: you may build it and propose changes back, but distributing it, publishing a fork
 or shipping a changed version needs the author's written permission. The exact terms are in
 [LICENSE](LICENSE).
+
+Changes are welcome as pull requests. [CONTRIBUTING.md](CONTRIBUTING.md) has the checks every change
+passes before it is committed, the invariants the code keeps and the style it is written in.
