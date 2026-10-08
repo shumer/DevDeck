@@ -118,6 +118,18 @@ public actor DevDeckEngine {
             renderPulls(id: intent.id)
             let current = generation
             pullRefreshTask = Task { await self.pollPulls(generation: current) }
+        case "shell.bootstrap":
+            guard sessionStarted else {
+                reject(intent)
+                return
+            }
+            emit(
+                "shell.ready",
+                shell: ShellPresentation(
+                    toolTip: "DevDeck", quitLabel: L("menu.quit"),
+                    credentialAccounts: [configuration.github.account],
+                    failureCards: CardModels.transportFailure(configuration)),
+                id: intent.id)
         case "card.measured":
             guard sessionStarted, let card = intent.card, cardIDs.contains(card), let size = intent.size,
                 size.count == 2, size.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 100_000 })
@@ -310,13 +322,14 @@ public actor DevDeckEngine {
         card: CardModel? = nil,
         cards: [CardPlacement]? = nil,
         effect: OpenURLEffect? = nil,
+        shell: ShellPresentation? = nil,
         reason: String? = nil,
         id: String? = nil
     ) {
         revision += 1
         let envelope = EngineEvent(
             protocolVersion: 2, revision: revision, event: event, id: id,
-            card: card, cards: cards, effect: effect, reason: reason)
+            card: card, cards: cards, effect: effect, shell: shell, reason: reason)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         guard let data = try? encoder.encode(envelope), data.count <= 1_048_576 else {

@@ -40,6 +40,13 @@ public struct OpenURLEffect: Codable, Sendable {
     public let browser: String
 }
 
+public struct ShellPresentation: Codable, Sendable {
+    public let toolTip: String
+    public let quitLabel: String
+    public let credentialAccounts: [String]
+    public let failureCards: [CardModel]
+}
+
 public struct EngineEvent: Codable, Sendable {
     public let protocolVersion: Int
     public let revision: Int
@@ -48,5 +55,6 @@ public struct EngineEvent: Codable, Sendable {
     public let card: CardModel?
     public let cards: [CardPlacement]?
     public let effect: OpenURLEffect?
+    public let shell: ShellPresentation?
     public let reason: String?
 }

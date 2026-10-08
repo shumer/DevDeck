@@ -352,6 +352,7 @@
 "menu.place.desktop" = "Keep on desktop (behind windows)";
 "menu.place.floating" = "Float above windows";
 "menu.quit" = "Quit DevDeck";
+"engine.unavailable" = "Engine stopped";
 "menu.refresh" = "Refresh now";
 "menu.settings" = "Settings…";
 "menu.tidy" = "Tidy panels into columns";

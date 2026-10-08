@@ -7,9 +7,11 @@
   is tracked in [the POC report](poc/one-engine-report.md).
 - Step 2 accepted: authenticated GitHub, native engine and JSONL host, translated models,
   independent WSL lifecycle and native Windows project lifecycle. Mac checks passed on b5d01d3.
-- Step 3: file-backed golden scenarios and byte comparisons are implemented on Windows;
-  the same committed transcripts require a Mac run before Q4 acceptance.
-- Then, in acceptance order: a thin WPF shell and measurements.
+- Step 3 accepted: the three committed scenarios match byte for byte on Windows and Mac.
+- Step 4: the .NET 10 WPF shell, separate tests, Credential Manager adapter, three neutral card
+  windows, failure rendering and self-contained delivery builder are implemented. The user-run
+  hidden token command and Q5 acceptance remain.
+- Step 5 measurements start only after Q5 acceptance.
 
 ## Done
 

@@ -221,4 +221,24 @@ enum CardModels {
             branch: status.branch.map { ProjectCardBranch(name: $0) }
         )
     }
+
+    static func transportFailure(_ configuration: EngineConfiguration) -> [CardModel] {
+        let message = L("engine.unavailable")
+        let pulls = ListCardModel(
+            id: "github.pullRequests", kind: "list", mark: "github",
+            title: L("card.chrome.pulls"), timeText: "",
+            hero: ListCardHero(
+                number: "", unit: "", badge: CardBadge(text: message, tone: "bad")),
+            rows: [], footer: CardFooter(text: ""), expander: nil)
+        let projects = configuration.projects.map { project in
+            CardModel.project(
+                ProjectCardModel(
+                    id: "project." + project.id, kind: "project", mark: "project",
+                    title: L("project.section.project") + " · " + project.title, timeText: "",
+                    hero: ProjectCardHero(tone: "bad", state: message, note: nil),
+                    meta: [ProjectCardMeta(leading: project.model.folderURL?.lastPathComponent ?? "")],
+                    chips: [], actions: [], branch: nil))
+        }
+        return [.list(pulls)] + projects
+    }
 }

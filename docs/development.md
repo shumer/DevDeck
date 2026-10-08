@@ -105,6 +105,29 @@ compares those streams as bytes on both platforms. To update an intentionally ch
 result, run DevDeckEngineTests once with UPDATE_GOLDEN_TRANSCRIPTS=1, inspect the complete diff,
 then run again without that variable.
 
+The Windows WPF POC requires .NET 10. Build its separate solution and tests with warnings as
+errors:
+
+```powershell
+dotnet build .\Windows\DevDeck.Windows.slnx -warnaserror
+dotnet run --project .\Windows\DevDeck.Shell.Tests\DevDeck.Shell.Tests.csproj --no-build
+```
+
+Create the self-contained delivery directory with the release Swift hosts and their transitive
+runtime DLLs:
+
+```powershell
+.\Tools\Build-WindowsShell.ps1
+```
+
+The default output is `dist\windows-x64`. The script verifies that test files are absent. The
+token command is user-operated because its console input is hidden and must never be redirected
+or recorded:
+
+```powershell
+.\dist\windows-x64\DevDeck.Shell.exe --set-token github
+```
+
 ## Commands
 
 ```bash

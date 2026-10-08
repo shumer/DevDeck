@@ -1,6 +1,6 @@
 # One-engine POC report
 
-Date: 2026-10-08. Branch: poc/one-engine. Steps 1 and 2 are accepted; step 3 is in progress.
+Date: 2026-10-08. Branch: poc/one-engine. Steps 1 through 3 are accepted; step 4 is in progress.
 
 ## Answers and acceptance
 
@@ -10,11 +10,11 @@ Date: 2026-10-08. Branch: poc/one-engine. Steps 1 and 2 are accepted; step 3 is 
 | Q2: authenticated GitHub | Yes, accepted | The user ran Invoke-NetworkSmoke.ps1 with hidden credential input and accepted Q2. GraphQL PR fetching and REST /user ETag/304 remain separate checks. |
 | Q3: WSL project lifetime | Yes, accepted | Default instanceIdleTimeout, independent project WSL client, more than 5 minutes without an engine, discovery by a new engine, tree cleanup and natural distro idle shutdown. |
 | Q3b: Windows folder projects | Yes, accepted | Native Node LTS Start, engine EOF survival, new-engine discovery, Job Object Stop, registry PATH refresh and WSL project isolation passed. ADR 0023 is accepted. |
-| Q4: identical transcripts | Windows result pending Mac comparison | Three file-backed scenarios cover initial data, ready-to-blocked PR and project Start/Stop in en and ru. Windows compares emitted JSONL byte for byte with committed transcripts. |
-| Q5: thin WPF shell | Not started | No Windows desktop shell exists yet. |
+| Q4: identical transcripts | Yes, accepted | All three committed scenarios are byte-identical on Windows and Mac in en and ru. |
+| Q5: thin WPF shell | Implementation ready for acceptance | The self-contained .NET 10 WPF shell shows PR, WSL and Windows project cards from engine models. The remaining live gate is the user-run hidden token command. |
 | Q6: measurements | Not started | Runtime size, startup, 10-minute idle memory/CPU and mixed-DPI checks are pending. |
 
-Recommendation: continue the native engine POC through step 3. Step 4 remains gated on Q4
+Recommendation: continue the native engine POC through step 4. Step 5 remains gated on Q5
 acceptance. Windows ARM64 is untested.
 
 ## Environment
@@ -32,7 +32,7 @@ acceptance. Windows ARM64 is untested.
 | Node LTS | 24.20.0, installed through winget OpenJS.NodeJS.LTS |
 | Node executable used for Q3b | C:/Program Files/nodejs/node.exe |
 | Checkout | C:/src/DevDeck |
-| .NET 10 SDK | Planned for step 4 |
+| .NET 10 SDK | 10.0.401; Windows Desktop runtime 10.0.12 |
 
 The existing NVM Node 20.20.2 precedes the new installation in registry PATH. The neutral
 live project explicitly selects the installed Node 24 executable. The runner reads machine
@@ -54,8 +54,14 @@ On b5d01d3: run-tests.sh main suite reported 405 passed, 0 failed; engine tests 
 also verified that DevDeckApp and DevDeckUI were unchanged. Q2, Q3, Q3b and ADR 0023 were
 accepted after these results.
 
-The step 3 golden files require a new Mac run to establish byte-identical output. No Mac check
-was run or claimed on this Windows machine.
+On c54ed66: all three golden scenarios matched the committed files byte for byte without
+UPDATE_GOLDEN_TRANSCRIPTS, and the working copy stayed clean. run-tests.sh reported 405 passed,
+0 failed; engine tests reported 11 passed, 0 failed; swift build had no warnings; build.sh built
+the application. The user also verified that DevDeckApp and DevDeckUI were unchanged and
+accepted Q4.
+
+The step 4 changes require a new Mac run. No Mac check for step 4 was run or claimed on this
+Windows machine.
 
 ## Q2 evidence
 
@@ -126,11 +132,43 @@ request moving from ready to blocked in Russian, and project Start followed by S
 Tests compare the complete output as bytes without parsing or platform-specific normalization.
 
 Windows DevDeckEngineTests report 12 passed and 0 failed, including all three byte comparisons.
-Q4 remains pending until the same files pass on Mac. Step 4 has not started.
+The user supplied the matching Mac result on c54ed66 and accepted Q4.
 
 For phase 1 after the POC, project launch behavior should move out of LocalProjectService into
 separate Mac, WSL and Windows types. LocalizationResources.swift should move from Resources to
 Sources. These follow-up changes are intentionally outside step 3.
+
+## Q5 WPF shell
+
+.NET SDK 10.0.401 was installed through winget. `Windows/DevDeck.Shell` is a WPF executable;
+`Windows/DevDeck.Shell.Tests` is a separate executable. The release builder publishes only the
+self-contained shell, both Swift hosts, the localization bundle and the transitive Swift runtime
+DLLs. It rejects a delivery directory containing a test file. The published directory passed
+this check with zero test files.
+
+The shell starts the packaged DevDeckEngineHost over redirected UTF-8 JSONL. It sends displays
+and measured card sizes, applies layouts, routes model action ids back as intents, opens engine
+effects and obtains Credential Manager account ids from `shell.ready`. CredReadW and CredWriteW
+use CRED_TYPE_GENERIC with the target `DevDeck/<account>`. `DevDeck.Shell.exe --set-token github`
+uses hidden console input and writes no credential to output, files or process arguments. The
+user-run live credential command remains the Q5 acceptance gate.
+
+The C# review found no product decision about text, ordering, semantic tone, availability,
+update timing or persistence. It iterates arrays in engine order, maps engine tones and roles to
+native brushes, and only shows controls present in the model. Tray text, credential account ids
+and complete engine-failure card models also arrive from the Swift engine.
+
+The published shell showed three real WPF card windows through the packaged Swift engine: one
+PR card, one WSL project and one Windows project. All fixtures and configuration were neutral.
+Each window had WS_EX_TOOLWINDOW and WS_EX_NOACTIVATE, was absent from the taskbar and did not
+become the foreground window. After the engine process was forcibly stopped, the shell stayed
+alive and replaced all three cards with the localized failure models supplied by the engine.
+The separate C# suite reports 4 passed and 0 failed. The .NET solution builds with warnings as
+errors and no warnings.
+
+![Three neutral cards rendered by the packaged WPF shell](windows-shell-cards.png)
+
+![The same cards after the packaged engine was stopped](windows-shell-engine-stopped.png)
 
 ## Engine review fixes and Windows verification
 
@@ -140,7 +178,7 @@ explicit time zones, including a non-UTC case. The site effect opens LocalProjec
 healthURL remains the probe. Swift statements and names follow CONTRIBUTING.md.
 
 Windows builds use swift build -Xswiftc -warnings-as-errors. Offline results: 8 core tests
-and 9 engine tests, all passed. Bounded-input JSONL smoke verifies malformed input, protocol
+and 12 engine tests, all passed. Bounded-input JSONL smoke verifies malformed input, protocol
 version, the 1 MiB limit, monotonic revisions and EOF without echoing input or credentials.
 Logs and intermediate checks stay outside the repository.
 

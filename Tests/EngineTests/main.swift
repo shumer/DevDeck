@@ -90,6 +90,7 @@ for language in ["en", "ru"] {
             pollingEnabled: false, output: { events.append($0) })
         let lines = [
             "{\"protocolVersion\":2,\"id\":\"1\",\"intent\":\"session.start\",\"language\":\"\(language)\",\"displays\":[{\"id\":\"demo\",\"visibleFrame\":[100,200,1920,1040],\"scale\":1.5}]}",
+            "{\"protocolVersion\":2,\"id\":\"bootstrap\",\"intent\":\"shell.bootstrap\"}",
             "{\"protocolVersion\":2,\"id\":\"2\",\"intent\":\"credentials.set\",\"account\":\"github\",\"token\":\"fixture-secret\"}",
             "{\"protocolVersion\":2,\"id\":\"3\",\"intent\":\"card.measured\",\"card\":\"github.pullRequests\",\"size\":[352,216]}",
             "{\"protocolVersion\":2,\"id\":\"4\",\"intent\":\"card.measured\",\"card\":\"project.demo\",\"size\":[352,180]}",
@@ -107,6 +108,12 @@ for language in ["en", "ru"] {
         let objects = try data.map { try JSONSerialization.jsonObject(with: $0) as! [String: Any] }
         let revisions = objects.map { $0["revision"] as! Int }
         try expectEqual(revisions, Array(1...revisions.count))
+        let shell = objects.first { $0["event"] as? String == "shell.ready" }!["shell"] as! [String: Any]
+        try expectEqual(shell["credentialAccounts"] as! [String], ["github"])
+        try expectEqual(shell["quitLabel"] as! String, L("menu.quit"))
+        let failureCards = shell["failureCards"] as! [[String: Any]]
+        try expectEqual(failureCards.count, 2)
+        try expect(text.contains(L("engine.unavailable")))
         let layouts = objects.filter { $0["event"] as? String == "layout.updated" }
         let placements = layouts.last!["cards"] as! [[String: Any]]
         try expectEqual(placements.count, 2)

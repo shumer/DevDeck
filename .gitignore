@@ -13,3 +13,6 @@ env.local
 .env
 
 config.json
+
+Windows/**/bin/
+Windows/**/obj/

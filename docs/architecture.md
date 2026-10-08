@@ -71,7 +71,25 @@ JSON lines from stdin and writes protocol v2 events with increasing revisions to
 Diagnostics use fixed stderr messages; credentials remain in an in-memory token store.
 The host carries the six existing localization tables. Windows expands plural forms directly
 from stringsdict because Foundation's format-marker expansion crashes; Mac keeps its original
-Foundation path. WPF rendering belongs to a later accepted step.
+Foundation path.
+
+`Windows/DevDeck.Shell` is the .NET 10 WPF protocol client. It owns native card windows, the
+tray icon, Credential Manager calls and URL launching. It iterates the card fields and arrays
+that arrive from the engine, reports rendered pixel sizes and applies engine placements. Its
+only tone logic maps semantic tone and role names onto Windows brushes. It does not choose card
+text, row order, action availability, refresh timing or persistence.
+
+The shell requests `shell.ready` after session start. That engine event supplies tray text,
+Credential Manager account ids and one complete failure model for every card. If the child host
+exits, the shell keeps the windows and renders those models, so transport failure cannot leave
+blank cards and no fallback wording lives in C#. Tokens are read from `DevDeck/<account>` and
+sent only over redirected stdin. The command that writes them uses CredWriteW with hidden console
+input.
+
+Each card is a borderless WPF window with ShowActivated and ShowInTaskbar disabled. The native
+handle also carries WS_EX_TOOLWINDOW and WS_EX_NOACTIVATE and returns MA_NOACTIVATE for mouse
+activation. A separate test executable exercises protocol order, fallback models, credential
+target naming and the real window styles. The release builder does not copy that test executable.
 
 Golden engine scenarios store protocol intentions and expected JSONL streams as test resources.
 They replay through fixed clocks, FakeHTTPClient, StubCommandRunner and LocalProjectService,

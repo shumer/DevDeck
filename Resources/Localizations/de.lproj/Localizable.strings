@@ -352,6 +352,7 @@
 "menu.place.desktop" = "Auf dem Schreibtisch halten (hinter den Fenstern)";
 "menu.place.floating" = "Über den Fenstern schweben";
 "menu.quit" = "DevDeck beenden";
+"engine.unavailable" = "Engine angehalten";
 "menu.refresh" = "Jetzt aktualisieren";
 "menu.settings" = "Einstellungen…";
 "menu.tidy" = "Panels in Spalten ordnen";
