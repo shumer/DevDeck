@@ -11,7 +11,7 @@ Date: 2026-10-08. Branch: poc/one-engine. Steps 1 through 3 are accepted; step 4
 | Q3: WSL project lifetime | Yes, accepted | Default instanceIdleTimeout, independent project WSL client, more than 5 minutes without an engine, discovery by a new engine, tree cleanup and natural distro idle shutdown. |
 | Q3b: Windows folder projects | Yes, accepted | Native Node LTS Start, engine EOF survival, new-engine discovery, Job Object Stop, registry PATH refresh and WSL project isolation passed. ADR 0023 is accepted. |
 | Q4: identical transcripts | Yes, accepted | All three committed scenarios are byte-identical on Windows and Mac in en and ru. |
-| Q5: thin WPF shell | Implementation ready for acceptance | The self-contained .NET 10 WPF shell shows PR, WSL and Windows project cards from engine models. The remaining live gate is the user-run hidden token command. |
+| Q5: thin WPF shell | Implementation ready for acceptance | The self-contained .NET 10 WPF shell shows PR, WSL and Windows project cards from engine models. The user ran the hidden token command, and the scoped Credential Manager entry is present. |
 | Q6: measurements | Not started | Runtime size, startup, 10-minute idle memory/CPU and mixed-DPI checks are pending. |
 
 Recommendation: continue the native engine POC through step 4. Step 5 remains gated on Q5
@@ -151,7 +151,8 @@ and measured card sizes, applies layouts, routes model action ids back as intent
 effects and obtains Credential Manager account ids from `shell.ready`. CredReadW and CredWriteW
 use CRED_TYPE_GENERIC with the target `DevDeck/<account>`. `DevDeck.Shell.exe --set-token github`
 uses hidden console input and writes no credential to output, files or process arguments. The
-user-run live credential command remains the Q5 acceptance gate.
+user ran the command, and a target-only check confirmed the `DevDeck/github` Credential Manager
+entry without reading or printing its secret. Q5 now awaits user acceptance.
 
 The C# review found no product decision about text, ordering, semantic tone, availability,
 update timing or persistence. It iterates arrays in engine order, maps engine tones and roles to
