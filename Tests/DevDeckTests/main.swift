@@ -29,5 +29,6 @@ await runCheckSummaryTests(run)
 await runLocalisationTests(run)
 await runAttentionTests(run)
 await runDeckRuntimeTests(run)
+await runCardModelTests(run)
 
 run.finish()

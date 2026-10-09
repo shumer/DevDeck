@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import SwiftUI
 
@@ -55,6 +56,11 @@ struct ModuleContext {
     /// browser profile is the whole reason accounts exist.
     func openGitHub(_ url: URL, account: String) {
         LinkOpener.open(url, using: controller.browser(for: account))
+    }
+
+    /// Carries out a click from a card that draws a model.
+    func perform(_ command: DeckCommand) {
+        controller.perform(command)
     }
 
     /// GitLab rows open in the browser of the instance they came from, for the same reason.

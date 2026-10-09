@@ -420,6 +420,30 @@ func runDeckRuntimeTests(_ run: TestRun) async {
         try expectEqual(deck.effects.last, .closeLogs(project.cardID))
     }
 
+    run.section("Deck runtime - what a card's click asks for")
+
+    await run.test("a row opens in the browser of the account it came from") {
+        let deck = Deck(cards: [.githubPullRequests])
+        let url = URL(string: "https://github.com/acme/site/pull/1")!
+        deck.runtime.perform(.openLink(url, account: deck.account.id, service: .github))
+        try expectEqual(deck.effects, [.openURL(url, deck.account.browser)])
+    }
+
+    await run.test("the card's own page is the runtime's to know, and opens in the first account's browser") {
+        let deck = Deck(cards: [.githubPullRequests])
+        deck.runtime.perform(.openDashboard(.githubPullRequests))
+        try expectEqual(deck.effects, [.openURL(URL(string: "https://github.com/pulls")!, deck.account.browser)])
+    }
+
+    await run.test("the expander's click expands, and the model says so") {
+        let deck = Deck(cards: [.githubPullRequests])
+        deck.runtime.perform(.toggleExpanded(.githubPullRequests))
+        guard case .pullRequests(let model)? = deck.runtime.model(for: .githubPullRequests) else {
+            throw TestFailure(message: "no pull requests model", file: #filePath, line: #line)
+        }
+        try expect(model.isExpanded)
+    }
+
     run.section("Deck runtime - banners")
 
     await run.test("the first pass is quiet, a repeat is not news, and something new is") {

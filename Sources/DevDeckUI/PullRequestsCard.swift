@@ -1,4 +1,5 @@
 import DevDeckCore
+import DevDeckEngine
 import GitHubKit
 import SwiftUI
 
@@ -12,183 +13,83 @@ public extension PullRequestHealth {
     }
 }
 
-/// Pull requests: yours, plus the ones waiting on a review from you.
-///
-/// Both halves of "what do I owe today" on one card. A review someone is waiting on sits just
-/// under the blocked ones and carries an eye rather than the two-letter code of its own state:
-/// what matters about it is not whether its checks pass but that it is not yours.
+/// Pull requests: draws `PullRequestsCardModel`, which the engine has already decided.
 public struct PullRequestsCard: View {
     /// Everything that is not a row: chrome, the count, the distribution bar and the footer.
     public nonisolated static let baseHeight: Double = 110
 
-    private let state: CardState<PullRequestsSnapshot>
-    private let now: Date
-    /// Account id to label. More than one entry turns the per-row chips on.
-    private let accountLabels: [String: String]
-    private let isExpanded: Bool
-    private let isCollapsed: Bool
-    private let onOpen: (URL, String) -> Void
-    private let onToggleExpand: () -> Void
-    private let onOpenDashboard: () -> Void
+    private let model: PullRequestsCardModel
+    private let onCommand: (DeckCommand) -> Void
 
-    public init(
-        state: CardState<PullRequestsSnapshot>,
-        now: Date = Date(),
-        accountLabels: [String: String] = [:],
-        isExpanded: Bool = false,
-        isCollapsed: Bool = false,
-        onOpen: @escaping (URL, String) -> Void = { _, _ in },
-        onToggleExpand: @escaping () -> Void = {},
-        onOpenDashboard: @escaping () -> Void = {}
-    ) {
-        self.state = state
-        self.now = now
-        self.accountLabels = accountLabels
-        self.isExpanded = isExpanded
-        self.isCollapsed = isCollapsed
-        self.onOpen = onOpen
-        self.onToggleExpand = onToggleExpand
-        self.onOpenDashboard = onOpenDashboard
+    public init(model: PullRequestsCardModel, onCommand: @escaping (DeckCommand) -> Void = { _ in }) {
+        self.model = model
+        self.onCommand = onCommand
     }
 
     /// Panel size for the current contents. The app resizes the window with this, so the card
     /// and the panel never disagree about how much room the rows need.
-    public nonisolated static func size(
-        for state: CardState<PullRequestsSnapshot>,
-        isExpanded: Bool,
-        isCollapsed: Bool = false
-    ) -> CGSize {
-        guard !isCollapsed else {
+    public nonisolated static func size(for model: PullRequestsCardModel) -> CGSize {
+        guard !model.isCollapsed else {
             return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
         }
-        let total = state.value?.pullRequests.count ?? 0
         return CGSize(
             width: CardMetrics.width,
-            height: CardMetrics.height(base: baseHeight, total: total, isExpanded: isExpanded)
+            height: CardMetrics.height(base: baseHeight, total: model.total, isExpanded: model.isExpanded)
         )
     }
 
     public var body: some View {
-        if isCollapsed {
-            collapsed
+        if model.isCollapsed {
+            CardCollapsedRow(model.collapsed, onCommand: onCommand)
         } else {
-            full
-        }
-    }
-
-    /// One row: the mark, a dot for how loud the card is, its name and the count. A list card
-    /// has no lifecycle to offer, so its single action is the one thing it can do - open the
-    /// same list on the web.
-    private var collapsed: some View {
-        CardCollapsedRow(
-            glyph: CardGlyph.github,
-            title: L("card.title.pulls"),
-            note: collapsedNote,
-            tone: collapsedTone.tone,
-            color: collapsedTone.color,
-            actions: [CardAction(L("card.action.openInBrowser"), systemImage: "arrow.up.forward", action: onOpenDashboard)],
-            help: collapsedNote ?? L("card.title.pulls")
-        )
-    }
-
-    /// The pill's words, which are already the shortest true sentence about the card.
-    private var collapsedNote: String? {
-        guard let snapshot = state.value else { return state.failure?.displayMessage ?? L("card.pill.loading") }
-        if snapshot.blockedCount > 0 { return L("card.pill.blockedOpen", snapshot.blockedCount, snapshot.totalCount) }
-        if snapshot.reviewRequestCount > 0 { return L("card.pill.toReviewOpen", snapshot.reviewRequestCount, snapshot.totalCount) }
-        return snapshot.totalCount == 0 ? L("card.pill.clear") : L("card.pill.open", snapshot.totalCount)
-    }
-
-    private var collapsedTone: (tone: CardStateTone, color: Color) {
-        guard let snapshot = state.value else { return (.neutral, DeckTheme.label) }
-        if snapshot.blockedCount > 0 { return (.alert, DeckTheme.red) }
-        if snapshot.reviewRequestCount > 0 { return (.alert, DeckTheme.amber) }
-        return (.good, DeckTheme.green)
-    }
-
-    private var full: some View {
-        CardChrome(
-            title: L("card.chrome.pulls"),
-            glyph: .github,
-            timestamp: CardFreshness.text(for: state)
-        ) {
-            if let snapshot = state.value {
-                content(snapshot)
-            } else {
-                CardPlaceholder(state: state)
+            CardChrome(title: model.title, glyph: model.mark.glyph, timestamp: model.timestamp) {
+                if let content = model.content {
+                    self.content(content)
+                } else {
+                    CardPlaceholderView(model.placeholder)
+                }
             }
         }
     }
 
-    private var pill: (text: String, color: Color)? {
-        if let failure = state.failure, state.value == nil {
-            return (failure.displayMessage, DeckTheme.red)
-        }
-        guard let snapshot = state.value else { return nil }
-        if snapshot.blockedCount > 0 {
-            return (L("card.pill.blocked", snapshot.blockedCount), DeckTheme.red)
-        }
-        // Someone waiting on you outranks anything of yours that is merely in progress.
-        if snapshot.reviewRequestCount > 0 {
-            return (L("card.pill.toReview", snapshot.reviewRequestCount), DeckTheme.amber)
-        }
-        if snapshot.totalCount == 0 {
-            return (L("card.pill.clear"), DeckTheme.green)
-        }
-        return (L("card.pill.onTrack"), DeckTheme.green)
-    }
-
     @ViewBuilder
-    private func content(_ snapshot: PullRequestsSnapshot) -> some View {
+    private func content(_ content: PullRequestsCardModel.Content) -> some View {
         // The count is the hero, but 26 rather than the 42 it used to be: it was the largest
         // thing on the deck and it is not the most important one. It is also plain now. A number
         // that turns red when something is blocked says the same thing twice, since the words
         // beside it already say which and how many.
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text("\(snapshot.totalCount)")
+            Text("\(content.count)")
                 .font(.system(size: 26, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(DeckTheme.value.opacity(0.85))
-            Text(L("card.open"))
+            Text(content.unit)
                 .font(.system(size: 12))
                 .foregroundStyle(DeckTheme.label)
             Spacer(minLength: 6)
-            if let pill {
-                StatusPill(pill.text, color: pill.color)
+            if let pill = content.pill {
+                StatusPill(pill)
             }
         }
         .frame(height: 30)
         .padding(.top, 6)
 
-        healthBar(snapshot)
-
-        let total = snapshot.pullRequests.count
-        let rows = CardMetrics.rowCount(total: total, isExpanded: isExpanded)
+        healthBar(content.shares)
 
         VStack(spacing: 0) {
-            ForEach(snapshot.prioritized(limit: rows)) { pullRequest in
-                row(pullRequest)
+            ForEach(content.rows) { row in
+                self.row(row)
             }
         }
         .padding(.top, 6)
 
-        if CardMetrics.showsExpander(total: total) {
-            CardExpander(
-                hidden: total - CardMetrics.collapsedRows,
-                isExpanded: isExpanded,
-                onToggle: onToggleExpand
-            )
+        if let expander = content.expander {
+            CardExpanderView(expander, onCommand: onCommand)
         }
 
         Spacer(minLength: 4)
 
-        // The clock moved into the header, so the footer says what the header cannot: which
-        // accounts came back empty, and whether what is on screen is still fresh.
-        CardFooter(
-            leading: snapshot.failures.summary ?? footerLeading(snapshot),
-            trailing: state.isStale(now: now, maxAge: 600) ? CardFreshness.asOf(state) : nil,
-            isStale: state.failure != nil || !snapshot.failures.isEmpty
-        )
+        CardFooter(content.footer)
     }
 
     /// How the open pull requests are spread across blocked, needs-attention and ready.
@@ -196,19 +97,14 @@ public struct PullRequestsCard: View {
     /// Three points of height for the shape of the whole list, which the three visible rows
     /// cannot give: two blocked out of eight reads differently from two out of two.
     @ViewBuilder
-    private func healthBar(_ snapshot: PullRequestsSnapshot) -> some View {
-        let counts = [PullRequestHealth.blocked, .attention, .ready]
-            .map { health in snapshot.pullRequests.filter { $0.health == health }.count }
-
-        if counts.reduce(0, +) > 0 {
+    private func healthBar(_ shares: [PullRequestsCardModel.Share]) -> some View {
+        if !shares.isEmpty {
             HStack(spacing: 2) {
-                ForEach(Array(counts.enumerated()), id: \.offset) { index, count in
-                    if count > 0 {
-                        Capsule()
-                            .fill([DeckTheme.red, DeckTheme.amber, DeckTheme.green][index].opacity(0.62))
-                            .frame(maxWidth: .infinity)
-                            .layoutPriority(Double(count))
-                    }
+                ForEach(Array(shares.enumerated()), id: \.offset) { _, share in
+                    Capsule()
+                        .fill(share.tone.color.opacity(0.62))
+                        .frame(maxWidth: .infinity)
+                        .layoutPriority(Double(share.count))
                 }
             }
             .frame(height: 3)
@@ -216,39 +112,33 @@ public struct PullRequestsCard: View {
         }
     }
 
-    private func row(_ pullRequest: PullRequestSummary) -> some View {
-        let ticket = pullRequest.ticket
-
-        return HStack(spacing: 7) {
+    private func row(_ row: PullRequestsCardModel.Row) -> some View {
+        HStack(spacing: 7) {
             Circle()
-                .fill(pullRequest.health.color)
+                .fill(row.tone.color)
                 .frame(width: 6, height: 6)
-            if accountLabels.count > 1, let label = accountLabels[pullRequest.accountID] {
-                AccountChip(label)
+            if let account = row.account {
+                AccountChip(account)
             }
-            // The ticket key gets its own monospaced column: left in the sentence it eats the
-            // width the subject needs, which is how a row reads `PROJ-6257 - Dr…r the core flip.`
-            // Not mine: the row is here because somebody is waiting, and the eye needs to know
-            // that before it reads the title.
-            if pullRequest.isReviewRequest {
-                Image(systemName: "eye")
+            if let icon = row.icon {
+                Image(systemName: icon.glyph.systemImage)
                     .font(.system(size: 9.5, weight: .semibold))
-                    .foregroundStyle(DeckTheme.amber)
-                    .help(L("card.waitingReview"))
+                    .foregroundStyle(icon.tone.color)
+                    .help(icon.help ?? "")
             }
-            if let key = ticket.key {
+            if let key = row.key {
                 Text(key)
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .foregroundStyle(DeckTheme.value.opacity(0.55))
                     .fixedSize()
             }
-            Text(ticket.subject)
+            Text(row.title)
                 .font(.system(size: 11.5))
                 .foregroundStyle(DeckTheme.value.opacity(0.9))
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
-            Text(pullRequest.statusCode)
+            Text(row.trailing)
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                 .foregroundStyle(DeckTheme.value.opacity(0.58))
                 .lineLimit(1)
@@ -258,18 +148,7 @@ public struct PullRequestsCard: View {
         .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
         .contentShape(Rectangle())
         .clickable()
-        .onTapGesture { onOpen(pullRequest.url, pullRequest.accountID) }
-        .help(L("attention.row.colon", pullRequest.shortLabel, pullRequest.statusLine))
-    }
-
-    private func footerLeading(_ snapshot: PullRequestsSnapshot) -> String {
-        let repositories = snapshot.repositoryCount
-        let organizations = snapshot.organizationCount
-        var text = L("card.footer.pair", LN("card.repos", repositories), LN("card.orgs", organizations))
-        // Only the rows beyond the expanded ceiling are worth mentioning here; the ones the
-        // expander would reveal are its own business.
-        let beyondCeiling = CardMetrics.hiddenWhenExpanded(total: snapshot.pullRequests.count)
-        if isExpanded, beyondCeiling > 0 { text += L("card.notShown", beyondCeiling) }
-        return text
+        .onTapGesture { onCommand(row.command) }
+        .help(row.help)
     }
 }

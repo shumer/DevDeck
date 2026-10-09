@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import GitHubKit
 import SwiftUI
@@ -21,27 +22,17 @@ final class PullRequestsModule: CardModule {
     func owns(_ card: CardID) -> Bool { card == .githubPullRequests }
 
     func view(for card: CardID) -> AnyView {
-        AnyView(PullRequestsCard(
-            state: controller.pullRequests,
-            accountLabels: controller.accountLabels,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card),
-            onOpen: context.openGitHub,
-            onToggleExpand: { [controller] in controller.toggleExpanded(card) },
-            onOpenDashboard: { [context] in context.openGitHubDashboard(for: card) }
-        ))
+        guard case .pullRequests(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(PullRequestsCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
-        PullRequestsCard.size(
-            for: controller.pullRequests,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card)
-        )
+        guard case .pullRequests(let model)? = controller.model(for: card) else { return .zero }
+        return PullRequestsCard.size(for: model)
     }
 
     func dashboardURL(for card: CardID) -> URL? {
-        URL(string: "https://github.com/pulls")
+        controller.dashboardURL(for: card)
     }
 }
 

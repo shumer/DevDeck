@@ -129,6 +129,7 @@ final class DeckController: ObservableObject {
         case .closeLogs(let card): dismissLogs?(card)
         case .launchDocker: DockerApp.launch()
         case .attentionChanged: updateStatusItem?()
+        case .openURL(let url, let browser): LinkOpener.open(url, using: browser)
         }
     }
 
@@ -196,5 +197,9 @@ final class DeckController: ObservableObject {
     func browser(for accountID: String) -> BrowserChoice { runtime.browser(for: accountID) }
 
     func attention(update: AttentionItem?) -> AttentionDigest { runtime.attention(update: update) }
+
+    func model(for card: CardID) -> DeckCardModel? { runtime.model(for: card) }
+    func perform(_ command: DeckCommand) { runtime.perform(command) }
+    func dashboardURL(for card: CardID) -> URL? { runtime.dashboardURL(for: card) }
     func dismiss(_ item: AttentionItem) { runtime.dismiss(item) }
 }

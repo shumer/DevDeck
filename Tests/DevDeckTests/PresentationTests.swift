@@ -2,6 +2,7 @@ import AppKit
 import ArcKit
 import DDEVKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import SwiftUI
 import Foundation
@@ -694,11 +695,14 @@ func runPresentationTests(_ run: TestRun) async {
     await run.test("a list card collapses to the same row as a project card") {
         // It used to be the project cards only, so the menu item was there on a GitHub card and
         // did nothing at all - which is worse than not offering it.
-        let empty = CardState<PullRequestsSnapshot>()
-        try expectEqual(
-            PullRequestsCard.size(for: empty, isExpanded: false, isCollapsed: true).height,
-            CollapsedCardMetrics.height
+        let empty = PullRequestsCardModel.build(
+            state: CardState<PullRequestsSnapshot>(),
+            accountLabels: [:],
+            isExpanded: false,
+            isCollapsed: true,
+            now: Date()
         )
+        try expectEqual(PullRequestsCard.size(for: empty).height, CollapsedCardMetrics.height)
         try expectEqual(
             InboxCard.size(for: CardState<InboxSnapshot>(), isExpanded: false, isCollapsed: true).height,
             CollapsedCardMetrics.height

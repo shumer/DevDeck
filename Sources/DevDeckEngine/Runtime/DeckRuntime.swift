@@ -24,6 +24,13 @@ public enum DeckEffect: Sendable, Equatable {
     case launchDocker
     /// What the menu-bar item counts changed without a field being assigned for it.
     case attentionChanged
+    /// Open a page in this browser, and in this profile of it when there is one.
+    case openURL(URL, BrowserChoice)
+}
+
+/// A card's model, whichever card it is. See `DeckRuntime.model(for:)`.
+public enum DeckCardModel: Sendable, Equatable {
+    case pullRequests(PullRequestsCardModel)
 }
 
 /// Owns the data every card renders and the loops that keep it fresh, on every platform.
@@ -1518,6 +1525,46 @@ public final class DeckRuntime {
         guard parts.count >= 2, parts[0] == "project" else { return }
         watch.dismiss(String(parts[1]))
         effect(.attentionChanged)
+    }
+
+    // MARK: Card models and what their clicks ask for
+
+    /// The card as it should be drawn now, or nil for a card that has no model yet.
+    public func model(for card: CardID) -> DeckCardModel? {
+        switch card {
+        case .githubPullRequests:
+            return .pullRequests(PullRequestsCardModel.build(
+                state: pullRequests,
+                accountLabels: accountLabels,
+                isExpanded: isExpanded(card),
+                isCollapsed: isCollapsed(card),
+                now: clock.now
+            ))
+        default:
+            return nil
+        }
+    }
+
+    /// Carries out a click from a card.
+    public func perform(_ command: DeckCommand) {
+        switch command {
+        case .openLink(let url, let account, let service):
+            effect(.openURL(url, service == .github ? browser(for: account) : gitlabBrowser(for: account)))
+        case .openDashboard(let card):
+            guard let url = dashboardURL(for: card) else { return }
+            // The dashboard belongs to whichever account is first; there is no row to ask.
+            effect(.openURL(url, browser(for: accountLabels.keys.sorted().first ?? "")))
+        case .toggleExpanded(let card):
+            toggleExpanded(card)
+        }
+    }
+
+    /// A card's own page on the web, for the cards that have one.
+    public func dashboardURL(for card: CardID) -> URL? {
+        switch card {
+        case .githubPullRequests: return URL(string: "https://github.com/pulls")
+        default: return nil
+        }
     }
 
     /// ⌥ on an inbox row.
