@@ -696,25 +696,25 @@ public static class WindowsCardRenderer
 
     private static FrameworkElement Collapsed(JsonElement model, Action<DeckCommand> command)
     {
-        var row = new DockPanel { Height = 30 };
+        var row = new Grid { Height = 30 };
         row.ToolTip = JsonModel.String(model, "help");
-        if (JsonModel.Array(model, "actions", out var actions))
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        if (JsonModel.String(model, "mark") is { } mark)
         {
-            foreach (var action in actions.EnumerateArray().Reverse())
-            {
-                if (JsonModel.Command(action) is not { } actionCommand)
-                {
-                    continue;
-                }
-                var button = CommandButton(DeckIcons.Create(JsonModel.String(action, "glyph"), 13), actionCommand, Enabled(action), command, "HeaderIconButton");
-                button.Width = 28;
-                button.Height = 28;
-                button.ToolTip = JsonModel.String(action, "help") ?? JsonModel.String(action, "title");
-                AutomationProperties.SetName(button, JsonModel.String(action, "title") ?? "");
-                DockPanel.SetDock(button, Dock.Right);
-                row.Children.Add(button);
-            }
+            row.Children.Add(Mark(mark));
         }
+        var status = StatusDot(JsonModel.String(model, "tone"), 9);
+        Grid.SetColumn(status, 1);
+        row.Children.Add(status);
+        var title = Text(JsonModel.String(model, "title"), 14, WindowsTheme.Brush("TextPrimary"));
+        title.FontWeight = FontWeights.SemiBold;
+        title.Margin = new Thickness(6, 0, 4, 0);
+        Grid.SetColumn(title, 2);
+        row.Children.Add(title);
         if (JsonModel.String(model, "note") is { } note)
         {
             var tone = JsonModel.String(model, "tone");
@@ -724,22 +724,34 @@ public static class WindowsCardRenderer
                 tone == "alert" ? WindowsTheme.Tone(tone) : WindowsTheme.Brush("TextTertiary"),
                 WindowsTheme.Mono,
                 0,
-                DeckTextTrimming.Middle);
-            noteText.MaxWidth = 100;
+                DeckTextTrimming.End);
+            noteText.HorizontalAlignment = HorizontalAlignment.Right;
+            noteText.VerticalAlignment = VerticalAlignment.Center;
             noteText.Margin = new Thickness(7, 0, 7, 0);
-            DockPanel.SetDock(noteText, Dock.Right);
+            Grid.SetColumn(noteText, 3);
             row.Children.Add(noteText);
         }
-        if (JsonModel.String(model, "mark") is { } mark)
+
+        var actionColumn = 4;
+        if (JsonModel.Array(model, "actions", out var actions))
         {
-            row.Children.Add(Mark(mark));
+            foreach (var action in actions.EnumerateArray())
+            {
+                if (JsonModel.Command(action) is not { } actionCommand)
+                {
+                    continue;
+                }
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                var button = CommandButton(DeckIcons.Create(JsonModel.String(action, "glyph"), 13), actionCommand, Enabled(action), command, "HeaderIconButton");
+                button.Width = 28;
+                button.Height = 28;
+                button.ToolTip = JsonModel.String(action, "help") ?? JsonModel.String(action, "title");
+                AutomationProperties.SetName(button, JsonModel.String(action, "title") ?? "");
+                Grid.SetColumn(button, actionColumn);
+                row.Children.Add(button);
+                actionColumn++;
+            }
         }
-        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 9));
-        var title = Text(JsonModel.String(model, "title"), 14, WindowsTheme.Brush("TextPrimary"));
-        title.FontWeight = FontWeights.SemiBold;
-        title.MinWidth = 50;
-        title.Margin = new Thickness(6, 0, 4, 0);
-        row.Children.Add(title);
         return WindowsTheme.CollapsedCardFrame(row);
     }
 

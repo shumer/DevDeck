@@ -488,12 +488,29 @@ public static class Program
         True(Descendants(collapsed).OfType<TrackedTextBlock>().Any(text => text.Text == "stopped"));
         True(Descendants(collapsed).OfType<Button>().All(button => button.Width == 28));
 
+        var pullRequestModel = GoldenModels("github.pullRequests").Last().EnumerateObject().Single().Value;
+        True(JsonModel.Object(pullRequestModel, "collapsed", out var pullRequestCollapsedModel));
+        var pullRequestCollapsed = (Border)Arrange(WindowsCardRenderer.Stopped(pullRequestCollapsedModel, _ => { }));
+        var pullRequestNote = Descendants(pullRequestCollapsed).OfType<TrackedTextBlock>().Single();
+        Equal(DeckTextTrimming.End, pullRequestNote.Trimming);
+        Equal(HorizontalAlignment.Right, pullRequestNote.HorizontalAlignment);
+        var pullRequestRow = Descendants(pullRequestCollapsed).OfType<Grid>().Single();
+        Equal(GridUnitType.Star, pullRequestRow.ColumnDefinitions[3].Width.GridUnitType);
+        Equal(GridLength.Auto, pullRequestRow.ColumnDefinitions[2].Width);
+        var collapsedBitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            352,
+            44,
+            96,
+            96,
+            PixelFormats.Pbgra32);
+        collapsedBitmap.Render(pullRequestCollapsed);
+        Equal(pullRequestNote.Text, pullRequestNote.RenderedText);
+
         var ddevModel = GoldenModels("ddev.project.shop").Last().EnumerateObject().Single().Value;
         True(JsonModel.Object(ddevModel, "collapsed", out var ddevCollapsedModel));
         var ddevCollapsed = (Border)Arrange(WindowsCardRenderer.Stopped(ddevCollapsedModel, _ => { }));
         var title = Descendants(ddevCollapsed).OfType<TextBlock>().Single(text => text.Text == "shop");
-        True(title.ActualWidth >= 50);
-        True(Descendants(ddevCollapsed).OfType<TrackedTextBlock>().All(text => text.MaxWidth <= 100));
+        True(title.ActualWidth > 0);
     }
 
     private static void ExpandedListsReportLargerHeight()
