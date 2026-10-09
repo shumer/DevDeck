@@ -485,7 +485,10 @@ public static class Program
         var collapsed = (Border)Render(GoldenModels("project.feed").Last(model =>
             JsonModel.Bool(model.EnumerateObject().Single().Value, "isCollapsed")));
         Equal(44.0, collapsed.ActualHeight);
-        True(Descendants(collapsed).OfType<TrackedTextBlock>().Any(text => text.Text == "stopped"));
+        // The row carries Start and the log, so the model sends it without a note: the title is
+        // the only text.
+        True(Descendants(collapsed).OfType<TrackedTextBlock>().Any(text => text.Text == "Feed"));
+        True(Descendants(collapsed).OfType<TrackedTextBlock>().All(text => text.Text != "stopped"));
         True(Descendants(collapsed).OfType<Button>().All(button => button.Width == 28));
 
         var pullRequestModel = GoldenModels("github.pullRequests").Last().EnumerateObject().Single().Value;
