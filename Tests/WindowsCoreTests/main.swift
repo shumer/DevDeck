@@ -98,4 +98,71 @@ await run.test("an unsuccessful preference write keeps the previous state") {
     try expect(!backend.hasValue(forKey: "label"))
 }
 
+run.section("Windows core - a WSL project's stop")
+
+/// Answers by the first matching fragment of a command, or throws for it, as a WSL that is slow
+/// to answer does.
+actor ScriptedRunner: CommandRunning {
+    enum Answer: Sendable {
+        case result(CommandResult)
+        case failure(CommandError)
+    }
+
+    private let answers: [(match: String, answer: Answer)]
+
+    init(_ answers: [(String, Answer)]) {
+        self.answers = answers.map { (match: $0.0, answer: $0.1) }
+    }
+
+    func run(
+        _ command: String,
+        in directory: URL,
+        timeout: TimeInterval,
+        isInteractive: Bool,
+        onOutput: (@Sendable (String) -> Void)?
+    ) async throws -> CommandResult {
+        guard let found = answers.first(where: { command.contains($0.match) }) else {
+            return CommandResult(exitCode: 127, standardOutput: "", standardError: "command not found")
+        }
+        switch found.answer {
+        case .result(let result): return result
+        case .failure(let error): throw error
+        }
+    }
+}
+
+func wslProject() -> LocalProject {
+    LocalProject(
+        id: "m1-wsl",
+        title: "Demo",
+        folder: FileManager.default.temporaryDirectory.path,
+        startCommand: "npm run dev",
+        holdsProcess: true
+    )
+}
+
+await run.test("a WSL that does not answer is not a project with nothing to stop") {
+    let runner = ScriptedRunner([("boot_id", .failure(.timedOut("WSL command")))])
+    let result = await LocalProjectService(project: wslProject(), runner: runner).perform(.stop)
+    let failed = try expectNotNil(result, "a stop that could not ask must say so")
+    try expect(!failed.succeeded)
+    try expect(failed.standardError.contains("could not ask WSL"), "got: \(failed.standardError)")
+}
+
+await run.test("no recorded process is nothing to stop") {
+    let runner = ScriptedRunner([("boot_id", .result(CommandResult(exitCode: 1, standardOutput: "", standardError: "")))])
+    let result = await LocalProjectService(project: wslProject(), runner: runner).perform(.stop)
+    try expectNil(result)
+}
+
+await run.test("a stop that does not finish says so instead of looking done") {
+    let runner = ScriptedRunner([
+        ("boot_id", .result(CommandResult(exitCode: 0, standardOutput: "4242", standardError: ""))),
+        ("freeze_tree", .failure(.timedOut("WSL command"))),
+    ])
+    let result = await LocalProjectService(project: wslProject(), runner: runner).perform(.stop)
+    let failed = try expectNotNil(result, "a stop that timed out must say so")
+    try expect(failed.standardError.contains("stop did not finish"), "got: \(failed.standardError)")
+}
+
 run.finish()

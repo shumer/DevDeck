@@ -41,6 +41,12 @@ a `DEVDECK_PROJECT` variable in their environment), before any of it is signalle
 cancelled start publishes a cancellation marker and cleans up from a context of its own, so a
 cancelled engine task cannot leave a half-started project behind.
 
+Every WSL command passes through login shells, and a profile that loads nvm or conda takes seconds.
+So the time limits are sized for that, and "WSL did not answer" is never read as "nothing is
+running": Stop and Start report it on the card instead. With a three-second limit, a busy WSL once
+made Stop return having done nothing, and the same limit on the start check would have stopped a
+project that was only slow to come up.
+
 **A Windows folder** (`NativeWindowsProjectLauncher`): a small detached `DevDeckProcessHost` owns a
 named Job Object without `KILL_ON_JOB_CLOSE`, inherits a handle to it so the name outlives the
 engine, and owns a hidden console. Stop attaches a short-lived controller to that console to

@@ -18,24 +18,44 @@ struct WSLProjectLauncher: ProjectProcessLauncher {
     /// Tags every process of the project, so a child that left the process group is still found.
     static let ownerVariable = "DEVDECK_PROJECT"
 
+    /// How long asking WSL about the process may take. Every command goes through login shells,
+    /// and a profile that loads nvm or conda costs seconds on its own: a tighter limit read a busy
+    /// WSL as "nothing is running", and Stop then did nothing.
+    static let livenessTimeout: TimeInterval = 10
+
+    /// How long a started project has to write down its process. The client reaches that line only
+    /// after its own login shell, so this is the same slow profile again.
+    static let recordingSeconds = 15
+
     private var logPath: String { "\(Self.runtimeDirectory)/\(LocalProjectService.shellQuoted(project.id + ".log"))" }
     private var pidPath: String { "\(Self.runtimeDirectory)/\(LocalProjectService.shellQuoted(project.id + ".pid"))" }
     private var cancellationPath: String {
         "\(Self.runtimeDirectory)/\(LocalProjectService.shellQuoted(project.id + ".cancel"))"
     }
 
+    func livePID(in folder: URL) async -> Int32? {
+        do {
+            return try await recordedPID(in: folder)
+        } catch {
+            Log.app.debug("project \(project.id): could not ask WSL for its process: \(error)")
+            return nil
+        }
+    }
+
     /// The recorded process, checked in one WSL invocation against the boot it was recorded in
     /// and the start time it had, so a reused process id is never taken for the project.
-    func livePID(in folder: URL) async -> Int32? {
+    ///
+    /// Nil means there is no such process. Not being able to ask throws instead, because Stop
+    /// must not read "WSL did not answer" as "nothing to stop".
+    private func recordedPID(in folder: URL) async throws -> Int32? {
         let check = "read -r pid boot started < \(pidPath) || exit 1; "
             + "case $pid in ''|*[!0-9]*) exit 1 ;; esac; test $pid -gt 1 && "
             + "test \"$boot\" = \"$(cat /proc/sys/kernel/random/boot_id)\" && "
             + "test \"$started\" = \"$(awk '{print $22}' /proc/$pid/stat 2>/dev/null)\" && "
             + "test \"$(awk '{print $3}' /proc/$pid/stat 2>/dev/null)\" != Z && "
             + "kill -0 $pid 2>/dev/null && printf '%s' $pid"
-        guard let result = try? await runner.run(check, in: folder, timeout: 3), result.succeeded else {
-            return nil
-        }
+        let result = try await runner.run(check, in: folder, timeout: Self.livenessTimeout)
+        guard result.succeeded else { return nil }
         guard let pid = Int32(result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)),
               pid > 0 else { return nil }
         return pid
@@ -44,12 +64,21 @@ struct WSLProjectLauncher: ProjectProcessLauncher {
     func start(in folder: URL) async -> CommandResult? {
         guard project.holdsProcess else {
             let command = "mkdir -p \(Self.runtimeDirectory) && { \(project.startCommand); } > \(logPath) 2>&1"
-            return try? await runner.run(command, in: folder, timeout: 900)
+            do {
+                return try await runner.run(command, in: folder, timeout: 900)
+            } catch {
+                return failure("start did not finish", error)
+            }
         }
         guard let launcher = runner as? any DetachedProjectLaunching else { return nil }
         let preparation = "mkdir -p \(Self.runtimeDirectory) && rm -f \(pidPath) \(cancellationPath)"
-        guard let prepared = try? await runner.run(preparation, in: folder, timeout: 30),
-              prepared.succeeded, !Task.isCancelled else { return nil }
+        do {
+            let prepared = try await runner.run(preparation, in: folder, timeout: 30)
+            guard prepared.succeeded else { return prepared }
+        } catch {
+            return failure("could not prepare the project in WSL", error)
+        }
+        guard !Task.isCancelled else { return nil }
 
         let launchScript = """
         {
@@ -63,23 +92,35 @@ struct WSLProjectLauncher: ProjectProcessLauncher {
             exec /bin/bash -lc \(LocalProjectService.shellQuoted(project.startCommand))
         } > \(logPath) 2>&1 < /dev/null
         """
-        guard let client = try? launcher.launchProject(launchScript, in: folder) else { return nil }
+        let client: DetachedProjectClient
+        do {
+            client = try launcher.launchProject(launchScript, in: folder)
+        } catch {
+            return failure("could not start a WSL client for the project", error)
+        }
         let readiness = """
-        for attempt in $(seq 1 30); do
+        for attempt in $(seq 1 \(Self.recordingSeconds * 10)); do
             test -s \(pidPath) && exit 0
             sleep 0.1
         done
         exit 1
         """
+        // Long enough for the slow profile twice over, the client's and this check's own: giving
+        // up early is not harmless here, because a start that gives up takes the project down.
+        let readinessTimeout = TimeInterval(Self.recordingSeconds) + Self.livenessTimeout
         do {
-            let result = try await runner.run(readiness, in: folder, timeout: 5)
+            let result = try await runner.run(readiness, in: folder, timeout: readinessTimeout)
             if !result.succeeded {
                 await cleanFailedStart(client, readiness: readiness, in: folder)
+                return CommandResult(
+                    exitCode: result.exitCode, standardOutput: result.standardOutput,
+                    standardError: "the project did not record its process within \(Self.recordingSeconds) s"
+                )
             }
             return result
         } catch {
             await cleanFailedStart(client, readiness: readiness, in: folder)
-            return nil
+            return failure("could not confirm the project started", error)
         }
     }
 
@@ -89,14 +130,29 @@ struct WSLProjectLauncher: ProjectProcessLauncher {
         if !trimmed.isEmpty {
             command = trimmed
         } else {
-            guard let pid = await livePID(in: folder) else { return nil }
+            let pid: Int32?
+            do {
+                pid = try await recordedPID(in: folder)
+            } catch {
+                return failure("could not ask WSL for the project's process", error)
+            }
+            guard let pid else { return nil }
             command = Self.killTreeCommand(pid: pid, projectID: project.id)
         }
-        let result = try? await runner.run(command, in: folder, timeout: 30)
-        if result?.succeeded == true {
-            _ = try? await runner.run("rm -f \(pidPath)", in: folder, timeout: 3)
+        let result: CommandResult
+        do {
+            result = try await runner.run(command, in: folder, timeout: 30)
+        } catch {
+            return failure("stop did not finish", error)
+        }
+        if result.succeeded {
+            _ = try? await runner.run("rm -f \(pidPath)", in: folder, timeout: Self.livenessTimeout)
         }
         return result
+    }
+
+    private func failure(_ what: String, _ error: any Error) -> CommandResult? {
+        projectFailure(project.id, what, error)
     }
 
     private func cleanFailedStart(_ client: DetachedProjectClient, readiness: String, in folder: URL) async {
@@ -105,7 +161,8 @@ struct WSLProjectLauncher: ProjectProcessLauncher {
         let launcher = self
         let marker = cancellationPath
         await Task.detached {
-            _ = try? await launcher.runner.run("touch \(marker); \(readiness)", in: folder, timeout: 5)
+            let timeout = TimeInterval(Self.recordingSeconds) + Self.livenessTimeout
+            _ = try? await launcher.runner.run("touch \(marker); \(readiness)", in: folder, timeout: timeout)
             _ = await launcher.stop(in: folder)
             client.terminate()
         }.value
@@ -171,11 +228,28 @@ struct NativeWindowsProjectLauncher: ProjectProcessLauncher {
     }
 
     func start(in folder: URL) async -> CommandResult? {
-        try? runner.startProject(project.id, command: project.startCommand, in: folder)
+        do {
+            return try runner.startProject(project.id, command: project.startCommand, in: folder)
+        } catch {
+            return projectFailure(project.id, "could not start the project", error)
+        }
     }
 
     func stop(in folder: URL) async -> CommandResult? {
-        try? await runner.stopProject(project.id)
+        do {
+            return try await runner.stopProject(project.id)
+        } catch {
+            return projectFailure(project.id, "stop did not finish", error)
+        }
     }
+}
+
+/// An action that could not be carried out, said on the card rather than swallowed. A stop that
+/// fails silently leaves a project running behind a card that looks like nothing happened.
+private func projectFailure(_ projectID: String, _ what: String, _ error: any Error) -> CommandResult? {
+    // A cancelled action is the caller changing its mind, not something to report.
+    if error is CancellationError { return nil }
+    Log.app.debug("project \(projectID): \(what): \(error)")
+    return CommandResult(exitCode: -1, standardOutput: "", standardError: "\(what): \(error)")
 }
 #endif
