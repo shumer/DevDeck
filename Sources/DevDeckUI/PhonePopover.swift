@@ -10,9 +10,13 @@ import SwiftUI
 /// for the machine's address on the wifi is the whole trick.
 public struct PhoneSheet: View {
     private let url: URL
+    private let title: String
+    private let note: String
     private let onCopy: (String) -> Void
 
-    public init(url: URL, onCopy: @escaping (String) -> Void = { _ in }) {
+    public init(url: URL, title: String, note: String, onCopy: @escaping (String) -> Void = { _ in }) {
+        self.title = title
+        self.note = note
         self.url = url
         self.onCopy = onCopy
     }
@@ -21,7 +25,7 @@ public struct PhoneSheet: View {
 
     public var body: some View {
         VStack(spacing: 10) {
-            Text(L("card.phone.title"))
+            Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .kerning(0.4)
                 .textCase(.uppercase)
@@ -45,7 +49,7 @@ public struct PhoneSheet: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            Text(L("card.phone.note"))
+            Text(note)
                 .font(.system(size: 10))
                 .foregroundStyle(DeckTheme.value.opacity(0.45))
                 .multilineTextAlignment(.center)

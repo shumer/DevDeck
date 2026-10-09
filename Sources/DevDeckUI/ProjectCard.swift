@@ -67,7 +67,12 @@ public struct ProjectCard: View {
                 isOn: isShowingPhone,
                 systemImage: "qrcode",
                 help: model.header.phoneHelp,
-                popover: AnyView(PhoneSheet(url: phoneURL, onCopy: copyToPasteboard)),
+                popover: AnyView(PhoneSheet(
+                    url: phoneURL,
+                    title: model.header.phoneTitle,
+                    note: model.header.phoneNote,
+                    onCopy: copyToPasteboard
+                )),
                 dismiss: { isShowingPhone = false }
             ) { isShowingPhone.toggle() })
         }

@@ -70,6 +70,9 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         /// listening on is a worse answer than no button.
         public let phoneURL: URL?
         public let phoneHelp: String
+        /// The words around the QR code.
+        public let phoneTitle: String
+        public let phoneNote: String
     }
 
     public let title: String
@@ -418,7 +421,9 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             logHelp: isShowingLogs ? L("card.log.window.close") : L("card.log.window.open"),
             log: .toggleLogs(card),
             phoneURL: phoneURL,
-            phoneHelp: L("card.phone.help")
+            phoneHelp: L("card.phone.help"),
+            phoneTitle: L("card.phone.title"),
+            phoneNote: L("card.phone.note")
         )
     }
 

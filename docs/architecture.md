@@ -164,11 +164,11 @@ the silence, never its cause.
 
 ## Local project cards
 
-Arc, DDEV and plain project cards are the same shape and are built from the same pieces -
-`CardHeroRow`, `CardMetaBlock`, `ProjectChipRow`, `CardActionRow` in `DevDeckUI`, framed by
-`CardChrome`. Anything that looks like a card of a local project belongs there rather than in
-one card's file: two copies of the same layout drift, and this project has already watched that
-happen once.
+Arc, DDEV and plain project cards are one model, `DeckProjectCardModel`, with a builder per
+kind, drawn by one `ProjectCard` from `CardHeroRow`, `CardMetaBlock`, `ProjectChipRow` and
+`CardActionRow`, framed by `CardChrome`. What a project card says is changed once, in the
+builder for its kind or in what they share, rather than in three views: two copies of the same
+layout drift, and this project has already watched that happen once.
 
 The hierarchy - one hero, everything else quiet - is [adr/0009-card-hierarchy.md](adr/0009-card-hierarchy.md).
 Two consequences show up in the code. `ProjectCardMetrics.height` is the only place a card's
@@ -218,11 +218,29 @@ back in between is what makes a button look broken. See
 
 ## Cards
 
-A card is three things:
+A card is four things:
 
 1. a `CardDescriptor` in `CardCatalog` - identifier, title, whether it is implemented;
-2. a branch in `CardHostView` - the SwiftUI view and the panel size;
-3. whatever data it needs, added to `DeckRuntime`.
+2. whatever data it needs, added to `DeckRuntime`;
+3. a model and its builder in `DevDeckEngine/Cards`, which turn that data into everything the
+   card shows and every click it offers;
+4. a SwiftUI view in `DevDeckUI` that draws the model, and the module that hosts it.
+
+**The model decides; the view draws.** A model holds every word already in the reader's
+language, a `DeckTone` for everything that has a colour, a `DeckMark` or `DeckGlyph` for every
+picture, which rows are visible in which order, and a `DeckCommand` for every click. The Mac
+turns tones, marks and glyphs into its own colours, vectors and SF Symbols in one file,
+`DeckModelStyle.swift`, and a view has no `L(`, no `Date()` and no `if` about the data. A click
+goes to `DeckRuntime.perform(_:)`, which changes the deck or hands the shell an effect: which
+browser a link opens in, which folder a terminal opens at and which project a Stop reaches are
+the runtime's to know. The Windows shell will draw the same models. See
+[adr/0027-card-models-in-the-engine.md](adr/0027-card-models-in-the-engine.md).
+
+Five builders cover eight kinds of card: `ReviewListCardModel` is both pull requests and merge
+requests, which were one card with the nouns changed; `InboxCardModel`, `ActionsCardModel` and
+`WorkInFlightCardModel` are one each; `DeckProjectCardModel` is the Arc, DDEV and plain project
+cards. The card's height is still arithmetic in `DevDeckUI` until placement moves (M-5), but it
+reads only the model.
 
 `CardLayout` holds one thing: which cards are on. **The order belongs to the catalog** - the
 built-in cards, then Arc projects, then DDEV, then the plain ones, each group alphabetical, via
@@ -245,8 +263,9 @@ then do the work in the background, with `NotificationsService.markRead(_:concur
 marking six threads at a time. `inboxProgress` is published for the card's footer and refuses a
 second start while one runs, `pendingRead` filters the answer of any poll that lands in the
 middle so it cannot put back what the job has not reached, and the job ends with a fetch of its
-own. What the link on the card says and does is decided by `InboxCard.clearing(for:optionDown:)`,
-a pure function under tests; see [github-api.md](github-api.md) for the calls behind it.
+own. What the link on the card says and does is decided by `InboxCardModel.clearing(for:optionDown:)`,
+a pure function under tests, and the model carries both versions of the link so the shell only
+reads the ⌥ key; see [github-api.md](github-api.md) for the calls behind it.
 
 ## Accounts
 
@@ -710,9 +729,12 @@ downloaded build against. See [adr/0017-signature-decides.md](adr/0017-signature
 3. Add the state to `DeckRuntime`, as a field that reports its assignments, and a
    `RefreshSource` for it; the cycle only asks it while the card is active. Mirror the field in
    `DeckController` and test the behaviour in `DeckRuntimeTests`.
-4. Write the SwiftUI card in `DevDeckUI` against a `CardState<…>`.
-5. Write a `CardModule` under `DevDeckApp/Modules` that owns the identifier and returns the
-   view, the size and the dashboard, add it to the list in `AppDelegate`, and flip
+4. Write the card's model and builder in `DevDeckEngine/Cards`, add it to `DeckCardModel` and
+   `DeckRuntime.model(for:)`, give every click a `DeckCommand`, and test the builder in
+   `CardModelTests`: every branch that decides what the card says.
+5. Write the SwiftUI view in `DevDeckUI` that draws the model, and a `CardModule` under
+   `DevDeckApp/Modules` that owns the identifier and returns the view and the size, add it to
+   the list in `AppDelegate`, and flip
    `isImplemented`. A kind with things to configure is a `SettingsSection` too, and goes in
    the settings window's list in the same place.
 6. If the card can need somebody, give it an attention builder next to its model, returning

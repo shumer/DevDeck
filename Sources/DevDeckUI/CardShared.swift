@@ -60,31 +60,6 @@ public extension View {
     }
 }
 
-/// What a card shows before its first successful load, or when it has nothing to show.
-public struct CardPlaceholder<Value: Sendable & Equatable>: View {
-    private let state: CardState<Value>
-
-    public init(state: CardState<Value>) {
-        self.state = state
-    }
-
-    public var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Spacer(minLength: 8)
-            Text(state.failure?.displayMessage ?? L("token.checking"))
-                .font(.system(size: 13))
-                .foregroundStyle(state.failure == nil ? DeckTheme.label : DeckTheme.red)
-            if case .missingToken(let service) = state.failure {
-                // A GitLab card has no token of its own until there is an instance to hold one.
-                Text(service == "GitLab" ? L("card.addGitLab") : L("card.addToken", service))
-                    .font(.system(size: 11))
-                    .foregroundStyle(DeckTheme.label)
-            }
-            Spacer(minLength: 8)
-        }
-    }
-}
-
 /// Which account a row came from. Only drawn when more than one is configured - with a single
 /// account the chip would be noise on every row.
 public struct AccountChip: View {
@@ -103,75 +78,5 @@ public struct AccountChip: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(DeckTheme.blue.opacity(0.16), in: RoundedRectangle(cornerRadius: 4))
-    }
-}
-
-/// The row that grows and shrinks the card.
-public struct CardExpander: View {
-    private let hidden: Int
-    private let isExpanded: Bool
-    private let onToggle: () -> Void
-
-    public init(hidden: Int, isExpanded: Bool, onToggle: @escaping () -> Void) {
-        self.hidden = hidden
-        self.isExpanded = isExpanded
-        self.onToggle = onToggle
-    }
-
-    public var body: some View {
-        Text(isExpanded ? L("card.showLess") : L("card.showMore", hidden))
-            .font(.system(size: 11))
-            .foregroundStyle(DeckTheme.label)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 5)
-            .padding(.bottom, 1)
-            .overlay(alignment: .top) { Rectangle().fill(DeckTheme.faint).frame(height: 1) }
-            .contentShape(Rectangle())
-            .clickable()
-            .onTapGesture(perform: onToggle)
-    }
-}
-
-public enum CardFreshness {
-    /// Shows the failure rather than a timestamp when the last refresh broke: a clock that
-    /// keeps ticking while the data is frozen is the worst of both.
-    public static func text<Value: Sendable & Equatable>(for state: CardState<Value>) -> String {
-        if let failure = state.failure { return failure.displayMessage }
-        guard let updatedAt = state.updatedAt else { return L("card.neverUpdated") }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter.string(from: updatedAt)
-    }
-
-    /// `as of 14:05`, for a card whose data has stopped moving. It says since when, which a bare
-    /// "stale" did not.
-    public static func asOf<Value: Sendable & Equatable>(_ state: CardState<Value>) -> String {
-        guard let updatedAt = state.updatedAt else { return L("card.notLoaded") }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "HH:mm"
-        return L("card.asOf", formatter.string(from: updatedAt))
-    }
-}
-
-public enum RelativeTime {
-    /// Compact age for a row: `14m`, `3h`, `2d`. Rows are narrow, and "14 minutes ago" costs
-    /// more width than it adds meaning.
-    public static func short(from date: Date, to now: Date) -> String {
-        let seconds = max(0, now.timeIntervalSince(date))
-        if seconds < 90 { return L("attention.age.now") }
-        let minutes = Int(seconds / 60)
-        if minutes < 60 { return L("attention.age.minutes", minutes) }
-        let hours = minutes / 60
-        if hours < 24 { return L("attention.age.hours", hours) }
-        return L("attention.age.days", hours / 24)
-    }
-
-    /// Compact duration for a footer: `6m 12s`, `48s`.
-    public static func duration(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded())
-        if total < 60 { return L("card.duration.seconds", total) }
-        return L("card.duration.minutes", total / 60, total % 60)
     }
 }

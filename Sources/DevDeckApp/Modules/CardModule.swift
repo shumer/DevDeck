@@ -46,31 +46,14 @@ extension CardModule {
     func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) { (.cards, nil) }
 }
 
-/// What every module is built with: the controller, and the few things a card does that are
-/// not the controller's business, such as which browser a link opens in.
+/// What every module is built with: the controller, and the one way a card's click reaches it.
 @MainActor
 struct ModuleContext {
     let controller: DeckController
 
-    /// Rows open in the browser of the account they belong to - one signed-in identity per
-    /// browser profile is the whole reason accounts exist.
-    func openGitHub(_ url: URL, account: String) {
-        LinkOpener.open(url, using: controller.browser(for: account))
-    }
-
-    /// Carries out a click from a card that draws a model.
+    /// Carries out a click from a card. Which browser, which folder and which project are the
+    /// runtime's to decide; see `DeckRuntime.perform(_:)`.
     func perform(_ command: DeckCommand) {
         controller.perform(command)
-    }
-
-    /// GitLab rows open in the browser of the instance they came from, for the same reason.
-    func openGitLab(_ url: URL, account: String) {
-        LinkOpener.open(url, using: controller.gitlabBrowser(for: account))
-    }
-
-    /// Nil on a machine whose runtime has no application to open, which is how the cards know
-    /// to show a disabled Start rather than a button that would do nothing.
-    var startDocker: (() -> Void)? {
-        controller.canStartDocker ? { controller.startDockerRuntime() } : nil
     }
 }
