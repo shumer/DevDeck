@@ -35,7 +35,14 @@ and standard output, so a shell can restart without taking a project down.
 
 `DevDeckEngineTests` replay three English and Russian input transcripts and compare every output
 byte with the committed golden files. This keeps event order, text, tone, visibility and state
-changes identical across platforms. The protocol front-end still has the proof of concept's own
+changes identical across platforms.
+
+The deck runtime has transcripts of its own, `Tests/EngineTests/RuntimeGolden.swift`: every
+card's model before and after a pass, folded and expanded; the menu-bar menu, a card's menu and
+the status, before and after; the banners over two passes and a summary; and placement through
+an unplugged monitor and back. One JSON object per line, sorted keys, clocks in UTC, every input
+fixed. The same bytes on the Mac and on Windows are what keeps two shells drawing one deck; a
+change that alters them is regenerated on purpose (see development.md) and the diff read. The protocol front-end still has the proof of concept's own
 polling; moving it onto `DeckRuntime`, which the Mac already runs on, is C-1.
 
 ## The deck runtime

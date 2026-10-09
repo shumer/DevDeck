@@ -78,7 +78,8 @@ let package = Package(
         .executableTarget(
             name: "DevDeckEngineTests",
             dependencies: [
-                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness",
+                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit",
+                "ProjectKit", "TestHarness",
             ],
             path: "Tests/EngineTests",
             resources: [.copy("Golden")]
@@ -150,7 +151,8 @@ let package = Package(
         .executableTarget(
             name: "DevDeckEngineTests",
             dependencies: [
-                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness",
+                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit",
+                "ProjectKit", "TestHarness",
             ],
             path: "Tests/EngineTests",
             resources: [.copy("Golden")]

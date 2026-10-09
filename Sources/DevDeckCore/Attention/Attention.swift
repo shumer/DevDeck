@@ -5,7 +5,7 @@ import Foundation
 /// Four tiers rather than one "waiting" number. The number used to add review requests to inbox
 /// mentions, count the same review twice, leave GitLab out and say nothing about a token that had
 /// stopped working, so a red dot beside "1 waiting on you" answered none of who, what or where.
-public enum AttentionTier: Int, Sendable, Equatable, Comparable, CaseIterable {
+public enum AttentionTier: Int, Sendable, Equatable, Comparable, CaseIterable, Codable {
     /// A person is waiting on you: a review, a mention, an assignment, a security alert.
     case waiting
     /// Something broke that is fixed from here: a token, a project on this Mac, Docker under it.
@@ -35,7 +35,7 @@ public enum AttentionTier: Int, Sendable, Equatable, Comparable, CaseIterable {
 }
 
 /// Which mark a row carries, so who is asking is answered before the words are read.
-public enum AttentionMark: Sendable, Equatable {
+public enum AttentionMark: Sendable, Equatable, Codable {
     case github
     case gitlab
     case arc

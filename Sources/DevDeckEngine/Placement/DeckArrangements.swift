@@ -6,7 +6,7 @@ import Foundation
 // saves the deck under a name and puts one back.
 
 /// A question with a typed answer, asked before a command goes ahead.
-public struct DeckPrompt: Sendable, Equatable {
+public struct DeckPrompt: Sendable, Equatable, Codable {
     public let title: String
     public let detail: String
     public let placeholder: String

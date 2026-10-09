@@ -1,10 +1,10 @@
 import Foundation
 
 /// Something worth interrupting somebody for.
-public struct DeckAlert: Sendable, Equatable, Identifiable {
+public struct DeckAlert: Sendable, Equatable, Identifiable, Codable {
     /// Who is asking. The banner carries the source's own mark rather than the app's, because
     /// "somebody wants a review" is a different thought from "a project stopped".
-    public enum Source: String, Sendable, Equatable {
+    public enum Source: String, Sendable, Equatable, Codable {
         case github
         case gitlab
         case arc
@@ -15,7 +15,7 @@ public struct DeckAlert: Sendable, Equatable, Identifiable {
         case devdeck
     }
 
-    public enum Kind: String, Sendable, Equatable {
+    public enum Kind: String, Sendable, Equatable, Codable {
         /// A person has asked you to review something.
         case reviewRequest
         /// Something of yours cannot move: checks failed, changes were requested, a branch
@@ -32,7 +32,7 @@ public struct DeckAlert: Sendable, Equatable, Identifiable {
     }
 
     /// Where a click on the banner goes.
-    public enum Target: Sendable, Equatable {
+    public enum Target: Sendable, Equatable, Codable {
         case url(URL, account: String)
         case card(CardID)
         case accountSettings(service: String, account: String)

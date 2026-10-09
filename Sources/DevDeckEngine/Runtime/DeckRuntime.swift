@@ -261,8 +261,10 @@ public final class DeckRuntime {
         self.projectsStore = projectsStore
         self.ddevProjectsStore = ddevProjectsStore
         self.localProjectsStore = localProjectsStore
-        self.ddevEnvironment = DDEVEnvironment(runner: commandRunner)
-        self.dockerEnvironment = DockerEnvironment(runner: commandRunner)
+        // On the runtime's clock, like everything else it times: a status checked at one time
+        // and drawn as checked at another is a card that disagrees with itself.
+        self.ddevEnvironment = DDEVEnvironment(runner: commandRunner, clock: clock)
+        self.dockerEnvironment = DockerEnvironment(runner: commandRunner, clock: clock)
         self.commandRunner = commandRunner
         self.canStartDocker = canStartDocker
         self.currentAddress = localAddress
@@ -1053,7 +1055,9 @@ public final class DeckRuntime {
         guard let summary = NotificationDigest.summary(for: alerts) else { return alerts }
         let sources = Set(alerts.map(\.source))
         return [DeckAlert(
-            id: "summary.\(alerts.map(\.id).joined().hashValue)",
+            // A hash that is the same on every run and every platform: Swift's own is seeded per
+            // process, and the identifier is what a notification is replaced by.
+            id: "summary.\(Self.stableHash(alerts.map(\.id).joined(separator: "\n")))",
             kind: alerts[0].kind,
             // One mark only when they share it; a mixed summary keeps the app's own icon.
             source: sources.count == 1 ? alerts[0].source : .devdeck,
@@ -1064,6 +1068,16 @@ public final class DeckRuntime {
             target: .menu,
             isQuiet: alerts.allSatisfy(\.isQuiet)
         )]
+    }
+
+    /// FNV-1a over the text's bytes, in hex.
+    static func stableHash(_ text: String) -> String {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in text.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x0000_0100_0000_01b3
+        }
+        return String(hash, radix: 16)
     }
 
     /// The alerts from one GitHub snapshot, kept to what each account asked to be told about.

@@ -4,13 +4,14 @@ import GitHubKit
 
 // The menus, decided. The menu-bar menu and a card's right-click menu are built here, with every
 // title already in the reader's language, every checkmark, every disabled row and every ⌥ twin;
-// a shell turns the entries into its own menus and sends the commands back. See
+// a shell turns the entries into its own menus and sends the commands back. Entries are Codable,
+// as the protocol will carry them. See
 // docs/adr/0028-the-menu-in-the-engine.md.
 
 /// One row of a menu.
-public struct DeckMenuItem: Sendable, Equatable {
+public struct DeckMenuItem: Sendable, Equatable, Codable {
     /// What the row's picture means; the shell draws it.
-    public enum Image: Sendable, Equatable {
+    public enum Image: Sendable, Equatable, Codable {
         case attention(AttentionMark)
         /// Nothing needs you.
         case calm
@@ -19,7 +20,7 @@ public struct DeckMenuItem: Sendable, Equatable {
     }
 
     /// The row a held ⌥ turns this one into.
-    public struct Alternate: Sendable, Equatable {
+    public struct Alternate: Sendable, Equatable, Codable {
         public let title: String
         public let command: DeckCommand
         public var isEnabled = true
@@ -58,14 +59,14 @@ public struct DeckMenuItem: Sendable, Equatable {
 }
 
 /// A question to answer before a command goes ahead.
-public struct DeckConfirmation: Sendable, Equatable {
+public struct DeckConfirmation: Sendable, Equatable, Codable {
     public let title: String
     public let detail: String
     public let confirm: String
     public let cancel: String
 }
 
-public indirect enum DeckMenuEntry: Sendable, Equatable {
+public indirect enum DeckMenuEntry: Sendable, Equatable, Codable {
     case header(String)
     case item(DeckMenuItem)
     case separator
@@ -73,7 +74,7 @@ public indirect enum DeckMenuEntry: Sendable, Equatable {
 }
 
 /// What the menu-bar item shows: which tier lights the icon, and the words behind it.
-public struct DeckStatusModel: Sendable, Equatable {
+public struct DeckStatusModel: Sendable, Equatable, Codable {
     public let tier: AttentionTier?
     public let tooltip: String
     /// For VoiceOver: a bare icon belongs to nothing in particular.
