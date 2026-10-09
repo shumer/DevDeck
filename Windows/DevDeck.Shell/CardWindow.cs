@@ -27,7 +27,7 @@ public sealed class CardWindow : Window
         this.moved = moved;
         this.command = command;
         AllowsTransparency = false;
-        Background = Brushes.White;
+        Background = Brushes.Transparent;
         ShowActivated = false;
         ShowInTaskbar = false;
         SizeToContent = SizeToContent.Manual;
@@ -88,6 +88,10 @@ public sealed class CardWindow : Window
     private void OnSourceInitialized(object? sender, EventArgs eventArguments)
     {
         handle = new WindowInteropHelper(this).Handle;
+        if (HwndSource.FromHwnd(handle)?.CompositionTarget is { } target)
+        {
+            target.BackgroundColor = Colors.Transparent;
+        }
         NativeMethods.ApplyCardWindowStyles(handle);
         HwndSource.FromHwnd(handle)?.AddHook(WindowProcedure);
     }

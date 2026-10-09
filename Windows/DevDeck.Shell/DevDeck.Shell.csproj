@@ -10,4 +10,8 @@
     <AssemblyName>DevDeck.Shell</AssemblyName>
     <RootNamespace>DevDeck.Shell</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\Resources\BrandMarks.json" LogicalName="DevDeck.BrandMarks.json" />
+  </ItemGroup>
 </Project>

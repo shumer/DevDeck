@@ -1,6 +1,9 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using DevDeck.Shell;
 
@@ -12,13 +15,27 @@ public static class Program
     private static int failed;
 
     [STAThread]
-    public static int Main()
+    public static int Main(string[] arguments)
     {
         _ = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        if (arguments.Length == 4 && arguments[0] == "--capture-reference")
+        {
+            ReferenceScreenshots.Generate(
+                Path.GetFullPath(arguments[1]),
+                Path.GetFullPath(arguments[2]),
+                double.Parse(arguments[3], System.Globalization.CultureInfo.InvariantCulture));
+            Application.Current.Shutdown();
+            return 0;
+        }
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
         Run("panel frames are applied as received", PanelFramesAreAppliedAsReceived);
         Run("windows do not activate or enter task switchers", WindowIsNonactivating);
+        Run("project header uses icon buttons and engine tooltips", ProjectHeaderUsesIconButtons);
+        Run("project header reflects the log state", ProjectHeaderReflectsLogState);
+        Run("all exported brand marks render", ExportedBrandMarksRender);
+        Run("card materials have acrylic and solid variants", CardMaterialsHaveBothVariants);
+        Run("button styles expose keyboard focus", ButtonStylesExposeKeyboardFocus);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -122,6 +139,10 @@ public static class Program
         True((styles & NativeMethods.ToolWindowStyle) != 0);
         True((styles & NativeMethods.NoActivateStyle) != 0);
         Equal(NativeMethods.RoundedWindowCorners, NativeMethods.GetWindowCornerPreference(window.Handle));
+        Equal(
+            NativeMethods.TransientWindowBackdrop,
+            NativeMethods.GetWindowAttribute(window.Handle, NativeMethods.SystemBackdropType));
+        Equal(1, NativeMethods.GetWindowAttribute(window.Handle, NativeMethods.ImmersiveDarkMode));
         True(!window.ShowActivated);
         True(!window.ShowInTaskbar);
         if (before != 0)
@@ -129,6 +150,131 @@ public static class Program
             Equal(before, NativeMethods.GetForegroundWindow());
         }
         window.Close();
+    }
+
+    private static void ProjectHeaderUsesIconButtons()
+    {
+        DeckCommand? invoked = null;
+        var withoutPhone = CardRenderer.Create(ProjectModel(false, null), value => invoked = value);
+        var log = Button(withoutPhone, "project.header.log");
+        Equal(24.0, log.Width);
+        Equal(24.0, log.Height);
+        Equal("open the log in a window", log.ToolTip);
+        True(log.Content is TextBlock text && text.Text == DeckIcons.Text("log"));
+        True(ButtonOrNull(withoutPhone, "project.header.phone") is null);
+        log.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        Equal("{\"toggleLogs\":{\"_0\":\"project.sample\"}}", invoked?.Json);
+
+        var withPhone = CardRenderer.Create(ProjectModel(false, "https://example.invalid"), _ => { });
+        var phone = Button(withPhone, "project.header.phone");
+        Equal(24.0, phone.Width);
+        Equal(24.0, phone.Height);
+        Equal("open this on your phone", phone.ToolTip);
+        True(phone.Content is TextBlock phoneText && phoneText.Text == DeckIcons.Text("phone"));
+    }
+
+    private static void ProjectHeaderReflectsLogState()
+    {
+        var off = Button(CardRenderer.Create(ProjectModel(false, null), _ => { }), "project.header.log");
+        var on = Button(CardRenderer.Create(ProjectModel(true, null), _ => { }), "project.header.log");
+        True(!Equals(off.Foreground, on.Foreground));
+        True(!Equals(off.Background, on.Background));
+        True(on.Content is TextBlock onIcon && Equals(onIcon.Foreground, WindowsTheme.Brush("ToneGood")));
+    }
+
+    private static void ExportedBrandMarksRender()
+    {
+        True(BrandMarks.Names.Count >= 10);
+        foreach (var name in BrandMarks.Names)
+        {
+            var mark = BrandMarks.Create(name, 16);
+            mark.Measure(new Size(16, 16));
+            True(mark.DesiredSize.Width > 0);
+            True(mark.DesiredSize.Height > 0);
+        }
+    }
+
+    private static void CardMaterialsHaveBothVariants()
+    {
+        var acrylic = (SolidColorBrush)WindowsTheme.CardBackground(true);
+        var solid = (SolidColorBrush)WindowsTheme.CardBackground(false);
+        Equal((byte)168, acrylic.Color.A);
+        Equal((byte)255, solid.Color.A);
+        Equal(Color.FromRgb(43, 43, 47), solid.Color);
+    }
+
+    private static void ButtonStylesExposeKeyboardFocus()
+    {
+        foreach (var style in new[] { "FluentButton", "HeaderIconButton", "RowButton", "ChipButton" })
+        {
+            var button = new Button
+            {
+                Content = "Sample",
+                Style = WindowsTheme.Style(style),
+            };
+            var window = new Window
+            {
+                Width = 200,
+                Height = 100,
+                Content = button,
+                ShowInTaskbar = false,
+            };
+            window.Show();
+            True(button.Focusable);
+            True(button.Focus());
+            window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            var focusBorder = (Border)button.Template.FindName("FocusBorder", button);
+            True(focusBorder.BorderBrush is SolidColorBrush brush && brush.Color.A > 0);
+            window.Close();
+        }
+    }
+
+    private static JsonElement ProjectModel(bool logIsOn, string? phoneURL)
+    {
+        return JsonSerializer.SerializeToElement(new
+        {
+            project = new
+            {
+                isCollapsed = false,
+                mark = "next",
+                title = "Project Sample",
+                timestamp = "12:00:00",
+                header = new
+                {
+                    log = new { toggleLogs = new { _0 = "project.sample" } },
+                    logHelp = "open the log in a window",
+                    logIsOn,
+                    phoneURL,
+                    phoneHelp = "open this on your phone",
+                },
+                hero = new { text = "running", tone = "good" },
+                meta = new { place = "Windows" },
+                tools = Array.Empty<object>(),
+                environments = Array.Empty<object>(),
+                actions = Array.Empty<object>(),
+            },
+        });
+    }
+
+    private static Button Button(DependencyObject root, string automationId)
+    {
+        return ButtonOrNull(root, automationId) ?? throw new Exception($"Button {automationId} was not found.");
+    }
+
+    private static Button? ButtonOrNull(DependencyObject root, string automationId)
+    {
+        if (root is Button button && AutomationProperties.GetAutomationId(button) == automationId)
+        {
+            return button;
+        }
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            if (ButtonOrNull(VisualTreeHelper.GetChild(root, index), automationId) is { } found)
+            {
+                return found;
+            }
+        }
+        return null;
     }
 
     private static CardWindow CreateWindow()
