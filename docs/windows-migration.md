@@ -54,7 +54,7 @@ only has to draw.
 - **M-4. Menu, attention and notifications in the engine.** `DeckMenu` builds an `NSMenu` from a
   menu model; `Notifier` shows what the engine decided. Done; see
   [adr/0028](adr/0028-the-menu-in-the-engine.md).
-- **M-5. Placement in the engine.** See [adr/0029](adr/0029-placement-in-the-engine.md). `PanelCoordinator` only applies frames; the engine decides
+- **M-5. Placement in the engine.** Done; see [adr/0029](adr/0029-placement-in-the-engine.md). `PanelCoordinator` only applies frames; the engine decides
   place, parking, Tidy and column packing. A replay of a recorded monitor unplug becomes a test.
 - **M-6. Settings in the engine.** The settings model, field checks, Detect and Test go through
   engine intents. The forms stay AppKit.
