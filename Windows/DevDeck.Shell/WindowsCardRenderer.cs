@@ -40,24 +40,32 @@ public static class WindowsCardRenderer
         }
         if (JsonModel.Array(content, "rows", out var rows))
         {
+            var rowIndex = 0;
             foreach (var row in rows.EnumerateArray())
             {
-                stack.Children.Add(ReviewRow(row, command));
+                stack.Children.Add(ReviewRow(row, rowIndex > 0, command));
+                rowIndex++;
             }
         }
         if (JsonModel.Object(content, "expander", out var expander) && JsonModel.Command(expander) is { } expanderCommand)
         {
-            var button = CommandButton(JsonModel.String(expander, "label"), expanderCommand, true, command, "RowButton");
+            var expanderContent = new StackPanel { Orientation = Orientation.Horizontal };
+            expanderContent.Children.Add(Text(ExpanderLabel(JsonModel.String(expander, "label")), 12, WindowsTheme.Brush("TextSecondary")));
+            var expanderIcon = DeckIcons.Create(JsonModel.Bool(expander, "isExpanded") ? "collapse" : "expand", 12);
+            expanderIcon.Margin = new Thickness(4, 0, 0, 0);
+            expanderContent.Children.Add(expanderIcon);
+            var button = CommandButton(expanderContent, expanderCommand, true, command, "ExpanderButton");
             button.Foreground = WindowsTheme.Brush("TextSecondary");
+            button.Margin = new Thickness(0, 2, 0, 0);
             stack.Children.Add(button);
         }
         if (JsonModel.Object(content, "footer", out var footer))
         {
             var footerRow = new DockPanel { Margin = new Thickness(2, 7, 2, 0) };
-            footerRow.Children.Add(Text(JsonModel.String(footer, "leading"), 12, WindowsTheme.Brush("TextSecondary")));
+            footerRow.Children.Add(Text(JsonModel.String(footer, "leading"), 12, WindowsTheme.Brush("TextTertiary")));
             if (JsonModel.String(footer, "trailing") is { } trailing)
             {
-                var trailingText = Text(trailing, 12, WindowsTheme.Brush("TextSecondary"));
+                var trailingText = Text(trailing, 12, WindowsTheme.Brush("TextTertiary"));
                 DockPanel.SetDock(trailingText, Dock.Right);
                 footerRow.Children.Add(trailingText);
             }
@@ -77,14 +85,14 @@ public static class WindowsCardRenderer
         stack.Children.Add(ProjectHeader(model, command));
         if (JsonModel.Object(model, "hero", out var hero))
         {
-            var heroRow = new DockPanel { Margin = new Thickness(1, 3, 1, 4) };
-            var heroText = Text(JsonModel.String(hero, "text"), 20, WindowsTheme.Tone(JsonModel.String(hero, "tone")));
+            var heroRow = new DockPanel { Margin = new Thickness(1, 2, 1, 4) };
+            var heroText = Text(JsonModel.String(hero, "text"), 22, WindowsTheme.Tone(JsonModel.String(hero, "tone")));
             heroText.FontWeight = FontWeights.SemiBold;
-            heroRow.Children.Add(StatusDot(JsonModel.String(hero, "tone")));
+            heroRow.Children.Add(StatusDot(JsonModel.String(hero, "tone"), 9));
             heroRow.Children.Add(heroText);
             if (JsonModel.String(hero, "aside") is { } aside)
             {
-                var asideText = Text(aside, 12, WindowsTheme.Brush("TextSecondary"), true);
+                var asideText = Text(aside, 11, WindowsTheme.Brush("TextTertiary"), true);
                 DockPanel.SetDock(asideText, Dock.Right);
                 heroRow.Children.Add(asideText);
             }
@@ -112,22 +120,21 @@ public static class WindowsCardRenderer
         var row = new DockPanel { Height = 20, Margin = new Thickness(1, 0, 1, 8) };
         if (timestamp is not null)
         {
-            var time = Text(timestamp, 11, WindowsTheme.Brush("TextSecondary"), true);
+            var time = Text(timestamp, 11, WindowsTheme.Brush("TextTertiary"), true);
             DockPanel.SetDock(time, Dock.Right);
             row.Children.Add(time);
         }
         row.Children.Add(Mark(mark));
-        var titleText = Text(title?.ToUpper(CultureInfo.CurrentUICulture), 11, WindowsTheme.Brush("TextSecondary"));
-        titleText.FontWeight = FontWeights.SemiBold;
-        titleText.Margin = new Thickness(7, 0, 6, 0);
+        var titleText = Eyebrow(title);
+        titleText.Margin = new Thickness(8, 0, 6, 0);
         row.Children.Add(titleText);
         return row;
     }
 
     private static FrameworkElement ProjectHeader(JsonElement model, Action<DeckCommand> command)
     {
-        var row = new DockPanel { Height = 24, Margin = new Thickness(1, 0, 1, 8) };
-        var time = Text(JsonModel.String(model, "timestamp"), 11, WindowsTheme.Brush("TextSecondary"), true);
+        var row = new DockPanel { Height = 20, Margin = new Thickness(1, 0, 1, 8) };
+        var time = Text(JsonModel.String(model, "timestamp"), 11, WindowsTheme.Brush("TextTertiary"), true);
         DockPanel.SetDock(time, Dock.Right);
         row.Children.Add(time);
         if (JsonModel.Object(model, "header", out var header))
@@ -156,9 +163,8 @@ public static class WindowsCardRenderer
             }
         }
         row.Children.Add(Mark(JsonModel.String(model, "mark")));
-        var title = Text(JsonModel.String(model, "title")?.ToUpper(CultureInfo.CurrentUICulture), 11, WindowsTheme.Brush("TextSecondary"));
-        title.FontWeight = FontWeights.SemiBold;
-        title.Margin = new Thickness(7, 0, 6, 0);
+        var title = Eyebrow(JsonModel.String(model, "title"));
+        title.Margin = new Thickness(8, 0, 6, 0);
         row.Children.Add(title);
         return row;
     }
@@ -170,9 +176,9 @@ public static class WindowsCardRenderer
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var count = Text(JsonModel.NumberText(content, "count"), 30, WindowsTheme.Brush("TextPrimary"));
-        count.FontWeight = FontWeight.FromOpenTypeWeight(300);
+        count.FontWeight = FontWeights.SemiBold;
         grid.Children.Add(count);
-        var unit = Text(JsonModel.String(content, "unit"), 13, WindowsTheme.Brush("TextSecondary"));
+        var unit = Text(JsonModel.String(content, "unit"), 14, WindowsTheme.Brush("TextSecondary"));
         unit.Margin = new Thickness(7, 11, 0, 0);
         Grid.SetColumn(unit, 1);
         grid.Children.Add(unit);
@@ -189,7 +195,7 @@ public static class WindowsCardRenderer
 
     private static FrameworkElement Shares(JsonElement shares)
     {
-        var grid = new Grid { Height = 4, Margin = new Thickness(1, 0, 1, 8) };
+        var grid = new Grid { Height = 3, Margin = new Thickness(1, 0, 1, 8) };
         foreach (var share in shares.EnumerateArray())
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition
@@ -208,7 +214,7 @@ public static class WindowsCardRenderer
         return grid;
     }
 
-    private static FrameworkElement ReviewRow(JsonElement model, Action<DeckCommand> command)
+    private static FrameworkElement ReviewRow(JsonElement model, bool hasSeparator, Action<DeckCommand> command)
     {
         var row = new Grid();
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -216,7 +222,7 @@ public static class WindowsCardRenderer
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(StatusDot(JsonModel.String(model, "tone")));
+        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7));
         var key = JsonModel.String(model, "key");
         if (key is not null)
         {
@@ -226,7 +232,7 @@ public static class WindowsCardRenderer
                 CornerRadius = new CornerRadius(3),
                 Margin = new Thickness(6, 5, 5, 5),
                 Padding = new Thickness(4, 0, 4, 0),
-                Child = Text(key, 11, WindowsTheme.Brush("LinkInfo"), true),
+                Child = Text(key, 11, WindowsTheme.Brush("TextSecondary"), true),
             };
             Grid.SetColumn(keyBorder, 1);
             row.Children.Add(keyBorder);
@@ -247,17 +253,17 @@ public static class WindowsCardRenderer
         title.Margin = new Thickness(4, 0, 6, 0);
         Grid.SetColumn(title, 3);
         row.Children.Add(title);
-        var trailing = Text(JsonModel.String(model, "trailing"), 11, WindowsTheme.Brush("TextSecondary"), true);
+        var trailing = Text(JsonModel.String(model, "trailing"), 11, WindowsTheme.Brush("TextTertiary"), true);
         trailing.Margin = new Thickness(6, 0, 0, 0);
         Grid.SetColumn(trailing, 4);
         row.Children.Add(trailing);
         if (JsonModel.Command(model) is not { } rowCommand)
         {
-            return row;
+            return ReviewRowFrame(row, hasSeparator);
         }
         var button = CommandButton(row, rowCommand, true, command, "RowButton");
         button.ToolTip = JsonModel.String(model, "help");
-        return button;
+        return ReviewRowFrame(button, hasSeparator);
     }
 
     private static FrameworkElement ProjectMeta(JsonElement meta, Action<DeckCommand> command)
@@ -278,12 +284,20 @@ public static class WindowsCardRenderer
             branchRow.Children.Add(branchText);
             stack.Children.Add(branchRow);
         }
-        var details = new Grid { Margin = new Thickness(1, 0, 1, 4) };
+        var details = new Grid { Margin = new Thickness(1, 3, 1, 4) };
         details.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         details.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var leading = Text(JsonModel.String(meta, "leading"), 11, WindowsTheme.Brush("TextSecondary"), true);
+        var leading = Text(JsonModel.String(meta, "leading"), 12, WindowsTheme.Brush("TextSecondary"));
         details.Children.Add(leading);
-        var trailing = Text(JsonModel.String(meta, "trailing"), 11, WindowsTheme.Brush("TextSecondary"), true);
+        var trailing = TrackedText(
+            JsonModel.String(meta, "trailing"),
+            11,
+            WindowsTheme.Brush("TextTertiary"),
+            WindowsTheme.Mono,
+            0,
+            DeckTextTrimming.Middle);
+        trailing.MaxWidth = 150;
+        trailing.Margin = new Thickness(8, 0, 0, 0);
         Grid.SetColumn(trailing, 1);
         details.Children.Add(trailing);
         stack.Children.Add(details);
@@ -297,15 +311,24 @@ public static class WindowsCardRenderer
         AddChips(row, model, "environments", command);
         if (JsonModel.Object(model, "meta", out var meta) && JsonModel.String(meta, "place") is { } place)
         {
-            row.Children.Add(new Border
+            var placeText = Text(place, 12, WindowsTheme.Brush("TextPrimary"));
+            var placeOutline = new System.Windows.Shapes.Rectangle
             {
-                BorderBrush = WindowsTheme.Brush("ControlStroke"),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
+                Stroke = WindowsTheme.Brush("ControlStroke"),
+                StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 2, 2 },
+                RadiusX = 4,
+                RadiusY = 4,
+            };
+            var placeChip = new Grid
+            {
+                Height = 24,
                 Margin = new Thickness(1, 1, 4, 1),
-                Padding = new Thickness(7, 3, 7, 3),
-                Child = Text(place, 12, WindowsTheme.Brush("TextSecondary")),
-            });
+            };
+            placeText.Margin = new Thickness(7, 0, 7, 0);
+            placeChip.Children.Add(placeOutline);
+            placeChip.Children.Add(placeText);
+            row.Children.Add(placeChip);
         }
         return row;
     }
@@ -416,7 +439,7 @@ public static class WindowsCardRenderer
             }
         }
         row.Children.Add(Mark(JsonModel.String(model, "mark")));
-        row.Children.Add(StatusDot(JsonModel.String(model, "tone")));
+        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 9));
         var title = Text(JsonModel.String(model, "title"), 14, WindowsTheme.Brush("TextPrimary"));
         title.FontWeight = FontWeights.SemiBold;
         title.Margin = new Thickness(6, 0, 4, 0);
@@ -431,13 +454,13 @@ public static class WindowsCardRenderer
         return mark;
     }
 
-    private static Border StatusDot(string? tone)
+    private static Border StatusDot(string? tone, double size)
     {
         return new Border
         {
-            Width = 8,
-            Height = 8,
-            CornerRadius = new CornerRadius(4),
+            Width = size,
+            Height = size,
+            CornerRadius = new CornerRadius(size / 2),
             Background = WindowsTheme.Tone(tone),
             Margin = new Thickness(2, 0, 7, 0),
             VerticalAlignment = VerticalAlignment.Center,
@@ -482,6 +505,62 @@ public static class WindowsCardRenderer
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
+    }
+
+    private static TrackedTextBlock Eyebrow(string? value)
+    {
+        return TrackedText(
+            value?.ToUpper(CultureInfo.CurrentUICulture),
+            11,
+            WindowsTheme.Brush("TextSecondary"),
+            WindowsTheme.Sans,
+            0.07,
+            DeckTextTrimming.Middle,
+            FontWeights.SemiBold);
+    }
+
+    private static TrackedTextBlock TrackedText(
+        string? value,
+        double size,
+        Brush brush,
+        FontFamily family,
+        double tracking,
+        DeckTextTrimming trimming,
+        FontWeight? weight = null)
+    {
+        return new TrackedTextBlock
+        {
+            Text = value ?? "",
+            Foreground = brush,
+            FontFamily = family,
+            FontSize = size,
+            FontWeight = weight ?? FontWeights.Normal,
+            TrackingEm = tracking,
+            Trimming = trimming,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+    }
+
+    private static FrameworkElement ReviewRowFrame(FrameworkElement content, bool hasSeparator)
+    {
+        var frame = new Grid { Height = 30 };
+        frame.Children.Add(content);
+        if (hasSeparator)
+        {
+            frame.Children.Add(new Border
+            {
+                Height = 1,
+                Background = WindowsTheme.Brush("SeparatorStroke"),
+                VerticalAlignment = VerticalAlignment.Top,
+                IsHitTestVisible = false,
+            });
+        }
+        return frame;
+    }
+
+    private static string ExpanderLabel(string? label)
+    {
+        return (label ?? "").TrimEnd().TrimEnd('^', '⌃', '⌄').TrimEnd();
     }
 
     private static StackPanel Stack()

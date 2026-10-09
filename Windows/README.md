@@ -47,7 +47,9 @@ dotnet run --project Windows/DevDeck.Shell -- --replay docs/poc/windows-ui/windo
 ```
 
 The left side of each comparison is the accepted HTML mock. The right side is the WPF renderer
-at the same scale:
+at the same scale. Both sides draw cards at 352 device-independent pixels with 16 pixel side
+padding, 14 pixel top and bottom padding, a 20 pixel header, 30 pixel list rows and the typography
+specified in `docs/windows-style.md`:
 
 ![Windows cards compared at 100 percent](../docs/poc/windows-ui/windows-style-comparison-100.png)
 
@@ -62,10 +64,16 @@ Live Acrylic and the solid fallback use the same neutral replay data:
 ![Windows cards with transparency effects disabled](../docs/poc/windows-ui/windows-style-solid.png)
 
 The shared button template gives every control a two-stroke keyboard focus indicator and distinct
-hover, pressed and disabled states. The screenshot below shows hover on the left, pressed on the
-right and the disabled Restart control in both halves.
+hover, pressed and disabled states. Each state is captured separately from the neutral golden
+project card.
 
-![Windows button states](../docs/poc/windows-ui/windows-style-button-states.png)
+![Windows button hover state](../docs/poc/windows-ui/windows-style-button-hover.png)
+
+![Windows button pressed state](../docs/poc/windows-ui/windows-style-button-pressed.png)
+
+![Windows button disabled state](../docs/poc/windows-ui/windows-style-button-disabled.png)
+
+![Windows button keyboard focus](../docs/poc/windows-ui/windows-style-button-focus.png)
 
 ## Backdrop behavior
 
