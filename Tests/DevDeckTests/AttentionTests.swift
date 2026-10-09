@@ -307,6 +307,37 @@ func runAttentionTests(_ run: TestRun) async {
         try expect(watch.problems(for: "news", now: now).isEmpty)
     }
 
+    await run.test("a stop that could not be tried is said as that, not as a stop that failed") {
+        var watch = ProjectWatch()
+        watch.observe("news", running: true, at: now.addingTimeInterval(-600))
+        watch.noteCannotStop("news", .startedElsewhere, at: now.addingTimeInterval(-30))
+        try expectEqual(watch.problems(for: "news", now: now), [.cannotStop(.startedElsewhere, at: now.addingTimeInterval(-30))])
+
+        let rows = ProjectAttention.items(projects: [arc], watch: watch, docker: DockerStatus(state: .running), dockerDownSince: nil, now: now)
+        try expectEqual(rows.map(\.title), ["DevDeck can't stop ACME News"])
+        try expectEqual(rows.first?.subtitle, "Started outside DevDeck · stop it where you started it")
+        try expectEqual(rows.first?.tier, .goodToKnow, "nothing is broken, so nothing lights the icon")
+        try expectEqual(rows.first?.action, .showCard(arc.cardID))
+        try expect(rows.first?.isDismissible == true)
+        try expect(ProjectAttention.alerts(projects: [arc], watch: watch, docker: DockerStatus(state: .running), dockerDownSince: nil, source: { _ in .project }, now: now).isEmpty,
+                   "no banner: the person is looking at the card")
+
+        watch.observe("news", running: true, at: now.addingTimeInterval(-20))
+        try expectEqual(watch.problems(for: "news", now: now).count, 1, "still running, still true")
+        watch.observe("news", running: false, at: now)
+        try expect(watch.problems(for: "news", now: now).isEmpty, "stopped where it was started: neither news nor a stop on its own")
+    }
+
+    await run.test("a project with no stop command says what to add") {
+        var watch = ProjectWatch()
+        watch.observe("news", running: true, at: now.addingTimeInterval(-600))
+        watch.noteCannotStop("news", .noStopCommand, at: now)
+        let rows = ProjectAttention.items(projects: [arc], watch: watch, docker: DockerStatus(state: .running), dockerDownSince: nil, now: now)
+        try expectEqual(rows.first?.subtitle, "No stop command set · add one in Settings")
+        watch.noteAction("news", isStop: false, at: now.addingTimeInterval(10))
+        try expect(watch.problems(for: "news", now: now.addingTimeInterval(10)).isEmpty, "the next press starts afresh")
+    }
+
     await run.test("a failed start is kept until the next press or until it runs") {
         var watch = ProjectWatch()
         watch.noteAction("news", isStop: false, at: now.addingTimeInterval(-60))

@@ -30,6 +30,9 @@ public struct LocalProjectStatus: Sendable, Equatable {
     public var repositoryURL: URL?
     /// Whether a log from a previous start is on disk to open.
     public var hasLog: Bool
+    /// Why Stop cannot reach it while it runs, nil when it can. Not something the probe knows:
+    /// the deck decides it from the probe and the project, in `DeckRuntime.stopBlock`.
+    public var stopBlock: ProjectStopBlock?
 
     public init(
         state: LocalProjectState,
@@ -38,7 +41,8 @@ public struct LocalProjectStatus: Sendable, Equatable {
         pid: Int32? = nil,
         branch: String? = nil,
         repositoryURL: URL? = nil,
-        hasLog: Bool = false
+        hasLog: Bool = false,
+        stopBlock: ProjectStopBlock? = nil
     ) {
         self.state = state
         self.detail = detail
@@ -47,6 +51,7 @@ public struct LocalProjectStatus: Sendable, Equatable {
         self.branch = branch
         self.repositoryURL = repositoryURL
         self.hasLog = hasLog
+        self.stopBlock = stopBlock
     }
 
     public static let unavailable = LocalProjectStatus(

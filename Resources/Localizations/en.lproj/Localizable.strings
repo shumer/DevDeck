@@ -100,6 +100,9 @@
 "attention.local.noRemote.title" = "Branch not on any remote: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · oldest %2$@ ago";
 "attention.local.unpushed.title" = "%1$@ only on this Mac: %2$@";
+"attention.project.cannotStop.noStopCommand" = "No stop command set · add one in Settings";
+"attention.project.cannotStop.startedElsewhere" = "Started outside DevDeck · stop it where you started it";
+"attention.project.cannotStop.title" = "DevDeck can't stop %@";
 "attention.project.silent.title" = "%@ is up but not answering";
 "attention.project.startFailed.title" = "%@ didn't start";
 "attention.project.stillRunning.subtitle" = "Stop didn't take effect, it still answers";
@@ -246,6 +249,10 @@
 "card.pill.open" = "%d open";
 "card.pill.toReview" = "%d to review";
 "card.pill.toReviewOpen" = "%1$d to review · %2$d open";
+"card.project.noStopCommand" = "no stop command";
+"card.project.noStopCommand.help" = "DevDeck has no stop command for this project. Add one in Settings to stop it from here.";
+"card.project.startedElsewhere" = "started outside DevDeck";
+"card.project.startedElsewhere.help" = "Started outside DevDeck, so DevDeck can't stop it. Stop it where you started it.";
 "card.showLess" = "show less ⌃";
 "card.showMore" = "show %d more ⌄";
 "card.state.notConfigured" = "not configured";

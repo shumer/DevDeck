@@ -100,6 +100,9 @@
 "attention.local.noRemote.title" = "Ветки нет ни на одном remote: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · самый старый %2$@ назад";
 "attention.local.unpushed.title" = "%1$@ только на этом Mac: %2$@";
+"attention.project.cannotStop.noStopCommand" = "Команда остановки не задана · добавьте её в настройках";
+"attention.project.cannotStop.startedElsewhere" = "Запущен не из DevDeck · остановите там, где запускали";
+"attention.project.cannotStop.title" = "DevDeck не может остановить %@";
 "attention.project.silent.title" = "%@ поднят, но не отвечает";
 "attention.project.startFailed.title" = "%@ не запустился";
 "attention.project.stillRunning.subtitle" = "Stop не сработал, он всё ещё отвечает";
@@ -246,6 +249,10 @@
 "card.pill.open" = "%d открыто";
 "card.pill.toReview" = "%d на ревью";
 "card.pill.toReviewOpen" = "%1$d на ревью · %2$d открыто";
+"card.project.noStopCommand" = "нет команды остановки";
+"card.project.noStopCommand.help" = "У DevDeck нет команды остановки для этого проекта. Добавьте её в настройках, чтобы останавливать отсюда.";
+"card.project.startedElsewhere" = "запущен не из DevDeck";
+"card.project.startedElsewhere.help" = "Запущен не из DevDeck, поэтому DevDeck не может его остановить. Остановите там, где запускали.";
 "card.showLess" = "показать меньше ⌃";
 "card.showMore" = "показать ещё %d ⌄";
 "card.state.notConfigured" = "не настроен";

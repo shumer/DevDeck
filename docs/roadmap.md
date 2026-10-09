@@ -173,6 +173,12 @@
   loaded, with its progress in the footer and GitHub's refusal named when there is one. The
   count says "50+" when the box did not fit, and the reason chips are in the interface's
   language.
+- **Stop says when it cannot reach a project** - a plain project started in a terminal reads as
+  running, and DevDeck holds no process for it. The card now says `started outside DevDeck` (or
+  `no stop command`), Restart is off, and Stop runs nothing and says so in the menu as good to
+  know, instead of reporting a stop that did not work. Nothing is stopped by port. See
+  [adr/0026-stop-only-what-the-deck-holds.md](adr/0026-stop-only-what-the-deck-holds.md). The
+  Windows card model picks the field up when its front-end moves onto the runtime in C-1.
 
 ## Next
 

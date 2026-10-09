@@ -100,6 +100,9 @@
 "attention.local.noRemote.title" = "La rama no está en ningún remoto: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · el más antiguo hace %2$@";
 "attention.local.unpushed.title" = "%1$@ solo en este Mac: %2$@";
+"attention.project.cannotStop.noStopCommand" = "Sin comando de parada · añade uno en Ajustes";
+"attention.project.cannotStop.startedElsewhere" = "Iniciado fuera de DevDeck · páralo donde lo iniciaste";
+"attention.project.cannotStop.title" = "DevDeck no puede parar %@";
 "attention.project.silent.title" = "%@ está en marcha pero no responde";
 "attention.project.startFailed.title" = "%@ no arrancó";
 "attention.project.stillRunning.subtitle" = "Parar no hizo efecto, sigue respondiendo";
@@ -246,6 +249,10 @@
 "card.pill.open" = "%d abiertas";
 "card.pill.toReview" = "%d por revisar";
 "card.pill.toReviewOpen" = "%1$d por revisar · %2$d abiertas";
+"card.project.noStopCommand" = "sin comando de parada";
+"card.project.noStopCommand.help" = "DevDeck no tiene comando de parada para este proyecto. Añade uno en Ajustes para pararlo desde aquí.";
+"card.project.startedElsewhere" = "iniciado fuera de DevDeck";
+"card.project.startedElsewhere.help" = "Iniciado fuera de DevDeck, así que DevDeck no puede pararlo. Páralo donde lo iniciaste.";
 "card.showLess" = "mostrar menos ⌃";
 "card.showMore" = "mostrar %d más ⌄";
 "card.state.notConfigured" = "sin configurar";

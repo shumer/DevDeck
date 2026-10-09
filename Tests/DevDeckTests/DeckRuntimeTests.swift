@@ -77,6 +77,8 @@ private final class Deck {
         http: FakeHTTPClient = FakeHTTPClient([]),
         runner: any CommandRunning = StubCommandRunner([]),
         localProjects: [LocalProject] = [],
+        projectHTTP: (any HTTPClient)? = nil,
+        projectFiles: ProjectRuntimeFiles = .standard(),
         canStartDocker: Bool = false,
         notifications: Bool = false
     ) {
@@ -98,6 +100,8 @@ private final class Deck {
             canStartDocker: canStartDocker,
             localAddress: { nil },
             http: http,
+            projectHTTP: projectHTTP,
+            projectFiles: projectFiles,
             clock: clock,
             sleeper: sleeper
         )
@@ -108,6 +112,22 @@ private final class Deck {
         // they get a turn, since nothing here has awaited yet.
         runtime.stop()
     }
+}
+
+/// A plain project answering on localhost, with its runtime files in a folder of its own so no
+/// test reads or leaves a pid under Application Support.
+private func plainSite(holdsProcess: Bool) throws -> (project: LocalProject, files: ProjectRuntimeFiles) {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent("devdeck-runtime-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let project = LocalProject(
+        id: "site-\(UUID().uuidString)",
+        title: "Site",
+        folder: directory.path,
+        startCommand: holdsProcess ? "npm run dev" : "docker compose up -d",
+        holdsProcess: holdsProcess,
+        healthURL: "http://localhost:5173"
+    )
+    return (project, ProjectRuntimeFiles(directory: directory))
 }
 
 @MainActor
@@ -245,6 +265,111 @@ func runDeckRuntimeTests(_ run: TestRun) async {
         let status = deck.runtime.localStatus(for: project)
         try expectEqual(status.state, .stopped)
         try expectEqual(status.detail, "command not found")
+    }
+
+    await run.test("a project started outside DevDeck is never stopped from here") {
+        let site = try plainSite(holdsProcess: true)
+        let runner = StubCommandRunner([(DockerEnvironment.probeCommand, dockerUp)])
+        let deck = Deck(
+            cards: [site.project.cardID],
+            runner: runner,
+            localProjects: [site.project],
+            projectHTTP: FakeHTTPClient(routes: [("localhost", .success(HTTPResponse(statusCode: 200)))]),
+            projectFiles: site.files
+        )
+        await deck.runtime.refreshLocalOnce()
+        let running = deck.runtime.localStatus(for: site.project)
+        try expect(running.isRunning)
+        try expectNil(running.pid)
+        try expectEqual(running.stopBlock, .startedElsewhere)
+
+        deck.runtime.perform(.stop, for: site.project)
+        deck.runtime.perform(.restart, for: site.project)
+        await deck.runtime.settle()
+        let commands = await runner.commands
+        try expectEqual(commands.filter { !$0.contains(DockerEnvironment.probeCommand) }, [], "nothing is killed, by pid, port or name")
+        try expect(deck.runtime.localStatus(for: site.project).isRunning, "the card stays as it was")
+        try expectEqual(deck.runtime.watch.problems(for: site.project.id, now: deck.clock.now),
+                        [.cannotStop(.startedElsewhere, at: deck.clock.now)], "not a stop that did not take")
+        let row = try expectNotNil(deck.runtime.attention(update: nil).items.first, "a row")
+        try expectEqual(row.title, "DevDeck can't stop Site")
+        try expectEqual(row.subtitle, "Started outside DevDeck · stop it where you started it")
+        try expectEqual(row.tier, .goodToKnow)
+    }
+
+    await run.test("a project whose start returns has nothing to stop without a stop command") {
+        let site = try plainSite(holdsProcess: false)
+        let deck = Deck(
+            cards: [site.project.cardID],
+            localProjects: [site.project],
+            projectHTTP: FakeHTTPClient(routes: [("localhost", .success(HTTPResponse(statusCode: 200)))]),
+            projectFiles: site.files
+        )
+        await deck.runtime.refreshLocalOnce()
+        try expectEqual(deck.runtime.localStatus(for: site.project).stopBlock, .noStopCommand)
+        deck.runtime.perform(.stop, for: site.project)
+        try expectEqual(deck.runtime.attention(update: nil).items.first?.subtitle, "No stop command set · add one in Settings")
+    }
+
+    await run.test("a stop command is tried, and a stop that then did not take still says so") {
+        var site = try plainSite(holdsProcess: true)
+        site.project.stopCommand = "docker compose down"
+        let runner = StubCommandRunner([
+            (DockerEnvironment.probeCommand, dockerUp),
+            ("docker compose down", CommandResult(exitCode: 0, standardOutput: "", standardError: "")),
+        ])
+        let deck = Deck(
+            cards: [site.project.cardID],
+            runner: runner,
+            localProjects: [site.project],
+            projectHTTP: FakeHTTPClient(routes: [("localhost", .success(HTTPResponse(statusCode: 200)))]),
+            projectFiles: site.files
+        )
+        await deck.runtime.refreshLocalOnce()
+        try expectNil(deck.runtime.localStatus(for: site.project).stopBlock)
+        deck.runtime.perform(.stop, for: site.project)
+        await deck.runtime.settle()
+        try expect(await runner.commands.contains { $0.contains("docker compose down") }, "the stop command ran")
+        try expectEqual(deck.runtime.watch.problems(for: site.project.id, now: deck.clock.now),
+                        [.stopDidNotTakeEffect(at: deck.clock.now)])
+    }
+
+    await run.test("a process DevDeck started is stopped by its own tree, and nothing else") {
+        let site = try plainSite(holdsProcess: true)
+        // A pid that is certainly alive and certainly not a server: this suite. The runner is a
+        // stub, so the kill is only recorded.
+        let pid = ProcessInfo.processInfo.processIdentifier
+        try "\(pid)\n".write(to: site.files.pid(site.project.id), atomically: true, encoding: .utf8)
+        let runner = StubCommandRunner([(DockerEnvironment.probeCommand, dockerUp)])
+        let deck = Deck(
+            cards: [site.project.cardID],
+            runner: runner,
+            localProjects: [site.project],
+            projectHTTP: FakeHTTPClient(routes: [("localhost", .success(HTTPResponse(statusCode: 200)))]),
+            projectFiles: site.files
+        )
+        await deck.runtime.refreshLocalOnce()
+        let running = deck.runtime.localStatus(for: site.project)
+        try expectEqual(running.pid, pid)
+        try expectNil(running.stopBlock)
+        deck.runtime.perform(.stop, for: site.project)
+        await deck.runtime.settle()
+        let kills = await runner.commands.filter { $0.contains("kill") }
+        try expectEqual(kills, [LocalProjectService.killTreeCommand(pid: pid)])
+    }
+
+    await run.test("only a running project with no process and no stop command is out of reach") {
+        let held = LocalProject(id: "a", title: "A", startCommand: "npm run dev", holdsProcess: true)
+        let returns = LocalProject(id: "b", title: "B", startCommand: "docker compose up -d")
+        var withStop = held
+        withStop.stopCommand = "  pkill -f vite  "
+        let running = LocalProjectStatus(state: .running)
+        try expectEqual(DeckRuntime.stopBlock(for: held, status: running), .startedElsewhere)
+        try expectEqual(DeckRuntime.stopBlock(for: returns, status: running), .noStopCommand)
+        try expectNil(DeckRuntime.stopBlock(for: withStop, status: running))
+        try expectNil(DeckRuntime.stopBlock(for: held, status: LocalProjectStatus(state: .running, pid: 42)))
+        try expectNil(DeckRuntime.stopBlock(for: held, status: LocalProjectStatus(state: .stopped)))
+        try expectNil(DeckRuntime.stopBlock(for: held, status: LocalProjectStatus(state: .starting, pid: 42)))
     }
 
     run.section("Deck runtime - folding, parking and being told")

@@ -1,5 +1,20 @@
 import Foundation
 
+/// Why Stop on a card cannot reach a project that is running.
+///
+/// The health URL decides "running", and it answers for a server whoever started it. DevDeck
+/// can only stop what it holds: a process it started and still finds alive, or a stop command it
+/// was given. Without either, pressing Stop runs nothing, and the card says so rather than
+/// reporting a stop that "did not work".
+public enum ProjectStopBlock: String, Sendable, Equatable, Codable {
+    /// It holds its own process and DevDeck has none on record: it was started in a terminal or
+    /// another tool. Never stopped by port or by name, because that could be anybody's server.
+    case startedElsewhere
+    /// Its start command returns on its own, so there is no process to stop, and no stop command
+    /// was set.
+    case noStopCommand
+}
+
 /// What happened to the projects on this Mac that their cards stop saying a poll later.
 ///
 /// A card shows the state now. "Stopped" does not say whether you stopped it or it fell over at
@@ -22,6 +37,8 @@ public struct ProjectWatch: Sendable, Equatable {
         /// error.
         case notAnswering(detail: String, since: Date)
         case stopDidNotTakeEffect(at: Date)
+        /// Stop was pressed and nothing was run, because nothing DevDeck holds could stop it.
+        case cannotStop(ProjectStopBlock, at: Date)
         case syncBroken(detail: String, since: Date)
     }
 
@@ -35,6 +52,7 @@ public struct ProjectWatch: Sendable, Equatable {
         var startFailure: (line: String, at: Date, tookLong: Bool)?
         var notAnswering: (detail: String, since: Date)?
         var stopFailedAt: Date?
+        var cannotStop: (block: ProjectStopBlock, at: Date)?
         var syncBroken: (detail: String, since: Date)?
         var dismissed = false
         var actionStartedAt: Date?
@@ -49,6 +67,8 @@ public struct ProjectWatch: Sendable, Equatable {
                 && left.notAnswering?.detail == right.notAnswering?.detail
                 && left.notAnswering?.since == right.notAnswering?.since
                 && left.stopFailedAt == right.stopFailedAt
+                && left.cannotStop?.block == right.cannotStop?.block
+                && left.cannotStop?.at == right.cannotStop?.at
                 && left.syncBroken?.detail == right.syncBroken?.detail
                 && left.dismissed == right.dismissed
                 && left.actionStartedAt == right.actionStartedAt
@@ -67,6 +87,7 @@ public struct ProjectWatch: Sendable, Equatable {
         record.stopped = nil
         record.startFailure = nil
         record.stopFailedAt = nil
+        record.cannotStop = nil
         record.notAnswering = nil
         record.dismissed = false
         record.actionStartedAt = date
@@ -89,6 +110,21 @@ public struct ProjectWatch: Sendable, Equatable {
         record.stopFailedAt = date
         record.isRunning = true
         record.lastRunningAt = date
+        record.dismissed = false
+        records[id] = record
+    }
+
+    /// Stop was pressed on a project nothing here can stop, so nothing was run.
+    ///
+    /// Still the person's stop: when the project goes down later, stopped where it was started,
+    /// it did not stop on its own.
+    public mutating func noteCannotStop(_ id: String, _ block: ProjectStopBlock, at date: Date) {
+        var record = records[id] ?? Record()
+        record.stopRequested = true
+        record.stopped = nil
+        record.startFailure = nil
+        record.stopFailedAt = nil
+        record.cannotStop = (block, date)
         record.dismissed = false
         records[id] = record
     }
@@ -116,15 +152,16 @@ public struct ProjectWatch: Sendable, Equatable {
             record.lastRunningAt = date
             record.stopped = nil
             record.startFailure = nil
-            // A stop that did not take is still the person's stop: when it finally lands, the
-            // project did not stop on its own.
-            if record.stopFailedAt == nil { record.stopRequested = false }
+            // A stop that did not take, or could not be tried, is still the person's stop: when
+            // it finally lands, the project did not stop on its own.
+            if record.stopFailedAt == nil, record.cannotStop == nil { record.stopRequested = false }
         } else {
             if record.isRunning == true, !record.stopRequested {
                 record.stopped = (date, record.lastRunningAt ?? date, dockerDown)
                 record.dismissed = false
             }
             record.stopFailedAt = nil
+            record.cannotStop = nil
             record.isRunning = false
         }
 
@@ -166,6 +203,9 @@ public struct ProjectWatch: Sendable, Equatable {
             }
             if let stopFailedAt = record.stopFailedAt {
                 problems.append(.stopDidNotTakeEffect(at: stopFailedAt))
+            }
+            if let cannotStop = record.cannotStop {
+                problems.append(.cannotStop(cannotStop.block, at: cannotStop.at))
             }
         }
         if let silent = record.notAnswering, now.timeIntervalSince(silent.since) >= Self.notAnsweringAfter {
@@ -265,6 +305,20 @@ public enum ProjectAttention {
                         action: .showCard(project.cardID),
                         isDismissible: true
                     ))
+                case .cannotStop(let block, let at):
+                    // Nothing is broken and nothing here can fix it, so it never lights the icon.
+                    items.append(AttentionItem(
+                        id: "project:\(project.id):cannotStop",
+                        tier: .goodToKnow,
+                        mark: project.mark,
+                        title: L("attention.project.cannotStop.title", project.title),
+                        subtitle: block == .startedElsewhere
+                            ? L("attention.project.cannotStop.startedElsewhere")
+                            : L("attention.project.cannotStop.noStopCommand"),
+                        since: at,
+                        action: .showCard(project.cardID),
+                        isDismissible: true
+                    ))
                 case .syncBroken(let detail, let since):
                     items.append(AttentionItem(
                         id: "project:\(project.id):sync",
@@ -314,8 +368,8 @@ public enum ProjectAttention {
     }
 
     /// The banners worth raising for the same problems. Kept to what happened while you were
-    /// not looking: a stop that did not take and a start that failed in front of you are already
-    /// on the card you are looking at.
+    /// not looking: a stop that did not take or could not be tried, and a start that failed in
+    /// front of you, are already on the card you are looking at.
     public static func alerts(
         projects: [WatchedProject],
         watch: ProjectWatch,
@@ -384,7 +438,7 @@ public enum ProjectAttention {
                         target: .card(project.cardID),
                         isQuiet: true
                     ))
-                case .stopDidNotTakeEffect:
+                case .stopDidNotTakeEffect, .cannotStop:
                     continue
                 }
             }

@@ -100,6 +100,9 @@
 "attention.local.noRemote.title" = "Branche sur aucun dépôt distant : %@";
 "attention.local.unpushed.subtitle" = "%1$@ · le plus ancien il y a %2$@";
 "attention.local.unpushed.title" = "%1$@ seulement sur ce Mac : %2$@";
+"attention.project.cannotStop.noStopCommand" = "Aucune commande d’arrêt · ajoutez-en une dans les Réglages";
+"attention.project.cannotStop.startedElsewhere" = "Lancé hors de DevDeck · arrêtez-le là où vous l’avez lancé";
+"attention.project.cannotStop.title" = "DevDeck ne peut pas arrêter %@";
 "attention.project.silent.title" = "%@ tourne mais ne répond pas";
 "attention.project.startFailed.title" = "%@ n’a pas démarré";
 "attention.project.stillRunning.subtitle" = "Arrêter n’a rien changé, il répond encore";
@@ -246,6 +249,10 @@
 "card.pill.open" = "%d ouvertes";
 "card.pill.toReview" = "%d à relire";
 "card.pill.toReviewOpen" = "%1$d à relire · %2$d ouvertes";
+"card.project.noStopCommand" = "pas de commande d’arrêt";
+"card.project.noStopCommand.help" = "DevDeck n’a pas de commande d’arrêt pour ce projet. Ajoutez-en une dans les Réglages pour l’arrêter d’ici.";
+"card.project.startedElsewhere" = "lancé hors de DevDeck";
+"card.project.startedElsewhere.help" = "Lancé hors de DevDeck, donc DevDeck ne peut pas l’arrêter. Arrêtez-le là où vous l’avez lancé.";
 "card.showLess" = "afficher moins ⌃";
 "card.showMore" = "afficher %d de plus ⌄";
 "card.state.notConfigured" = "non configuré";
