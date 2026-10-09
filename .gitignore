@@ -6,6 +6,8 @@ DerivedData/
 build/
 dist/
 DevDeck.app/
+**/bin/
+**/obj/
 
 .DS_Store
 *.local

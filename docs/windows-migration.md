@@ -83,16 +83,17 @@ nor `DevDeckUI` decides anything by the rule in 0024.
   starts, survives and stops a Windows and a WSL project.
 - **W-2. Windows CI** on `windows-latest`: core and engine build, engine tests, shell tests. The
   Mac workflow is unchanged. Done for the Swift side: the `windows` job in `tests.yml` builds
-  with Swift 6.4 and runs both suites, with golden transcripts compared byte for byte. The shell
-  tests join it with W-3.
+  with Swift 6.4 and runs both suites, with golden transcripts compared byte for byte. W-3 adds
+  the .NET build and shell tests to the same job.
 
 ## Phase 3 - the Windows shell
 
 Every task ends with screenshots on neutral data and a check against the shell rule.
 
-- **W-3.** The style: Acrylic, system rounding, fonts, icons, logos from the shared vectors.
-- **W-4.** Every card: Inbox, Actions, GitLab, Work in flight, Arc, DDEV, plain project, the folded
-  row, the expanded list.
+- **W-3.** A WPF shell on protocol v2, then the first Windows style pass for review lists and
+  Windows and WSL project cards: Acrylic, system rounding, fonts, icons and shared brand vectors.
+- **W-4.** Finish the style for Inbox, Actions, GitLab, Work in flight, Arc, DDEV, the folded row
+  and the expanded list.
 - **W-5.** Tray icon and menu from the engine's menu model.
 - **W-6.** Toast notifications with the source's logo; a click goes where the engine says.
 - **W-7.** Windows and displays: moves reported to the engine, plans applied, parking on unplug,

@@ -75,10 +75,10 @@ test: something is reading the real clock, a process-seeded hash, or the machine
 
 ## Building on Windows
 
-Windows 11 22H2 or later, with the Swift toolchain for Windows and the Visual Studio build tools it
-asks for. The same `Package.swift` builds the portable core, every integration kit,
-`DevDeckEngine`, its host, `DevDeckProcessHost`, the Windows suite and the live tools. Nothing that
-draws is built on Windows yet; see [windows-migration.md](windows-migration.md).
+Windows 11 22H2 or later, with the Swift toolchain for Windows, the Visual Studio build tools it
+asks for and the .NET 10 SDK. The same `Package.swift` builds the portable core, every integration
+kit, `DevDeckEngine`, its host, `DevDeckProcessHost`, the Windows suite and the live tools. The WPF
+shell is a separate .NET solution; see [windows-migration.md](windows-migration.md).
 
 ```powershell
 swift build                                   # the Windows graph
@@ -86,6 +86,28 @@ swift run DevDeckWindowsCoreTests             # offline: HTTP cache, tokens, fil
 swift run DevDeckEngineTests                  # offline: protocol and runtime golden transcripts, byte for byte
 swift run DevDeckEngineHost                   # the deck over stdin and stdout, see engine-protocol.md
 swift build --product DevDeckNetworkSmoke     # then Tools/WindowsNetworkSmoke/Invoke-NetworkSmoke.ps1
+dotnet build Windows/DevDeck.Windows.slnx -warnaserror
+dotnet run --project Windows/DevDeck.Shell.Tests
+```
+
+Build a self-contained shell with the Swift host and process helper:
+
+```powershell
+Tools/Build-WindowsShell.ps1
+```
+
+For deterministic UI work, replay a golden session without a network connection or stored token:
+
+```powershell
+dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl
+```
+
+The two development commands send protocol v2 settings requests to a live host and print its
+answer. Use neutral test folders when saving output or screenshots:
+
+```powershell
+dotnet run --project Windows/DevDeck.Shell -- --add-project C:\projects\sample-api
+dotnet run --project Windows/DevDeck.Shell -- --remove-project project.sample-api
 ```
 
 The host keeps the deck in `%LOCALAPPDATA%\DevDeck\preferences.json` and tokens in Credential
