@@ -58,7 +58,7 @@ only has to draw.
   place, parking, Tidy and column packing. A replay of a recorded monitor unplug becomes a test.
 - **M-6. Settings in the engine.** The sidebar and every operation behind a form go through
   the runtime: add, save, remove, Detect, the health, stack and token checks, link tests. The
-  forms and the four pages stay AppKit until W-10. See
+  forms and the four pages stay AppKit until W-10. Done; see
   [adr/0031](adr/0031-settings-operations-in-the-engine.md).
 - **M-7. The update check in the engine.** Installing stays in the shell.
 - **M-8. Golden transcripts** for every card, the menu, notifications and placement, in English
