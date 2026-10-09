@@ -45,6 +45,20 @@ await run.test("Windows standard tokens are scoped to one in-memory store") {
     try expectNil(try first.token(for: .github))
 }
 
+await run.test("Credential Manager keeps a token, reads it back and forgets it") {
+    // Its own service name, so a real token is never touched.
+    let key = TokenKey(service: "com.shumer.devdeck.tests", account: "credential-\(UUID().uuidString)")
+    let store = WindowsCredentialTokenStore()
+    try expectNil(try store.token(for: key), "nothing there to begin with")
+    try store.setToken("fixture-token", for: key)
+    try expectEqual(try store.token(for: key), "fixture-token")
+    try store.setToken("fixture-token-2", for: key)
+    try expectEqual(try store.token(for: key), "fixture-token-2", "a second write replaces the first")
+    try store.setToken(nil, for: key)
+    try expectNil(try store.token(for: key))
+    try store.setToken(nil, for: key)
+}
+
 await run.test("Windows code identity is unsigned") {
     try expectEqual(CodeIdentity.current(), .unsigned)
     try expectEqual(CodeIdentity.kind(ofBundleAt: URL(fileURLWithPath: "C:/demo")), .unsigned)

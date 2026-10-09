@@ -1,3 +1,0 @@
-{"protocolVersion":2,"id":"session","intent":"session.start","language":"en","displays":[{"id":"display","visibleFrame":[0,0,1920,1040],"scale":1}]}
-{"protocolVersion":2,"id":"start","intent":"card.invoke","card":"project.demo","action":"start"}
-{"protocolVersion":2,"id":"stop","intent":"card.invoke","card":"project.demo","action":"stop"}

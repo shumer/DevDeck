@@ -455,7 +455,12 @@ public final class DeckSession {
     }
 
     private func sendDeck() {
-        let deck = DeckWireDeck(isLocked: runtime.preferences.isLocked, displayMode: runtime.preferences.displayMode)
+        let stopped = L("engine.unavailable")
+        let deck = DeckWireDeck(
+            isLocked: runtime.preferences.isLocked,
+            displayMode: runtime.preferences.displayMode,
+            stoppedStatus: DeckStatusModel(tier: .needsFixing, tooltip: L("attention.tooltip", stopped), accessibilityValue: stopped)
+        )
         guard deck != sentDeck else { return }
         sentDeck = deck
         emit("deck.changed") { $0.deck = deck }
@@ -483,6 +488,7 @@ public final class DeckSession {
                 $0.card = card
                 $0.model = current.model
                 $0.menu = current.menu
+                $0.stopped = current.model?.stopped
             }
         }
         for card in sentCards.keys where !visible.contains(card) {

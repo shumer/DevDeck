@@ -9,6 +9,8 @@ import Foundation
 // events; it never interprets a command, it sends back the one it was given. The whole contract
 // is docs/engine-protocol.md.
 
+public enum EngineProtocolError: Error { case invalidConfiguration, invalidIntent, oversizedMessage }
+
 /// A rectangle as four numbers, `[x, y, width, height]`, in the shell's own coordinates: y grows
 /// downward, the way Windows counts.
 public typealias DeckWireRect = [Double]
@@ -74,6 +76,9 @@ public struct DeckEvent: Encodable, Sendable {
     public var model: DeckCardModel?
     /// The card's context menu.
     public var menu: [DeckMenuEntry]?
+    /// `card.changed`: what to draw in the card's place if the engine stops, since by then it
+    /// cannot say.
+    public var stopped: DeckCollapsedModel?
     public var panels: [DeckWirePanel]?
     public var status: DeckStatusModel?
     public var deck: DeckWireDeck?
@@ -108,6 +113,8 @@ public struct DeckWireDeck: Encodable, Sendable, Equatable {
     public let isLocked: Bool
     /// `desktop`: behind every window. `floating`: above them.
     public let displayMode: DisplayMode
+    /// The tray's status if the engine stops.
+    public let stoppedStatus: DeckStatusModel
 }
 
 /// Something only the platform can do. `kind` says which; the rest of the fields are the ones
@@ -162,6 +169,27 @@ public struct DeckWireLog: Encodable, Sendable, Equatable {
 }
 
 // MARK: Card models on the wire
+
+extension DeckCardModel {
+    /// The card folded to one row, whichever card it is.
+    var collapsed: DeckCollapsedModel {
+        switch self {
+        case .reviewList(let model): return model.collapsed
+        case .inbox(let model): return model.collapsed
+        case .actions(let model): return model.collapsed
+        case .workInFlight(let model): return model.collapsed
+        case .project(let model): return model.collapsed
+        }
+    }
+
+    /// The card's one row once the engine has stopped: its name and mark, the news that nothing
+    /// on it is current any more, and nothing to press.
+    var stopped: DeckCollapsedModel {
+        let base = collapsed
+        let note = L("engine.unavailable")
+        return DeckCollapsedModel(mark: base.mark, title: base.title, note: note, tone: .alert, actions: [], help: note)
+    }
+}
 
 extension DeckCardModel: Codable {
     private enum Kind: String, CodingKey {

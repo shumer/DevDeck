@@ -49,7 +49,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "DevDeckEngineHost",
-            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
         ),
 
         // Holds a native Windows project's Job Object, so the project outlives the engine.
@@ -146,7 +146,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "DevDeckEngineHost",
-            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
         ),
         .executableTarget(
             name: "DevDeckEngineTests",

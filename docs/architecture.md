@@ -37,7 +37,7 @@ menus, the tray status and menu, panel changes, log lines, banners and effects).
 restart without taking a project down. The contract is [engine-protocol.md](engine-protocol.md);
 the decision is [adr/0033-protocol-on-the-runtime.md](adr/0033-protocol-on-the-runtime.md).
 
-`DevDeckEngineTests` compare three kinds of golden transcripts byte for byte with the committed
+`DevDeckEngineTests` compare two kinds of golden transcripts byte for byte with the committed
 files:
 
 - the runtime's, `Tests/EngineTests/RuntimeGolden.swift`: every card's model before and after a
@@ -45,7 +45,6 @@ files:
   two passes and a summary; and placement through an unplugged monitor and back;
 - the protocol's, `Tests/EngineTests/SessionGolden.swift`: a session driven by intent lines as a
   shell writes them, in English and Russian, with every event it sends back;
-- the proof of concept's three input transcripts, until the host moves onto the session.
 
 One JSON object per line, sorted keys, clocks in UTC, every input fixed. The same bytes on the
 Mac and on Windows are what keeps two shells drawing one deck; a change that alters them is

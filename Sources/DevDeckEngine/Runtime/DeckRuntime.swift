@@ -210,6 +210,8 @@ public final class DeckRuntime {
     let ddevEnvironment: DDEVEnvironment
     private let dockerEnvironment: DockerEnvironment
     let commandRunner: any CommandRunning
+    /// The runner a plain project's commands go through, when it is not `commandRunner`.
+    private let projectRunner: (@Sendable (LocalProject) -> any CommandRunning)?
     let http: (any HTTPClient)?
     let projectHTTP: (any HTTPClient)?
     let projectFiles: ProjectRuntimeFiles
@@ -242,6 +244,8 @@ public final class DeckRuntime {
     /// - `projectHTTP`: what a plain project's health check talks to; nil is the real network,
     ///   with the short timeout a local check uses.
     /// - `projectFiles`: where plain projects keep their logs and process ids.
+    /// - `projectRunner`: picks a plain project's runner from the project, as Windows does: a
+    ///   folder inside a WSL distribution runs through that distribution. Nil is `commandRunner`.
     public init(
         preferences: Preferences,
         tokenStore: any TokenStore,
@@ -258,7 +262,8 @@ public final class DeckRuntime {
         projectFiles: ProjectRuntimeFiles = .standard(),
         clock: any DateProvider = SystemDateProvider(),
         sleeper: any Sleeper = TaskSleeper(),
-        settings: GitHubSettings = .default
+        settings: GitHubSettings = .default,
+        projectRunner: (@Sendable (LocalProject) -> any CommandRunning)? = nil
     ) {
         self.preferences = preferences
         self.tokenStore = tokenStore
@@ -272,6 +277,7 @@ public final class DeckRuntime {
         self.ddevEnvironment = DDEVEnvironment(runner: commandRunner, clock: clock)
         self.dockerEnvironment = DockerEnvironment(runner: commandRunner, clock: clock)
         self.commandRunner = commandRunner
+        self.projectRunner = projectRunner
         self.canStartDocker = canStartDocker
         self.currentAddress = localAddress
         self.http = http
@@ -669,12 +675,13 @@ public final class DeckRuntime {
     }
 
     func localService(for project: LocalProject) -> LocalProjectService {
+        let runner = projectRunner?(project) ?? commandRunner
         guard let projectHTTP else {
-            return LocalProjectService(project: project, runner: commandRunner, clock: clock, sleeper: sleeper, files: projectFiles)
+            return LocalProjectService(project: project, runner: runner, clock: clock, sleeper: sleeper, files: projectFiles)
         }
         return LocalProjectService(
             project: project,
-            runner: commandRunner,
+            runner: runner,
             httpClient: projectHTTP,
             clock: clock,
             sleeper: sleeper,

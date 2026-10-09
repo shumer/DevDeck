@@ -68,9 +68,9 @@ before it reports (W-7).
 
 | `event` | Fields | What to do |
 | --- | --- | --- |
-| `deck.changed` | `deck` | Whether panels can be dragged (`isLocked`), and their layer (`displayMode`: `desktop` behind windows, `floating` above). |
+| `deck.changed` | `deck` | Whether panels can be dragged (`isLocked`), their layer (`displayMode`: `desktop` behind windows, `floating` above), and the tray status to show if the engine stops (`stoppedStatus`). |
 | `panels.changed` | `panels` | Apply each change in order: `open` a panel at `frame`, `place` it at `frame` (size included), or `close` it. Do not report these moves back. |
-| `card.changed` | `card`, `model`, `menu` | Draw the card from `model`; `menu` is its right-click menu. |
+| `card.changed` | `card`, `model`, `menu`, `stopped` | Draw the card from `model`; `menu` is its right-click menu; `stopped` is the one row to draw instead if the engine stops. |
 | `status.changed` | `status` | The tray icon: `tier` picks the icon (absent means calm), `tooltip` and `accessibilityValue` are its words. |
 | `menu.changed` | `menu` | The tray menu, ready to show. |
 | `log.changed` | `card`, `log` | The lines of an open log window: `lines`, `source` (what is being read), `detail` (why there is nothing). |
@@ -107,6 +107,13 @@ has both.
 `{"id", "source", "title", "subtitle", "body", "isQuiet", "command"}`. `source` picks the mark the
 banner carries: `github`, `gitlab`, `arc`, `ddev`, `project`, `docker`, `devdeck`. `isQuiet` means
 no sound. Several at once are already summarised by the engine.
+
+### If the engine stops
+
+When the host exits or its pipe breaks, the engine can no longer say anything, so it has said it
+already: every panel is drawn as its card's last `stopped` row, folded and with nothing to press,
+and the tray shows the last `stoppedStatus`. Both are in the deck's language. The shell restarts
+the host and sends `session.start` again; nothing it drew while waiting is kept.
 
 ## Commands
 
@@ -185,10 +192,18 @@ card in a new language.
 The summon shortcut is not in the preferences yet: the Mac stores a Mac key code, and the
 Windows shortcut is decided with W-9.
 
-## Not in this version yet
+## The host
 
-The host still runs the proof of concept's engine from a configuration file. It moves onto the
-session, with its stores and the Windows credential store, in the last step of C-1.
+`DevDeckEngineHost` builds one runtime and one session and pipes standard input and output
+through it. It takes no arguments. On Windows everything the deck remembers is the engine's:
+preferences, accounts and projects in `%LOCALAPPDATA%\DevDeck\preferences.json`, tokens in
+Credential Manager, a project in a Windows folder started through `DevDeckProcessHost` and one in
+a WSL folder (`\\wsl.localhost\<distribution>\...`) through that distribution's own client.
+When standard input closes it stops its loops and exits; the projects keep running (ADR 0023).
+
+Not wired yet, each with its task in [windows-migration.md](windows-migration.md): starting Docker
+Desktop and the address a phone can reach (W-11, W-12), and an installer to hand updates to
+(W-17), so the update row says there is nothing to replace.
 
 ## Testing
 

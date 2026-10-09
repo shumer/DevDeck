@@ -84,11 +84,23 @@ draws is built on Windows yet; see [windows-migration.md](windows-migration.md).
 swift build                                   # the Windows graph
 swift run DevDeckWindowsCoreTests             # offline: HTTP cache, tokens, file preferences, commands
 swift run DevDeckEngineTests                  # offline: protocol and runtime golden transcripts, byte for byte
-swift run DevDeckEngineHost --config C:\path\to\config.json
+swift run DevDeckEngineHost                   # the deck over stdin and stdout, see engine-protocol.md
 swift build --product DevDeckNetworkSmoke     # then Tools/WindowsNetworkSmoke/Invoke-NetworkSmoke.ps1
 ```
 
-The offline suites need no WSL distribution. The lifecycle tools use a config with one WSL
+The host keeps the deck in `%LOCALAPPDATA%\DevDeck\preferences.json` and tokens in Credential
+Manager, under `com.shumer.devdeck/<account>`. To drive it by hand, type intents one per line, the
+first being `session.start`:
+
+```powershell
+'{"protocolVersion":2,"id":"1","intent":"session.start","systemLanguage":"en","displays":[{"id":"main","frame":[0,0,1920,1032],"isPrimary":true}]}' | swift run DevDeckEngineHost
+```
+
+On the Mac the host is a development tool only: it keeps its preferences in its own domain,
+`com.shumer.devdeck.host`, and its tokens in memory, so it never opens the app's Keychain items.
+
+The offline suites need no WSL distribution. The lifecycle tools still read the proof of
+concept's configuration file, with one WSL
 project and one project in a Windows folder. Run each action in a separate invocation so the
 successful Start process exits before Status checks that the project survived:
 
