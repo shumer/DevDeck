@@ -43,7 +43,7 @@ only has to draw.
   instead of `#if` inside `LocalProjectService`. The Mac behaves exactly as before.
 - **M-2a. Engine foundation.** Protocol v2, the engine host, the golden infrastructure and the
   localisation resources target build on both platforms. The Mac application does not use them
-  yet. Mark this step done after its branch is merged.
+  yet. Done.
 - **M-2b. Mac application on the engine.** `DeckController` moves into the engine: polling,
   smoothing, project actions, the inbox and attention. A portable change stream replaces
   `@Published`, and the Mac shell wraps it for SwiftUI.
