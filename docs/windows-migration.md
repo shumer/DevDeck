@@ -95,7 +95,8 @@ Every task ends with screenshots on neutral data and a check against the shell r
   Done: `Windows/`, drawn from the golden sessions and tested against them, the three reference
   cards next to the mock at 100%, 150% and 200% in `docs/poc/windows-ui`.
 - **W-4.** Finish the style for Inbox, Actions, GitLab, Work in flight, Arc, DDEV, the folded row
-  and the expanded list.
+  and the expanded list. Done: every card of the golden sessions, checked next to the Mac's
+  drawing of the same transcript (`CardPreview`), captures in `docs/poc/windows-ui/w4-*.png`.
 - **W-5.** Tray icon and menu from the engine's menu model.
 - **W-6.** Toast notifications with the source's logo; a click goes where the engine says.
 - **W-7.** Windows and displays: moves reported to the engine, plans applied, parking on unplug,
