@@ -90,8 +90,9 @@ nor `DevDeckUI` decides anything by the rule in 0024.
 
 Every task ends with screenshots on neutral data and a check against the shell rule.
 
-- **W-3.** A WPF shell on protocol v2, then the first Windows style pass for review lists and
-  Windows and WSL project cards: Acrylic, system rounding, fonts, icons and shared brand vectors.
+- **W-3.** A WPF shell on protocol v2 (done: `Windows/`, drawn from the golden sessions and
+  tested against them), then the first Windows style pass for review lists and Windows and WSL
+  project cards: Acrylic, system rounding, fonts, icons and shared brand vectors.
 - **W-4.** Finish the style for Inbox, Actions, GitLab, Work in flight, Arc, DDEV, the folded row
   and the expanded list.
 - **W-5.** Tray icon and menu from the engine's menu model.

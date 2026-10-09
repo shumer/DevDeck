@@ -188,7 +188,7 @@
    engine builds (M-3), the menus and banners (M-4), where panels go (M-5), the settings
    window's operations (M-6), the update check (M-7), golden transcripts of the runtime
    (M-8), the whole protocol on the runtime with the host running it (C-1, W-1), Windows CI
-   (W-2), and the WPF shell consuming protocol v2 (W-3).
+   (W-2), and the WPF shell on protocol v2 (W-3, first half; the style is the second).
 2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
