@@ -187,6 +187,15 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
+        // Renders every card of a protocol transcript as the Mac draws it, for putting a Windows
+        // card next to the same card on the same data.
+        .executableTarget(
+            name: "CardPreview",
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "DevDeckUI"],
+            path: "Tools/CardPreview",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+
         // Renders every card mark at the size a card draws it. Same reason as IconPreview.
         .executableTarget(
             name: "GlyphPreview",

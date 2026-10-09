@@ -73,6 +73,18 @@ git diff Tests/EngineTests/Golden
 A transcript that differs between two runs on the same machine is a bug in the engine, not in the
 test: something is reading the real clock, a process-seeded hash, or the machine's time zone.
 
+## Comparing a card across platforms
+
+`CardPreview` draws every card of a protocol transcript the way the Mac draws it, one PNG per
+state, on the transcript's neutral data:
+
+```bash
+swift run CardPreview Tests/EngineTests/Golden/session-en.expected.jsonl /tmp/cards
+```
+
+The Windows shell's `--replay` draws the same transcript there (see `Windows/README.md`), which
+is how a Windows card is checked against the Mac's on the same data.
+
 ## Building on Windows
 
 Windows 11 22H2 or later, with the Swift toolchain for Windows, the Visual Studio build tools it
