@@ -16,6 +16,9 @@ public static class NativeMethods
     public const int DisplayChange = 0x007E;
     public const int WindowCornerPreference = 33;
     public const int RoundedWindowCorners = 2;
+    public const int ImmersiveDarkMode = 20;
+    public const int SystemBackdropType = 38;
+    public const int TransientWindowBackdrop = 3;
     private const int NonClientLeftButtonDown = 0x00A1;
     private const nint Caption = 2;
     private static readonly nint WindowBottom = 1;
@@ -29,6 +32,14 @@ public static class NativeMethods
         var cornerPreference = RoundedWindowCorners;
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
+        var darkMode = 1;
+        _ = DwmSetWindowAttribute(
+            handle, ImmersiveDarkMode, ref darkMode, Marshal.SizeOf<int>());
+        var backdrop = TransientWindowBackdrop;
+        _ = DwmSetWindowAttribute(
+            handle, SystemBackdropType, ref backdrop, Marshal.SizeOf<int>());
+        var margins = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        _ = DwmExtendFrameIntoClientArea(handle, ref margins);
         return updated;
     }
 
@@ -37,6 +48,12 @@ public static class NativeMethods
         _ = DwmGetWindowAttribute(
             handle, WindowCornerPreference, out var cornerPreference, Marshal.SizeOf<int>());
         return cornerPreference;
+    }
+
+    public static int GetWindowAttribute(nint handle, int attribute)
+    {
+        _ = DwmGetWindowAttribute(handle, attribute, out var value, Marshal.SizeOf<int>());
+        return value;
     }
 
     public static void SetWindowFrame(nint handle, int x, int y, int width, int height)
@@ -94,6 +111,9 @@ public static class NativeMethods
     private static extern int DwmGetWindowAttribute(
         nint handle, int attribute, out int value, int valueSize);
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(nint handle, ref Margins margins);
+
     [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool FreeConsole();
@@ -132,6 +152,15 @@ public static class NativeMethods
         public int Left;
         public int Top;
         public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Margins
+    {
+        public int Left;
+        public int Right;
+        public int Top;
         public int Bottom;
     }
 

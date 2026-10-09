@@ -26,18 +26,18 @@ public static class CardRenderer
         var kind = model.EnumerateObject().Single();
         return kind.Name switch
         {
-            "reviewList" => ReviewList(kind.Value, command),
+            "reviewList" => WindowsCardRenderer.ReviewList(kind.Value, command),
             "inbox" => Inbox(kind.Value, command),
             "actions" => Actions(kind.Value, command),
             "workInFlight" => WorkInFlight(kind.Value, command),
-            "project" => Project(kind.Value, command),
+            "project" => WindowsCardRenderer.Project(kind.Value, command),
             _ => new Grid(),
         };
     }
 
     public static FrameworkElement CreateStopped(JsonElement stopped, JsonElement? status)
     {
-        var content = Collapsed(stopped, _ => { });
+        var content = WindowsCardRenderer.Stopped(stopped, _ => { });
         if (status is { } stoppedStatus)
         {
             content.ToolTip = JsonModel.String(stoppedStatus, "tooltip");

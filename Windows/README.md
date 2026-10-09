@@ -38,6 +38,55 @@ Russian replay:
 
 ![Protocol v2 Russian replay](../docs/poc/windows-ui/w3-pr1-session-ru.png)
 
+The style reference replay uses the final GitHub review model and the plain project model from
+the English golden session. It adds only the engine-owned `meta.place` values needed to show the
+Windows and WSL variants:
+
+```powershell
+dotnet run --project Windows/DevDeck.Shell -- --replay docs/poc/windows-ui/windows-style-sample.jsonl
+```
+
+The left side of each comparison is the accepted HTML mock. The right side is the WPF renderer
+at the same scale. Both sides draw cards at 352 device-independent pixels with 16 pixel side
+padding, 14 pixel top and bottom padding, a 20 pixel header, 30 pixel list rows and the typography
+specified in `docs/windows-style.md`:
+
+![Windows cards compared at 100 percent](../docs/poc/windows-ui/windows-style-comparison-100.png)
+
+![Windows cards compared at 150 percent](../docs/poc/windows-ui/windows-style-comparison-150.png)
+
+![Windows cards compared at 200 percent](../docs/poc/windows-ui/windows-style-comparison-200.png)
+
+Live Acrylic and the solid fallback use the same neutral replay data:
+
+![Windows cards with Acrylic](../docs/poc/windows-ui/windows-style-acrylic.png)
+
+![Windows cards with transparency effects disabled](../docs/poc/windows-ui/windows-style-solid.png)
+
+The shared button template gives every control a two-stroke keyboard focus indicator and distinct
+hover, pressed and disabled states. Each state is captured separately from the neutral golden
+project card.
+
+![Windows button hover state](../docs/poc/windows-ui/windows-style-button-hover.png)
+
+![Windows button pressed state](../docs/poc/windows-ui/windows-style-button-pressed.png)
+
+![Windows button disabled state](../docs/poc/windows-ui/windows-style-button-disabled.png)
+
+![Windows button keyboard focus](../docs/poc/windows-ui/windows-style-button-focus.png)
+
+## Backdrop behavior
+
+The Windows 11 test confirms that a borderless WPF window receives the system backdrop when
+`AllowsTransparency` stays false. DevDeck extends the DWM frame through the whole client area,
+keeps the WPF composition target transparent, sets `DWMWA_SYSTEMBACKDROP_TYPE` to
+`DWMSBT_TRANSIENTWINDOW`, opts into dark mode and asks DWM for rounded corners. On the tested
+machine DWM returned backdrop value `3`, dark mode value `1` and corner preference value `2`.
+
+The card surface adds the specified `#28282C` tint at 66 percent opacity. When Windows transparency
+effects are off, it switches to the opaque `#2B2B2F` surface. The shell still leaves corner
+clipping to DWM, so neither mode produces square corner artifacts.
+
 ## Live development
 
 Run the shell against a locally built host:
@@ -64,6 +113,12 @@ The shell renders the five card model kinds and collapsed rows, applies `deck.ch
 `panels.changed`, reports measurements, moves and display changes, executes the supported system
 effects and restarts a failed host. It shows the last stopped model and stopped status while the
 host is unavailable.
+
+The `reviewList` and `project` cards use the Windows visual system in
+[`docs/windows-style.md`](../docs/windows-style.md). Other card kinds keep the protocol v2
+renderer until W-4. The project log control is a 24 px icon button: `header.logHelp` is its
+tooltip and `header.logIsOn` is its highlighted state. The phone icon appears only when the
+engine supplies `header.phoneURL`; the QR interaction remains part of W-11.
 
 The following protocol features are intentionally deferred:
 
