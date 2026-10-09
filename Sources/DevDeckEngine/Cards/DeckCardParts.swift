@@ -124,6 +124,11 @@ public enum DeckCommand: Sendable, Equatable, Codable {
     case openTerminalAt(URL)
     /// Your pull requests on the web, from the menu.
     case openPullRequestsPage
+    /// Put a saved arrangement back.
+    case applyArrangement(name: String)
+    case forgetArrangement(name: String)
+    /// Save the deck as it is under this name, which the shell asked for.
+    case saveArrangement(name: String)
 }
 
 /// The settings a card can point at.

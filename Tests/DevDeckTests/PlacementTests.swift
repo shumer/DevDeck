@@ -18,9 +18,7 @@ private final class Desk {
     var displays: [DisplayFrame]
     var main: DisplayFrame
     var size = CGSize(width: 352, height: 200)
-    lazy var placement = DeckPlacement(
-        runtime: deck.runtime,
-        preferences: deck.preferences,
+    lazy var placement = deck.runtime.placePanels(
         measure: { [unowned self] _ in self.size },
         displays: { [unowned self] in DeckDisplays(screens: self.displays, main: self.main, fallback: self.main) }
     )
@@ -199,5 +197,50 @@ func runPlacementTests(_ run: TestRun) async {
         let top = try expectNotNil(desk.frames[ordered[0].key], "top")
         let below = try expectNotNil(desk.frames[ordered[1].key], "below")
         try expectEqual(top.minY - below.maxY, CGFloat(CardMetrics.panelGap))
+    }
+
+    run.section("Placement - saved arrangements")
+
+    await run.test("a saved deck is ticked while it is on screen, and a blank name saves nothing") {
+        let all = projects(2)
+        let desk = Desk(projects: all)
+        _ = desk.placement.sync()
+        desk.deck.runtime.perform(.saveArrangement(name: "   "))
+        try expect(desk.deck.preferences.arrangements.isEmpty)
+        desk.deck.runtime.perform(.saveArrangement(name: " Work "))
+        try expectEqual(desk.deck.preferences.arrangements.map(\.name), ["Work"])
+
+        let submenu = desk.deck.runtime.menu(update: nil).compactMap { entry -> [DeckMenuEntry]? in
+            if case .submenu(let item, let children) = entry, item.title == L("menu.arrangements") { return children }
+            return nil
+        }.first ?? []
+        guard case .item(let work)? = submenu.first else {
+            throw TestFailure(message: "the saved deck should be offered", file: #filePath, line: #line)
+        }
+        try expect(work.isOn, "the deck on screen is the one saved")
+        try expectEqual(work.alternate?.command, .forgetArrangement(name: "Work"))
+    }
+
+    await run.test("putting a deck back restores what is on, what is folded and where, then asks for the panels") {
+        let all = projects(2)
+        let desk = Desk(projects: all)
+        _ = desk.placement.sync()
+        let folded = all[0].cardID
+        desk.deck.runtime.toggleCollapsed(folded)
+        let placed = desk.deck.preferences.placement(for: folded)
+        desk.deck.runtime.perform(.saveArrangement(name: "Folded"))
+
+        desk.deck.runtime.toggleCollapsed(folded)
+        desk.deck.runtime.cards.setEnabled(false, for: all[1].cardID)
+        desk.deck.preferences.setPlacement(nil, for: folded)
+
+        desk.deck.runtime.perform(.applyArrangement(name: "Folded"))
+        try expect(desk.deck.runtime.isCollapsedByChoice(folded))
+        try expect(desk.deck.runtime.cards.isEnabled(all[1].cardID))
+        try expectEqual(desk.deck.preferences.placement(for: folded), placed)
+        try expectEqual(desk.deck.effects.last, .arrangementApplied)
+
+        desk.deck.runtime.perform(.forgetArrangement(name: "Folded"))
+        try expect(desk.deck.preferences.arrangements.isEmpty)
     }
 }

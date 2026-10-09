@@ -37,9 +37,7 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
         self.makeContextMenu = makeContextMenu
         self.restingLevel = preferences.displayMode.windowLevel
         super.init()
-        placement = DeckPlacement(
-            runtime: controller.runtime,
-            preferences: preferences,
+        placement = controller.runtime.placePanels(
             measure: { CardHostView.size(for: $0) },
             displays: { Displays.deck() }
         )

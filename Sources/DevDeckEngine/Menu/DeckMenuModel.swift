@@ -46,6 +46,9 @@ public struct DeckMenuItem: Sendable, Equatable {
     public var command: DeckCommand?
     /// Asked before the command is sent, for the one row that stops everything at once.
     public var confirmation: DeckConfirmation?
+    /// A name to ask for first. The answer goes into the command, which is
+    /// `.saveArrangement(name:)` for the one row that has a prompt.
+    public var prompt: DeckPrompt?
     public var alternate: Alternate?
 
     public init(_ title: String, command: DeckCommand? = nil) {
@@ -67,8 +70,6 @@ public indirect enum DeckMenuEntry: Sendable, Equatable {
     case item(DeckMenuItem)
     case separator
     case submenu(DeckMenuItem, [DeckMenuEntry])
-    /// The saved arrangements, which the shell fills in until placement moves into the engine.
-    case arrangements(String)
 }
 
 /// What the menu-bar item shows: which tier lights the icon, and the words behind it.
@@ -152,7 +153,7 @@ extension DeckRuntime {
         entries.append(.item(DeckMenuItem(L("menu.openPulls"), command: .openPullRequestsPage)))
 
         entries.append(.separator)
-        entries.append(.arrangements(L("menu.arrangements")))
+        entries.append(.submenu(DeckMenuItem(L("menu.arrangements")), arrangementEntries()))
         entries.append(.item(lockItem))
         entries.append(.item(DeckMenuItem(L("menu.tidy"), command: .tidy)))
         entries.append(.item(DeckMenuItem(L("menu.refresh"), command: .refreshNow)))

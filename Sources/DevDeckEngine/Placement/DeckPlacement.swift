@@ -56,7 +56,8 @@ public final class DeckPlacement {
     /// second notification a few hundred milliseconds later.
     public static let screensSettle: TimeInterval = 0.6
 
-    public init(
+    /// Made by `DeckRuntime.placePanels(measure:displays:)`, which keeps it.
+    init(
         runtime: DeckRuntime,
         preferences: Preferences,
         measure: @escaping (CardID) -> CGSize,

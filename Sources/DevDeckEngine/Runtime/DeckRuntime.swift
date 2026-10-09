@@ -44,6 +44,9 @@ public enum DeckEffect: Sendable, Equatable {
     case installUpdate
     case openReleaseNotes
     case quit
+    /// A saved arrangement changed the cards, their folds and their placements: open the panels
+    /// and put them where the placements say.
+    case arrangementApplied
 }
 
 /// A card's model, whichever card it is. See `DeckRuntime.model(for:)`.
@@ -79,7 +82,7 @@ public final class DeckRuntime {
         onChange?(field)
     }
 
-    private func effect(_ effect: DeckEffect) {
+    func effect(_ effect: DeckEffect) {
         onEffect?(effect)
     }
 
@@ -1595,6 +1598,35 @@ public final class DeckRuntime {
         clock.now
     }
 
+    // MARK: Placement
+
+    /// Where the panels are, once a shell has panels. See `DeckPlacement`.
+    public private(set) var placement: DeckPlacement?
+
+    /// Gives the deck its panels: the shell says how to measure a card and which displays there
+    /// are, and gets back the placement it will apply.
+    public func placePanels(
+        measure: @escaping (CardID) -> CGSize,
+        displays: @escaping () -> DeckDisplays
+    ) -> DeckPlacement {
+        let made = DeckPlacement(runtime: self, preferences: preferences, measure: measure, displays: displays)
+        placement = made
+        return made
+    }
+
+    func savedPlacement(for card: CardID) -> PanelPlacement? {
+        preferences.placement(for: card)
+    }
+
+    func savePlacement(_ placement: PanelPlacement, for card: CardID) {
+        preferences.setPlacement(placement, for: card)
+    }
+
+    var savedArrangements: [DeckArrangement] {
+        get { preferences.arrangements }
+        set { preferences.arrangements = newValue }
+    }
+
     // MARK: Card models and what their clicks ask for
 
     /// The card as it should be drawn now, or nil for a card that has no model yet.
@@ -1766,6 +1798,12 @@ public final class DeckRuntime {
             powerOffDDEV()
         case .openTerminalAt(let folder):
             effect(.openTerminal(folder))
+        case .applyArrangement(let name):
+            applyArrangement(named: name)
+        case .forgetArrangement(let name):
+            forgetArrangement(named: name)
+        case .saveArrangement(let name):
+            saveArrangement(named: name)
         case .openPullRequestsPage:
             // Through the first account's browser, like every other GitHub link on the deck.
             guard let url = dashboardURL(for: .githubPullRequests) else { return }

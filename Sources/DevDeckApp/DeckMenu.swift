@@ -15,7 +15,6 @@ import DevDeckUI
 final class DeckMenu: NSObject, NSMenuDelegate {
     private let controller: DeckController
     private let panels: PanelCoordinator
-    private let arrangements: ArrangementsController
     private let updater: Updater
     private let openSettings: () -> Void
     private let openCardSettings: (CardID) -> Void
@@ -33,7 +32,6 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     init(
         controller: DeckController,
         panels: PanelCoordinator,
-        arrangements: ArrangementsController,
         updater: Updater,
         openSettings: @escaping () -> Void,
         openCardSettings: @escaping (CardID) -> Void,
@@ -45,7 +43,6 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         self.showCard = showCard
         self.controller = controller
         self.panels = panels
-        self.arrangements = arrangements
         self.updater = updater
         self.openSettings = openSettings
         self.openCardSettings = openCardSettings
@@ -157,10 +154,6 @@ final class DeckMenu: NSObject, NSMenuDelegate {
                 fill(submenu, with: children)
                 parent.submenu = submenu
                 menu.addItem(parent)
-            case .arrangements(let title):
-                let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-                parent.submenu = arrangements.submenu()
-                menu.addItem(parent)
             }
         }
     }
@@ -172,7 +165,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
             keyEquivalent: model.keyEquivalent
         )
         item.target = self
-        item.representedObject = model.command.map { MenuCommand($0, confirmation: model.confirmation) }
+        item.representedObject = model.command.map { MenuCommand($0, confirmation: model.confirmation, prompt: model.prompt) }
         item.isEnabled = model.isEnabled
         item.state = model.isOn ? .on : .off
         item.image = model.image.flatMap(Self.image)
@@ -185,7 +178,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     private func twin(_ alternate: DeckMenuItem.Alternate, of model: DeckMenuItem) -> NSMenuItem {
         let twin = NSMenuItem(title: alternate.title, action: #selector(choose(_:)), keyEquivalent: "")
         twin.target = self
-        twin.representedObject = MenuCommand(alternate.command, confirmation: nil)
+        twin.representedObject = MenuCommand(alternate.command, confirmation: nil, prompt: nil)
         twin.isAlternate = true
         twin.keyEquivalentModifierMask = .option
         twin.isEnabled = alternate.isEnabled
@@ -223,7 +216,28 @@ final class DeckMenu: NSObject, NSMenuDelegate {
             NSApp.activate(ignoringOtherApps: true)
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
+        if let prompt = chosen.prompt {
+            guard let answer = ask(prompt) else { return }
+            controller.perform(.saveArrangement(name: answer))
+            return
+        }
         controller.perform(chosen.command)
+    }
+
+    /// Asks for a typed answer, and gives it back as typed: whether it will do is the runtime's.
+    private func ask(_ prompt: DeckPrompt) -> String? {
+        let alert = NSAlert()
+        alert.messageText = prompt.title
+        alert.informativeText = prompt.detail
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        field.placeholderString = prompt.placeholder
+        alert.accessoryView = field
+        alert.addButton(withTitle: prompt.confirm)
+        alert.addButton(withTitle: prompt.cancel)
+        NSApp.activate(ignoringOtherApps: true)
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        return field.stringValue
     }
 
     // MARK: What only the Mac can do
@@ -243,6 +257,9 @@ final class DeckMenu: NSObject, NSMenuDelegate {
             guard let update = updater.available else { return }
             LinkOpener.open(update.pageURL, using: .systemDefault)
         case .quit: quit()
+        case .arrangementApplied:
+            panels.syncPanels()
+            panels.replaceAll()
         default: break
         }
     }
@@ -252,9 +269,11 @@ final class DeckMenu: NSObject, NSMenuDelegate {
 private final class MenuCommand: NSObject {
     let command: DeckCommand
     let confirmation: DeckConfirmation?
+    let prompt: DeckPrompt?
 
-    init(_ command: DeckCommand, confirmation: DeckConfirmation?) {
+    init(_ command: DeckCommand, confirmation: DeckConfirmation?, prompt: DeckPrompt?) {
         self.command = command
         self.confirmation = confirmation
+        self.prompt = prompt
     }
 }

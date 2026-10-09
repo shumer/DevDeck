@@ -15,7 +15,6 @@ import SwiftUI
 /// - `DeckController` owns the data and the loops.
 /// - `PanelCoordinator` owns the windows: which, how big, where.
 /// - `DeckMenu` owns the menu-bar item and every menu.
-/// - `ArrangementsController` owns saved decks.
 /// - `Summoner` owns the key that raises the deck.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -59,17 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         preferences: preferences,
         controller: controller
     ) { [unowned self] card in self.menu.contextMenu(for: card) }
-    private lazy var arrangements: ArrangementsController = ArrangementsController(
-        preferences: preferences,
-        controller: controller,
-        cards: cards,
-        panels: panels
-    )
     private lazy var updater: Updater = Updater(preferences: preferences)
     private lazy var menu: DeckMenu = DeckMenu(
         controller: controller,
         panels: panels,
-        arrangements: arrangements,
         updater: updater,
         openSettings: { [unowned self] in self.settingsController.show() },
         openCardSettings: { [unowned self] card in

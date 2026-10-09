@@ -136,7 +136,7 @@ final class DeckController: ObservableObject {
         case .openTerminal(let folder): LocalFolder.openTerminal(folder)
         case .revealFolder(let folder): LocalFolder.reveal(folder)
         case .cardsChanged, .lockChanged, .tidy, .openSettings, .openCardSettings, .openAccountSettings,
-             .showCard, .installUpdate, .openReleaseNotes, .quit:
+             .showCard, .installUpdate, .openReleaseNotes, .quit, .arrangementApplied:
             onAppEffect?(effect)
         }
     }

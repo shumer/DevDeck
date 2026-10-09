@@ -14,7 +14,7 @@ private func items(_ entries: [DeckMenuEntry]) -> [DeckMenuItem] {
         switch entry {
         case .item(let item): return [item]
         case .submenu(let item, let children): return [item] + items(children)
-        case .header, .separator, .arrangements: return []
+        case .header, .separator: return []
         }
     }
 }
@@ -37,7 +37,7 @@ func runMenuModelTests(_ run: TestRun) async {
         try expect(!calm.isEnabled)
         try expectEqual(calm.image, .calm)
         try expect(entries.contains(.header(L("menu.cards"))))
-        try expect(entries.contains(.arrangements(L("menu.arrangements"))))
+        try expect(item(L("arrangements.save"), in: entries) != nil, "the arrangements submenu offers to save")
         try expectEqual(items(entries).last?.command, .quit)
         try expectEqual(items(entries).last?.keyEquivalent, "q")
     }

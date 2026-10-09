@@ -356,11 +356,22 @@ matching whole words in the start command and the caption, framework ahead of ru
 have to agree on it exactly: the SwiftUI card drawing the rows and the AppKit panel being
 resized around them. A disagreement shows up as a clipped last row or a strip of empty glass.
 
-Expansion state lives on `DeckRuntime` and is published, so `PanelCoordinator.syncPanelSizes()`
-resizes the window whenever either the data or the expansion changes - keeping the top edge
+Expansion state lives on `DeckRuntime` and is published, so `DeckPlacement.syncSizes()`
+resizes the panel whenever either the data or the expansion changes - keeping the top edge
 fixed and shifting the rest of the column out of the way.
 
 ## Placement
+
+**Where a panel goes is the engine's; the window is the shell's.** `DeckPlacement`, made by
+`DeckRuntime.placePanels(measure:displays:)`, keeps a frame per panel (in the Mac's points, y
+growing upward) and makes every decision below: which panels to open and close, where a new one
+goes, how a hidden card's hole closes, which size changes move the column, packing, tidying, when
+a move is believed and written down, and what is parked. Each call answers with
+`DeckPanelChange`s. `PanelCoordinator` reports what only the Mac sees (a panel moved, the screens
+changed, how big a card draws, which displays are connected) and applies the changes, at the
+window level the summon key and the display mode set. `PlacementTests` drive it the way the shell
+does, including an unplugged monitor in the order the window server reports it. See
+[adr/0029-placement-in-the-engine.md](adr/0029-placement-in-the-engine.md).
 
 `DisplayMode` lives in `DevDeckCore` so it can be persisted and tested; the app maps it to an
 `NSWindow.Level`:
@@ -482,7 +493,7 @@ wrapping only when the rows do not fit. One clamp per card was the earlier answe
 screen 949 points tall it sent every offset taken on one 1440 tall to the same spot on the bottom
 edge. The stored placement is left untouched so the card goes home, and stands up again, when its
 display returns; the fold is `DeckRuntime.parkedCards`, not the collapsed preference, and the
-44-point height is not remembered. `persistPosition` refuses to overwrite a placement while it is
+44-point height is not remembered. `DeckPlacement` refuses to overwrite a placement while it is
 parked, because parking is not a decision the user made. `NSApplication.didChangeScreenParametersNotification`
 triggers a re-place of the whole deck, after a beat - a display that has just woken reports its
 old frame for a moment, and the Dock follows the main display in a second notification a few
@@ -526,8 +537,8 @@ itself that one of them could do.
 - `DeckCards` is the runtime's card list, `DeckCardList`, for the parts of the shell that place
   panels and save arrangements: the built-in cards plus one per project, in deck order, and
   which of them are switched on.
-- `PanelCoordinator` owns the windows: which cards have one, how big each is, and where it
-  sits. The two rules it exists to keep are stated on `persistPosition` and `syncPanelSizes`: a
+- `PanelCoordinator` owns the windows and applies what `DeckPlacement` decides: which cards
+  have one, how big each is, and where it sits. The two rules placement exists to keep: a
   position is written down only when a person chose it, and the deck settling into its data is
   not a layout event. See [Placement](#placement).
 - `DeckMenu` owns the menu-bar item and draws every menu from the runtime's entries as it opens:
@@ -535,7 +546,8 @@ itself that one of them could do.
   right-click, `status()` for the icon and tooltip. It carries out what a row asks of the app
   (panels, settings, the updater) and decides nothing about what the menus say. See
   [adr/0028-the-menu-in-the-engine.md](adr/0028-the-menu-in-the-engine.md).
-- `ArrangementsController` owns saved decks: naming one, applying one, offering them.
+- Saved decks are the runtime's too: the submenu, saving under a name the shell asks for, and
+  putting one back, after which the shell opens and places the panels.
 - `Summoner` owns the key that raises the deck, the tap-to-latch rule, the veils, and the click
   or Esc that puts back a deck raised from the menu or a banner; what
   "raised" does to the panels is the coordinator's.
