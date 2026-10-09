@@ -67,7 +67,7 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   `[AccountFailure]` and are drawn in the footer of the list cards.
 - **Cache keys are namespaced per account**, or two tokens polling one endpoint share an
   `ETag` and serve each other's data.
-- **A hidden card fetches nothing.** New cards must respect `DeckController.setActiveCards`.
+- **A hidden card fetches nothing.** New cards must respect `DeckRuntime.setActiveCards`.
 - **Screenshots never come from a real deck.** A real deck shows clients, branches and
   sandboxes. The `sample-deck` branch carries `--deck sample`, a whole deck with nothing real on
   it, for pictures; windows are captured by id (`screencapture -l`), never the screen.
@@ -78,7 +78,7 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   when a display comes or goes, about 8 ms before `didChangeScreenParameters`, with `NSScreen`
   already updated. Positions go through `PendingMoves` and are saved only after 150 ms of quiet
   screens; never persist a position straight from the notification. A parked card is folded by
-  `DeckController.parkedCards`, not by the collapsed preference, and nothing about it is saved.
+  `DeckRuntime.parkedCards`, not by the collapsed preference, and nothing about it is saved.
 - **Row height and panel height come from `CardMetrics`.** The card and the window it lives in
   must not compute it separately, or the last row gets clipped.
 - **Links open through `LinkOpener` with the row's account**, never `NSWorkspace.open` directly

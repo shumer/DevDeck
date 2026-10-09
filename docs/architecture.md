@@ -7,8 +7,8 @@ DevDeckApp     AppKit shell - windows, menu bar, placement, settings
     │              depends on everything below
 DevDeckUI      SwiftUI cards - pure rendering of a CardState
     │
-DevDeckEngine  protocol v2, portable card models, intents and event stream
-    │
+DevDeckEngine  DeckRuntime - what the deck knows and decides, on every platform;
+    │              protocol v2, portable card models, intents and event stream
 GitHubKit      one integration: GraphQL documents, models, services
 GitLabKit      one integration: accounts per host, the merge requests query
 ArcKit         one integration: projects, link templates, local Fusion stack
@@ -35,13 +35,32 @@ and standard output, so a shell can restart without taking a project down.
 
 `DevDeckEngineTests` replay three English and Russian input transcripts and compare every output
 byte with the committed golden files. This keeps event order, text, tone, visibility and state
-changes identical across platforms. The Mac application does not use this engine yet. Moving its
-controller behind the protocol is M-2b.
+changes identical across platforms. The protocol front-end still has the proof of concept's own
+polling; moving it onto `DeckRuntime`, which the Mac already runs on, is C-1.
+
+## The deck runtime
+
+`DeckRuntime` holds the data every card renders and the two loops that keep it fresh, and it
+makes every decision about them: when to poll, what a failed poll means, what a button does to a
+card, what is worth a banner, what is folded, parked or expanded. It lives in `DevDeckEngine`, so
+it builds on Windows, and on the main actor, so a shell that folds a card reads the folded state
+on the next line ([adr/0025-the-deck-runtime-on-the-main-actor.md](adr/0025-the-deck-runtime-on-the-main-actor.md)).
+
+It talks to a shell in two ways. `onChange` names every stored field that was assigned,
+including an assignment that left it equal, because that is what `@Published` did and what the
+Mac's subscriptions rely on. `onEffect` carries what only the platform can do: post banners,
+open or close a log window, launch Docker Desktop, redraw the menu-bar item. Time, sleeping, the
+local address and the HTTP client come in at `init`, which is what lets `DeckRuntimeTests` run
+it without a network, a clock or a shell.
+
+On the Mac, `DeckController` is now an adapter: it mirrors each field into the same
+`@Published` property, forwards every call, and carries out the effects with AppKit. It decides
+nothing, and a line in it that does is in the wrong place.
 
 ## Data flow
 
 ```
-DeckController (@MainActor)
+DeckRuntime (@MainActor, in DevDeckEngine; DeckController mirrors it for SwiftUI)
    ├─ owns CardState<…> for each card, and one RefreshSource per remote card
    ├─ refresh loop: RefreshCycle.run(sources) → sleep(pass.delay)
    │     RefreshCycle asks each active source in order, keeps the one failure counter
@@ -85,7 +104,7 @@ publishing the port at all the answer stands, which is what keeps a stack starte
 terminal counted as running. `scripts/check-arc-stack.sh` prints the same three facts for every
 configured project, for a card that still disagrees with the person looking at it.
 
-Local status polls on its own 10-second loop in `DeckController`, separate from the API
+Local status polls on its own 10-second loop in `DeckRuntime`, separate from the API
 refresh: a stack that just came up should appear within seconds, and the probe is local and
 cheap. A project mid-command is skipped by the poll so the card cannot flicker back to
 "stopped" during a restart.
@@ -126,7 +145,7 @@ for a card, `LogTail.windowLineLimit` for a window, which also reads more of the
 **The log itself is a window.** `LogWindowController` opens one per project, dark, monospaced,
 selectable, with ⌘F through the Edit menu's Find items, a footer that says where the lines come
 from, a Follow switch and a button that opens the file. It re-reads every two seconds while it is
-visible and nothing at all while it is behind another window or minimised. `DeckController` keeps
+visible and nothing at all while it is behind another window or minimised. `DeckRuntime` keeps
 `logWindowCards` and `logTails`; the window subscribes to the second, so what it shows and what
 the deck knows cannot disagree, and the card's header button is lit from the first. Closing the
 window, by its own button or ⌘W, tells the controller, which drops the lines and stops reading.
@@ -177,7 +196,7 @@ quits and stops the whole tree, not just the process it recorded - see
 ## The Docker gate
 
 `DockerEnvironment` in `DevDeckCore` runs one probe for the whole deck at the top of the local
-loop, and `DeckController` publishes the result. Cards do not fetch it; they are handed a
+loop, and `DeckRuntime` publishes the result. Cards do not fetch it; they are handed a
 `DockerStatus` and ask `DockerGate` what to draw, so the wording and the colours cannot drift
 between Arc, DDEV and plain cards.
 
@@ -194,7 +213,7 @@ A card is three things:
 
 1. a `CardDescriptor` in `CardCatalog` - identifier, title, whether it is implemented;
 2. a branch in `CardHostView` - the SwiftUI view and the panel size;
-3. whatever data it needs, added to `DeckController`.
+3. whatever data it needs, added to `DeckRuntime`.
 
 `CardLayout` holds one thing: which cards are on. **The order belongs to the catalog** - the
 built-in cards, then Arc projects, then DDEV, then the plain ones, each group alphabetical, via
@@ -212,7 +231,7 @@ The layout is merged with the catalog on every read, so:
 Card identifiers are persisted strings (`github.pullRequests`). **They must never change.**
 
 **A card that acts on its data owns the job, not the view.** The inbox's mark-as-read is the
-model: `DeckController.markRestRead()` and `markAllRead()` take the rows off the card at once,
+model: `DeckRuntime.markRestRead()` and `markAllRead()` take the rows off the card at once,
 then do the work in the background, with `NotificationsService.markRead(_:concurrency:progress:)`
 marking six threads at a time. `inboxProgress` is published for the card's footer and refuses a
 second start while one runs, `pendingRead` filters the answer of any poll that lands in the
@@ -309,7 +328,7 @@ matching whole words in the start command and the caption, framework ahead of ru
 have to agree on it exactly: the SwiftUI card drawing the rows and the AppKit panel being
 resized around them. A disagreement shows up as a clipped last row or a strip of empty glass.
 
-Expansion state lives on `DeckController` and is published, so `PanelCoordinator.syncPanelSizes()`
+Expansion state lives on `DeckRuntime` and is published, so `PanelCoordinator.syncPanelSizes()`
 resizes the window whenever either the data or the expansion changes - keeping the top edge
 fixed and shifting the rest of the column out of the way.
 
@@ -433,7 +452,7 @@ column at the side of the main screen the deck stood on at home, in the order th
 wrapping only when the rows do not fit. One clamp per card was the earlier answer, and on a
 screen 949 points tall it sent every offset taken on one 1440 tall to the same spot on the bottom
 edge. The stored placement is left untouched so the card goes home, and stands up again, when its
-display returns; the fold is `DeckController.parkedCards`, not the collapsed preference, and the
+display returns; the fold is `DeckRuntime.parkedCards`, not the collapsed preference, and the
 44-point height is not remembered. `persistPosition` refuses to overwrite a placement while it is
 parked, because parking is not a decision the user made. `NSApplication.didChangeScreenParametersNotification`
 triggers a re-place of the whole deck, after a beat - a display that has just woken reports its
@@ -463,12 +482,12 @@ apart, off-screen ones cannot.
 it builds the stores and the objects below, wires the events between them, and does nothing
 itself that one of them could do.
 
-- `DeckController` owns the data every panel renders and the two loops that keep it fresh: the
-  API loop, which hands its sources to `RefreshCycle` and sleeps for what it is told, and a
-  faster local loop for Docker, stacks and projects. The parts of it that decide rather than
-  fetch live where the suite can reach them: `RefreshCycle` and `ProjectWatch` in Core,
-  `ActionsWatchList` and `GitHubAttention` in GitHubKit, `DeckAttention` in the UI module. See
-  [Attention](#attention).
+- `DeckController` is the Mac's adapter over `DeckRuntime`, which owns the data every panel
+  renders and the two loops that keep it fresh: the API loop, which hands its sources to
+  `RefreshCycle` and sleeps for what it is told, and a faster local loop for Docker, stacks and
+  projects. See [The deck runtime](#the-deck-runtime). The rules it applies live where the suite
+  can reach them: `RefreshCycle` and `ProjectWatch` in Core, `ActionsWatchList` and
+  `GitHubAttention` in GitHubKit, `DeckAttention` in the engine. See [Attention](#attention).
 - The modules, one per kind of card, under `Modules/`: `PullRequestsModule`, `InboxModule`,
   `ActionsModule`, `MergeRequestsModule`, `WorkInFlightModule`, `ArcProjectModule`,
   `DDEVProjectModule` and `LocalProjectModule`. A `CardModule` says which cards it owns and
@@ -678,8 +697,9 @@ downloaded build against. See [adr/0017-signature-decides.md](adr/0017-signature
 
 1. Add a `CardDescriptor` to `CardCatalog` with `isImplemented: false`.
 2. Build the integration in its own module (or extend `GitHubKit`), with tests.
-3. Add the state to `DeckController` and a `RefreshSource` for it; the cycle only asks it
-   while the card is active.
+3. Add the state to `DeckRuntime`, as a field that reports its assignments, and a
+   `RefreshSource` for it; the cycle only asks it while the card is active. Mirror the field in
+   `DeckController` and test the behaviour in `DeckRuntimeTests`.
 4. Write the SwiftUI card in `DevDeckUI` against a `CardState<…>`.
 5. Write a `CardModule` under `DevDeckApp/Modules` that owns the identifier and returns the
    view, the size and the dashboard, add it to the list in `AppDelegate`, and flip
@@ -690,6 +710,6 @@ downloaded build against. See [adr/0017-signature-decides.md](adr/0017-signature
    and test the wording. See [Attention](#attention).
 7. Update `README.md`, this file and `docs/roadmap.md`.
 
-What is still per kind by name is inside `DeckController`: the status dictionaries, the local
+What is still per kind by name is inside `DeckRuntime`: the status dictionaries, the local
 refresh loop and the three `perform` functions. That is the data plumbing, and it is the next
 thing to move if a fourth kind of project ever arrives.

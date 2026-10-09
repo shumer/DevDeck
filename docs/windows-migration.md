@@ -44,7 +44,7 @@ only has to draw.
 - **M-2a. Engine foundation.** Protocol v2, the engine host, the golden infrastructure and the
   localisation resources target build on both platforms. The Mac application does not use them
   yet. Done.
-- **M-2b. Mac application on the engine.** `DeckController` moves into the engine: polling,
+- **M-2b. Mac application on the engine.** `DeckController`'s logic moves into `DeckRuntime`: polling,
   smoothing, project actions, the inbox and attention. A portable change stream replaces
   `@Published`, and the Mac shell wraps it for SwiftUI.
 - **M-3. Every card model in the engine.** Text, tones, badges, order and footers move out of the
