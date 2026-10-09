@@ -26,3 +26,47 @@ jobs:
             echo "::error::the build produced warnings"
             exit 1
           fi
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Swift
+        uses: compnerd/gha-setup-swift@bbae8ce86bac5a3449f3992b3d88bc4ca25f2057 # main.
+        with:
+          swift-version: swift-6.4-release
+          swift-build: 6.4-RELEASE
+          cache: true
+      - name: Swift version
+        run: swift --version
+      - name: Restore Swift build cache
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: windows-swift-6.4-build-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**', 'Tests/**') }}
+          restore-keys: |
+            windows-swift-6.4-build-
+      - name: Build without project warnings
+        shell: pwsh
+        run: |
+          $Timer = [Diagnostics.Stopwatch]::StartNew()
+          swift build 2>&1 | Tee-Object -FilePath build.log
+          $BuildExit = $LASTEXITCODE
+          $Timer.Stop()
+          Write-Host "Swift build elapsed: $([Math]::Round($Timer.Elapsed.TotalSeconds, 2)) seconds."
+          if ($BuildExit -ne 0) {
+            exit $BuildExit
+          }
+
+          # Swift 6.4 emits swiftlang/swift#91000 from WinSDK. Remove this exception when the pinned toolchain includes the fix.
+          $AllowedWarning = "warning: reference to type 'wchar_t' broken by a context change; 'wchar_t' was expected to be in '_Builtin_stddef', but now a candidate is found only in 'SwiftShims'"
+          $UnexpectedWarnings = Select-String -Path build.log -SimpleMatch "warning:" |
+            Where-Object { -not $_.Line.Contains($AllowedWarning) }
+          if ($UnexpectedWarnings) {
+            $UnexpectedWarnings | ForEach-Object { Write-Host "::error::$($_.Line)" }
+            exit 1
+          }
+      - name: Windows core tests
+        run: swift run DevDeckWindowsCoreTests
+      - name: Engine tests
+        run: swift run DevDeckEngineTests
