@@ -82,25 +82,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         guard isAuthorized, !alerts.isEmpty else { return }
         Log.app.info("Posting \(alerts.count, privacy: .public) notification(s)")
 
-        // Many at once become one line. Three banners stacked up the corner of the screen is a
-        // wall, and a wall gets swept away without being read.
-        if let summary = NotificationDigest.summary(for: alerts) {
-            let sources = Set(alerts.map(\.source))
-            deliver(DeckAlert(
-                id: "summary.\(alerts.map(\.id).joined().hashValue)",
-                kind: alerts[0].kind,
-                // One mark only when they share it; a mixed summary keeps the app's own icon.
-                source: sources.count == 1 ? alerts[0].source : .devdeck,
-                title: summary.title,
-                subtitle: "",
-                body: summary.body,
-                subject: "",
-                target: .menu,
-                isQuiet: alerts.allSatisfy(\.isQuiet)
-            ))
-            return
-        }
-
+        // Already grouped: how many banners a pass is worth is the runtime's to decide.
         for alert in alerts {
             deliver(alert)
         }

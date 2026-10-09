@@ -20,20 +20,6 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     // MARK: The card
 
-    var menuGroup: String? { L("menu.group.ddev") }
-
-    func descriptors() -> [CardDescriptor] {
-        CardCatalog.sortedByTitle(store.projects().map { project in
-            CardDescriptor(
-                id: project.cardID,
-                title: project.displayTitle,
-                subtitle: "DDEV · \(project.name)",
-                isImplemented: true,
-                isEnabledByDefault: true
-            )
-        })
-    }
-
     func owns(_ card: CardID) -> Bool {
         store.project(forCard: card) != nil
     }

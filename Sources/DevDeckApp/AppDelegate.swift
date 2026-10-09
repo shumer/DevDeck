@@ -54,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             localModule,
         ]
     }()
-    private lazy var cards: DeckCards = DeckCards(preferences: preferences, modules: modules)
+    private lazy var cards: DeckCards = DeckCards(controller: controller)
     private lazy var panels: PanelCoordinator = PanelCoordinator(
         preferences: preferences,
         controller: controller,
@@ -69,11 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var updater: Updater = Updater(preferences: preferences)
     private lazy var menu: DeckMenu = DeckMenu(
         controller: controller,
-        cards: cards,
         panels: panels,
         arrangements: arrangements,
         updater: updater,
-        preferences: preferences,
         openSettings: { [unowned self] in self.settingsController.show() },
         openCardSettings: { [unowned self] card in
             let target = CardHostView.module(for: card)?.settingsTarget(for: card) ?? (.cards, nil)
@@ -178,6 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notifier.onTarget = { [weak self] target in self?.open(target) }
         controller.onAlerts = { [weak self] alerts in self?.notifier.post(alerts) }
         controller.updateStatusItem = { [weak self] in self?.menu.updateStatusItem() }
+        controller.onAppEffect = { [weak self] effect in self?.menu.carryOut(effect) }
         notifier.refreshAuthorization()
 
         // A newer build: one banner, and the settings page redrawn as the state moves.

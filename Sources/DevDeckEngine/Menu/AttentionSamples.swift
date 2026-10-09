@@ -6,8 +6,8 @@ import DevDeckCore
 /// A deck with nothing wrong shows "Nothing needs you", which is the right answer and useless for
 /// looking at how a busy menu reads. This is the busy menu, for a screenshot and for judging the
 /// layout at real size; nothing in it is fetched and clicking it goes nowhere that matters.
-enum AttentionSamples {
-    static func items(now: Date) -> [AttentionItem] {
+public enum AttentionSamples {
+    public static func items(now: Date) -> [AttentionItem] {
         func ago(_ minutes: Double) -> Date { now.addingTimeInterval(-minutes * 60) }
         let example = URL(string: "https://github.com")!
         return [

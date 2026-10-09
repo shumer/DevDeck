@@ -12,15 +12,6 @@ import SwiftUI
 /// cards it owns and takes the view, the size and the dashboard from the one that says yes.
 @MainActor
 protocol CardModule: AnyObject {
-    /// The group a project card of this kind goes under in the menu, with the count in the
-    /// title. Nil for a built-in card, which sits at the top level.
-    var menuGroup: String? { get }
-
-    /// The descriptors this module adds beyond `CardCatalog.all`: one per configured project,
-    /// in the order the deck lays them out. Built-in cards return nothing, since the catalog
-    /// already has them.
-    func descriptors() -> [CardDescriptor]
-
     func owns(_ card: CardID) -> Bool
 
     /// The card's view. Built fresh each time the host redraws, which is how it tracks the
@@ -40,8 +31,6 @@ protocol CardModule: AnyObject {
 }
 
 extension CardModule {
-    var menuGroup: String? { nil }
-    func descriptors() -> [CardDescriptor] { [] }
     func dashboardURL(for card: CardID) -> URL? { nil }
     func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) { (.cards, nil) }
 }

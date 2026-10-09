@@ -3,20 +3,20 @@ import DevDeckCore
 import DevDeckEngine
 import DevDeckUI
 
-/// The menu-bar item and every menu in the app.
+/// The menu-bar item and every menu in the app, drawn from what the runtime decides.
 ///
 /// Every menu here is repopulated as it opens, so a checkmark can never show state from
 /// whenever the menu happened to be created: a menu built once keeps the checkmarks it had at
-/// creation, which is how the lock toggle looked stuck on. The status item's icon and tooltip
-/// come from `DeckStatusSummary`; this only draws them.
+/// creation, which is how the lock toggle looked stuck on. What the menus say, which rows are on,
+/// off or disabled and what each one does are `DeckRuntime.menu(update:samples:)` and
+/// `cardMenu(for:)`; the icon and tooltip are `status()`. This turns them into AppKit and carries
+/// out what only the Mac can do.
 @MainActor
 final class DeckMenu: NSObject, NSMenuDelegate {
     private let controller: DeckController
-    private let cards: DeckCards
     private let panels: PanelCoordinator
     private let arrangements: ArrangementsController
     private let updater: Updater
-    private let preferences: Preferences
     private let openSettings: () -> Void
     private let openCardSettings: (CardID) -> Void
     private let openAccountSettings: (AttentionService, String?) -> Void
@@ -24,8 +24,6 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     private let quit: () -> Void
     /// Shows the sample rows instead of the deck's own, for `--menu sample`.
     var showsSamples = false
-    /// The rows of the menu that is open, by id, so a click can find what it was about.
-    private var attentionItems: [String: AttentionItem] = [:]
 
     private var statusItem: NSStatusItem!
     /// Which panel a context menu belongs to, so a right-click can offer something about *this*
@@ -34,11 +32,9 @@ final class DeckMenu: NSObject, NSMenuDelegate {
 
     init(
         controller: DeckController,
-        cards: DeckCards,
         panels: PanelCoordinator,
         arrangements: ArrangementsController,
         updater: Updater,
-        preferences: Preferences,
         openSettings: @escaping () -> Void,
         openCardSettings: @escaping (CardID) -> Void,
         openAccountSettings: @escaping (AttentionService, String?) -> Void,
@@ -48,11 +44,9 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         self.openAccountSettings = openAccountSettings
         self.showCard = showCard
         self.controller = controller
-        self.cards = cards
         self.panels = panels
         self.arrangements = arrangements
         self.updater = updater
-        self.preferences = preferences
         self.openSettings = openSettings
         self.openCardSettings = openCardSettings
         self.quit = quit
@@ -62,7 +56,7 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     /// object before the status item exists, and the status item needs nothing back.
     func install() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.toolTip = L("attention.tooltip", L("menu.checking"))
+        statusItem.button?.toolTip = DeckStatusModel.checking.tooltip
         statusItem.button?.setAccessibilityLabel("DevDeck")
         let menu = NSMenu()
         menu.delegate = self
@@ -93,274 +87,118 @@ final class DeckMenu: NSObject, NSMenuDelegate {
     /// in particular.
     func updateStatusItem() {
         guard let button = statusItem?.button else { return }
-        let summary = DeckStatusSummary(digest: controller.attention(update: nil))
+        let status = controller.runtime.status()
 
         // Every state but one is a template, so it follows the menu bar's own light and dark
         // appearance; only the one that means a person is waiting on you opts out, because there
         // red is the message.
-        button.image = DeckIcon.statusItemImage(summary.state)
+        button.image = DeckIcon.statusItemImage(DeckIconState(tier: status.tier))
         button.contentTintColor = nil
         button.imagePosition = .imageOnly
         button.attributedTitle = NSAttributedString(string: "")
-        button.toolTip = summary.tooltip
-        button.setAccessibilityValue(summary.digest.summary)
+        button.toolTip = status.tooltip
+        button.setAccessibilityValue(status.accessibilityValue)
     }
 
     // MARK: Filling the menus
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        // A right-click on a panel is a question about *that* card. It used to answer with the
-        // whole deck's menu, card list and all, which is the same as not answering.
-        if let card = menuOwners[ObjectIdentifier(menu)] {
-            populateCard(menu, card: card)
-            return
-        }
-        populate(menu)
-    }
-
-    /// The short menu: this card, then the two things you might want next.
-    private func populateCard(_ menu: NSMenu, card: CardID) {
-        menu.autoenablesItems = false
-
-        let header = NSMenuItem(title: CardCatalog.descriptor(for: card)?.title ?? card.rawValue, action: nil, keyEquivalent: "")
-        header.isEnabled = false
-        menu.addItem(header)
-
-        // A parked card is folded by the deck, and says so in place of the choice it cannot offer.
-        let collapse = NSMenuItem(
-            title: controller.isParked(card)
-                ? L("menu.card.parked")
-                : controller.isCollapsed(card) ? L("menu.card.showWhole") : L("menu.card.collapse"),
-            action: #selector(toggleCollapsed(_:)),
-            keyEquivalent: ""
-        )
-        collapse.isEnabled = !controller.isParked(card)
-        collapse.target = self
-        collapse.representedObject = card.rawValue
-        menu.addItem(collapse)
-
-        if controller.hasLogSource(card) {
-            let logs = NSMenuItem(
-                title: controller.isShowingLogs(card) ? L("menu.card.hideLog") : L("menu.card.showLog"),
-                action: #selector(toggleLogs(_:)),
-                keyEquivalent: ""
-            )
-            logs.target = self
-            logs.representedObject = card.rawValue
-            logs.isEnabled = !controller.isCollapsed(card)
-            menu.addItem(logs)
-        }
-
-        // The inbox's footer link, here as well: the same two readings, with ⌥ for the whole box
-        // the way every other destructive twin in these menus is found.
-        if card == .githubInbox, let inbox = controller.inbox.value, inbox.unreadCount > 0 {
-            let running = controller.inboxProgress?.isRunning == true
-            let rest = NSMenuItem(title: LN("card.inbox.readRest", inbox.actionableCount), action: #selector(markRestRead), keyEquivalent: "")
-            rest.target = self
-            rest.isEnabled = !running && (inbox.isCapped || !inbox.unreadNotForYou.isEmpty)
-            // Only one kind left: the menu offers the whole box in the open, as the card does.
-            if !rest.isEnabled, !running {
-                rest.title = inbox.isCapped ? L("card.inbox.readAll.capped") : LN("card.inbox.readAll", inbox.unreadCount)
-                rest.action = #selector(markAllRead)
-                rest.toolTip = nil
-                rest.isEnabled = true
-            }
-            rest.toolTip = L("card.inbox.readRest.help")
-            menu.addItem(rest)
-            let all = NSMenuItem(title: L("card.inbox.readAll.capped"), action: #selector(markAllRead), keyEquivalent: "")
-            all.target = self
-            all.isAlternate = true
-            all.keyEquivalentModifierMask = .option
-            all.isEnabled = !running
-            menu.addItem(all)
-        }
-
-        let hide = NSMenuItem(title: L("menu.card.hide"), action: #selector(toggleCard(_:)), keyEquivalent: "")
-        hide.target = self
-        hide.representedObject = card.rawValue
-        menu.addItem(hide)
-
-        // Straight to this card's own form. It used to open the window on whatever page came
-        // first and leave the project to be found in a list of fifteen.
-        let settings = NSMenuItem(title: L("menu.card.settings"), action: #selector(showCardSettings(_:)), keyEquivalent: "")
-        settings.target = self
-        settings.representedObject = card.rawValue
-        menu.addItem(settings)
-
-        menu.addItem(.separator())
-        menu.addItem(lockItem())
-        for (title, selector) in [
-            (L("menu.tidy"), #selector(tidy)),
-            (L("menu.refresh"), #selector(refreshNow)),
-        ] {
-            let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
-    }
-
-    private func populate(_ menu: NSMenu) {
         // AppKit re-enables any item whose target responds to the action unless automatic
-        // enabling is off - without this the not-built-yet cards become clickable again.
+        // enabling is off.
         menu.autoenablesItems = false
-
-        // What the badge is about, first, as the things themselves: each row names what
-        // happened and to what, and clicking it goes there. The line this replaced said
-        // "1 waiting on you" in grey, which in a menu reads as "nothing to do here".
-        addAttention(to: menu)
-
-        menu.addItem(NSMenuItem.sectionHeader(title: L("menu.cards")))
-
-        let resolved = cards.resolved
-        for card in resolved where cards.menuGroup(of: card.id) == nil {
-            menu.addItem(cardItem(card))
+        if let card = menuOwners[ObjectIdentifier(menu)] {
+            fill(menu, with: controller.runtime.cardMenu(for: card))
+        } else {
+            fill(menu, with: controller.runtime.menu(update: updateOffer, samples: showsSamples))
         }
-
-        // Projects get their own groups: with several of them the built-in cards would
-        // otherwise be lost in the middle of a list of site names.
-        for group in cards.menuGroups {
-            addGroup(group, cards: resolved.filter { cards.menuGroup(of: $0.id) == group }, to: menu)
-        }
-
-        // The one item that is about a kind rather than a card. It stays here rather than in
-        // the module, because it is the only one and a protocol for it would be a protocol
-        // with one conformer.
-        let hasDDEV = resolved.contains { cards.menuGroup(of: $0.id) == L("menu.group.ddev") }
-        if hasDDEV {
-            let powerOff = NSMenuItem(
-                title: L("menu.ddev.powerOff"),
-                action: #selector(powerOffDDEV),
-                keyEquivalent: ""
-            )
-            powerOff.target = self
-            powerOff.toolTip = L("menu.ddev.powerOff.tooltip")
-            menu.addItem(powerOff)
-        }
-
-        menu.addItem(.separator())
-        let open = NSMenuItem(title: L("menu.openPulls"), action: #selector(openDashboard), keyEquivalent: "")
-        open.target = self
-        menu.addItem(open)
-
-        // Everything below is something you *do*. What the deck *is* - where the panels sit,
-        // whether they are locked, whether ⌥Space raises them, whether the app starts at login -
-        // lives in Settings. A menu that mixes the two grows until the thing you actually came
-        // for is somewhere in the middle of it.
-        menu.addItem(.separator())
-        let arrangementsItem = NSMenuItem(title: L("menu.arrangements"), action: nil, keyEquivalent: "")
-        arrangementsItem.submenu = arrangements.submenu()
-        menu.addItem(arrangementsItem)
-
-        menu.addItem(lockItem())
-        for (title, selector) in [
-            (L("menu.tidy"), #selector(tidy)),
-            (L("menu.refresh"), #selector(refreshNow)),
-            (L("menu.settings"), #selector(showSettings)),
-        ] {
-            let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
-
-        menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: L("menu.quit"), action: #selector(quitApp), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
     }
 
     /// The update, as a row of its own tier, or nothing when there is none.
-    private var updateItem: AttentionItem? {
+    private var updateOffer: DeckUpdateOffer? {
         guard let update = updater.available else { return nil }
         let version = update.version.description
+        let item: AttentionItem
         switch updater.state {
         case .available:
             if let working = updater.waitingFor {
-                return UpdateAttention.item(version: version, phase: .waiting(card: working))
+                item = UpdateAttention.item(version: version, phase: .waiting(card: working))
+            } else {
+                item = UpdateAttention.item(version: version, phase: .available)
             }
-            return UpdateAttention.item(version: version, phase: .available)
         case .downloading(_, let fraction):
-            return UpdateAttention.item(version: version, phase: .downloading(fraction: fraction))
+            item = UpdateAttention.item(version: version, phase: .downloading(fraction: fraction))
         case .installing:
-            return UpdateAttention.item(version: version, phase: .installing)
+            item = UpdateAttention.item(version: version, phase: .installing)
         case .failed(_, let reason):
-            return UpdateAttention.item(version: version, phase: .failed(reason: reason))
+            item = UpdateAttention.item(version: version, phase: .failed(reason: reason))
         case .idle, .checking:
             return nil
         }
+        return DeckUpdateOffer(item: item, version: version)
     }
 
-    private func addAttention(to menu: NSMenu) {
-        let digest = showsSamples
-            ? AttentionDigest(items: AttentionSamples.items(now: Date()))
-            : controller.attention(update: updateItem)
-        attentionItems = Dictionary(digest.items.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let now = Date()
-
-        guard !digest.isEmpty else {
-            // Said rather than left out, so an empty menu is a confirmation and not a question.
-            let calm = NSMenuItem(title: L("menu.calm"), action: nil, keyEquivalent: "")
-            calm.isEnabled = false
-            calm.image = AttentionImages.calm
-            setSubtitle(L("menu.checkedAt", AttentionDigest.clock(controller.lastCheckedAt ?? now)), on: calm)
-            menu.addItem(calm)
-            menu.addItem(.separator())
-            return
-        }
-
-        for section in digest.sections {
-            menu.addItem(NSMenuItem.sectionHeader(title: section.tier.title))
-            for item in section.visible {
-                addRow(item, to: menu, now: now)
-            }
-            if let title = section.overflowTitle {
-                // The rest in a submenu of the same rows, rather than "see the card": the rows
-                // come from several cards, and some of them from none.
-                let more = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-                more.image = AttentionImages.more
+    private func fill(_ menu: NSMenu, with entries: [DeckMenuEntry]) {
+        for entry in entries {
+            switch entry {
+            case .header(let title):
+                menu.addItem(NSMenuItem.sectionHeader(title: title))
+            case .separator:
+                menu.addItem(.separator())
+            case .item(let model):
+                menu.addItem(item(model))
+                if let alternate = model.alternate {
+                    menu.addItem(twin(alternate, of: model))
+                }
+            case .submenu(let model, let children):
+                let parent = item(model)
                 let submenu = NSMenu()
                 submenu.autoenablesItems = false
-                for item in section.overflow {
-                    addRow(item, to: submenu, now: now)
-                }
-                more.submenu = submenu
-                menu.addItem(more)
+                fill(submenu, with: children)
+                parent.submenu = submenu
+                menu.addItem(parent)
+            case .arrangements(let title):
+                let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                parent.submenu = arrangements.submenu()
+                menu.addItem(parent)
             }
         }
-        menu.addItem(.separator())
     }
 
-    /// One row, and its ⌥ twin when it has one.
-    private func addRow(_ item: AttentionItem, to menu: NSMenu, now: Date) {
-        let row = NSMenuItem(title: item.title, action: #selector(chooseAttention(_:)), keyEquivalent: "")
-        row.target = self
-        row.representedObject = item.id
-        row.isEnabled = item.isEnabled && item.action != .none
-        row.image = AttentionImages.image(for: item.mark)
-        // One line: a menu wraps a long subtitle, and a server's error message is long.
-        setSubtitle(AttentionWords.trimmed(item.subtitle, to: 72), on: row)
-        if let age = AttentionDigest.age(since: item.since, now: now) {
-            row.badge = NSMenuItemBadge(string: age)
-        }
-        menu.addItem(row)
+    private func item(_ model: DeckMenuItem) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: (model.isIndented ? "   " : "") + model.title,
+            action: model.command == nil ? nil : #selector(choose(_:)),
+            keyEquivalent: model.keyEquivalent
+        )
+        item.target = self
+        item.representedObject = model.command.map { MenuCommand($0, confirmation: model.confirmation) }
+        item.isEnabled = model.isEnabled
+        item.state = model.isOn ? .on : .off
+        item.image = model.image.flatMap(Self.image)
+        item.toolTip = model.help
+        if let subtitle = model.subtitle { setSubtitle(subtitle, on: item) }
+        if let badge = model.badge { item.badge = NSMenuItemBadge(string: badge) }
+        return item
+    }
 
-        let alternate: (title: String, action: Selector)? = {
-            if item.inboxThreadID != nil { return (L("menu.markRead", item.title), #selector(markAttentionRead(_:))) }
-            if item.isDismissible { return (L("menu.dismiss", item.title), #selector(dismissAttention(_:))) }
-            if item.action == .installUpdate, let version = updater.available?.version.description {
-                return (L("menu.whatsNew", version), #selector(openReleaseNotes))
-            }
-            return nil
-        }()
-        if let alternate {
-            let twin = NSMenuItem(title: alternate.title, action: alternate.action, keyEquivalent: "")
-            twin.target = self
-            twin.representedObject = item.id
-            twin.isAlternate = true
-            twin.keyEquivalentModifierMask = .option
-            twin.image = row.image
-            setSubtitle(AttentionWords.trimmed(item.subtitle, to: 72), on: twin)
-            menu.addItem(twin)
+    private func twin(_ alternate: DeckMenuItem.Alternate, of model: DeckMenuItem) -> NSMenuItem {
+        let twin = NSMenuItem(title: alternate.title, action: #selector(choose(_:)), keyEquivalent: "")
+        twin.target = self
+        twin.representedObject = MenuCommand(alternate.command, confirmation: nil)
+        twin.isAlternate = true
+        twin.keyEquivalentModifierMask = .option
+        twin.isEnabled = alternate.isEnabled
+        twin.image = model.image.flatMap(Self.image)
+        if let subtitle = model.subtitle { setSubtitle(subtitle, on: twin) }
+        return twin
+    }
+
+    private static func image(_ image: DeckMenuItem.Image) -> NSImage? {
+        switch image {
+        case .attention(let mark): return AttentionImages.image(for: mark)
+        case .calm: return AttentionImages.calm
+        case .more: return AttentionImages.more
         }
     }
 
@@ -374,155 +212,49 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         }
     }
 
-    @objc private func chooseAttention(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String, let item = attentionItems[id] else { return }
-        switch item.action {
-        case .open(let url, let service, let account):
-            LinkOpener.open(url, using: service == .github ? controller.browser(for: account) : controller.gitlabBrowser(for: account))
-        case .accountSettings(let service, let account):
-            openAccountSettings(service, account.isEmpty ? nil : account)
-        case .showCard(let card):
-            showCard(card)
-        case .startDocker:
-            controller.startDockerRuntime()
-        case .openTerminal(let folder):
-            LocalFolder.openTerminal(folder)
-        case .installUpdate:
-            updater.install()
-        case .none:
-            break
+    @objc private func choose(_ sender: NSMenuItem) {
+        guard let chosen = sender.representedObject as? MenuCommand else { return }
+        if let question = chosen.confirmation {
+            let alert = NSAlert()
+            alert.messageText = question.title
+            alert.informativeText = question.detail
+            alert.addButton(withTitle: question.confirm)
+            alert.addButton(withTitle: question.cancel)
+            NSApp.activate(ignoringOtherApps: true)
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        controller.perform(chosen.command)
+    }
+
+    // MARK: What only the Mac can do
+
+    /// The effects a menu row asks for that are about the app rather than a card.
+    func carryOut(_ effect: DeckEffect) {
+        switch effect {
+        case .cardsChanged: panels.syncPanels()
+        case .lockChanged: panels.applyPreferences()
+        case .tidy: panels.tidy()
+        case .openSettings: openSettings()
+        case .openCardSettings(let card): openCardSettings(card)
+        case .openAccountSettings(let service, let account): openAccountSettings(service, account)
+        case .showCard(let card): showCard(card)
+        case .installUpdate: updater.install()
+        case .openReleaseNotes:
+            guard let update = updater.available else { return }
+            LinkOpener.open(update.pageURL, using: .systemDefault)
+        case .quit: quit()
+        default: break
         }
     }
+}
 
-    @objc private func dismissAttention(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String, let item = attentionItems[id] else { return }
-        controller.dismiss(item)
-    }
+/// A row's command, carried on the menu item until it is chosen.
+private final class MenuCommand: NSObject {
+    let command: DeckCommand
+    let confirmation: DeckConfirmation?
 
-    @objc private func markAttentionRead(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String, let thread = attentionItems[id]?.inboxThreadID else { return }
-        controller.markRead(threadID: thread)
-    }
-
-    @objc private func openReleaseNotes() {
-        guard let update = updater.available else { return }
-        LinkOpener.open(update.pageURL, using: .systemDefault)
-    }
-
-    /// The lock, as a checkmark, in both menus. It left for Settings in 0.4 with the rest of
-    /// what the deck *is*, and came back: it is toggled in the middle of arranging cards, and
-    /// a trip to a settings window for that is the one interruption the deck should not cost.
-    /// Settings keeps its switch too; both write the same preference.
-    private func lockItem() -> NSMenuItem {
-        let item = NSMenuItem(title: L("menu.lock"), action: #selector(toggleLock), keyEquivalent: "")
-        item.target = self
-        item.state = preferences.isLocked ? .on : .off
-        item.toolTip = L("menu.lock.tooltip")
-        return item
-    }
-
-    /// A submenu rather than a run of items with a heading above them.
-    ///
-    /// Ten projects made thirteen lines of a menu whose other five are the things you actually
-    /// opened it for. The count in the title says how many are on the deck without opening it.
-    private func addGroup(_ title: String, cards: [ResolvedCard], to menu: NSMenu) {
-        guard !cards.isEmpty else { return }
-        let shown = cards.filter(\.isEnabled).count
-        let item = NSMenuItem(title: L("menu.group.count", title, shown, cards.count), action: nil, keyEquivalent: "")
-        let submenu = NSMenu()
-        submenu.autoenablesItems = false
-        for card in cards {
-            submenu.addItem(cardItem(card, indented: false))
-        }
-        item.submenu = submenu
-        menu.addItem(item)
-    }
-
-    private func cardItem(_ card: ResolvedCard, indented: Bool = true) -> NSMenuItem {
-        let item = NSMenuItem(
-            title: (indented ? "   " : "") + card.descriptor.title,
-            action: #selector(toggleCard(_:)),
-            keyEquivalent: ""
-        )
-        item.state = card.isEnabled ? .on : .off
-        item.representedObject = card.id.rawValue
-        item.target = self
-        if !card.descriptor.isImplemented {
-            item.isEnabled = false
-            item.toolTip = L("menu.notBuilt")
-        }
-        return item
-    }
-
-    // MARK: Actions
-
-    @objc private func toggleLogs(_ item: NSMenuItem) {
-        guard let raw = item.representedObject as? String else { return }
-        controller.toggleLogs(for: CardID(rawValue: raw))
-    }
-
-    @objc private func toggleCollapsed(_ item: NSMenuItem) {
-        guard let raw = item.representedObject as? String else { return }
-        controller.toggleCollapsed(CardID(rawValue: raw))
-    }
-
-    @objc private func toggleCard(_ item: NSMenuItem) {
-        guard let raw = item.representedObject as? String else { return }
-        let card = CardID(rawValue: raw)
-        cards.setEnabled(!cards.isEnabled(card), for: card)
-        panels.syncPanels()
-    }
-
-    @objc private func markRestRead() {
-        controller.markRestRead()
-    }
-
-    @objc private func markAllRead() {
-        controller.markAllRead()
-    }
-
-    @objc private func powerOffDDEV() {
-        // The one item in this menu that stops everything at once, and it sits a line away from
-        // Refresh now.
-        let alert = NSAlert()
-        alert.messageText = L("menu.ddev.confirm.title")
-        alert.informativeText = L("menu.ddev.confirm.detail")
-        alert.addButton(withTitle: L("button.powerOff"))
-        alert.addButton(withTitle: L("button.cancel"))
-        NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        controller.powerOffDDEV()
-    }
-
-    @objc private func toggleLock() {
-        preferences.isLocked.toggle()
-        panels.applyPreferences()
-    }
-
-    @objc private func tidy() {
-        panels.tidy()
-    }
-
-    @objc private func refreshNow() {
-        controller.refreshNow()
-    }
-
-    @objc private func showCardSettings(_ item: NSMenuItem) {
-        guard let raw = item.representedObject as? String else { return }
-        openCardSettings(CardID(rawValue: raw))
-    }
-
-    @objc private func showSettings() {
-        openSettings()
-    }
-
-    @objc private func openDashboard() {
-        guard let url = CardHostView.dashboardURL(for: .githubPullRequests) else { return }
-        // Through the account's browser, like every other GitHub link on the deck.
-        LinkOpener.open(url, using: controller.firstGitHubBrowser)
-    }
-
-    @objc private func quitApp() {
-        quit()
+    init(_ command: DeckCommand, confirmation: DeckConfirmation?) {
+        self.command = command
+        self.confirmation = confirmation
     }
 }

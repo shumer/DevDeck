@@ -12,7 +12,7 @@ import TestHarness
 // lived in the app; these are the checks it never had.
 
 /// Answers each command fragment from its own queue; the last answer repeats.
-private actor SequenceRunner: CommandRunning {
+actor SequenceRunner: CommandRunning {
     private var queues: [(match: String, results: [CommandResult])]
 
     init(_ queues: [(String, [CommandResult])]) {
@@ -36,7 +36,7 @@ private actor SequenceRunner: CommandRunning {
 }
 
 /// Returns at once and remembers what it was asked to wait for.
-private final class RecordingSleeper: Sleeper, @unchecked Sendable {
+final class InstantSleeper: Sleeper, @unchecked Sendable {
     private let lock = NSLock()
     private var asked: [TimeInterval] = []
 
@@ -62,11 +62,11 @@ private let dockerDown = CommandResult(exitCode: 1, standardOutput: "", standard
 
 /// A runtime with in-memory everything, and a record of what it told the shell.
 @MainActor
-private final class Deck {
+final class Deck {
     let runtime: DeckRuntime
     let preferences = Preferences(backend: InMemoryPreferences())
     let clock = MutableDateProvider()
-    let sleeper = RecordingSleeper()
+    let sleeper = InstantSleeper()
     let http: FakeHTTPClient
     let account = GitHubAccount(id: "work", label: "Work")
     var fields: [DeckField] = []

@@ -20,20 +20,6 @@ final class LocalProjectModule: CardModule, SettingsSection {
 
     // MARK: The card
 
-    var menuGroup: String? { L("menu.group.projects") }
-
-    func descriptors() -> [CardDescriptor] {
-        CardCatalog.sortedByTitle(store.projects().map { project in
-            CardDescriptor(
-                id: project.cardID,
-                title: project.displayTitle,
-                subtitle: project.startCommand.isEmpty ? L("project.section.project") : "\(L("project.section.project")) · \(project.startCommand)",
-                isImplemented: true,
-                isEnabledByDefault: true
-            )
-        })
-    }
-
     func owns(_ card: CardID) -> Bool {
         store.project(forCard: card) != nil
     }

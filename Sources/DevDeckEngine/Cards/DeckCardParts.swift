@@ -94,6 +94,36 @@ public enum DeckCommand: Sendable, Equatable, Codable {
     case startDocker
     /// Open a project's log window, or close it.
     case toggleLogs(CardID)
+
+    // From the menus.
+
+    /// Put a card on the deck, or take it off.
+    case toggleCard(CardID)
+    /// Fold a card down to one row, or open it back up.
+    case toggleCollapsed(CardID)
+    /// Keep the panels where they are, or let them move.
+    case toggleLock
+    /// Close the gaps between panels.
+    case tidy
+    case refreshNow
+    case openSettings
+    /// The settings page for one card.
+    case openCardSettings(CardID)
+    /// An account's settings, or the service's page when no account is named.
+    case openAccountSettings(AttentionService, account: String?)
+    /// Bring a card into view, putting it on the deck if it is not.
+    case showCard(CardID)
+    /// Forget what was reported about a project until something new happens to it.
+    case dismissAttention(id: String)
+    case installUpdate
+    case openReleaseNotes
+    case quit
+    /// Stop every DDEV project and the router.
+    case powerOffDDEV
+    /// A terminal in a folder an attention row names.
+    case openTerminalAt(URL)
+    /// Your pull requests on the web, from the menu.
+    case openPullRequestsPage
 }
 
 /// The settings a card can point at.

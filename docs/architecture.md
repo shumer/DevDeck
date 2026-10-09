@@ -405,7 +405,8 @@ Which state is showing comes from the attention digest's most urgent tier. See
 `NotificationDigest` in `DevDeckCore` holds the rules and is where the tests are: the first
 answer after a launch is never announced, nothing is announced twice, what was *seen* is
 remembered rather than only what was said, and three at once become one summary that counts them
-by kind and names the first two. The attention builders turn the same facts that make the menu's
+by kind and names the first two; the runtime applies that grouping before it hands the shell
+banners to post. The attention builders turn the same facts that make the menu's
 rows into `DeckAlert`s, so a banner and a row cannot disagree, and a stuck item carries its state
 in its identity - broken, fixed and broken again is news twice. An alert has a title for what
 happened, a subtitle for where, a body for what a click does, a target (a page, a card, an
@@ -519,17 +520,21 @@ itself that one of them could do.
 - The modules, one per kind of card, under `Modules/`: `PullRequestsModule`, `InboxModule`,
   `ActionsModule`, `MergeRequestsModule`, `WorkInFlightModule`, `ArcProjectModule`,
   `DDEVProjectModule` and `LocalProjectModule`. A `CardModule` says which cards it owns and
-  gives their view, size, dashboard, catalog entries and menu group. The project modules are
-  also their kind's `SettingsSection`; the two account sections, GitHub and GitLab, live in the
-  same files as the cards they feed. `CardHostView` and `DeckCards` ask the modules and know no
-  kind by name.
-- `DeckCards` is the card list: the built-in cards plus whatever the modules add, in module
-  order, and which of them are switched on.
+  gives their view, size, dashboard and settings page. The project modules are also their
+  kind's `SettingsSection`; the two account sections, GitHub and GitLab, live in the same files
+  as the cards they feed. `CardHostView` asks the modules and knows no kind by name.
+- `DeckCards` is the runtime's card list, `DeckCardList`, for the parts of the shell that place
+  panels and save arrangements: the built-in cards plus one per project, in deck order, and
+  which of them are switched on.
 - `PanelCoordinator` owns the windows: which cards have one, how big each is, and where it
   sits. The two rules it exists to keep are stated on `persistPosition` and `syncPanelSizes`: a
   position is written down only when a person chose it, and the deck settling into its data is
   not a layout event. See [Placement](#placement).
-- `DeckMenu` owns the menu-bar item and every menu, all filled in as they open.
+- `DeckMenu` owns the menu-bar item and draws every menu from the runtime's entries as it opens:
+  `DeckRuntime.menu(update:samples:)` for the menu-bar menu, `cardMenu(for:)` for a card's
+  right-click, `status()` for the icon and tooltip. It carries out what a row asks of the app
+  (panels, settings, the updater) and decides nothing about what the menus say. See
+  [adr/0028-the-menu-in-the-engine.md](adr/0028-the-menu-in-the-engine.md).
 - `ArrangementsController` owns saved decks: naming one, applying one, offering them.
 - `Summoner` owns the key that raises the deck, the tap-to-latch rule, the veils, and the click
   or Esc that puts back a deck raised from the menu or a banner; what
@@ -568,7 +573,7 @@ cannot disagree about what needs you. See [adr/0019-attention-in-tiers.md](adr/0
   Stop was pressed on a project nothing here could stop. It is
   fed only what `StateSettler` let through and what a button did, and reports nothing about the
   state a launch found.
-- **`DeckAttention.digest`** in the UI module puts it together from the controller's state, one
+- **`DeckAttention.digest`** in the engine puts it together from the runtime's state, one
   input struct, so the suite checks what lights the icon without a controller. A hidden card
   contributes nothing.
 - **`AccountFailure`** carries its kind, rejected, forbidden, rate limited, unreachable or other,
@@ -577,9 +582,10 @@ cannot disagree about what needs you. See [adr/0019-attention-in-tiers.md](adr/0
 
 The controller keeps the history (`ProjectWatch`, when Docker went down, when each account
 started failing) and announces per channel through `NotificationDigest`, which keeps the rule
-that the first answer after a launch is never news. `DeckMenu` renders the digest as native menu
-items: section headers, a subtitle under each row (a tooltip before macOS 14.4), the age as a
-badge, ⌥ twins for Dismiss and Mark as Read.
+that the first answer after a launch is never news. The runtime turns the digest into menu
+entries: section headers, a subtitle under each row, the age as a badge, ⌥ twins for Dismiss,
+Mark as Read and What's New, the overflow of a tier in a submenu. `DeckMenu` draws them as native
+menu items, with the subtitle in a tooltip before macOS 14.4.
 
 ## The settings window
 

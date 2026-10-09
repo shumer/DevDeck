@@ -99,7 +99,6 @@ func runAttentionTests(_ run: TestRun) async {
     await run.test("the tooltip counts by tier, and says so when nothing needs you") {
         let digest = AttentionDigest(items: [item("a", .waiting), item("b", .waiting), item("c", .needsFixing), item("d", .stuck), item("e", .goodToKnow)])
         try expectEqual(digest.summary, "2 waiting on you, 1 to fix, 1 stuck")
-        try expectEqual(DeckStatusSummary(digest: digest).tooltip, "DevDeck: 2 waiting on you, 1 to fix, 1 stuck")
         try expectEqual(AttentionDigest(items: []).summary, "nothing needs you")
     }
 

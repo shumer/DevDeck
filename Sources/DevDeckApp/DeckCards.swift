@@ -1,52 +1,29 @@
 import DevDeckCore
+import DevDeckEngine
 
-/// The cards this deck can show, and which of them it is showing.
-///
-/// The built-in cards plus whatever the modules add, one per configured project, in the order
-/// the modules are given, which is the order the deck is laid out in. Read fresh every time,
-/// so a project added in settings is in the list the moment it is asked for.
+/// The cards this deck can show, and which of them it is showing: the runtime's list, for the
+/// parts of the shell that place panels and save arrangements.
 @MainActor
 final class DeckCards {
-    private let preferences: Preferences
-    private let modules: [CardModule]
+    private let controller: DeckController
 
-    init(preferences: Preferences, modules: [CardModule]) {
-        self.preferences = preferences
-        self.modules = modules
+    init(controller: DeckController) {
+        self.controller = controller
     }
 
-    var catalog: [CardDescriptor] {
-        CardCatalog.all(including: modules.flatMap { $0.descriptors() })
-    }
+    var catalog: [CardDescriptor] { controller.runtime.cards.catalog }
 
     /// Every card with its switch, in deck order.
-    var resolved: [ResolvedCard] {
-        preferences.cardLayout.resolved(catalog: catalog)
-    }
+    var resolved: [ResolvedCard] { controller.runtime.cards.resolved }
 
     /// The cards that should be on screen, in deck order.
-    var visible: [CardID] {
-        preferences.cardLayout.visibleCards(catalog: catalog).map(\.id)
-    }
-
-    /// The menu group a card goes under, so a menu can keep project kinds apart. Nil for a
-    /// built-in card.
-    func menuGroup(of card: CardID) -> String? {
-        modules.first { $0.owns(card) }?.menuGroup
-    }
-
-    /// The groups, in deck order, for a menu to offer in the same order.
-    var menuGroups: [String] {
-        modules.compactMap(\.menuGroup)
-    }
+    var visible: [CardID] { controller.runtime.cards.visible }
 
     func setEnabled(_ isEnabled: Bool, for card: CardID) {
-        var layout = preferences.cardLayout
-        layout.setEnabled(isEnabled, for: card)
-        preferences.cardLayout = layout
+        controller.runtime.cards.setEnabled(isEnabled, for: card)
     }
 
     func isEnabled(_ card: CardID) -> Bool {
-        preferences.cardLayout.isEnabled(card, catalog: catalog)
+        controller.runtime.cards.isEnabled(card)
     }
 }

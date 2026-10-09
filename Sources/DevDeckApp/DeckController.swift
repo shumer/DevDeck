@@ -49,6 +49,8 @@ final class DeckController: ObservableObject {
     var onAlerts: (([DeckAlert]) -> Void)?
     /// The menu bar carries the unread count, so it has to hear about a row leaving.
     var updateStatusItem: (() -> Void)?
+    /// What a menu row asks of the app rather than of a card: panels, settings, the updater.
+    var onAppEffect: ((DeckEffect) -> Void)?
 
     init(
         preferences: Preferences,
@@ -133,6 +135,9 @@ final class DeckController: ObservableObject {
         case .openSetting(.actionsRepositories): showSetting?(.cards, CardsSettingsPage.actionsRepositoriesField)
         case .openTerminal(let folder): LocalFolder.openTerminal(folder)
         case .revealFolder(let folder): LocalFolder.reveal(folder)
+        case .cardsChanged, .lockChanged, .tidy, .openSettings, .openCardSettings, .openAccountSettings,
+             .showCard, .installUpdate, .openReleaseNotes, .quit:
+            onAppEffect?(effect)
         }
     }
 

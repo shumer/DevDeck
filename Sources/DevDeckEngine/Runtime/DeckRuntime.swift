@@ -32,6 +32,18 @@ public enum DeckEffect: Sendable, Equatable {
     case openTerminal(URL)
     /// Show this folder.
     case revealFolder(URL)
+    /// The cards on the deck changed: panels come and go.
+    case cardsChanged
+    /// The lock changed: panels can or cannot be moved.
+    case lockChanged
+    case tidy
+    case openSettings
+    case openCardSettings(CardID)
+    case openAccountSettings(AttentionService, account: String?)
+    case showCard(CardID)
+    case installUpdate
+    case openReleaseNotes
+    case quit
 }
 
 /// A card's model, whichever card it is. See `DeckRuntime.model(for:)`.
@@ -1027,7 +1039,26 @@ public final class DeckRuntime {
         let remembered = NotificationDigest.remembering(candidates.map(\.id), in: seen)
         if remembered != seen { preferences.announcedAlerts = remembered }
         guard !fresh.isEmpty else { return }
-        effect(.announce(fresh))
+        effect(.announce(Self.banners(for: fresh)))
+    }
+
+    /// What is new, as the banners to post. Many at once become one line: three banners stacked
+    /// up the corner of the screen is a wall, and a wall gets swept away without being read.
+    public static func banners(for alerts: [DeckAlert]) -> [DeckAlert] {
+        guard let summary = NotificationDigest.summary(for: alerts) else { return alerts }
+        let sources = Set(alerts.map(\.source))
+        return [DeckAlert(
+            id: "summary.\(alerts.map(\.id).joined().hashValue)",
+            kind: alerts[0].kind,
+            // One mark only when they share it; a mixed summary keeps the app's own icon.
+            source: sources.count == 1 ? alerts[0].source : .devdeck,
+            title: summary.title,
+            subtitle: "",
+            body: summary.body,
+            subject: "",
+            target: .menu,
+            isQuiet: alerts.allSatisfy(\.isQuiet)
+        )]
     }
 
     /// The alerts from one GitHub snapshot, kept to what each account asked to be told about.
@@ -1531,10 +1562,37 @@ public final class DeckRuntime {
 
     /// ⌥ on a row: forget what was reported about a project until something new happens to it.
     public func dismiss(_ item: AttentionItem) {
-        let parts = item.id.split(separator: ":")
+        dismissAttention(id: item.id)
+    }
+
+    /// ⌥ on a row, by the row's id.
+    public func dismissAttention(id: String) {
+        let parts = id.split(separator: ":")
         guard parts.count >= 2, parts[0] == "project" else { return }
         watch.dismiss(String(parts[1]))
         effect(.attentionChanged)
+    }
+
+    // MARK: The cards on the deck
+
+    /// Every card the deck can show, and which of them are on.
+    public var cards: DeckCardList {
+        DeckCardList(
+            preferences: preferences,
+            arcProjects: projectsStore.projects(),
+            ddevProjects: ddevProjectsStore.projects(),
+            localProjects: localProjectsStore.projects()
+        )
+    }
+
+    /// Whether the panels stay where they are, which both menus offer as a checkmark.
+    public var isLocked: Bool {
+        preferences.isLocked
+    }
+
+    /// The runtime's clock, for what it builds outside this file.
+    var now: Date {
+        clock.now
     }
 
     // MARK: Card models and what their clicks ask for
@@ -1675,6 +1733,43 @@ public final class DeckRuntime {
             startDockerRuntime()
         case .toggleLogs(let card):
             toggleLogs(for: card)
+        case .toggleCard(let card):
+            let list = cards
+            list.setEnabled(!list.isEnabled(card), for: card)
+            effect(.cardsChanged)
+        case .toggleCollapsed(let card):
+            toggleCollapsed(card)
+        case .toggleLock:
+            preferences.isLocked.toggle()
+            effect(.lockChanged)
+        case .tidy:
+            effect(.tidy)
+        case .refreshNow:
+            refreshNow()
+        case .openSettings:
+            effect(.openSettings)
+        case .openCardSettings(let card):
+            effect(.openCardSettings(card))
+        case .openAccountSettings(let service, let account):
+            effect(.openAccountSettings(service, account: account))
+        case .showCard(let card):
+            effect(.showCard(card))
+        case .dismissAttention(let id):
+            dismissAttention(id: id)
+        case .installUpdate:
+            effect(.installUpdate)
+        case .openReleaseNotes:
+            effect(.openReleaseNotes)
+        case .quit:
+            effect(.quit)
+        case .powerOffDDEV:
+            powerOffDDEV()
+        case .openTerminalAt(let folder):
+            effect(.openTerminal(folder))
+        case .openPullRequestsPage:
+            // Through the first account's browser, like every other GitHub link on the deck.
+            guard let url = dashboardURL(for: .githubPullRequests) else { return }
+            effect(.openURL(url, firstGitHubBrowser))
         }
     }
 

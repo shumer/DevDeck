@@ -19,20 +19,6 @@ final class ArcProjectModule: CardModule, SettingsSection {
 
     // MARK: The card
 
-    var menuGroup: String? { L("menu.group.arc") }
-
-    func descriptors() -> [CardDescriptor] {
-        CardCatalog.sortedByTitle(store.projects().map { project in
-            CardDescriptor(
-                id: project.cardID,
-                title: project.title,
-                subtitle: "Arc · \(project.organization)",
-                isImplemented: true,
-                isEnabledByDefault: true
-            )
-        })
-    }
-
     func owns(_ card: CardID) -> Bool {
         store.project(forCard: card) != nil
     }

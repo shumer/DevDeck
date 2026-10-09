@@ -67,7 +67,7 @@ public enum AttentionAction: Sendable, Equatable {
     case none
 }
 
-public enum AttentionService: String, Sendable, Equatable {
+public enum AttentionService: String, Sendable, Equatable, Codable {
     case github
     case gitlab
 
