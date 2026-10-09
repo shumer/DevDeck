@@ -34,8 +34,8 @@ jobs:
       - name: Install Swift
         uses: compnerd/gha-setup-swift@bbae8ce86bac5a3449f3992b3d88bc4ca25f2057 # main.
         with:
-          swift-version: swift-6.4-release
-          swift-build: 6.4-RELEASE
+          swift-version: swift-6.4.0-release
+          swift-build: 6.4.0-RELEASE
           cache: true
       - name: Swift version
         run: swift --version
@@ -43,9 +43,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: windows-swift-6.4-build-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**', 'Tests/**') }}
+          key: windows-swift-6.4.0-build-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**', 'Tests/**') }}
           restore-keys: |
-            windows-swift-6.4-build-
+            windows-swift-6.4.0-build-
       - name: Build without project warnings
         shell: pwsh
         run: |
