@@ -167,31 +167,65 @@ public final class DeckPlacement {
         return take()
     }
 
-    /// Closes up the deck while keeping it where the user put it: anchor on the topmost panel and
-    /// stack the rest beneath it, starting a new column whenever the next card would hang below
-    /// the screen. It deliberately does not reset to a corner.
+    /// Closes up the deck while keeping it where the user put it, one display at a time: each
+    /// display's cards stack under that display's topmost card, starting a new column whenever
+    /// the next card would hang below the screen. It deliberately does not reset to a corner.
+    ///
+    /// Per display because a deck is often two: the cards you watch on the laptop and the one
+    /// project you keep beside your work on the monitor. Tidying the whole deck into one place
+    /// pulled that card over to the others, which is not tidying but moving house. See
+    /// docs/adr/0030-tidy-keeps-each-display.md.
     public func tidy() -> [DeckPanelChange] {
         let ordered = runtime.cards.visible.compactMap { card in frames[card].map { (card, $0) } }
-        guard let anchor = ordered.max(by: { $0.1.maxY < $1.1.maxY })?.1 else { return take() }
+        guard !ordered.isEmpty else { return take() }
         let screens = displays()
-        let screen = screens.screens.first { $0.visibleFrame.intersects(anchor) }?.visibleFrame
-            ?? screens.main?.visibleFrame
-            ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
 
-        let placements = DeckLayout.tidy(
-            sizes: ordered.map(\.1.size),
-            anchorTopLeft: CGPoint(x: anchor.minX, y: anchor.maxY),
-            screen: screen,
-            gap: gap
-        )
-        for (index, (card, frame)) in ordered.enumerated() {
-            let topLeft = placements[index]
-            move(card, to: CGPoint(x: topLeft.x, y: topLeft.y - frame.height))
+        // Every card to the display it is mostly on; one that is on none goes with the main one.
+        var groups: [(screen: CGRect, cards: [(CardID, CGRect)])] = []
+        for (card, frame) in ordered {
+            let screen = Self.display(holding: frame, among: screens.screens)?.visibleFrame
+                ?? screens.main?.visibleFrame
+                ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+            if let index = groups.firstIndex(where: { $0.screen == screen }) {
+                groups[index].cards.append((card, frame))
+            } else {
+                groups.append((screen, [(card, frame)]))
+            }
+        }
+
+        for group in groups {
+            guard let anchor = group.cards.max(by: { $0.1.maxY < $1.1.maxY })?.1 else { continue }
+            let placements = DeckLayout.tidy(
+                sizes: group.cards.map(\.1.size),
+                anchorTopLeft: CGPoint(x: anchor.minX, y: anchor.maxY),
+                screen: group.screen,
+                gap: gap
+            )
+            for (index, (card, frame)) in group.cards.enumerated() {
+                let topLeft = placements[index]
+                move(card, to: CGPoint(x: topLeft.x, y: topLeft.y - frame.height))
+            }
         }
         // Tidying is an arrangement somebody asked for, so it is saved against the display the
         // cards are actually on, even when that is a display they were only parked on.
         for (card, _) in ordered { persistPosition(of: card, userMoved: true) }
         return take()
+    }
+
+    /// The display a panel is mostly on, by area, or nil when it is on none of them.
+    static func display(holding frame: CGRect, among screens: [DisplayFrame]) -> DisplayFrame? {
+        var best: DisplayFrame?
+        var bestArea: CGFloat = 0
+        for screen in screens {
+            let overlap = screen.visibleFrame.intersection(frame)
+            guard !overlap.isNull else { continue }
+            let area = overlap.width * overlap.height
+            if area > bestArea {
+                best = screen
+                bestArea = area
+            }
+        }
+        return best
     }
 
     // MARK: Moves the shell did not make

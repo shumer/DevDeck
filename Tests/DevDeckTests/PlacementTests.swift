@@ -172,6 +172,29 @@ func runPlacementTests(_ run: TestRun) async {
         try expectEqual(desk.deck.preferences.placement(for: card)?.displayID, "laptop")
     }
 
+    await run.test("tidying keeps each display's cards on that display") {
+        let all = projects(3)
+        let desk = Desk(projects: all)
+        _ = desk.placement.sync()
+        let cards = all.map(\.cardID)
+        // Two on the laptop, a little scattered; one kept on the monitor on its own.
+        _ = desk.placement.moved(cards[0], to: CGRect(x: 1000, y: 700, width: 352, height: 200), at: 10)
+        _ = desk.placement.moved(cards[1], to: CGRect(x: 1010, y: 300, width: 352, height: 200), at: 10)
+        _ = desk.placement.moved(cards[2], to: CGRect(x: 3000, y: 1100, width: 352, height: 200), at: 10)
+        _ = desk.placement.settleMoves(at: 20)
+
+        _ = desk.placement.tidy()
+        let monitor = try expectNotNil(desk.frames[cards[2]], "monitor card")
+        try expectEqual(monitor.origin, CGPoint(x: 3000, y: 1100), "alone on its display, it stays put")
+        try expectEqual(desk.deck.preferences.placement(for: cards[2])?.displayID, "external")
+
+        let top = try expectNotNil(desk.frames[cards[0]], "top")
+        let below = try expectNotNil(desk.frames[cards[1]], "below")
+        try expectEqual(below.minX, top.minX, "the laptop's cards share a column")
+        try expectEqual(top.minY - below.maxY, CGFloat(CardMetrics.panelGap))
+        try expect(laptop.visibleFrame.contains(below))
+    }
+
     run.section("Placement - sizes")
 
     await run.test("a card growing because its data arrived moves nothing under it") {

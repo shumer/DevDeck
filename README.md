@@ -529,10 +529,11 @@ Its menu holds what you do:
   per kind below the built-in cards, with how many are shown in its title, and **Power off all
   DDEV** follows when there is a DDEV project.
 - **Open pull requests in browser**.
-- **Tidy panels into columns** - close up gaps without resetting where you put them. It anchors
-  on the topmost panel and stacks downwards, starting a new column beside it whenever the next
-  card would hang below the screen, so a deck of six cannot push its last card under the bottom
-  edge where nothing can grab it. The order it lays out is the deck's own: the built-in cards,
+- **Tidy panels into columns** - close up gaps without resetting where you put them, one display
+  at a time: a card you keep on the monitor stays on the monitor. On each display it anchors on
+  the topmost panel and stacks downwards, starting a new column beside it whenever the next card
+  would hang below the screen, so a deck of six cannot push its last card under the bottom edge
+  where nothing can grab it. The order it lays out is the deck's own: the built-in cards,
   then Arc projects, then DDEV, then the plain ones, each group alphabetical.
 - **Arrangements** - save the deck as it stands under a name, and put it back later. An
   arrangement is which cards are on the deck, which are folded to one row, and where each one

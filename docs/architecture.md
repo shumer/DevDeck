@@ -507,8 +507,10 @@ screen" means.
 A saved position is only used when the frame still overlaps a screen by at least 80×40 points,
 so a panel can never come back 99% off-screen.
 
-**Tidying wraps into columns.** `DeckLayout.tidy` in `DevDeckCore` returns the top-left corner
-for each panel: down from the anchor, and into a new column beside it as soon as the next panel
+**Tidying keeps each display's cards on that display, and wraps into columns.** `DeckPlacement`
+gives every panel to the display it is mostly on and tidies each display on its own, from its own
+topmost card ([adr/0030-tidy-keeps-each-display.md](adr/0030-tidy-keeps-each-display.md)).
+`DeckLayout.tidy` in `DevDeckCore` returns the top-left corner for each panel: down from the anchor, and into a new column beside it as soon as the next panel
 would hang below the visible frame. It is arithmetic in the core rather than a loop in the
 delegate because it decides whether a panel ends up somewhere the mouse can reach - six cards
 are over a thousand points tall, and a single column buried the last of them under the bottom
