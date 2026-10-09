@@ -603,6 +603,17 @@ menu items, with the subtitle in a tooltip before macOS 14.4.
 
 ## The settings window
 
+**What the window does is the runtime's; how it looks is the Mac's, for now.** The sidebar's rows
+(`DeckRuntime.settingsList()`: titles, the detail in the tooltip, a dot only when it means
+something, sorted by name with kinds mixed) and every operation behind a form are in the engine:
+adding a project from a folder, saving a form and whether the edit asks its status line again,
+removing, Detect, the health and stack checks (asked the way the deck asks them), what "test the
+link" opens, and the token checks, which keep a typed token only once it works. The sections in
+`DevDeckApp/Modules` lay out the forms, ask for folders and confirmations, and call these. The
+pages (General, Deck, Cards, Notifications) and the forms' own words stay AppKit until the
+Windows settings are designed in W-10. See
+[adr/0031-settings-operations-in-the-engine.md](adr/0031-settings-operations-in-the-engine.md).
+
 A sidebar and a form column, built the way System Settings is built: an `NSSplitViewController`
 whose first item is a real sidebar item, so the sidebar is translucent and runs the full height of
 the window, and a toolbar, which is what gives the window the standard title bar. The two panes

@@ -451,7 +451,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         )
     }
 
-    private static func brand(of kind: ProjectKind) -> DeckMark {
+    public static func brand(of kind: ProjectKind) -> DeckMark {
         switch kind {
         case .node: return .node
         case .next: return .next

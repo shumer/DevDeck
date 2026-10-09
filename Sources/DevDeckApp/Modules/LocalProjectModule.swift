@@ -50,19 +50,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
     private weak var form: LocalProjectForm?
 
     func listItems() -> [SettingsListItem] {
-        store.projects().map { project in
-            let live = controller.localStatus(for: project).state
-            return SettingsListItem(
-                id: project.id,
-                title: project.displayTitle,
-                // The command rather than the folder: with several checkouts under one parent
-                // the folder names look alike, and the command is what differs.
-                detail: project.startCommand.isEmpty ? L("project.list.noStart") : project.startCommand,
-                icon: SettingsIcons.mark(LocalProjectForm.glyph(for: project)),
-                dot: live == .running ? .systemGreen : (live == .starting || live == .working ? .systemOrange : nil),
-                isDimmed: !project.isEnabled
-            )
-        }
+        controller.runtime.settingsItems(.project)
     }
 
     func buildForm(for id: String, in container: FlippedContainer) -> Bool {
@@ -81,14 +69,8 @@ final class LocalProjectModule: CardModule, SettingsSection {
             guard let url = form.linkURL(at: index) else { return }
             LinkOpener.open(url, using: form.editedProject.browser)
         }
-        form.onTestLink = { form in
-            let project = form.editedProject
-            guard let link = project.environmentLinks().first ?? project.toolLinks().first else {
-                form.setLinkNote(L("project.link.nothingToOpen"), isError: true)
-                return
-            }
-            form.setLinkNote("", isError: false)
-            LinkOpener.open(link.url, using: project.browser)
+        form.onTestLink = { [controller] form in
+            LinkOpener.open(controller.runtime.testLink(form.editedProject)) { form.setLinkNote($0, isError: !$0.isEmpty) }
         }
         form.onToggleAdvanced = { [weak self] in self?.host?.toggle(fold) }
         container.addSubview(form)
@@ -107,23 +89,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
         guard let url = SettingsSupport.chooseDirectory(message: L("project.choose.local")) else {
             return nil
         }
-        var projects = store.projects()
-        let name = url.lastPathComponent
-        let id = LocalProject.makeID(from: name, existing: projects.map(\.id))
-        var project = LocalProject(id: id, title: name, folder: url.path)
-
-        // Applied on creation only. From here on the fields belong to the user, and a later
-        // guess must never quietly replace what they typed; Detect is how they ask for one.
-        if let suggestion = ProjectProbe.suggestion(for: url) {
-            project.subtitle = suggestion.subtitle
-            project.startCommand = suggestion.startCommand
-            project.stopCommand = suggestion.stopCommand
-            project.holdsProcess = suggestion.holdsProcess
-            project.requiresDocker = suggestion.requiresDocker
-            project.healthURL = suggestion.healthURL
-        }
-        projects.append(project)
-        store.save(projects)
+        let id = controller.runtime.addLocalProject(folder: url)
         host?.changed()
         return id
     }
@@ -132,7 +98,7 @@ final class LocalProjectModule: CardModule, SettingsSection {
         guard let project = store.projects().first(where: { $0.id == id }),
               SettingsSupport.confirm(L("settings.remove.account.title", project.displayTitle), detail: L("settings.remove.project.detail.local"))
         else { return false }
-        store.save(store.projects().filter { $0.id != id })
+        controller.runtime.removeLocalProject(id)
         return true
     }
 
@@ -147,30 +113,19 @@ final class LocalProjectModule: CardModule, SettingsSection {
     }
 
     private func applyEdits(_ form: LocalProjectForm) {
-        let before = store.projects().first { $0.id == form.project.id }
         let edited = form.editedProject
-        var projects = store.projects()
-        if let index = projects.firstIndex(where: { $0.id == edited.id }) {
-            projects[index] = edited
-        } else {
-            projects.append(edited)
-        }
-        store.save(projects)
+        let asksAgain = controller.runtime.saveLocalProject(edited)
         form.apply(edited)
         host?.reloadList()
         host?.changed()
-
-        // A new address, folder or command is a new question; the old answer is not its answer.
-        if before?.healthURL != edited.healthURL || before?.folder != edited.folder || before?.startCommand != edited.startCommand {
-            checkHealth(edited)
-        }
+        if asksAgain { checkHealth(edited) }
     }
 
     private func checkHealth(_ project: LocalProject) {
         form?.health.update(.checking)
         Task { [weak self] in
             guard let self else { return }
-            let status = await LocalProjectService(project: project).status()
+            let status = await self.controller.runtime.checkLocalProject(project)
             self.statuses[project.id] = (status, project.healthURL)
             // Only into the row the answer belongs to, and only if it is still on screen.
             guard let form = self.form, form.project.id == project.id else { return }
@@ -179,16 +134,8 @@ final class LocalProjectModule: CardModule, SettingsSection {
     }
 
     private func detect(_ form: LocalProjectForm) {
-        guard let folder = form.editedProject.folderURL else {
-            form.setDetectNote(L("project.detect.noFolder"), isError: true)
-            return
-        }
-        guard let suggestion = ProjectProbe.suggestion(for: folder) else {
-            form.setDetectNote(L("project.detect.nothing"), isError: true)
-            return
-        }
-        form.applySuggestion(suggestion)
-        let found = [suggestion.subtitle, suggestion.requiresDocker ? L("project.detect.needsDocker") : ""].filter { !$0.isEmpty }.joined(separator: ", ")
-        form.setDetectNote(L("project.detect.found", found.isEmpty ? suggestion.startCommand : found), isError: false)
+        let detection = controller.runtime.detect(folder: form.editedProject.folderURL)
+        if let suggestion = detection.suggestion { form.applySuggestion(suggestion) }
+        form.setDetectNote(detection.note, isError: detection.isError)
     }
 }

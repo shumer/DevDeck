@@ -97,8 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             notificationsPage,
         ],
         sections: [
-            GitHubAccountsSection(store: accountsStore, tokenStore: tokenStore),
-            GitLabInstancesSection(store: gitlabAccountsStore, tokenStore: tokenStore, preferences: preferences),
+            GitHubAccountsSection(store: accountsStore, runtime: controller.runtime),
+            GitLabInstancesSection(store: gitlabAccountsStore, runtime: controller.runtime),
             arcModule,
             ddevModule,
             localModule,

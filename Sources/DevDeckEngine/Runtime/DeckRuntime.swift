@@ -196,19 +196,19 @@ public final class DeckRuntime {
     /// banner about a token is said once per episode.
     private var accountFailingSince: [String: Date] = [:]
 
-    private let preferences: Preferences
-    private let tokenStore: any TokenStore
-    private let accountsStore: GitHubAccountsStore
-    private let gitlabAccountsStore: GitLabAccountsStore
-    private let projectsStore: ArcProjectsStore
-    private let ddevProjectsStore: DDEVProjectsStore
-    private let localProjectsStore: LocalProjectsStore
-    private let ddevEnvironment: DDEVEnvironment
+    let preferences: Preferences
+    let tokenStore: any TokenStore
+    let accountsStore: GitHubAccountsStore
+    let gitlabAccountsStore: GitLabAccountsStore
+    let projectsStore: ArcProjectsStore
+    let ddevProjectsStore: DDEVProjectsStore
+    let localProjectsStore: LocalProjectsStore
+    let ddevEnvironment: DDEVEnvironment
     private let dockerEnvironment: DockerEnvironment
-    private let commandRunner: any CommandRunning
-    private let http: (any HTTPClient)?
-    private let projectHTTP: (any HTTPClient)?
-    private let projectFiles: ProjectRuntimeFiles
+    let commandRunner: any CommandRunning
+    let http: (any HTTPClient)?
+    let projectHTTP: (any HTTPClient)?
+    let projectFiles: ProjectRuntimeFiles
     private let clock: any DateProvider
     private let sleeper: any Sleeper
     private let currentAddress: @MainActor () -> String?
@@ -658,7 +658,7 @@ public final class DeckRuntime {
         return project.holdsProcess ? .startedElsewhere : .noStopCommand
     }
 
-    private func localService(for project: LocalProject) -> LocalProjectService {
+    func localService(for project: LocalProject) -> LocalProjectService {
         guard let projectHTTP else {
             return LocalProjectService(project: project, runner: commandRunner, clock: clock, sleeper: sleeper, files: projectFiles)
         }
@@ -940,7 +940,7 @@ public final class DeckRuntime {
 
     /// The Arc checkouts on the deck, by folder: what a card is called, for a message about a
     /// port one of them is holding.
-    private var arcCheckouts: [String: String] {
+    var arcCheckouts: [String: String] {
         projectsStore.projects().reduce(into: [:]) { result, project in
             guard let folder = project.folderURL?.standardizedFileURL.path else { return }
             result[folder] = project.title

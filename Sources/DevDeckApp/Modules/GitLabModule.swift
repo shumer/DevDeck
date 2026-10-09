@@ -41,60 +41,37 @@ final class GitLabInstancesSection: SettingsSection {
     weak var host: SettingsHost?
 
     private let store: GitLabAccountsStore
-    private let tokenStore: any TokenStore
-    private let preferences: Preferences
+    private let runtime: DeckRuntime
     /// A token half typed, by instance, kept while the window is open.
     private var drafts: [String: String] = [:]
 
-    init(store: GitLabAccountsStore, tokenStore: any TokenStore, preferences: Preferences) {
+    init(store: GitLabAccountsStore, runtime: DeckRuntime) {
         self.store = store
-        self.tokenStore = tokenStore
-        self.preferences = preferences
+        self.runtime = runtime
     }
 
     func listItems() -> [SettingsListItem] {
-        store.accounts().map { account in
-            let hasToken = SettingsSupport.hasToken(account.tokenKey, in: tokenStore)
-            return SettingsListItem(
-                id: account.id,
-                title: account.label,
-                detail: hasToken ? account.displayHost : L("settings.list.noToken", account.displayHost),
-                icon: SettingsIcons.mark(.gitlab),
-                dot: hasToken ? nil : .systemOrange,
-                isDimmed: !account.isEnabled
-            )
-        }
+        runtime.settingsItems(.gitlab)
     }
 
     func buildForm(for id: String, in container: FlippedContainer) -> Bool {
         guard let account = store.accounts().first(where: { $0.id == id }) else { return false }
         let form = GitLabAccountForm(
             account: account,
-            hasToken: SettingsSupport.hasToken(account.tokenKey, in: tokenStore),
+            hasToken: runtime.hasToken(account.tokenKey),
             draft: drafts[id] ?? "",
             width: container.bounds.width
         )
         form.token.onDraftChange = { [weak self] text in self?.drafts[id] = text }
         form.onChange = { [weak self] in self?.applyEdits($0) }
         form.onSave = { [weak self] in self?.save($0) }
-        form.onTestLink = { form in
-            let account = form.editedAccount
-            LinkOpener.open(account.host.appendingPathComponent("dashboard").appendingPathComponent("merge_requests"), using: account.browser)
-        }
+        form.onTestLink = { [runtime] in LinkOpener.open(runtime.testLink($0.editedAccount)) { _ in } }
         container.addSubview(form)
         return true
     }
 
     func add() -> String? {
-        var accounts = store.accounts()
-        let id = GitLabAccount.makeID(from: "gitlab", existing: accounts.map(\.id))
-        accounts.append(GitLabAccount(id: id, label: "GitLab"))
-        store.save(accounts)
-        // The card is off by default, and adding an instance is the moment it becomes worth
-        // having. Turning it on by hand afterwards is a step nobody would guess at.
-        var layout = preferences.cardLayout
-        layout.setEnabled(true, for: .gitlabMergeRequests)
-        preferences.cardLayout = layout
+        let id = runtime.addGitLabAccount()
         host?.changed()
         return id
     }
@@ -103,50 +80,33 @@ final class GitLabInstancesSection: SettingsSection {
         guard let account = store.accounts().first(where: { $0.id == id }),
               SettingsSupport.confirm(L("settings.remove.account.title", account.label), detail: L("settings.remove.account.detail"))
         else { return false }
-        try? tokenStore.setToken(nil, for: account.tokenKey)
-        store.save(store.accounts().filter { $0.id != id })
+        runtime.removeGitLabAccount(account.id)
         return true
     }
 
     private func applyEdits(_ form: GitLabAccountForm) {
         let edited = form.editedAccount
-        persist(edited)
+        runtime.saveGitLabAccount(edited)
         form.apply(edited)
         host?.reloadList()
         host?.changed()
-    }
-
-    private func persist(_ account: GitLabAccount) {
-        var accounts = store.accounts()
-        guard let index = accounts.firstIndex(where: { $0.id == account.id }) else { return }
-        accounts[index] = account
-        store.save(accounts)
     }
 
     /// Verified before it is stored, the same as a GitHub token.
     private func save(_ form: GitLabAccountForm) {
         let edited = form.editedAccount
         let token = form.token.entered
-        persist(edited)
+        runtime.saveGitLabAccount(edited)
         form.apply(edited)
         form.token.checking()
-
-        let probeStore: any TokenStore = token.isEmpty ? tokenStore : InMemoryTokenStore(tokens: [edited.tokenKey: token])
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                let snapshot = try await MergeRequestsService(
-                    client: GitLabClient.makeDefault(account: edited, tokenStore: probeStore),
-                    accountID: edited.id
-                ).fetch()
-                if !token.isEmpty { try self.tokenStore.setToken(token, for: edited.tokenKey) }
-                form.token.works(LN("token.works.merges", snapshot.totalCount))
-                self.host?.reloadList()
-                self.host?.changed()
-            } catch let error as APIError {
-                form.token.refused(error.displayMessage)
-            } catch {
-                form.token.refused(error.localizedDescription)
+        Task { [weak self, runtime] in
+            switch await runtime.checkGitLabToken(for: edited, typed: token) {
+            case .works(let detail):
+                form.token.works(detail)
+                self?.host?.reloadList()
+                self?.host?.changed()
+            case .refused(let reason):
+                form.token.refused(reason)
             }
         }
     }

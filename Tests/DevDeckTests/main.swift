@@ -32,5 +32,6 @@ await runDeckRuntimeTests(run)
 await runCardModelTests(run)
 await runMenuModelTests(run)
 await runPlacementTests(run)
+await runSettingsModelTests(run)
 
 run.finish()

@@ -10,7 +10,6 @@ import SwiftUI
 final class DDEVProjectModule: CardModule, SettingsSection {
     private let context: ModuleContext
     private let store: DDEVProjectsStore
-    private let environment = DDEVEnvironment()
     private var controller: DeckController { context.controller }
 
     init(context: ModuleContext, store: DDEVProjectsStore) {
@@ -48,28 +47,16 @@ final class DDEVProjectModule: CardModule, SettingsSection {
     weak var host: SettingsHost?
 
     func listItems() -> [SettingsListItem] {
-        store.projects().map { project in
-            let live = controller.ddevStatus(for: project).state
-            return SettingsListItem(
-                id: project.id,
-                title: project.displayTitle,
-                detail: "DDEV · \(project.name)",
-                icon: SettingsIcons.mark(.ddev),
-                dot: live == .running ? .systemGreen : (live == .working ? .systemOrange : nil),
-                isDimmed: !project.isEnabled
-            )
-        }
+        controller.runtime.settingsItems(.ddev)
     }
 
     func buildForm(for id: String, in container: FlippedContainer) -> Bool {
         guard let project = store.projects().first(where: { $0.id == id }) else { return false }
         let form = DDEVProjectForm(project: project, width: container.bounds.width)
         form.onChange = { [weak self] in self?.applyEdits($0) }
-        form.onChooseFolder = { form in
+        form.onChooseFolder = { [controller] form in
             guard let url = SettingsSupport.chooseDirectory(message: L("project.choose.ddev")) else { return }
-            // Said plainly rather than refused: the folder may be right and the project not set
-            // up yet, and that is the user's business.
-            form.setFolderNote(DDEVConfig.isProject(url) ? "" : L("ddev.noConfig"), isError: true)
+            form.setFolderNote(controller.runtime.ddevFolderNote(url) ?? "", isError: true)
             form.setFolder(url.path)
         }
         form.onTestLink = { [weak self] in self?.testLink($0) }
@@ -82,21 +69,19 @@ final class DDEVProjectModule: CardModule, SettingsSection {
     func add() -> String? {
         Task { [weak self] in
             guard let self else { return }
-            guard let entries = await self.environment.list() else {
+            let candidates: [DDEVListEntry]
+            switch await self.controller.runtime.ddevCandidates() {
+            case .unavailable:
                 self.presentUnavailable()
                 return
-            }
-
-            let known = Set(self.store.projects().map(\.name))
-            let candidates = entries.filter { !known.contains($0.name) }
-
-            guard !candidates.isEmpty else {
-                let alert = NSAlert()
-                alert.messageText = entries.isEmpty ? L("ddev.none.title") : L("ddev.all.title")
-                alert.informativeText = entries.isEmpty ? L("ddev.none.detail") : L("ddev.all.detail")
-                alert.addButton(withTitle: L("button.ok"))
-                alert.runModal()
+            case .none:
+                self.present(L("ddev.none.title"), L("ddev.none.detail"))
                 return
+            case .allAdded:
+                self.present(L("ddev.all.title"), L("ddev.all.detail"))
+                return
+            case .some(let found):
+                candidates = found
             }
 
             let alert = NSAlert()
@@ -112,11 +97,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
             guard alert.runModal() == .alertFirstButtonReturn else { return }
 
             let index = max(0, min(popUp.indexOfSelectedItem, candidates.count - 1))
-            let chosen = candidates[index]
-            var projects = self.store.projects()
-            let id = DDEVProject.makeID(from: chosen.name, existing: projects.map(\.id))
-            projects.append(DDEVProject(id: id, name: chosen.name, folder: chosen.approot))
-            self.store.save(projects)
+            let id = self.controller.runtime.addDDEVProject(candidates[index])
             self.host?.select(self.kind, id: id)
             self.host?.changed()
         }
@@ -127,8 +108,16 @@ final class DDEVProjectModule: CardModule, SettingsSection {
         guard let project = store.projects().first(where: { $0.id == id }),
               SettingsSupport.confirm(L("settings.remove.account.title", project.displayTitle), detail: L("settings.remove.project.detail.ddev"))
         else { return false }
-        store.save(store.projects().filter { $0.id != id })
+        controller.runtime.removeDDEVProject(id)
         return true
+    }
+
+    private func present(_ title: String, _ detail: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = detail
+        alert.addButton(withTitle: L("button.ok"))
+        alert.runModal()
     }
 
     private func presentUnavailable() {
@@ -141,13 +130,7 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     private func applyEdits(_ form: DDEVProjectForm) {
         let edited = form.editedProject
-        var projects = store.projects()
-        if let index = projects.firstIndex(where: { $0.id == edited.id }) {
-            projects[index] = edited
-        } else {
-            projects.append(edited)
-        }
-        store.save(projects)
+        controller.runtime.saveDDEVProject(edited)
         form.apply(edited)
         host?.reloadList()
         host?.changed()
@@ -155,16 +138,8 @@ final class DDEVProjectModule: CardModule, SettingsSection {
 
     private func testLink(_ form: DDEVProjectForm) {
         let project = form.editedProject
-        Task { [weak self] in
-            guard let self else { return }
-            let entries = await self.environment.list()
-            let status = self.environment.status(for: project, entries: entries)
-            guard let link = project.links(status: status).first else {
-                form.setLinkNote(L("ddev.noURL"), isError: true)
-                return
-            }
-            form.setLinkNote("", isError: false)
-            LinkOpener.open(link.url, using: project.browser)
+        Task { [controller] in
+            LinkOpener.open(await controller.runtime.testLink(project)) { form.setLinkNote($0, isError: !$0.isEmpty) }
         }
     }
 }

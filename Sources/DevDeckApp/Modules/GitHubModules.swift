@@ -98,28 +98,18 @@ final class GitHubAccountsSection: SettingsSection {
     weak var host: SettingsHost?
 
     private let store: GitHubAccountsStore
-    private let tokenStore: any TokenStore
+    private let runtime: DeckRuntime
     /// A token half typed, by account, kept while the window is open: selecting another row
     /// rebuilds the form, and the field used to come back empty with no word about it.
     private var drafts: [String: String] = [:]
 
-    init(store: GitHubAccountsStore, tokenStore: any TokenStore) {
+    init(store: GitHubAccountsStore, runtime: DeckRuntime) {
         self.store = store
-        self.tokenStore = tokenStore
+        self.runtime = runtime
     }
 
     func listItems() -> [SettingsListItem] {
-        store.accounts().map { account in
-            let hasToken = SettingsSupport.hasToken(account.tokenKey, in: tokenStore)
-            return SettingsListItem(
-                id: account.id,
-                title: account.label,
-                detail: hasToken ? "GitHub" : L("settings.list.noToken", "GitHub"),
-                icon: SettingsIcons.mark(.github),
-                dot: hasToken ? nil : .systemOrange,
-                isDimmed: !account.isEnabled
-            )
-        }
+        runtime.settingsItems(.github)
     }
 
     func buildForm(for id: String, in container: FlippedContainer) -> Bool {
@@ -127,7 +117,7 @@ final class GitHubAccountsSection: SettingsSection {
         let fold = "github:\(id):advanced"
         let form = GitHubAccountForm(
             account: account,
-            hasToken: SettingsSupport.hasToken(account.tokenKey, in: tokenStore),
+            hasToken: runtime.hasToken(account.tokenKey),
             isAdvancedOpen: host?.isOpen(fold) ?? false,
             draft: drafts[id] ?? "",
             width: container.bounds.width
@@ -135,26 +125,21 @@ final class GitHubAccountsSection: SettingsSection {
         form.token.onDraftChange = { [weak self] text in self?.drafts[id] = text }
         form.onChange = { [weak self] in self?.applyEdits($0) }
         form.onSave = { [weak self] in self?.save($0) }
-        form.onTestLink = { LinkOpener.open(URL(string: "https://github.com/pulls")!, using: $0.editedAccount.browser) }
+        form.onTestLink = { [runtime] in LinkOpener.open(runtime.testLink($0.editedAccount)) { _ in } }
         form.onToggleAdvanced = { [weak self] in self?.host?.toggle(fold) }
         container.addSubview(form)
         return true
     }
 
     func add() -> String? {
-        var accounts = store.accounts()
-        let id = GitHubAccount.makeID(from: "account", existing: accounts.map(\.id))
-        accounts.append(GitHubAccount(id: id, label: L("account.new.label")))
-        store.save(accounts)
-        return id
+        runtime.addGitHubAccount()
     }
 
     func remove(_ id: String) -> Bool {
         guard let account = store.accounts().first(where: { $0.id == id }),
               SettingsSupport.confirm(L("settings.remove.account.title", account.label), detail: L("settings.remove.account.detail"))
         else { return false }
-        try? tokenStore.setToken(nil, for: account.tokenKey)
-        store.save(store.accounts().filter { $0.id != id })
+        runtime.removeGitHubAccount(account.id)
         return true
     }
 
@@ -162,50 +147,29 @@ final class GitHubAccountsSection: SettingsSection {
 
     private func applyEdits(_ form: GitHubAccountForm) {
         let edited = form.editedAccount
-        persist(edited)
+        runtime.saveGitHubAccount(edited)
         form.apply(edited)
         host?.reloadList()
         host?.changed()
     }
 
-    /// Verified before it is stored: a rejected token that lands in the Keychain turns into a
-    /// card that fails for reasons nobody can see. The answer goes on the token's own line.
+    /// Verified before it is stored; see `DeckRuntime.checkGitHubToken(for:typed:)`. The answer
+    /// goes on the token's own line.
     private func save(_ form: GitHubAccountForm) {
         let edited = form.editedAccount
         let token = form.token.entered
-        persist(edited)
+        runtime.saveGitHubAccount(edited)
         form.apply(edited)
         form.token.checking()
-
-        let probeStore: any TokenStore = token.isEmpty ? tokenStore : InMemoryTokenStore(tokens: [edited.tokenKey: token])
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                let settings = edited.settings(basedOn: .default)
-                let snapshot = try await PullRequestsService(
-                    client: GitHubClient.makeDefault(tokenStore: probeStore, settings: settings, tokenKey: edited.tokenKey),
-                    settings: settings,
-                    accountID: edited.id
-                ).fetch()
-                if !token.isEmpty { try self.tokenStore.setToken(token, for: edited.tokenKey) }
-                form.token.works(LN("token.works.pulls", snapshot.totalCount))
-                self.host?.reloadList()
-                self.host?.changed()
-            } catch let error as APIError {
-                form.token.refused(token.isEmpty && !SettingsSupport.hasToken(edited.tokenKey, in: self.tokenStore) ? L("token.needed") : error.displayMessage)
-            } catch {
-                form.token.refused(error.localizedDescription)
+        Task { [weak self, runtime] in
+            switch await runtime.checkGitHubToken(for: edited, typed: token) {
+            case .works(let detail):
+                form.token.works(detail)
+                self?.host?.reloadList()
+                self?.host?.changed()
+            case .refused(let reason):
+                form.token.refused(reason)
             }
         }
-    }
-
-    private func persist(_ account: GitHubAccount) {
-        var accounts = store.accounts()
-        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-            accounts[index] = account
-        } else {
-            accounts.append(account)
-        }
-        store.save(accounts)
     }
 }

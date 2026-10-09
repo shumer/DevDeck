@@ -56,8 +56,10 @@ only has to draw.
   [adr/0028](adr/0028-the-menu-in-the-engine.md).
 - **M-5. Placement in the engine.** Done; see [adr/0029](adr/0029-placement-in-the-engine.md). `PanelCoordinator` only applies frames; the engine decides
   place, parking, Tidy and column packing. A replay of a recorded monitor unplug becomes a test.
-- **M-6. Settings in the engine.** The settings model, field checks, Detect and Test go through
-  engine intents. The forms stay AppKit.
+- **M-6. Settings in the engine.** The sidebar and every operation behind a form go through
+  the runtime: add, save, remove, Detect, the health, stack and token checks, link tests. The
+  forms and the four pages stay AppKit until W-10. See
+  [adr/0031](adr/0031-settings-operations-in-the-engine.md).
 - **M-7. The update check in the engine.** Installing stays in the shell.
 - **M-8. Golden transcripts** for every card, the menu, notifications and placement, in English
   and Russian.

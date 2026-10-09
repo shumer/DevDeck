@@ -1,5 +1,7 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
+import DevDeckUI
 
 /// Where a kind's rows sit in the sidebar.
 enum SettingsListGroup {
@@ -87,10 +89,35 @@ enum SettingsSupport {
         alert.buttons[1].keyEquivalent = "\r"
         return alert.runModal() == .alertFirstButtonReturn
     }
+}
 
-    /// Whether a token is stored for a key. The row says one exists; it is never read back
-    /// into a field.
-    static func hasToken(_ key: TokenKey, in store: any TokenStore) -> Bool {
-        ((try? store.token(for: key)) ?? nil) != nil
+extension DeckRuntime {
+    /// The runtime's sidebar rows of one kind, as the list draws them.
+    func settingsItems(_ kind: DeckSettingsKind) -> [SettingsListItem] {
+        let list = settingsList()
+        return (list.accounts + list.projects).filter { $0.kind == kind }.map { item in
+            SettingsListItem(
+                id: item.id,
+                title: item.title,
+                detail: item.detail,
+                icon: item.mark.glyph.map { SettingsIcons.mark($0) },
+                dot: item.tone.map { $0 == .good ? NSColor.systemGreen : NSColor.systemOrange },
+                isDimmed: item.isDimmed
+            )
+        }
+    }
+}
+
+@MainActor
+extension LinkOpener {
+    /// Opens what a form's link test came to, or puts its note where the form shows notes.
+    static func open(_ test: DeckLinkTest, note: (String) -> Void) {
+        switch test {
+        case .open(let url, let browser):
+            note("")
+            open(url, using: browser)
+        case .note(let text):
+            note(text)
+        }
     }
 }

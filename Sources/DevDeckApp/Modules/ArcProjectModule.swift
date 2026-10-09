@@ -50,17 +50,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
     private var checks: [String: (status: LocalStackStatus, address: String)] = [:]
 
     func listItems() -> [SettingsListItem] {
-        store.projects().map { project in
-            let live = controller.stackStatus(for: project).state
-            return SettingsListItem(
-                id: project.id,
-                title: project.title,
-                detail: project.organization.isEmpty ? "Arc XP" : "Arc XP · \(project.organization)",
-                icon: SettingsIcons.mark(.arc),
-                dot: live == .running ? .systemGreen : (live == .working ? .systemOrange : nil),
-                isDimmed: !project.isEnabled
-            )
-        }
+        controller.runtime.settingsItems(.arc)
     }
 
     func buildForm(for id: String, in container: FlippedContainer) -> Bool {
@@ -74,23 +64,13 @@ final class ArcProjectModule: CardModule, SettingsSection {
             form.setFolder(url.path)
         }
         form.onCheckStack = { [weak self] in self?.checkStack($0.editedProject) }
-        form.onTestLink = { form in
-            let project = form.editedProject
-            guard let link = project.resolvedLinks.first else {
-                form.setLinkNote(L("project.link.noneEnabled"), isError: true)
-                return
-            }
-            form.setLinkNote("", isError: false)
-            LinkOpener.open(link.url, using: project.browser)
+        form.onTestLink = { [controller] form in
+            LinkOpener.open(controller.runtime.testLink(form.editedProject)) { form.setLinkNote($0, isError: !$0.isEmpty) }
         }
         form.onToggleAdvanced = { [weak self] in self?.host?.toggle(fold) }
         form.onStructureChange = { [weak self] _, project in
             guard let self else { return }
-            var projects = self.store.projects()
-            if let index = projects.firstIndex(where: { $0.id == project.id }) {
-                projects[index] = project
-                self.store.save(projects)
-            }
+            self.controller.runtime.restructureArcProject(project)
             self.host?.changed()
             // Rebuilt rather than updated: a link was added or removed.
             self.host?.reloadDetail()
@@ -105,10 +85,7 @@ final class ArcProjectModule: CardModule, SettingsSection {
     }
 
     func add() -> String? {
-        var projects = store.projects()
-        let id = ArcProject.makeID(from: "project", existing: projects.map(\.id))
-        projects.append(ArcProject(id: id, title: L("project.new.title"), organization: ""))
-        store.save(projects)
+        let id = controller.runtime.addArcProject()
         host?.changed()
         return id
     }
@@ -117,42 +94,31 @@ final class ArcProjectModule: CardModule, SettingsSection {
         guard let project = store.projects().first(where: { $0.id == id }),
               SettingsSupport.confirm(L("settings.remove.account.title", project.title), detail: L("settings.remove.project.detail.arc"))
         else { return false }
-        store.save(store.projects().filter { $0.id != id })
+        controller.runtime.removeArcProject(id)
         return true
     }
 
-    /// What the stack check asks: the folder and the address it resolves to.
     private static func address(of project: ArcProject) -> String {
-        "\(project.folder ?? "")|\(project.effectiveLocalURL)|\(project.healthPath)"
+        DeckRuntime.stackAddress(of: project)
     }
 
     private func applyEdits(_ form: ArcProjectForm) {
-        let before = store.projects().first { $0.id == form.project.id }
         let edited = form.editedProject
-        var projects = store.projects()
-        if let index = projects.firstIndex(where: { $0.id == edited.id }) {
-            projects[index] = edited
-        } else {
-            projects.append(edited)
-        }
-        store.save(projects)
+        let asksAgain = controller.runtime.saveArcProject(edited)
         form.apply(edited)
         host?.reloadList()
         host?.changed()
-        if let before, Self.address(of: before) != Self.address(of: edited), edited.supportsLocalStack {
-            checkStack(edited)
-        }
+        if asksAgain { checkStack(edited) }
     }
 
     private func checkStack(_ project: ArcProject) {
         guard project.supportsLocalStack else {
-            form?.stack.update(CheckSummary(tone: .idle, state: L("project.notConfigured"), detail: L("project.notConfigured.detail")))
+            form?.stack.update(DeckRuntime.stackNotConfigured)
             return
         }
         form?.stack.update(.checking)
         Task { [weak self] in
-            guard let self else { return }
-            let status = await LocalStackService(project: project).status()
+            guard let self, let status = await self.controller.runtime.checkArcStack(project) else { return }
             let address = Self.address(of: project)
             self.checks[project.id] = (status, address)
             guard let form = self.form, form.project.id == project.id else { return }
