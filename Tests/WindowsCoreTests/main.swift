@@ -146,7 +146,23 @@ await run.test("a WSL that does not answer is not a project with nothing to stop
     let result = await LocalProjectService(project: wslProject(), runner: runner).perform(.stop)
     let failed = try expectNotNil(result, "a stop that could not ask must say so")
     try expect(!failed.succeeded)
-    try expect(failed.standardError.contains("could not ask WSL"), "got: \(failed.standardError)")
+    try expectEqual(
+        failed.standardError,
+        "could not ask WSL for the project's process: WSL command timed out"
+    )
+}
+
+await run.test("a WSL timeout keeps the cause when cleanup cannot be verified") {
+    let runner = ScriptedRunner([
+        ("boot_id", .failure(.timedOut("WSL command timed out; its cleanup could not be verified"))),
+    ])
+    let result = await LocalProjectService(project: wslProject(), runner: runner).perform(.stop)
+    let failed = try expectNotNil(result, "a stop that could not clean up must say why")
+    try expectEqual(
+        failed.standardError,
+        "could not ask WSL for the project's process: "
+            + "WSL command timed out; its cleanup could not be verified"
+    )
 }
 
 await run.test("no recorded process is nothing to stop") {

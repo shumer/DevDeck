@@ -7,3 +7,6 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 swift run --package-path "$HERE" DevDeckTests "$@"
+if [[ $# -eq 0 ]]; then
+    swift run --package-path "$HERE" DevDeckEngineTests
+fi

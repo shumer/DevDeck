@@ -12,6 +12,17 @@ public struct DDEVEnvironment: Sendable {
     /// Where commands run when they are not about one project in particular.
     private let workingDirectory: URL
 
+    #if os(Windows)
+    public init(
+        runner: any CommandRunning,
+        clock: any DateProvider = SystemDateProvider(),
+        workingDirectory: URL = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+    ) {
+        self.runner = runner
+        self.clock = clock
+        self.workingDirectory = workingDirectory
+    }
+    #else
     public init(
         runner: any CommandRunning = ShellCommandRunner(),
         clock: any DateProvider = SystemDateProvider(),
@@ -21,6 +32,7 @@ public struct DDEVEnvironment: Sendable {
         self.clock = clock
         self.workingDirectory = workingDirectory
     }
+    #endif
 
     // MARK: Listing
 

@@ -102,6 +102,23 @@ public struct LocalStackService: Sendable {
     private let clock: any DateProvider
     private let sleeper: any Sleeper
 
+    #if os(Windows)
+    public init(
+        project: ArcProject,
+        runner: any CommandRunning,
+        httpClient: any HTTPClient = URLSessionHTTPClient.makeDefault(timeout: 3),
+        clock: any DateProvider = SystemDateProvider(),
+        sleeper: any Sleeper = TaskSleeper(),
+        neighbours: [String: String] = [:]
+    ) {
+        self.project = project
+        self.runner = runner
+        self.httpClient = httpClient
+        self.clock = clock
+        self.sleeper = sleeper
+        self.neighbours = neighbours
+    }
+    #else
     public init(
         project: ArcProject,
         runner: any CommandRunning = ShellCommandRunner(),
@@ -117,6 +134,7 @@ public struct LocalStackService: Sendable {
         self.sleeper = sleeper
         self.neighbours = neighbours
     }
+    #endif
 
     /// The other checkouts on the deck, by folder, so a port held by one of them is named the
     /// way its own card is rather than by the folder it happens to live in.

@@ -62,18 +62,38 @@ package's, and the CI warning check runs under Xcode where they do not appear.
 ## Building on Windows
 
 Windows 11 22H2 or later, with the Swift toolchain for Windows and the Visual Studio build tools it
-asks for. The same `Package.swift` builds a smaller graph there: the core, `GitHubKit`,
-`ProjectKit`, `DevDeckProcessHost`, the Windows suite and the network smoke check. Nothing that
+asks for. The same `Package.swift` builds the portable core, every integration kit,
+`DevDeckEngine`, its host, `DevDeckProcessHost`, the Windows suite and the live tools. Nothing that
 draws is built on Windows yet; see [windows-migration.md](windows-migration.md).
 
 ```powershell
 swift build                                   # the Windows graph
 swift run DevDeckWindowsCoreTests             # offline: HTTP cache, tokens, file preferences, commands
+swift run DevDeckEngineTests                  # offline: protocol and byte-exact golden transcripts
+swift run DevDeckEngineHost --config C:\path\to\config.json
 swift build --product DevDeckNetworkSmoke     # then Tools/WindowsNetworkSmoke/Invoke-NetworkSmoke.ps1
 ```
 
-The suite needs no WSL distribution. Starting and stopping real projects in WSL and in Windows
-folders is checked live until the engine host lands and those scenarios become standing checks.
+The offline suites need no WSL distribution. The lifecycle tools use a config with one WSL
+project and one project in a Windows folder. Run each action in a separate invocation so the
+successful Start process exits before Status checks that the project survived:
+
+```powershell
+swift run DevDeckWSLLifecycleSmoke start --config C:\path\to\config.json
+swift run DevDeckWSLLifecycleSmoke status --config C:\path\to\config.json
+swift run DevDeckWSLLifecycleSmoke stop --config C:\path\to\config.json
+swift run DevDeckWindowsLifecycle start --config C:\path\to\config.json
+swift run DevDeckWindowsLifecycle status --config C:\path\to\config.json
+swift run DevDeckWindowsLifecycle stop --config C:\path\to\config.json
+swift run DevDeckWindowsLifecycle timeout --config C:\path\to\config.json
+swift run DevDeckWindowsLifecycle cancel --config C:\path\to\config.json
+swift run DevDeckWindowsLifecycle path --config C:\path\to\config.json
+```
+
+The WSL tool also accepts `timeout` and `cancel`. These are live checks: they need the configured
+distribution, project folders and start commands. They verify the process lifetime rules in
+[adr/0023-project-process-lifetime.md](adr/0023-project-process-lifetime.md).
+
 Mac changes are checked on the Mac and Windows changes on Windows: a branch that touches both is
 merged when both are green.
 

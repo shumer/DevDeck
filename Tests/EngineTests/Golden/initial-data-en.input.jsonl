@@ -1,0 +1,4 @@
+{"protocolVersion":2,"id":"session","intent":"session.start","language":"en","displays":[{"id":"display","visibleFrame":[100,200,1920,1040],"scale":1.5}]}
+{"protocolVersion":2,"id":"credentials","intent":"credentials.set","account":"github","token":"fixture"}
+{"protocolVersion":2,"id":"measure-pulls","intent":"card.measured","card":"github.pullRequests","size":[352,216]}
+{"protocolVersion":2,"id":"measure-project","intent":"card.measured","card":"project.demo","size":[352,180]}

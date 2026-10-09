@@ -249,7 +249,8 @@ struct NativeWindowsProjectLauncher: ProjectProcessLauncher {
 private func projectFailure(_ projectID: String, _ what: String, _ error: any Error) -> CommandResult? {
     // A cancelled action is the caller changing its mind, not something to report.
     if error is CancellationError { return nil }
-    Log.app.debug("project \(projectID): \(what): \(error)")
-    return CommandResult(exitCode: -1, standardOutput: "", standardError: "\(what): \(error)")
+    let message = error.localizedDescription
+    Log.app.debug("project \(projectID): \(what): \(message)")
+    return CommandResult(exitCode: -1, standardOutput: "", standardError: "\(what): \(message)")
 }
 #endif

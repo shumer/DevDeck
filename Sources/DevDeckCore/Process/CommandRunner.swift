@@ -91,10 +91,24 @@ public extension CommandRunning {
     }
 }
 
-public enum CommandError: Error, Sendable, Equatable {
+public enum CommandError: Error, Sendable, Equatable, LocalizedError, CustomStringConvertible {
     case missingDirectory(String)
     case timedOut(String)
     case launchFailed(String)
+
+    public var description: String {
+        switch self {
+        case .missingDirectory(let path):
+            return "Directory does not exist: \(path)"
+        case .timedOut(let operation):
+            return operation.localizedCaseInsensitiveContains("timed out")
+                ? operation : "\(operation) timed out"
+        case .launchFailed(let message):
+            return message
+        }
+    }
+
+    public var errorDescription: String? { description }
 }
 
 /// Runs commands through a login shell, with the `PATH` the user's terminal actually has.

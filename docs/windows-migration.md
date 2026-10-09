@@ -41,10 +41,12 @@ only has to draw.
 - **M-1. Portable core.** The Windows adapters of the core, the file preferences store, the
   Windows graph in `Package.swift`, and project launching split into a launcher per platform
   instead of `#if` inside `LocalProjectService`. The Mac behaves exactly as before.
-- **M-2. `DevDeckEngine`.** Protocol v2, the engine host, the golden infrastructure and the
-  localisation resources target. `DeckController` moves into the engine: polling, smoothing,
-  project actions, the inbox, attention. A portable change stream replaces `@Published`, and the
-  Mac shell wraps it for SwiftUI.
+- **M-2a. Engine foundation.** Protocol v2, the engine host, the golden infrastructure and the
+  localisation resources target build on both platforms. The Mac application does not use them
+  yet. Mark this step done after its branch is merged.
+- **M-2b. Mac application on the engine.** `DeckController` moves into the engine: polling,
+  smoothing, project actions, the inbox and attention. A portable change stream replaces
+  `@Published`, and the Mac shell wraps it for SwiftUI.
 - **M-3. Every card model in the engine.** Text, tones, badges, order and footers move out of the
   SwiftUI cards into model builders. The views draw models; presentation tests stop depending on
   SwiftUI.
@@ -106,16 +108,16 @@ Every task ends with screenshots on neutral data and a check against the shell r
 ## Order
 
 ```
-M-1 ── M-2 ── M-3 ── M-4 ── M-5 ── M-6 ── M-7 ── M-8
-         │             │      │      │
-        W-1 ── W-2    C-1 ────┴──────┘
-                        │
-                       W-3 ── W-4 ── W-5 ── ... ── W-13
-                                                     │
-                                         W-14 ── ... ── W-20 ── beta
+M-1 -- M-2a -- M-2b -- M-3 -- M-4 -- M-5 -- M-6 -- M-7 -- M-8
+          |                         |       |       |
+         W-1 -- W-2               C-1 -----+-------+
+                                    |
+                                   W-3 -- W-4 -- W-5 -- ... -- W-13
+                                                                  |
+                                                  W-14 -- ... -- W-20 -- beta
 ```
 
-W-1 and W-2 can start right after M-2; W-3 right after C-1; W-14 any time after W-1.
+W-1 and W-2 can start right after M-2a; W-3 right after C-1; W-14 any time after W-1.
 
 ## Risks
 

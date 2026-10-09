@@ -7,6 +7,8 @@ DevDeckApp     AppKit shell - windows, menu bar, placement, settings
     │              depends on everything below
 DevDeckUI      SwiftUI cards - pure rendering of a CardState
     │
+DevDeckEngine  protocol v2, portable card models, intents and event stream
+    │
 GitHubKit      one integration: GraphQL documents, models, services
 GitLabKit      one integration: accounts per host, the merge requests query
 ArcKit         one integration: projects, link templates, local Fusion stack
@@ -23,6 +25,18 @@ KeychainACL    C shim for the one deprecated Keychain call Swift cannot silence
 The rule that keeps this honest: **`DevDeckCore` and every integration module must build and
 be testable without AppKit**. The suite is a plain executable running head-less, so anything
 that reaches for a window cannot be covered by it.
+
+## Engine protocol
+
+`DevDeckEngine` is the portable boundary between platform shells and deck behaviour. Protocol
+v2 is a JSON Lines stream: a shell sends versioned intents and the engine replies with versioned
+events carrying complete card models. `DevDeckEngineHost` exposes that stream over standard input
+and standard output, so a shell can restart without taking a project down.
+
+`DevDeckEngineTests` replay three English and Russian input transcripts and compare every output
+byte with the committed golden files. This keeps event order, text, tone, visibility and state
+changes identical across platforms. The Mac application does not use this engine yet. Moving its
+controller behind the protocol is M-2b.
 
 ## Data flow
 
@@ -612,9 +626,10 @@ Terms are not translated: `pull request`, `merge request`, `pipeline`, `commit`,
 
 The deck is heading for one engine and two thin shells - see
 [adr/0024-one-engine-two-shells.md](adr/0024-one-engine-two-shells.md) and
-[windows-migration.md](windows-migration.md). Today `DevDeckCore`, `GitHubKit` and `ProjectKit`
-build on Windows 11 from the same `Package.swift`, which has a Windows graph of its own: no AppKit
-targets, no `KeychainACL`, plus `DevDeckProcessHost`, the Windows suite and a network smoke check.
+[windows-migration.md](windows-migration.md). `DevDeckCore`, every integration kit,
+`DevDeckEngine`, its host and its golden suite build on Windows 11 from the same `Package.swift`.
+The Windows graph has no AppKit targets and no `KeychainACL`; it adds `DevDeckProcessHost`, the
+Windows suite, lifecycle tools and a network smoke check.
 
 Where the platforms differ, the difference is a type picked at construction, not a branch inside
 shared logic:

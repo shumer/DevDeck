@@ -131,9 +131,14 @@ public struct WSLCommandRunner: CommandRunning, DetachedProjectLaunching {
             let wasTimedOut = timedOut
             let didFailCleanup = cleanupFailed
             lock.unlock()
-            if didFailCleanup { throw CommandError.launchFailed("Could not verify WSL process cleanup.") }
             if wasCancelled { throw CancellationError() }
-            if wasTimedOut { throw CommandError.timedOut("WSL command") }
+            if wasTimedOut {
+                let message = didFailCleanup
+                    ? "WSL command timed out; its cleanup could not be verified"
+                    : "WSL command"
+                throw CommandError.timedOut(message)
+            }
+            if didFailCleanup { throw CommandError.launchFailed("Could not verify WSL process cleanup.") }
             return CommandResult(
                 exitCode: process.terminationStatus,
                 standardOutput: String(decoding: outputData, as: UTF8.self),

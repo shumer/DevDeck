@@ -5,17 +5,19 @@ import PackageDescription
 // concurrency, while the AppKit/SwiftUI shell stays on the 5 mode where main-actor
 // isolation of the framework types is inferred rather than enforced.
 // See docs/adr/0002-spm-only-toolchain.md.
-//
-// Windows builds only the portable layers: the engine and its shell come in later steps of
-// docs/windows-migration.md, and nothing that draws is ever built there.
-// See docs/adr/0023-project-process-lifetime.md for the process host.
 #if os(Windows)
 let package = Package(
     name: "DevDeck",
+    defaultLocalization: "en",
     products: [
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
         .library(name: "GitHubKit", targets: ["GitHubKit"]),
+        .library(name: "GitLabKit", targets: ["GitLabKit"]),
+        .library(name: "ArcKit", targets: ["ArcKit"]),
+        .library(name: "DDEVKit", targets: ["DDEVKit"]),
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
+        .library(name: "DevDeckEngine", targets: ["DevDeckEngine"]),
+        .executable(name: "DevDeckEngineHost", targets: ["DevDeckEngineHost"]),
         .executable(name: "DevDeckProcessHost", targets: ["DevDeckProcessHost"]),
     ],
     targets: [
@@ -25,10 +27,38 @@ let package = Package(
             exclude: ["Process/ShellPath.swift", "Process/LocalAddress.swift"]
         ),
         .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
+        .target(name: "GitLabKit", dependencies: ["DevDeckCore"]),
+        .target(name: "ArcKit", dependencies: ["DevDeckCore"]),
+        .target(name: "DDEVKit", dependencies: ["DevDeckCore"]),
         .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+        .target(name: "DevDeckEngine", dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit"]),
+        .target(
+            name: "DevDeckLocalization",
+            path: "Resources/Localizations",
+            sources: ["LocalizationResources.swift"],
+            resources: [
+                .copy("en.lproj"), .copy("ru.lproj"), .copy("de.lproj"),
+                .copy("it.lproj"), .copy("es.lproj"), .copy("fr.lproj"),
+            ]
+        ),
+        .executableTarget(
+            name: "DevDeckEngineHost",
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]
+        ),
 
         // Holds a native Windows project's Job Object, so the project outlives the engine.
         .executableTarget(name: "DevDeckProcessHost", dependencies: ["DevDeckCore"]),
+
+        .executableTarget(
+            name: "DevDeckWindowsLifecycle",
+            dependencies: ["DevDeckCore", "DevDeckEngine", "ProjectKit"],
+            path: "Tools/WindowsLifecycle"
+        ),
+        .executableTarget(
+            name: "DevDeckWSLLifecycleSmoke",
+            dependencies: ["DevDeckCore", "DevDeckEngine", "ProjectKit"],
+            path: "Tools/WSLLifecycleSmoke"
+        ),
 
         // Live check of HTTPS, proxies and certificates through FoundationNetworking.
         .executableTarget(
@@ -39,6 +69,14 @@ let package = Package(
         ),
 
         .target(name: "TestHarness", dependencies: ["DevDeckCore"], path: "Tests/TestHarness"),
+        .executableTarget(
+            name: "DevDeckEngineTests",
+            dependencies: [
+                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness",
+            ],
+            path: "Tests/EngineTests",
+            resources: [.copy("Golden")]
+        ),
 
         // The Windows-only checks: HTTP caching, in-memory tokens, the detached command, file
         // preferences. The shared logic is covered by DevDeckTests on the Mac.
@@ -52,6 +90,7 @@ let package = Package(
 #else
 let package = Package(
     name: "DevDeck",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
@@ -59,6 +98,8 @@ let package = Package(
         .library(name: "ArcKit", targets: ["ArcKit"]),
         .library(name: "DDEVKit", targets: ["DDEVKit"]),
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
+        .library(name: "DevDeckEngine", targets: ["DevDeckEngine"]),
+        .executable(name: "DevDeckEngineHost", targets: ["DevDeckEngineHost"]),
         .library(name: "DevDeckUI", targets: ["DevDeckUI"]),
         .executable(name: "DevDeck", targets: ["DevDeckApp"]),
     ],
@@ -82,6 +123,29 @@ let package = Package(
 
         // Projects that are neither: a folder, a command and a health URL.
         .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
+
+        .target(name: "DevDeckEngine", dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit"]),
+        .target(
+            name: "DevDeckLocalization",
+            path: "Resources/Localizations",
+            sources: ["LocalizationResources.swift"],
+            resources: [
+                .copy("en.lproj"), .copy("ru.lproj"), .copy("de.lproj"),
+                .copy("it.lproj"), .copy("es.lproj"), .copy("fr.lproj"),
+            ]
+        ),
+        .executableTarget(
+            name: "DevDeckEngineHost",
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization"]
+        ),
+        .executableTarget(
+            name: "DevDeckEngineTests",
+            dependencies: [
+                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "ProjectKit", "TestHarness",
+            ],
+            path: "Tests/EngineTests",
+            resources: [.copy("Golden")]
+        ),
 
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(
