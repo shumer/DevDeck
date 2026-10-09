@@ -26,11 +26,18 @@ public enum DeckEffect: Sendable, Equatable {
     case attentionChanged
     /// Open a page in this browser, and in this profile of it when there is one.
     case openURL(URL, BrowserChoice)
+    /// Open Settings on one field.
+    case openSetting(DeckSetting)
+    /// Open a terminal in this folder.
+    case openTerminal(URL)
 }
 
 /// A card's model, whichever card it is. See `DeckRuntime.model(for:)`.
 public enum DeckCardModel: Sendable, Equatable {
-    case pullRequests(PullRequestsCardModel)
+    case reviewList(ReviewListCardModel)
+    case inbox(InboxCardModel)
+    case actions(ActionsCardModel)
+    case workInFlight(WorkInFlightCardModel)
 }
 
 /// Owns the data every card renders and the loops that keep it fresh, on every platform.
@@ -1533,12 +1540,43 @@ public final class DeckRuntime {
     public func model(for card: CardID) -> DeckCardModel? {
         switch card {
         case .githubPullRequests:
-            return .pullRequests(PullRequestsCardModel.build(
+            return .reviewList(.pullRequests(
                 state: pullRequests,
                 accountLabels: accountLabels,
                 isExpanded: isExpanded(card),
                 isCollapsed: isCollapsed(card),
                 now: clock.now
+            ))
+        case .gitlabMergeRequests:
+            return .reviewList(.mergeRequests(
+                state: mergeRequests,
+                accountLabels: gitlabAccountLabels,
+                isExpanded: isExpanded(card),
+                isCollapsed: isCollapsed(card),
+                now: clock.now
+            ))
+        case .githubInbox:
+            return .inbox(.build(
+                state: inbox,
+                accountLabels: accountLabels,
+                isExpanded: isExpanded(card),
+                isCollapsed: isCollapsed(card),
+                progress: inboxProgress,
+                now: clock.now
+            ))
+        case .githubActions:
+            return .actions(.build(
+                state: actions,
+                followsPullRequests: actionsFollowPullRequests,
+                isCollapsed: isCollapsed(card),
+                now: clock.now
+            ))
+        case .workInFlight:
+            return .workInFlight(.build(
+                states: checkouts,
+                checkedAt: checkoutsCheckedAt,
+                isExpanded: isExpanded(card),
+                isCollapsed: isCollapsed(card)
             ))
         default:
             return nil
@@ -1552,10 +1590,26 @@ public final class DeckRuntime {
             effect(.openURL(url, service == .github ? browser(for: account) : gitlabBrowser(for: account)))
         case .openDashboard(let card):
             guard let url = dashboardURL(for: card) else { return }
-            // The dashboard belongs to whichever account is first; there is no row to ask.
-            effect(.openURL(url, browser(for: accountLabels.keys.sorted().first ?? "")))
+            // The dashboard belongs to whichever account is first; there is no row to ask. A
+            // GitLab card's first account is a GitLab one, in that account's browser.
+            if card == .gitlabMergeRequests {
+                effect(.openURL(url, gitlabBrowser(for: gitlabAccountLabels.keys.sorted().first ?? "")))
+            } else {
+                effect(.openURL(url, browser(for: accountLabels.keys.sorted().first ?? "")))
+            }
         case .toggleExpanded(let card):
             toggleExpanded(card)
+        case .markRead(let threadID):
+            markRead(threadID: threadID)
+        case .markRestRead:
+            markRestRead()
+        case .markAllRead:
+            markAllRead()
+        case .openSetting(let setting):
+            effect(.openSetting(setting))
+        case .openCheckout(let id):
+            guard let state = checkouts.first(where: { $0.id == id }), let folder = folder(forCheckout: state) else { return }
+            effect(.openTerminal(folder))
         }
     }
 
@@ -1563,6 +1617,12 @@ public final class DeckRuntime {
     public func dashboardURL(for card: CardID) -> URL? {
         switch card {
         case .githubPullRequests: return URL(string: "https://github.com/pulls")
+        case .githubInbox: return URL(string: "https://github.com/notifications")
+        // Actions has no cross-repository page; the closest thing is the dashboard.
+        case .githubActions: return URL(string: "https://github.com")
+        // The instance is per account, so this is only the nearest thing to a constant; the
+        // card's own rows carry absolute URLs.
+        case .gitlabMergeRequests: return URL(string: "https://gitlab.com/dashboard/merge_requests")
         default: return nil
         }
     }

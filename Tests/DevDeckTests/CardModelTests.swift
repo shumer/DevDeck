@@ -2,6 +2,7 @@ import DevDeckCore
 import DevDeckEngine
 import Foundation
 import GitHubKit
+import GitLabKit
 import TestHarness
 
 // What a card shows, decided in the engine and checked here without drawing anything. Every
@@ -44,8 +45,45 @@ private func pullsModel(
     labels: [String: String] = ["work": "Work"],
     isExpanded: Bool = false,
     isCollapsed: Bool = false
-) -> PullRequestsCardModel {
-    PullRequestsCardModel.build(state: state, accountLabels: labels, isExpanded: isExpanded, isCollapsed: isCollapsed, now: cardNow)
+) -> ReviewListCardModel {
+    ReviewListCardModel.pullRequests(state: state, accountLabels: labels, isExpanded: isExpanded, isCollapsed: isCollapsed, now: cardNow)
+}
+
+
+private func thread(_ id: String, _ reason: NotificationReason, unread: Bool = true, url: Bool = true) -> InboxItem {
+    InboxItem(
+        id: id, reason: reason, title: "Thread \(id)", repository: "acme/site",
+        updatedAt: cardNow.addingTimeInterval(-600), isUnread: unread,
+        url: url ? URL(string: "https://github.com/acme/site/issues/\(id)") : nil, accountID: "work"
+    )
+}
+
+private func inboxModel(
+    _ items: [InboxItem],
+    failures: [AccountFailure] = [],
+    progress: InboxProgress? = nil
+) -> InboxCardModel {
+    var state = CardState<InboxSnapshot>()
+    state.succeed(InboxSnapshot(items: items, failures: failures), at: cardNow)
+    return InboxCardModel.build(state: state, accountLabels: ["work": "Work"], isExpanded: false, isCollapsed: false, progress: progress, now: cardNow)
+}
+
+private func workflowRun(_ id: Int, _ conclusion: RunConclusion, status: RunStatus = .completed) -> WorkflowRun {
+    WorkflowRun(
+        id: id, name: "CI", repository: "acme/site", branch: "main", status: status, conclusion: conclusion,
+        startedAt: cardNow.addingTimeInterval(-900), updatedAt: cardNow.addingTimeInterval(-600),
+        url: URL(string: "https://github.com/acme/site/actions/runs/\(id)"), accountID: "work", isOnDefaultBranch: true
+    )
+}
+
+private func actionsModel(_ runs: [WorkflowRun], repositories: [String] = ["acme/site"], follows: Bool = true) -> ActionsCardModel {
+    var state = CardState<ActionsSnapshot>()
+    state.succeed(ActionsSnapshot(runs: runs, windowDays: 7, repositories: repositories), at: cardNow)
+    return ActionsCardModel.build(state: state, followsPullRequests: follows, isCollapsed: false, now: cardNow)
+}
+
+private func checkout(_ id: String, dirty: Int = 0, ahead: Int = 0) -> CheckoutState {
+    CheckoutState(id: id, title: id, branch: "main", dirtyFiles: dirty, ahead: ahead, behind: 0, hasUpstream: true)
 }
 
 func runCardModelTests(_ run: TestRun) async {
@@ -157,5 +195,130 @@ func runCardModelTests(_ run: TestRun) async {
         Strings.use(.english, lookingIn: localisationRoot)
         try expectEqual(model.content?.unit, "открыто")
         try expect(model.content?.pill?.text.contains("заблок") == true, "got \(model.content?.pill?.text ?? "nil")")
+    }
+
+    run.section("Card models - merge requests")
+
+    await run.test("the GitLab card is the pull requests card with GitLab's nouns and links") {
+        let request = MergeRequestSummary(
+            id: "mr1", iid: 7, title: "PROJ-2 Tidy", project: "acme/site", url: URL(string: "https://gitlab.com/acme/site/-/merge_requests/7")!,
+            isDraft: false, hasConflicts: false, updatedAt: cardNow, pipeline: .failed, approvalsLeft: 0, unresolvedThreads: 0, accountID: "lab"
+        )
+        var state = CardState<MergeRequestsSnapshot>()
+        state.succeed(MergeRequestsSnapshot(totalCount: 1, mergeRequests: [request]), at: cardNow)
+        let model = ReviewListCardModel.mergeRequests(state: state, accountLabels: ["lab": "Lab"], isExpanded: false, isCollapsed: false, now: cardNow)
+        try expectEqual(model.mark, .gitlab)
+        try expectEqual(model.title, L("card.chrome.merges"))
+        try expectEqual(model.content?.rows.first?.command, .openLink(request.url, account: "lab", service: .gitlab))
+        try expectEqual(model.content?.footer.leading, L("card.footer.pair", LN("card.projects", 1), LN("card.groups", 1)))
+        try expectEqual(model.collapsed.actions.first?.command, .openDashboard(.gitlabMergeRequests))
+    }
+
+    run.section("Card models - inbox")
+
+    await run.test("the pill is violet for what is addressed to you, quiet for the rest, green for none") {
+        try expectEqual(inboxModel([thread("1", .mention), thread("2", .ciActivity)]).pill?.tone, .personal)
+        try expectEqual(inboxModel([thread("2", .ciActivity)]).pill, DeckPillModel(L("card.inbox.nothingForYou"), tone: .neutral))
+        try expectEqual(inboxModel([]).pill, DeckPillModel(L("card.pill.clear"), tone: .good))
+        try expectEqual(inboxModel([thread("1", .mention)]).content?.countTone, .personal)
+        try expectEqual(inboxModel([thread("2", .ciActivity)]).content?.countTone, .good)
+    }
+
+    await run.test("the footer offers the rest, ⌥ turns it into all, and a run in progress replaces both") {
+        let mixed = inboxModel([thread("1", .mention), thread("2", .ciActivity)])
+        try expectEqual(mixed.content?.footer.clearing?.command, .markRestRead)
+        try expectEqual(mixed.content?.footer.clearingWithOption?.command, .markAllRead)
+        try expectEqual(mixed.content?.footer.clearing?.help, L("card.inbox.readRest.help"))
+
+        let mine = inboxModel([thread("1", .mention)])
+        try expectEqual(mine.content?.footer.clearing?.command, .markAllRead, "only one kind left reads all of it")
+
+        let running = inboxModel([thread("1", .mention)], progress: .marking(done: 1, total: 4))
+        try expectEqual(running.content?.footer.progress, InboxCardModel.progressText(.marking(done: 1, total: 4)))
+        try expect(running.content?.footer.progressFailed == false)
+
+        let failure = AccountFailure(account: "Home", message: "token rejected", kind: .rejected)
+        let broken = inboxModel([thread("1", .mention)], failures: [failure])
+        try expectNil(broken.content?.footer.clearing, "no link while an account is failing")
+        try expectEqual(broken.content?.footer.leading, [failure].summary)
+    }
+
+    await run.test("a row with no page cannot be clicked, but can still be marked read") {
+        let model = inboxModel([thread("9", .ciActivity, unread: false, url: false)])
+        let row = try expectNotNil(model.content?.rows.first, "row")
+        try expectNil(row.command)
+        try expect(row.isRead)
+        try expectEqual(row.menu.map(\.command), [.markRead(threadID: "9")])
+
+        let linked = try expectNotNil(inboxModel([thread("3", .mention)]).content?.rows.first, "row")
+        try expectEqual(linked.menu.count, 2)
+        try expectEqual(linked.command, .openLink(URL(string: "https://github.com/acme/site/issues/3")!, account: "work", service: .github))
+    }
+
+    await run.test("folded, what is waiting on you is amber and nothing unread is green") {
+        try expectEqual(inboxModel([thread("1", .mention)]).collapsed.tone, .attention)
+        try expectEqual(inboxModel([]).collapsed.tone, .good)
+        try expectEqual(inboxModel([thread("2", .ciActivity)]).collapsed.tone, .neutral)
+    }
+
+    run.section("Card models - actions")
+
+    await run.test("with nothing to watch the card says why, and points at the setting") {
+        let model = actionsModel([], repositories: [])
+        try expectEqual(model.pill, DeckPillModel(L("card.actions.noOpenPRs"), tone: .neutral))
+        guard case .unconfigured(let notice)? = model.content else {
+            throw TestFailure(message: "expected the unconfigured notice", file: #filePath, line: #line)
+        }
+        try expectEqual(notice.link?.command, .openSetting(.actionsRepositories))
+    }
+
+    await run.test("repositories with no runs are a quiet card, not a broken one") {
+        guard case .quiet(let notice, _)? = actionsModel([]).content else {
+            throw TestFailure(message: "expected the quiet notice", file: #filePath, line: #line)
+        }
+        try expectEqual(notice.title, LN("card.actions.quiet.title", 7))
+        try expectNil(notice.link)
+    }
+
+    await run.test("the rate is the headline, coloured by how good it is, and failures are the rows") {
+        guard case .runs(let headline, let tone, _, let rows, _)? = actionsModel([workflowRun(1, .success), workflowRun(2, .success), workflowRun(3, .success), workflowRun(4, .failure)]).content else {
+            throw TestFailure(message: "expected runs", file: #filePath, line: #line)
+        }
+        try expectEqual(headline, "75")
+        try expectEqual(tone, .alert)
+        try expectEqual(rows.map(\.id), [4])
+        try expectEqual(rows.first?.tone, .alert)
+
+        guard case .runs(_, let goodTone, _, let active, _)? = actionsModel([workflowRun(1, .success), workflowRun(5, .none, status: .inProgress)]).content else {
+            throw TestFailure(message: "expected runs", file: #filePath, line: #line)
+        }
+        try expectEqual(goodTone, .good)
+        try expectEqual(active.first?.tone, .attention, "with no failures, what is running")
+        try expectEqual(active.first?.trailing, L("card.state.running"))
+    }
+
+    run.section("Card models - work in flight")
+
+    await run.test("unpushed work is the loud part, and a row opens a terminal in its checkout") {
+        let model = WorkInFlightCardModel.build(
+            states: [checkout("site", ahead: 2), checkout("api", dirty: 3), checkout("clean")],
+            checkedAt: cardNow, isExpanded: false, isCollapsed: false
+        )
+        try expectEqual(model.count, 2)
+        try expectEqual(model.pill, DeckPillModel(L("card.wif.unpushed", 1), tone: .attention))
+        try expectEqual(model.rows.map(\.tone), [.attention, .neutral])
+        try expectEqual(model.rows.first?.command, .openCheckout(id: "site"))
+        try expectEqual(model.collapsed.tone, .attention)
+        try expectEqual(model.footer.leading, LN("card.wif.watched", 3))
+    }
+
+    await run.test("a clean deck says so, folded too, in the reader's language") {
+        Strings.use(.russian, lookingIn: localisationRoot)
+        let model = WorkInFlightCardModel.build(states: [checkout("clean")], checkedAt: nil, isExpanded: false, isCollapsed: true)
+        let title = L("card.title.workInFlight")
+        Strings.use(.english, lookingIn: localisationRoot)
+        try expectEqual(model.collapsed.title, title, "the folded title was English in every language")
+        try expectEqual(model.collapsed.tone, .good)
+        try expectNil(model.pill)
     }
 }

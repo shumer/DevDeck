@@ -695,23 +695,23 @@ func runPresentationTests(_ run: TestRun) async {
     await run.test("a list card collapses to the same row as a project card") {
         // It used to be the project cards only, so the menu item was there on a GitHub card and
         // did nothing at all - which is worse than not offering it.
-        let empty = PullRequestsCardModel.build(
+        let empty = ReviewListCardModel.pullRequests(
             state: CardState<PullRequestsSnapshot>(),
             accountLabels: [:],
             isExpanded: false,
             isCollapsed: true,
             now: Date()
         )
-        try expectEqual(PullRequestsCard.size(for: empty).height, CollapsedCardMetrics.height)
-        try expectEqual(
-            InboxCard.size(for: CardState<InboxSnapshot>(), isExpanded: false, isCollapsed: true).height,
-            CollapsedCardMetrics.height
+        try expectEqual(ReviewListCard.size(for: empty).height, CollapsedCardMetrics.height)
+        let inbox = InboxCardModel.build(
+            state: CardState<InboxSnapshot>(), accountLabels: [:], isExpanded: false, isCollapsed: true, progress: nil, now: Date()
         )
+        try expectEqual(InboxCard.size(for: inbox).height, CollapsedCardMetrics.height)
         try expectEqual(ActionsCard.size(isCollapsed: true).height, CollapsedCardMetrics.height)
-        try expectEqual(
-            MergeRequestsCard.size(for: CardState<MergeRequestsSnapshot>(), isExpanded: false, isCollapsed: true).height,
-            CollapsedCardMetrics.height
+        let merges = ReviewListCardModel.mergeRequests(
+            state: CardState<MergeRequestsSnapshot>(), accountLabels: [:], isExpanded: false, isCollapsed: true, now: Date()
         )
+        try expectEqual(ReviewListCard.size(for: merges).height, CollapsedCardMetrics.height)
         try expect(ActionsCard.size(isCollapsed: false).height > CollapsedCardMetrics.height)
     }
 
@@ -946,30 +946,30 @@ func runPresentationTests(_ run: TestRun) async {
     await run.test("an empty Actions card says why it is empty, not that it is missing something") {
         // "no repos" read as a card nobody had set up. With no list of its own the card follows
         // the open pull requests, so empty means there are none, which is a quiet, normal state.
-        try expectEqual(ActionsCard.quietReason(followsPullRequests: true), "no open PRs")
-        try expect(ActionsCard.quietReason(followsPullRequests: true) != L("card.actions.noRepos"),
+        try expectEqual(ActionsCardModel.quietReason(followsPullRequests: true), "no open PRs")
+        try expect(ActionsCardModel.quietReason(followsPullRequests: true) != L("card.actions.noRepos"),
                    "the pill names the reason")
     }
 
     await run.test("a card with nothing run says what it watched, by name") {
-        try expectEqual(ActionsCard.watchedNames(["acme/site", "acme/web", "other/api"]), "site, web and 1 more")
-        try expectEqual(ActionsCard.watchedNames(["acme/site"]), "site")
+        try expectEqual(ActionsCardModel.watchedNames(["acme/site", "acme/web", "other/api"]), "site, web and 1 more")
+        try expectEqual(ActionsCardModel.watchedNames(["acme/site"]), "site")
         try expectEqual(LN("card.actions.quiet.title", 7), "No runs in the last 7 days")
 
         Strings.use(.russian, lookingIn: localisationRoot)
         try expectEqual(LN("card.actions.quiet.title", 7), "За 7 дней запусков не было")
         try expectEqual(LN("card.actions.quiet.title", 3), "За 3 дня запусков не было")
-        try expectEqual(ActionsCard.watchedNames(["a/site", "a/web"]), "site и web")
+        try expectEqual(ActionsCardModel.watchedNames(["a/site", "a/web"]), "site и web")
         Strings.use(.english, lookingIn: localisationRoot)
     }
 
     await run.test("the footer says where the repositories came from") {
-        try expectEqual(ActionsCard.watching(3, followsPullRequests: true), "3 repos from your PRs")
-        try expectEqual(ActionsCard.watching(1, followsPullRequests: false), "1 repo from your list")
+        try expectEqual(ActionsCardModel.watching(3, followsPullRequests: true), "3 repos from your PRs")
+        try expectEqual(ActionsCardModel.watching(1, followsPullRequests: false), "1 repo from your list")
 
         Strings.use(.russian, lookingIn: localisationRoot)
-        try expectEqual(ActionsCard.watching(2, followsPullRequests: true), "2 репозитория из ваших PR")
-        try expectEqual(ActionsCard.watching(5, followsPullRequests: false), "5 репозиториев из вашего списка")
+        try expectEqual(ActionsCardModel.watching(2, followsPullRequests: true), "2 репозитория из ваших PR")
+        try expectEqual(ActionsCardModel.watching(5, followsPullRequests: false), "5 репозиториев из вашего списка")
         Strings.use(.english, lookingIn: localisationRoot)
     }
 

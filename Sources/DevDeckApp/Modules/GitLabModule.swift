@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import GitLabKit
 import SwiftUI
@@ -17,34 +18,17 @@ final class MergeRequestsModule: CardModule {
     func owns(_ card: CardID) -> Bool { card == .gitlabMergeRequests }
 
     func view(for card: CardID) -> AnyView {
-        AnyView(MergeRequestsCard(
-            state: controller.mergeRequests,
-            accountLabels: controller.gitlabAccountLabels,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card),
-            onOpen: context.openGitLab,
-            onToggleExpand: { [controller] in controller.toggleExpanded(card) },
-            onOpenDashboard: { [self] in self.openDashboard(for: card) }
-        ))
+        guard case .reviewList(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(ReviewListCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
-        MergeRequestsCard.size(
-            for: controller.mergeRequests,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card)
-        )
+        guard case .reviewList(let model)? = controller.model(for: card) else { return .zero }
+        return ReviewListCard.size(for: model)
     }
 
-    /// The instance is per account, so the dashboard cannot be a constant. The card's own rows
-    /// carry absolute URLs; this is only the double-click on the background.
     func dashboardURL(for card: CardID) -> URL? {
-        URL(string: "https://gitlab.com/dashboard/merge_requests")
-    }
-
-    private func openDashboard(for card: CardID) {
-        guard let url = dashboardURL(for: card) else { return }
-        context.openGitLab(url, account: controller.gitlabAccountLabels.keys.sorted().first ?? "")
+        controller.dashboardURL(for: card)
     }
 }
 

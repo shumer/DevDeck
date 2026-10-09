@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import SwiftUI
 
@@ -16,21 +17,12 @@ final class WorkInFlightModule: CardModule {
     func owns(_ card: CardID) -> Bool { card == .workInFlight }
 
     func view(for card: CardID) -> AnyView {
-        AnyView(WorkInFlightCard(
-            states: controller.checkouts,
-            checkedAt: controller.checkoutsCheckedAt,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card),
-            onOpen: { [controller] in LocalFolder.openTerminal(controller.folder(forCheckout: $0)) },
-            onToggleExpand: { [controller] in controller.toggleExpanded(card) }
-        ))
+        guard case .workInFlight(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(WorkInFlightCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
-        WorkInFlightCard.size(
-            for: controller.checkouts,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card)
-        )
+        guard case .workInFlight(let model)? = controller.model(for: card) else { return .zero }
+        return WorkInFlightCard.size(for: model)
     }
 }

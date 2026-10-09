@@ -1,34 +1,24 @@
 import DevDeckCore
 import DevDeckEngine
-import GitHubKit
 import SwiftUI
 
-public extension PullRequestHealth {
-    var color: Color {
-        switch self {
-        case .blocked: return DeckTheme.red
-        case .attention: return DeckTheme.amber
-        case .ready: return DeckTheme.green
-        }
-    }
-}
-
-/// Pull requests: draws `PullRequestsCardModel`, which the engine has already decided.
-public struct PullRequestsCard: View {
+/// The pull requests card and the merge requests card: draws `ReviewListCardModel`, which the
+/// engine has already decided.
+public struct ReviewListCard: View {
     /// Everything that is not a row: chrome, the count, the distribution bar and the footer.
     public nonisolated static let baseHeight: Double = 110
 
-    private let model: PullRequestsCardModel
+    private let model: ReviewListCardModel
     private let onCommand: (DeckCommand) -> Void
 
-    public init(model: PullRequestsCardModel, onCommand: @escaping (DeckCommand) -> Void = { _ in }) {
+    public init(model: ReviewListCardModel, onCommand: @escaping (DeckCommand) -> Void = { _ in }) {
         self.model = model
         self.onCommand = onCommand
     }
 
     /// Panel size for the current contents. The app resizes the window with this, so the card
     /// and the panel never disagree about how much room the rows need.
-    public nonisolated static func size(for model: PullRequestsCardModel) -> CGSize {
+    public nonisolated static func size(for model: ReviewListCardModel) -> CGSize {
         guard !model.isCollapsed else {
             return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
         }
@@ -53,7 +43,7 @@ public struct PullRequestsCard: View {
     }
 
     @ViewBuilder
-    private func content(_ content: PullRequestsCardModel.Content) -> some View {
+    private func content(_ content: ReviewListCardModel.Content) -> some View {
         // The count is the hero, but 26 rather than the 42 it used to be: it was the largest
         // thing on the deck and it is not the most important one. It is also plain now. A number
         // that turns red when something is blocked says the same thing twice, since the words
@@ -97,7 +87,7 @@ public struct PullRequestsCard: View {
     /// Three points of height for the shape of the whole list, which the three visible rows
     /// cannot give: two blocked out of eight reads differently from two out of two.
     @ViewBuilder
-    private func healthBar(_ shares: [PullRequestsCardModel.Share]) -> some View {
+    private func healthBar(_ shares: [ReviewListCardModel.Share]) -> some View {
         if !shares.isEmpty {
             HStack(spacing: 2) {
                 ForEach(Array(shares.enumerated()), id: \.offset) { _, share in
@@ -112,7 +102,7 @@ public struct PullRequestsCard: View {
         }
     }
 
-    private func row(_ row: PullRequestsCardModel.Row) -> some View {
+    private func row(_ row: ReviewListCardModel.Row) -> some View {
         HStack(spacing: 7) {
             Circle()
                 .fill(row.tone.color)

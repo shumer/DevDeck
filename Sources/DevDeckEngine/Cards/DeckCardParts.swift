@@ -16,6 +16,8 @@ public enum DeckTone: String, Sendable, Equatable, Codable {
     case alert
     /// Nothing to say either way.
     case neutral
+    /// Addressed to you by name: a mention, a review request, an assignment.
+    case personal
 }
 
 /// A card's brand mark. The shell draws its own vector for each.
@@ -58,6 +60,29 @@ public enum DeckCommand: Sendable, Equatable, Codable {
     case openDashboard(CardID)
     /// Show every row, or go back to the first few.
     case toggleExpanded(CardID)
+    /// Mark one inbox thread read.
+    case markRead(threadID: String)
+    /// Mark everything in the inbox that is not addressed to you read.
+    case markRestRead
+    /// Mark the whole inbox read.
+    case markAllRead
+    /// Open Settings on one field, for a card that points at what it needs.
+    case openSetting(DeckSetting)
+    /// Open a terminal in a checkout's folder.
+    case openCheckout(id: String)
+}
+
+/// The settings a card can point at.
+public enum DeckSetting: String, Sendable, Equatable, Codable {
+    /// The repositories the Actions card watches.
+    case actionsRepositories
+}
+
+/// A link in place of words, as the inbox's footer has: what it says, and what it does.
+public struct DeckLinkModel: Sendable, Equatable, Codable {
+    public let title: String
+    public let help: String
+    public let command: DeckCommand
 }
 
 /// The words beside a card's count, and how loud they are.
@@ -146,6 +171,31 @@ public enum DeckCardTime {
     public static func asOf<Value: Sendable & Equatable>(_ state: CardState<Value>) -> String {
         guard let updatedAt = state.updatedAt else { return L("card.notLoaded") }
         return L("card.asOf", format(updatedAt, "HH:mm"))
+    }
+
+    /// The header's clock for something checked rather than fetched, or a dash for never.
+    public static func checked(_ date: Date?) -> String {
+        guard let date else { return L("card.na") }
+        return format(date, "HH:mm:ss")
+    }
+
+    /// Compact age for a row: `14m`, `3h`, `2d`. Rows are narrow, and "14 minutes ago" costs
+    /// more width than it adds meaning.
+    public static func age(from date: Date, to now: Date) -> String {
+        let seconds = max(0, now.timeIntervalSince(date))
+        if seconds < 90 { return L("attention.age.now") }
+        let minutes = Int(seconds / 60)
+        if minutes < 60 { return L("attention.age.minutes", minutes) }
+        let hours = minutes / 60
+        if hours < 24 { return L("attention.age.hours", hours) }
+        return L("attention.age.days", hours / 24)
+    }
+
+    /// Compact duration for a footer: `6m 12s`, `48s`.
+    public static func duration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds.rounded())
+        if total < 60 { return L("card.duration.seconds", total) }
+        return L("card.duration.minutes", total / 60, total % 60)
     }
 
     private static func format(_ date: Date, _ pattern: String) -> String {

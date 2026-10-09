@@ -79,6 +79,7 @@ private final class Deck {
         localProjects: [LocalProject] = [],
         projectHTTP: (any HTTPClient)? = nil,
         projectFiles: ProjectRuntimeFiles = .standard(),
+        gitlabAccounts: [GitLabAccount] = [],
         canStartDocker: Bool = false,
         notifications: Bool = false
     ) {
@@ -88,11 +89,13 @@ private final class Deck {
         let local = LocalProjectsStore(backend: InMemoryPreferences())
         local.save(localProjects)
         preferences.notificationsEnabled = notifications
+        let gitlab = GitLabAccountsStore(backend: InMemoryPreferences())
+        gitlab.save(gitlabAccounts)
         runtime = DeckRuntime(
             preferences: preferences,
             tokenStore: InMemoryTokenStore(tokens: [account.tokenKey: "token"]),
             accountsStore: accounts,
-            gitlabAccountsStore: GitLabAccountsStore(backend: InMemoryPreferences()),
+            gitlabAccountsStore: gitlab,
             projectsStore: ArcProjectsStore(backend: InMemoryPreferences()),
             ddevProjectsStore: DDEVProjectsStore(backend: InMemoryPreferences()),
             localProjectsStore: local,
@@ -438,10 +441,29 @@ func runDeckRuntimeTests(_ run: TestRun) async {
     await run.test("the expander's click expands, and the model says so") {
         let deck = Deck(cards: [.githubPullRequests])
         deck.runtime.perform(.toggleExpanded(.githubPullRequests))
-        guard case .pullRequests(let model)? = deck.runtime.model(for: .githubPullRequests) else {
+        guard case .reviewList(let model)? = deck.runtime.model(for: .githubPullRequests) else {
             throw TestFailure(message: "no pull requests model", file: #filePath, line: #line)
         }
         try expect(model.isExpanded)
+    }
+
+    await run.test("the GitLab card's own page opens in the GitLab account's browser") {
+        let firefox = BrowserChoice(bundleIdentifier: "org.mozilla.firefox")
+        let deck = Deck(cards: [.gitlabMergeRequests], gitlabAccounts: [GitLabAccount(id: "lab", label: "Lab", browser: firefox)])
+        deck.runtime.perform(.openDashboard(.gitlabMergeRequests))
+        try expectEqual(deck.effects, [.openURL(URL(string: "https://gitlab.com/dashboard/merge_requests")!, firefox)])
+    }
+
+    await run.test("a card that points at a setting asks the shell to open it") {
+        let deck = Deck(cards: [.githubActions])
+        deck.runtime.perform(.openSetting(.actionsRepositories))
+        try expectEqual(deck.effects, [.openSetting(.actionsRepositories)])
+    }
+
+    await run.test("a checkout the deck does not know opens nothing") {
+        let deck = Deck(cards: [.workInFlight])
+        deck.runtime.perform(.openCheckout(id: "nowhere"))
+        try expect(deck.effects.isEmpty)
     }
 
     run.section("Deck runtime - banners")

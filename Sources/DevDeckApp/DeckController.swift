@@ -130,6 +130,8 @@ final class DeckController: ObservableObject {
         case .launchDocker: DockerApp.launch()
         case .attentionChanged: updateStatusItem?()
         case .openURL(let url, let browser): LinkOpener.open(url, using: browser)
+        case .openSetting(.actionsRepositories): showSetting?(.cards, CardsSettingsPage.actionsRepositoriesField)
+        case .openTerminal(let folder): LocalFolder.openTerminal(folder)
         }
     }
 

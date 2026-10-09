@@ -22,13 +22,13 @@ final class PullRequestsModule: CardModule {
     func owns(_ card: CardID) -> Bool { card == .githubPullRequests }
 
     func view(for card: CardID) -> AnyView {
-        guard case .pullRequests(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
-        return AnyView(PullRequestsCard(model: model, onCommand: context.perform))
+        guard case .reviewList(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(ReviewListCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
-        guard case .pullRequests(let model)? = controller.model(for: card) else { return .zero }
-        return PullRequestsCard.size(for: model)
+        guard case .reviewList(let model)? = controller.model(for: card) else { return .zero }
+        return ReviewListCard.size(for: model)
     }
 
     func dashboardURL(for card: CardID) -> URL? {
@@ -49,31 +49,17 @@ final class InboxModule: CardModule {
     func owns(_ card: CardID) -> Bool { card == .githubInbox }
 
     func view(for card: CardID) -> AnyView {
-        AnyView(InboxCard(
-            state: controller.inbox,
-            accountLabels: controller.accountLabels,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card),
-            onOpen: context.openGitHub,
-            onToggleExpand: { [controller] in controller.toggleExpanded(card) },
-            onOpenDashboard: { [context] in context.openGitHubDashboard(for: card) },
-            onMarkRead: { [controller] in controller.markRead($0) },
-            onMarkRestRead: { [controller] in controller.markRestRead() },
-            onMarkAllRead: { [controller] in controller.markAllRead() },
-            progress: controller.inboxProgress
-        ))
+        guard case .inbox(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(InboxCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
-        InboxCard.size(
-            for: controller.inbox,
-            isExpanded: controller.isExpanded(card),
-            isCollapsed: controller.isCollapsed(card)
-        )
+        guard case .inbox(let model)? = controller.model(for: card) else { return .zero }
+        return InboxCard.size(for: model)
     }
 
     func dashboardURL(for card: CardID) -> URL? {
-        URL(string: "https://github.com/notifications")
+        controller.dashboardURL(for: card)
     }
 }
 
@@ -90,34 +76,16 @@ final class ActionsModule: CardModule {
     func owns(_ card: CardID) -> Bool { card == .githubActions }
 
     func view(for card: CardID) -> AnyView {
-        AnyView(ActionsCard(
-            state: controller.actions,
-            isCollapsed: controller.isCollapsed(card),
-            followsPullRequests: controller.actionsFollowPullRequests,
-            onOpen: context.openGitHub,
-            onOpenDashboard: { [context] in context.openGitHubDashboard(for: card) },
-            onChooseRepositories: { [controller] in
-                controller.showSetting?(.cards, CardsSettingsPage.actionsRepositoriesField)
-            }
-        ))
+        guard case .actions(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(ActionsCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
         ActionsCard.size(isCollapsed: controller.isCollapsed(card))
     }
 
-    /// Actions has no cross-repository page; the closest thing is the dashboard.
     func dashboardURL(for card: CardID) -> URL? {
-        URL(string: "https://github.com")
-    }
-}
-
-extension ModuleContext {
-    /// The same place a double-click on the panel goes. The dashboard belongs to whichever
-    /// account is first; there is no row to ask.
-    func openGitHubDashboard(for card: CardID) {
-        guard let url = CardHostView.dashboardURL(for: card) else { return }
-        openGitHub(url, account: controller.accountLabels.keys.sorted().first ?? "")
+        controller.dashboardURL(for: card)
     }
 }
 

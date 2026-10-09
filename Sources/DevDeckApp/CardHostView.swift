@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import SwiftUI
 
@@ -55,9 +56,7 @@ struct CardHostView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
-            guard let url = Self.dashboardURL(for: card) else { return }
-            // The dashboard belongs to whichever account is first; there is no row to ask.
-            LinkOpener.open(url, using: controller.browser(for: controller.accountLabels.keys.sorted().first ?? ""))
+            controller.perform(.openDashboard(card))
         }
         // Moving the panel is asked for here, explicitly, rather than left to the window's
         // "movable by background". That one is decided by AppKit before SwiftUI sees the click,

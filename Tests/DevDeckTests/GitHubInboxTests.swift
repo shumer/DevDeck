@@ -1,4 +1,5 @@
 import DevDeckCore
+import DevDeckEngine
 import Foundation
 import DevDeckUI
 import GitHubKit
@@ -81,12 +82,12 @@ func runInboxTests(_ run: TestRun) async {
         let full = FakeHTTPClient([.success(.json(page(4)))])
         let capped = try await NotificationsService(client: inboxClient(full), settings: GitHubSettings(maxNotifications: 4)).fetch()
         try expect(capped.isCapped, "four asked for, four came back: there may be more")
-        try expectEqual(InboxCard.unreadText(for: capped), "4+")
+        try expectEqual(InboxCardModel.unreadText(for: capped), "4+")
 
         let short = FakeHTTPClient([.success(.json(page(3)))])
         let whole = try await NotificationsService(client: inboxClient(short), settings: GitHubSettings(maxNotifications: 4)).fetch()
         try expect(!whole.isCapped, "a short page is the whole box")
-        try expectEqual(InboxCard.unreadText(for: whole), "3")
+        try expectEqual(InboxCardModel.unreadText(for: whole), "3")
 
         let merged = InboxSnapshot.merging([capped, whole])
         try expect(merged.isCapped, "one capped account makes the merged count a floor too")
@@ -136,28 +137,28 @@ func runInboxTests(_ run: TestRun) async {
 
     await run.test("the footer's link reads the rest when something is for you, all when nothing is") {
         let snapshot = try expectNotNil(snapshot, "snapshot")
-        let rest = try expectNotNil(InboxCard.clearing(for: snapshot, optionDown: false), "link")
+        let rest = try expectNotNil(InboxCardModel.clearing(for: snapshot, optionDown: false), "link")
         try expectEqual(rest.action, .rest)
         // Named by what stays: "the rest" read as "everything but the rows on the card".
         try expectEqual(rest.title, "Mark as read, except the 2 for you")
 
-        let option = try expectNotNil(InboxCard.clearing(for: snapshot, optionDown: true), "⌥ link")
+        let option = try expectNotNil(InboxCardModel.clearing(for: snapshot, optionDown: true), "⌥ link")
         try expectEqual(option.action, .all, "⌥ is the whole box")
         try expectEqual(option.title, "Mark all 3 as read")
 
         let noise = InboxSnapshot(items: snapshot.unreadNotForYou)
-        try expectEqual(InboxCard.clearing(for: noise, optionDown: false)?.action, .all,
+        try expectEqual(InboxCardModel.clearing(for: noise, optionDown: false)?.action, .all,
                         "nothing is for you, so all is safe")
-        try expectEqual(InboxCard.clearing(for: noise, optionDown: false)?.title, "Mark 1 as read")
+        try expectEqual(InboxCardModel.clearing(for: noise, optionDown: false)?.title, "Mark 1 as read")
 
         // Everything unread is addressed to you. There used to be no link at all, and a card
         // saying "33 unread" with nothing to press; the count on the link is the guard instead.
         let forYouOnly = snapshot.removing(["2"])
-        let only = try expectNotNil(InboxCard.clearing(for: forYouOnly, optionDown: false), "link")
+        let only = try expectNotNil(InboxCardModel.clearing(for: forYouOnly, optionDown: false), "link")
         try expectEqual(only.action, .all)
         try expectEqual(only.title, "Mark all 2 as read")
 
-        try expectNil(InboxCard.clearing(for: .empty, optionDown: false), "nothing to read")
+        try expectNil(InboxCardModel.clearing(for: .empty, optionDown: false), "nothing to read")
     }
 
     await run.test("many threads are marked a few at a time, and a refusal is reported by thread") {
@@ -178,14 +179,14 @@ func runInboxTests(_ run: TestRun) async {
     }
 
     await run.test("the footer says how far a mark-as-read has got, and how it ended") {
-        try expectEqual(InboxCard.progressText(.marking(done: 120, total: 340)), "Marking as read… 120 of 340")
-        try expectEqual(InboxCard.progressText(.finished(340)), "Done, 340 marked as read")
-        try expectEqual(InboxCard.progressText(.failed("Not allowed")), "GitHub refused: Not allowed")
-        try expect(InboxCard.Progress.gathering.isRunning && !InboxCard.Progress.finished(1).isRunning,
+        try expectEqual(InboxCardModel.progressText(.marking(done: 120, total: 340)), "Marking as read… 120 of 340")
+        try expectEqual(InboxCardModel.progressText(.finished(340)), "Done, 340 marked as read")
+        try expectEqual(InboxCardModel.progressText(.failed("Not allowed")), "GitHub refused: Not allowed")
+        try expect(InboxProgress.gathering.isRunning && !InboxProgress.finished(1).isRunning,
                    "a second press is refused only while one is running")
 
         Strings.use(.russian, lookingIn: localisationRoot)
-        try expectEqual(InboxCard.progressText(.marking(done: 3, total: 40)), "Отмечаю прочитанными… 3 из 40")
+        try expectEqual(InboxCardModel.progressText(.marking(done: 3, total: 40)), "Отмечаю прочитанными… 3 из 40")
         try expectEqual(LN("card.inbox.readRest", 24), "Отметить прочитанным, кроме 24 для вас")
         try expectEqual(LN("card.inbox.readAll", 12), "Отметить все 12 прочитанными")
         try expectEqual(LN("card.inbox.readAll", 1), "Отметить 1 прочитанным")
@@ -194,7 +195,7 @@ func runInboxTests(_ run: TestRun) async {
 
     await run.test("a box bigger than the card loaded is never promised a number") {
         let capped = InboxSnapshot(items: snapshot?.items ?? [], cappedAccounts: [GitHubAccount.defaultID])
-        try expectEqual(InboxCard.clearing(for: capped, optionDown: true)?.title, "Mark all as read")
+        try expectEqual(InboxCardModel.clearing(for: capped, optionDown: true)?.title, "Mark all as read")
     }
 
     run.section("GitHub - notification links")

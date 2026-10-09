@@ -12,6 +12,7 @@ public extension DeckTone {
         case .attention: return DeckTheme.amber
         case .alert: return DeckTheme.red
         case .neutral: return DeckTheme.label
+        case .personal: return DeckTheme.violet
         }
     }
 
@@ -19,7 +20,7 @@ public extension DeckTone {
     var stateTone: CardStateTone {
         switch self {
         case .good: return .good
-        case .attention, .alert: return .alert
+        case .attention, .alert, .personal: return .alert
         case .neutral: return .neutral
         }
     }
