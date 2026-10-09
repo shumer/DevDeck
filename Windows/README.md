@@ -63,6 +63,22 @@ Live Acrylic and the solid fallback use the same neutral replay data:
 
 ![Windows cards with transparency effects disabled](../docs/poc/windows-ui/windows-style-solid.png)
 
+The W-4 captures contain every distinct state supplied by the English golden session. Each file
+keeps one card kind together so it can be compared with the matching Mac capture on the same
+data:
+
+| Card | Windows capture |
+|---|---|
+| GitHub pull requests | [w4-github-pull-requests.png](../docs/poc/windows-ui/w4-github-pull-requests.png) |
+| GitHub inbox | [w4-github-inbox.png](../docs/poc/windows-ui/w4-github-inbox.png) |
+| GitHub Actions | [w4-github-actions.png](../docs/poc/windows-ui/w4-github-actions.png) |
+| GitLab merge requests | [w4-gitlab-merge-requests.png](../docs/poc/windows-ui/w4-gitlab-merge-requests.png) |
+| Work in flight | [w4-work-in-flight.png](../docs/poc/windows-ui/w4-work-in-flight.png) |
+| Arc project | [w4-arc-project.png](../docs/poc/windows-ui/w4-arc-project.png) |
+| DDEV project | [w4-ddev-project.png](../docs/poc/windows-ui/w4-ddev-project.png) |
+| Plain project | [w4-plain-project.png](../docs/poc/windows-ui/w4-plain-project.png) |
+| Collapsed cards | [w4-collapsed-cards.png](../docs/poc/windows-ui/w4-collapsed-cards.png) |
+
 The shared button template gives every control a two-stroke keyboard focus indicator and distinct
 hover, pressed and disabled states. Each state is captured separately from the neutral golden
 project card.
@@ -114,11 +130,13 @@ The shell renders the five card model kinds and collapsed rows, applies `deck.ch
 effects and restarts a failed host. It shows the last stopped model and stopped status while the
 host is unavailable.
 
-The `reviewList` and `project` cards use the Windows visual system in
-[`docs/windows-style.md`](../docs/windows-style.md). Other card kinds keep the protocol v2
-renderer until W-4. The project log control is a 24 px icon button: `header.logHelp` is its
-tooltip and `header.logIsOn` is its highlighted state. The phone icon appears only when the
-engine supplies `header.phoneURL`; the QR interaction remains part of W-11.
+All five model kinds and collapsed rows use the Windows visual system in
+[`docs/windows-style.md`](../docs/windows-style.md). Review lists cover both GitHub pull requests
+and GitLab merge requests. Arc, DDEV, Windows and WSL projects share the project renderer while
+keeping their engine supplied marks, chip kinds and actions. The project log control is a 24 px
+icon button: `header.logHelp` is its tooltip and `header.logIsOn` is its highlighted state. The
+phone icon appears only when the engine supplies `header.phoneURL`; the QR interaction remains
+part of W-11.
 
 The following protocol features are intentionally deferred:
 

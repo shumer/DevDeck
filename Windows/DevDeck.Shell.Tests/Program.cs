@@ -27,6 +27,14 @@ public static class Program
             Application.Current.Shutdown();
             return 0;
         }
+        if (arguments.Length == 3 && arguments[0] == "--capture-golden-cards")
+        {
+            GoldenCardScreenshots.Generate(
+                Path.GetFullPath(arguments[1]),
+                Path.GetFullPath(arguments[2]));
+            Application.Current.Shutdown();
+            return 0;
+        }
         if (arguments.Length is 2 or 3 && arguments[0] == "--state-preview")
         {
             return StatePreview.Show(
@@ -48,6 +56,11 @@ public static class Program
         Run("project metadata and place chip use their specified styles", ProjectMetadataAndPlaceChipUseSpecifiedStyles);
         Run("the expander uses the Fluent chevron", ExpanderUsesFluentChevron);
         Run("middle trimming preserves both ends", MiddleTrimmingPreservesBothEnds);
+        Run("every golden card uses the Windows frame", EveryGoldenCardUsesWindowsFrame);
+        Run("inbox rows and footer use the styled model parts", InboxRowsAndFooterUseStyledModelParts);
+        Run("action variants and work rows use styled layouts", ActionVariantsAndWorkRowsUseStyledLayouts);
+        Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
+        Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -217,7 +230,7 @@ public static class Program
 
     private static void ButtonStylesExposeKeyboardFocus()
     {
-        foreach (var style in new[] { "FluentButton", "HeaderIconButton", "RowButton", "ChipButton", "ExpanderButton" })
+        foreach (var style in new[] { "FluentButton", "HeaderIconButton", "RowButton", "ChipButton", "ExpanderButton", "LinkButton" })
         {
             var button = new Button
             {
@@ -340,6 +353,200 @@ public static class Program
         True(text.RenderedText.StartsWith("b", StringComparison.Ordinal));
         True(text.RenderedText.EndsWith("g", StringComparison.Ordinal));
         True(text.RenderedText.Contains('…'));
+    }
+
+    private static void EveryGoldenCardUsesWindowsFrame()
+    {
+        var kinds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var cardId in new[]
+        {
+            "github.pullRequests",
+            "github.inbox",
+            "github.actions",
+            "gitlab.mergeRequests",
+            "local.workInFlight",
+            "arc.project.paper",
+            "ddev.project.shop",
+            "project.feed",
+        })
+        {
+            foreach (var model in GoldenModels(cardId))
+            {
+                kinds.Add(model.EnumerateObject().Single().Name);
+                var frame = (Border)Render(model);
+                True(frame.Background is SolidColorBrush brush && brush.Color != Colors.White);
+                if (frame.Height == 44)
+                {
+                    Equal(new Thickness(16, 6, 16, 6), frame.Padding);
+                }
+                else
+                {
+                    Equal(new Thickness(16, 14, 16, 14), frame.Padding);
+                }
+            }
+        }
+        Equal("actions,inbox,project,reviewList,workInFlight", string.Join(',', kinds.Order()));
+    }
+
+    private static void InboxRowsAndFooterUseStyledModelParts()
+    {
+        var inbox = Render(GoldenModels("github.inbox").Last(model =>
+            JsonModel.Object(model.EnumerateObject().Single().Value, "content", out _)));
+        var text = Descendants(inbox).OfType<TextBlock>().ToArray();
+        True(text.Any(item => item.Text == "review" && item.FontSize == 11));
+        True(text.Any(item => item.Text == "Review the parser" && item.FontWeight == FontWeights.SemiBold));
+        True(text.Any(item => item.Text == "now" && Equals(item.Foreground, WindowsTheme.Brush("TextTertiary"))));
+        var links = Descendants(inbox).OfType<Button>()
+            .Where(button => button.Content is string)
+            .Select(button => (string)button.Content)
+            .ToArray();
+        True(links.Contains("Mark as read, except the 2 for you"));
+        True(links.Contains("Mark all 3 as read"));
+    }
+
+    private static void ActionVariantsAndWorkRowsUseStyledLayouts()
+    {
+        var runs = Render(GoldenModels("github.actions").Last(model =>
+            JsonModel.Object(model.EnumerateObject().Single().Value, "content", out _)));
+        True(Descendants(runs).OfType<TextBlock>().Any(text => text.Text == "50" && text.FontSize == 30));
+        True(Descendants(runs).OfType<TextBlock>().Any(text => text.Text == "site · ci" && text.FontSize == 13));
+
+        var repositories = JsonSerializer.SerializeToElement(new
+        {
+            actions = new
+            {
+                isCollapsed = false,
+                title = "GitHub · actions",
+                content = new
+                {
+                    repositories = new
+                    {
+                        title = "No recent runs",
+                        detail = "Two repositories were checked.",
+                        link = new
+                        {
+                            title = "Open workflow runs",
+                            help = "Open workflow runs",
+                            command = new { openURL = new { _0 = "https://example.invalid/actions" } },
+                        },
+                    },
+                },
+            },
+        });
+        var repositoryCard = Render(repositories);
+        True(Descendants(repositoryCard).OfType<TextBlock>().Any(text => text.Text == "No recent runs"));
+        True(Descendants(repositoryCard).OfType<Button>().Any(button => Equals(button.Content, "Open workflow runs")));
+
+        var work = JsonSerializer.SerializeToElement(new
+        {
+            workInFlight = new
+            {
+                isCollapsed = false,
+                title = "Work in flight",
+                timestamp = "04:00:00",
+                count = 1,
+                unit = "in flight",
+                rows = new[]
+                {
+                    new
+                    {
+                        id = "sample",
+                        tone = "attention",
+                        title = "Sample checkout",
+                        branch = "feature/sample",
+                        summary = "2 changes",
+                        help = "Sample checkout",
+                        command = new { openCheckout = new { _0 = "sample" } },
+                    },
+                },
+                footer = new { leading = "1 checkout watched", isStale = false },
+            },
+        });
+        var workCard = Render(work);
+        var branch = Descendants(workCard).OfType<TextBlock>().Single(text => text.Text == "feature/sample");
+        Equal(WindowsTheme.Mono, branch.FontFamily);
+        Equal(WindowsTheme.Brush("LinkInfo"), branch.Foreground);
+        True(Descendants(workCard).OfType<TextBlock>().Any(text => text.Text == "2 changes"));
+    }
+
+    private static void ProjectKindsShareStyledParts()
+    {
+        var arc = Render(GoldenModels("arc.project.paper").Last());
+        var tool = Descendants(arc).OfType<Button>().Single(button => Equals(button.Content, "PageBuilder"));
+        Equal(WindowsTheme.Brush("LinkInfo"), tool.Foreground);
+        var local = Descendants(arc).OfType<TextBlock>().First(text => text.Text == "Local site");
+        Equal(WindowsTheme.Brush("ToneGood"), local.Foreground);
+
+        var ddev = Render(GoldenModels("ddev.project.shop").Last());
+        var docker = Descendants(ddev).OfType<Button>().Single(button =>
+            AutomationProperties.GetName(button) == "Start Docker");
+        True(docker.Content is StackPanel dockerContent && dockerContent.Children.Count == 2);
+
+        var collapsed = (Border)Render(GoldenModels("project.feed").Last(model =>
+            JsonModel.Bool(model.EnumerateObject().Single().Value, "isCollapsed")));
+        Equal(44.0, collapsed.ActualHeight);
+        True(Descendants(collapsed).OfType<TrackedTextBlock>().Any(text => text.Text == "stopped"));
+        True(Descendants(collapsed).OfType<Button>().All(button => button.Width == 28));
+
+        var ddevModel = GoldenModels("ddev.project.shop").Last().EnumerateObject().Single().Value;
+        True(JsonModel.Object(ddevModel, "collapsed", out var ddevCollapsedModel));
+        var ddevCollapsed = (Border)Arrange(WindowsCardRenderer.Stopped(ddevCollapsedModel, _ => { }));
+        var title = Descendants(ddevCollapsed).OfType<TextBlock>().Single(text => text.Text == "shop");
+        True(title.ActualWidth >= 50);
+        True(Descendants(ddevCollapsed).OfType<TrackedTextBlock>().All(text => text.MaxWidth <= 100));
+    }
+
+    private static void ExpandedListsReportLargerHeight()
+    {
+        var models = GoldenModels("github.pullRequests");
+        var compactModel = models.First(model =>
+            JsonModel.Object(model.EnumerateObject().Single().Value, "content", out _) &&
+            !JsonModel.Bool(model.EnumerateObject().Single().Value, "isExpanded"));
+        var expandedModel = models.First(model =>
+            JsonModel.Bool(model.EnumerateObject().Single().Value, "isExpanded"));
+        var compact = Render(compactModel);
+        var expanded = Render(expandedModel);
+        True(expanded.ActualHeight > compact.ActualHeight);
+
+        var measurements = new List<CardMeasurement>();
+        var window = new CardWindow("github.pullRequests", measurements.Add, _ => { }, _ => { });
+        window.Show();
+        window.Update(compactModel);
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        window.Update(expandedModel);
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(2, measurements.Count);
+        True(measurements[1].Size[1] > measurements[0].Size[1]);
+        window.Close();
+    }
+
+    private static FrameworkElement Render(JsonElement model)
+    {
+        return Arrange(CardRenderer.Create(model, _ => { }));
+    }
+
+    private static FrameworkElement Arrange(FrameworkElement view)
+    {
+        view.Width = 352;
+        view.Measure(new Size(352, double.PositiveInfinity));
+        view.Arrange(new Rect(0, 0, 352, view.DesiredSize.Height));
+        view.UpdateLayout();
+        return view;
+    }
+
+    private static IReadOnlyList<JsonElement> GoldenModels(string cardId)
+    {
+        var models = new List<JsonElement>();
+        foreach (var line in File.ReadLines(GoldenPaths().First()))
+        {
+            var message = DeckEvent.Parse(line);
+            if (message.Card == cardId && message.Model is { } model &&
+                models.All(existing => existing.GetRawText() != model.GetRawText()))
+            {
+                models.Add(model.Clone());
+            }
+        }
+        return models;
     }
 
     private static FrameworkElement RenderSample(string cardId)
