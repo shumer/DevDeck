@@ -34,7 +34,10 @@ let package = Package(
         .target(name: "ArcKit", dependencies: ["DevDeckCore"]),
         .target(name: "DDEVKit", dependencies: ["DevDeckCore"]),
         .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
-        .target(name: "DevDeckEngine", dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit"]),
+        .target(
+            name: "DevDeckEngine",
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
+        ),
         .target(
             name: "DevDeckLocalization",
             path: "Resources/Localizations",
@@ -127,7 +130,10 @@ let package = Package(
         // Projects that are neither: a folder, a command and a health URL.
         .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
 
-        .target(name: "DevDeckEngine", dependencies: ["DevDeckCore", "GitHubKit", "ProjectKit"]),
+        .target(
+            name: "DevDeckEngine",
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
+        ),
         .target(
             name: "DevDeckLocalization",
             path: "Resources/Localizations",
@@ -165,7 +171,9 @@ let package = Package(
         // The AppKit shell: borderless panels, menu bar, placement and locking.
         .executableTarget(
             name: "DevDeckApp",
-            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI"],
+            dependencies: [
+                "DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine", "DevDeckUI",
+            ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
@@ -201,7 +209,10 @@ let package = Package(
             name: "DevDeckTests",
             // DevDeckUI is here for the card-sizing arithmetic, which the panels depend on
             // being right and which is plain maths rather than anything drawn.
-            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckUI", "TestHarness"],
+            dependencies: [
+                "DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine",
+                "DevDeckUI", "TestHarness",
+            ],
             path: "Tests/DevDeckTests"
         ),
     ]

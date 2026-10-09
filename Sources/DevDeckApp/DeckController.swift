@@ -2,6 +2,7 @@ import ArcKit
 import Combine
 import DDEVKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import Foundation
 import GitHubKit

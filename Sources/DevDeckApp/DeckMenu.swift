@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 
 /// The menu-bar item and every menu in the app.
