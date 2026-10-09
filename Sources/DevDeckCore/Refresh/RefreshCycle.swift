@@ -61,11 +61,15 @@ public final class RefreshCycle {
     /// In order rather than concurrently: the sources hold the same token and the same rate
     /// limit, and four requests fired at once against a limit that is already spent produce
     /// four failures rather than one.
+    ///
+    /// Runs on the caller's actor, which owns this cycle: the failure count is the caller's
+    /// state, and the deck runtime that owns it lives on the main actor.
     public func run(
         _ sources: [RefreshSource],
         active: Set<CardID>,
         policy: RefreshPolicy,
-        now: Date
+        now: Date,
+        isolation: isolated (any Actor)? = #isolation
     ) async -> Pass {
         var refreshed: [CardID] = []
         var failures: [RefreshFailure] = []
