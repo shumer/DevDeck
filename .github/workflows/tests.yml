@@ -50,7 +50,8 @@ jobs:
         shell: pwsh
         run: |
           $Timer = [Diagnostics.Stopwatch]::StartNew()
-          swift build 2>&1 | Tee-Object -FilePath build.log
+          # SwiftPM 6.4 can race while touching resource bundles on Windows, so serialize build jobs.
+          swift build --jobs 1 2>&1 | Tee-Object -FilePath build.log
           $BuildExit = $LASTEXITCODE
           $Timer.Stop()
           Write-Host "Swift build elapsed: $([Math]::Round($Timer.Elapsed.TotalSeconds, 2)) seconds."
