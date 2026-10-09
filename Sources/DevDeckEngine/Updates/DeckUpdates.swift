@@ -2,7 +2,7 @@ import DevDeckCore
 import Foundation
 
 /// The settings page's update row, decided: its line, its button and whether it can be pressed.
-public struct DeckUpdateRow: Sendable, Equatable {
+public struct DeckUpdateRow: Sendable, Equatable, Codable {
     public let summary: CheckSummary
     public let button: String
     public let isEnabled: Bool
@@ -127,9 +127,14 @@ public final class DeckUpdates {
 
     /// The settings page's one button: install what is on offer, or check.
     public func act() {
+        Task { await actNow() }
+    }
+
+    /// `act()`, for a caller that waits for the check to finish.
+    public func actNow() async {
         switch state {
         case .available, .failed: install()
-        default: checkNow()
+        default: await check(quietly: false)
         }
     }
 
@@ -268,6 +273,17 @@ public final class DeckUpdates {
         return DeckUpdateOffer(item: item, version: version)
     }
 
+    /// `2.1 MB`, with the deck's decimal separator rather than the machine's, so the row reads
+    /// the same in the deck's language whatever the system is set to.
+    static func megabytes(_ bytes: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Strings.locale
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        let value = formatter.string(from: NSNumber(value: Double(bytes) / 1_000_000)) ?? ""
+        return value + " MB"
+    }
+
     /// The settings page's update row.
     public func row() -> DeckUpdateRow {
         guard isSupported else {
@@ -286,7 +302,7 @@ public final class DeckUpdates {
                     isEnabled: false
                 )
             }
-            let size = ByteCountFormatter.string(fromByteCount: Int64(update.asset.size), countStyle: .file)
+            let size = Self.megabytes(update.asset.size)
             return DeckUpdateRow(
                 summary: CheckSummary(tone: .busy, state: L("update.available", update.version.description), detail: size),
                 button: L("update.button.update"),

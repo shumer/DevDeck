@@ -1,7 +1,7 @@
 import Foundation
 
 /// What a folder looks like it wants to be run with.
-public struct ProjectSuggestion: Sendable, Equatable {
+public struct ProjectSuggestion: Sendable, Equatable, Codable {
     public var subtitle: String
     public var startCommand: String
     public var stopCommand: String

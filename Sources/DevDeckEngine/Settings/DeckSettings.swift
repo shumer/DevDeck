@@ -18,7 +18,7 @@ public enum DeckSettingsKind: String, Sendable, Equatable, Codable {
 }
 
 /// One row of the settings sidebar.
-public struct DeckSettingsItem: Sendable, Equatable {
+public struct DeckSettingsItem: Sendable, Equatable, Codable {
     public let kind: DeckSettingsKind
     public let id: String
     public let title: String
@@ -32,13 +32,13 @@ public struct DeckSettingsItem: Sendable, Equatable {
 }
 
 /// The sidebar's two groups, each sorted by title, kinds mixed: a project is found by its name.
-public struct DeckSettingsList: Sendable, Equatable {
+public struct DeckSettingsList: Sendable, Equatable, Codable {
     public let accounts: [DeckSettingsItem]
     public let projects: [DeckSettingsItem]
 }
 
 /// What Detect found in a folder, in the words its note uses.
-public struct DeckDetection: Sendable, Equatable {
+public struct DeckDetection: Sendable, Equatable, Codable {
     public let suggestion: ProjectSuggestion?
     public let note: String
     public let isError: Bool
@@ -51,13 +51,13 @@ public enum DeckLinkTest: Sendable, Equatable {
 }
 
 /// What a token check said.
-public enum DeckTokenCheck: Sendable, Equatable {
+public enum DeckTokenCheck: Sendable, Equatable, Codable {
     case works(String)
     case refused(String)
 }
 
 /// DDEV projects that can be added, as `ddev list` reports them.
-public enum DeckDDEVCandidates: Sendable, Equatable {
+public enum DeckDDEVCandidates: Sendable, Equatable, Codable {
     /// `ddev list` did not answer.
     case unavailable
     /// It answered with nothing.

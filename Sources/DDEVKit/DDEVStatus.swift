@@ -27,7 +27,7 @@ public enum DDEVState: String, Sendable, Equatable, Codable {
 }
 
 /// One project as `ddev list` reports it.
-public struct DDEVListEntry: Sendable, Equatable {
+public struct DDEVListEntry: Sendable, Equatable, Codable {
     public let name: String
     public let approot: String
     public let type: String

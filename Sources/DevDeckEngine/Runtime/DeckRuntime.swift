@@ -229,6 +229,10 @@ public final class DeckRuntime {
     /// Cards currently on screen. Nothing is fetched for a hidden card.
     private var activeCards: Set<CardID> = []
 
+    /// False when every pass is run by hand, as the golden transcripts do: no loop starts, so
+    /// nothing happens between two steps that the steps did not ask for.
+    public var runsLoops = true
+
     /// Everything that differs by platform or by test comes in here.
     ///
     /// - `canStartDocker`: whether this machine has the container runtime's app to launch.
@@ -321,7 +325,7 @@ public final class DeckRuntime {
 
     private func restartStackLoop() {
         stackLoop?.cancel()
-        guard !activeProjects.isEmpty || !activeDDEVProjects.isEmpty || !activeLocalProjects.isEmpty else {
+        guard runsLoops, !activeProjects.isEmpty || !activeDDEVProjects.isEmpty || !activeLocalProjects.isEmpty else {
             stackLoop = nil
             return
         }
@@ -1353,7 +1357,7 @@ public final class DeckRuntime {
 
     private func restart() {
         loop?.cancel()
-        guard !activeCards.isEmpty else {
+        guard runsLoops, !activeCards.isEmpty else {
             loop = nil
             return
         }

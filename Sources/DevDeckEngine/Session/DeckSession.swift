@@ -46,6 +46,11 @@ public final class DeckSession {
     private var settleTask: Task<Void, Never>?
     private var screensTask: Task<Void, Never>?
     private var logTasks: [CardID: Task<Void, Never>] = [:]
+    /// Settings requests still being answered.
+    private var requests: [Int: Task<Void, Never>] = [:]
+    private var nextRequest = 0
+    private var systemLanguage: String?
+    private var sentUpdate: DeckUpdateRow?
 
     private struct SentCard: Equatable {
         let model: DeckCardModel?
@@ -70,6 +75,7 @@ public final class DeckSession {
         self.localizationRoot = localizationRoot
         self.runsLoops = runsLoops
         self.output = output
+        runtime.runsLoops = runsLoops
         runtime.onChange = { [weak self] _ in self?.scheduleFlush() }
         runtime.onEffect = { [weak self] effect in self?.carryOut(effect) }
     }
@@ -114,6 +120,20 @@ public final class DeckSession {
         case "logWindow.changed":
             guard let card = intent.card, let isOpen = intent.isOpen else { return reject("invalidCard") }
             logWindow(card, isOpen: isOpen)
+        case "settings":
+            guard let request = intent.request else { return reject("invalidRequest") }
+            answer(request, to: intent.id)
+        case "update.check":
+            track { await $0.runtime.updates?.check(quietly: false) }
+        case "update.act":
+            track { await $0.runtime.updates?.actNow() }
+        case "update.progress":
+            guard let fraction = intent.fraction, fraction.isFinite, (0...1).contains(fraction) else { return reject("invalidFraction") }
+            runtime.updates?.downloaded(fraction)
+        case "update.installing":
+            runtime.updates?.installing()
+        case "update.failed":
+            runtime.updates?.failed(intent.reason ?? "")
         case "session.stop":
             stop()
         default:
@@ -129,23 +149,128 @@ public final class DeckSession {
         screensTask?.cancel()
         for task in logTasks.values { task.cancel() }
         logTasks = [:]
+        for task in requests.values { task.cancel() }
+        requests = [:]
+    }
+
+    /// Waits for every settings request in flight and for the runtime's own work, then sends
+    /// what changed. For the transcripts.
+    public func settle() async {
+        while let task = requests.values.first {
+            await task.value
+        }
+        await runtime.settle()
+        flush()
+    }
+
+    // MARK: Updates
+
+    /// Watches for a newer build, for a host that has one to replace. The shell installs it when
+    /// asked and reports how that goes.
+    public func watchForUpdates(currentVersion: String?, canInstall: Bool, http: any HTTPClient) {
+        let updates = runtime.watchForUpdates(currentVersion: currentVersion, canInstall: canInstall, http: http)
+        updates.onChange = { [weak self] in
+            self?.sendUpdate()
+            self?.scheduleFlush()
+        }
+        updates.onInstall = { [weak self] update in
+            self?.send(effect: "installUpdate") {
+                $0.update = DeckWireUpdate(
+                    version: update.version.description, asset: update.asset.browserDownloadUrl.absoluteString,
+                    size: update.asset.size, page: update.pageURL.absoluteString
+                )
+            }
+        }
+        if isStarted {
+            sendUpdate()
+            if runsLoops { updates.start() }
+        }
+    }
+
+    private func sendUpdate() {
+        guard isStarted, let row = runtime.updates?.row(), row != sentUpdate else { return }
+        sentUpdate = row
+        emit("update.changed") { $0.update = row }
+    }
+
+    // MARK: Settings
+
+    /// Work an intent started that finishes later, kept so `settle()` and `stop()` can reach it.
+    private func track(_ work: @escaping (DeckSession) async -> Void) {
+        nextRequest += 1
+        let key = nextRequest
+        // What it sends carries no id: other intents are handled while it waits, and an id on an
+        // event is a promise about which intent caused it.
+        requests[key] = Task { [weak self] in
+            guard let self else { return }
+            await work(self)
+            self.requests[key] = nil
+            self.flush()
+        }
+    }
+
+    /// Answered when the engine has the answer, which for a check can be seconds; the answer
+    /// carries the request's id.
+    private func answer(_ request: DeckSettingsRequest, to id: String) {
+        nextRequest += 1
+        let key = nextRequest
+        requests[key] = Task { [weak self] in
+            guard let self else { return }
+            let answer = await self.runtime.answer(request)
+            self.requests[key] = nil
+            guard !Task.isCancelled else { return }
+            self.answering = id
+            defer { self.answering = nil }
+            self.emit("settings.answered") { $0.answer = answer }
+            if request.changesDeck { self.settingsChanged() }
+            if case .setPreferences = request { self.preferencesChanged() }
+            self.flush()
+        }
+    }
+
+    /// What the Mac does when anything in settings changed: the cards may have come or gone, a
+    /// project taken out takes its log window with it, and the data is fetched again.
+    private func settingsChanged() {
+        apply(placement?.sync())
+        let known = Set(runtime.cards.resolved.map(\.id))
+        for card in runtime.logWindowCards.sorted(by: { $0.rawValue < $1.rawValue }) where !known.contains(card) {
+            send(effect: "closeLogs") { $0.card = card }
+        }
+        runtime.refreshNow()
+    }
+
+    /// Every deck-wide setting put into effect at once: the language, the panels' lock and
+    /// layer, the update watch, packed columns.
+    private func preferencesChanged() {
+        Strings.use(language(system: systemLanguage), lookingIn: localizationRoot)
+        sendDeck()
+        if runsLoops { runtime.updates?.applyPreferences() }
+        if runtime.preferences.packsColumns { apply(placement?.packAllColumns()) }
     }
 
     // MARK: Starting
 
     private func start(systemLanguage: String?) {
         isStarted = true
+        self.systemLanguage = systemLanguage
         Strings.use(language(system: systemLanguage), lookingIn: localizationRoot)
         placement = runtime.placePanels(
-            measure: { [unowned self] card in self.measure(card) },
-            displays: { [unowned self] in
-                DeckDisplays(screens: self.displays, main: self.primary, fallback: self.primary ?? self.displays.first)
+            measure: { [weak self] card in
+                self?.measure(card) ?? CGSize(width: CardMetrics.width, height: Self.unmeasuredHeight)
+            },
+            displays: { [weak self] in
+                guard let self else { return DeckDisplays(screens: [], main: nil, fallback: nil) }
+                return DeckDisplays(screens: self.displays, main: self.primary, fallback: self.primary ?? self.displays.first)
             }
         )
         sendDeck()
         apply(placement?.sync())
         if runtime.preferences.packsColumns { apply(placement?.packAllColumns()) }
-        if runsLoops { runtime.start() }
+        sendUpdate()
+        if runsLoops {
+            runtime.start()
+            runtime.updates?.start()
+        }
     }
 
     /// The deck's own language, or the system's when the deck says to follow it: English when

@@ -19,8 +19,10 @@ command of its own, with one exception: the name typed into a prompt (see Menus)
 - At most 1 MiB per line either way. A longer line is dropped and reported on standard error.
 - Standard error is for diagnostics only. It never carries a token, a URL with a token, or a
   path the user did not configure.
-- Every intent carries `"protocolVersion": 2` and a non-empty `id`. Events that answer an intent
-  carry its `id`; events the engine sends by itself have none.
+- Every intent carries `"protocolVersion": 2` and a non-empty `id`. Events an intent causes
+  while it is handled carry its `id`. Events sent later, by the engine's own loops or once
+  something an intent started has finished, carry none, except `settings.answered`, which always
+  carries the id of its request.
 - Every event carries `revision`, counting up from 1 for the session. A gap means the shell
   missed something and should ask to start again.
 - Keys are sorted and `/` is not escaped, so the same event is the same bytes on every platform.
@@ -35,6 +37,12 @@ command of its own, with one exception: the name typed into a prompt (see Menus)
 | `card.moved` | `card`, `frame` | A panel moved and the shell did not move it. |
 | `command` | `command` | Something was clicked: the `command` exactly as an event carried it. |
 | `logWindow.changed` | `card`, `isOpen` | A log window opened or closed, by any means. |
+| `settings` | `request` | The settings window asks or changes something; see Settings. |
+| `update.check` | | The update row's Check button. |
+| `update.act` | | The update row's one button: install what is on offer, or check. |
+| `update.progress` | `fraction` | The installer's download, 0 to 1. |
+| `update.installing` | | Downloaded; being unpacked and put in place. |
+| `update.failed` | `reason` | The installer gave up, in its own words. |
 | `session.stop` | | The shell is going away. Projects keep running. |
 
 A display is `{"id", "frame", "isPrimary"}`. `id` is the monitor's own identity, stable across
@@ -46,7 +54,8 @@ speak falls back to English.
 
 Any intent the engine cannot use is answered with `intent.rejected` and a `reason`:
 `notStarted`, `invalidIntent` (not JSON, wrong version, no id), `invalidDisplays`,
-`invalidSize`, `invalidFrame`, `invalidCommand`, `invalidCard`, `unknownIntent`.
+`invalidSize`, `invalidFrame`, `invalidCommand`, `invalidCard`, `invalidRequest`,
+`invalidFraction`, `unknownIntent`.
 
 ### Coordinates
 
@@ -67,6 +76,8 @@ before it reports (W-7).
 | `log.changed` | `card`, `log` | The lines of an open log window: `lines`, `source` (what is being read), `detail` (why there is nothing). |
 | `notify` | `notifications` | Post one banner each. Clicking one sends its `command`. |
 | `effect` | `effect` | Something only the platform can do, below. |
+| `settings.answered` | `answer` | The answer to a `settings` intent, with its `id`. |
+| `update.changed` | `update` | The settings page's update row: `summary` (`tone`, `state`, `detail`), `button`, `isEnabled`. |
 | `intent.rejected` | `reason` | The intent was not used. |
 
 A card is `card.changed` only when its model or its menu differs from the last one sent, and
@@ -88,7 +99,7 @@ has both.
 | `openSettings` | `page`, `item`, `card` | Open settings, on a page and item when given, or on a card's page. |
 | `present` | `card` | Bring the deck up: the card is already on it with its log open. |
 | `openMenu` | | Open the tray menu. |
-| `installUpdate` | `update` | Download and install `update`. Progress intents are part of the settings protocol. |
+| `installUpdate` | `update` | Download `update.asset` (`size` bytes), check it and install it, reporting with the `update.*` intents. |
 | `quit` | | Stop drawing and exit. The engine has stopped its loops. |
 
 ### Notifications
@@ -142,11 +153,42 @@ Every card has `collapsed`, the one-row form, and `isCollapsed`, which of the tw
 | Health strip | `reviewList.content.shares`: a tone and a count per segment |
 | Why Stop cannot reach a project | `project.hero.note` and the disabled actions |
 
+## Settings
+
+The settings window sends `{"intent": "settings", "request": ...}` and gets one
+`settings.answered` with the same `id`. Requests may overlap; each answer comes when it is ready,
+so a slow check does not hold up the list. The full list is `DeckSettingsRequest` and
+`DeckSettingsAnswer` in `Sources/DevDeckEngine/Settings/DeckSettingsWire.swift`.
+
+| Request | Answer |
+| --- | --- |
+| `list` | `list`: the sidebar, accounts and projects, each with its words, mark and tone |
+| `preferences`, `setPreferences` | `preferences`: the deck-wide settings as they now are |
+| `localProject`, `arcProject`, `ddevProject`, `githubAccount`, `gitlabAccount` by `id` | the record a form edits, as stored |
+| `add...` | `added` with the new id |
+| `save...` | `saved`, with `checkAgain` when the form's status line has a new question |
+| `remove...`, `restructureArcProject` | `done` |
+| `detect` | `detection`: a suggestion for the form, and the note under the button |
+| `checkLocalProject`, `checkArcStack` | `check`: the form's status line for the record as sent |
+| `test...Link` | `note`: words when there is nothing to open; otherwise the page opens as an `openURL` effect |
+| `ddevCandidates`, `ddevFolderNote` | `ddevCandidates`, `note` |
+| `checkGitHubToken`, `checkGitLabToken` | `token`: `works` or `refused`, in words |
+
+A token travels once, typed, inside a check request. One that works is stored by the engine in
+the system's credential store and never sent back; an empty one checks the stored token. A check
+answer belongs to the record in the request: a form that changed since asks again.
+
+A request that changes the deck (anything that adds, saves or removes, a token check, new
+preferences) is followed by what it changed: panels, cards, the menu, the deck's lock, every
+card in a new language.
+
+The summon shortcut is not in the preferences yet: the Mac stores a Mac key code, and the
+Windows shortcut is decided with W-9.
+
 ## Not in this version yet
 
-Settings (the list, the forms' operations, token checks) and the update row with installer
-progress come in the next step of C-1, as intents and events of their own. Until then the host
-reads its configuration from a file.
+The host still runs the proof of concept's engine from a configuration file. It moves onto the
+session, with its stores and the Windows credential store, in the last step of C-1.
 
 ## Testing
 

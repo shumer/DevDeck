@@ -43,6 +43,12 @@ public struct DeckIntent: Decodable, Sendable {
     public let command: DeckCommand?
     /// `logWindow.changed`.
     public let isOpen: Bool?
+    /// `settings`.
+    public let request: DeckSettingsRequest?
+    /// `update.progress`: how much is downloaded, 0 to 1.
+    public let fraction: Double?
+    /// `update.failed`: what went wrong, in the shell's words, since only it knows.
+    public let reason: String?
 
     public static let maximumSize = 1_048_576
 
@@ -74,6 +80,10 @@ public struct DeckEvent: Encodable, Sendable {
     public var effect: DeckWireEffect?
     public var notifications: [DeckWireNotification]?
     public var log: DeckWireLog?
+    /// `settings.answered`.
+    public var answer: DeckSettingsAnswer?
+    /// `update.changed`: the settings page's update row.
+    public var update: DeckUpdateRow?
     public var reason: String?
 
     init(revision: Int, event: String, id: String?) {

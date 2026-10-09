@@ -7,8 +7,8 @@ import Foundation
 /// shown next to the address it was the answer for. The old live row joined whatever address
 /// was in the field to whatever the last check had said, so correcting a wrong port showed the
 /// new port beside the old port's refusal.
-public struct CheckSummary: Sendable, Equatable {
-    public enum Tone: Sendable, Equatable {
+public struct CheckSummary: Sendable, Equatable, Codable {
+    public enum Tone: String, Sendable, Equatable, Codable {
         case good, busy, bad, idle
     }
 

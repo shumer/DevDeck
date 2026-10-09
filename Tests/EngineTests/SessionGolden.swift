@@ -1,5 +1,6 @@
 import DevDeckCore
 import DevDeckEngine
+import GitHubKit
 import DevDeckLocalization
 import Foundation
 import ProjectKit
@@ -71,13 +72,87 @@ private func sessionScenario(_ name: String) async throws -> Data {
     return bytes
 }
 
+/// A settings request as the shell would put it on the wire.
+private func settings(_ id: Int, _ request: DeckSettingsRequest) throws -> Data {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    let body = String(decoding: try encoder.encode(request), as: UTF8.self)
+    return intent(id, "settings", #""request":\#(body)"#)
+}
+
+private let release = """
+{"tag_name":"v9.0","html_url":"https://github.com/shumer/DevDeck/releases/tag/v9.0","draft":false,"prerelease":false,"published_at":"2026-10-01T10:00:00Z","assets":[{"name":"DevDeck-9.0-1.zip","browser_download_url":"https://example.invalid/DevDeck.zip","size":2097152}]}
+"""
+
+/// The settings window and the update row over the wire: what a form reads, what it saves, the
+/// checks behind its status lines, and an update from offer to failure.
+@MainActor
+private func settingsScenario(_ name: String) async throws -> Data {
+    let russian = name.hasSuffix("-ru")
+    defer { Strings.use(.english, lookingIn: LocalizationResources.root) }
+    var bytes = Data()
+    let (runtime, preferences) = goldenRuntime()
+    preferences.notifiesUpdates = true
+    let session = DeckSession(
+        runtime: runtime,
+        clock: MutableDateProvider(now: RuntimeFixture.now),
+        sleeper: InstantSleeper(),
+        localizationRoot: LocalizationResources.root,
+        runsLoops: false
+    ) { bytes.append($0) }
+    session.handle(line: intent(1, "session.start", #""systemLanguage":"\#(russian ? "ru" : "en")",\#(displays)"#))
+    session.watchForUpdates(currentVersion: "0.19.2", canInstall: true, http: FakeHTTPClient([.success(.json(release))]))
+    session.flush()
+    // What starting looks like is the other scenario's; this one starts from here.
+    bytes.removeAll()
+
+    let feed = try expectNotNil(runtime.localProject(forCard: CardID(rawValue: "project.feed")), "the fixture has a project")
+    let work = GitHubAccount(id: "work", label: "Work")
+    var model = runtime.preferencesModel
+    model.isLocked = true
+    model.language = russian ? .english : .russian
+
+    // One at a time: a shell may have several in flight, but then the order of the answers is
+    // the order they were ready in, which a transcript cannot pin.
+    let requests: [DeckSettingsRequest] = [
+        .list, .preferences, .localProject(id: "feed"), .detect(folder: nil), .checkLocalProject(feed),
+        .testLocalProjectLink(feed), .ddevCandidates,
+    ]
+    for (index, request) in requests.enumerated() {
+        session.handle(line: try settings(2 + index, request))
+        await session.settle()
+    }
+    // A token is checked against the service and kept when it works; it never comes back.
+    session.handle(line: try settings(9, .checkGitHubToken(work, typed: "")))
+    await session.settle()
+    session.handle(line: try settings(10, .removeLocalProject(id: "feed")))
+    await session.settle()
+    // The language changes under the deck: every card is said again in the other one.
+    session.handle(line: try settings(11, .setPreferences(model)))
+    await session.settle()
+
+    // An update, from the check to a download that failed.
+    session.handle(line: intent(12, "update.check"))
+    await session.settle()
+    session.handle(line: intent(13, "update.act"))
+    await session.settle()
+    session.handle(line: intent(14, "update.progress", #""fraction":0.5"#))
+    session.handle(line: intent(15, "update.failed", #""reason":"disk full""#))
+
+    session.handle(line: intent(16, "settings"))
+    session.handle(line: intent(17, "update.progress", #""fraction":2"#))
+    return bytes
+}
+
 @MainActor
 func runSessionGoldenTests(_ run: TestRun) async {
     run.section("Golden protocol transcripts")
     NSTimeZone.default = TimeZone(identifier: "UTC")!
-    for scenario in ["session-en", "session-ru"] {
+    for scenario in ["session-en", "session-ru", "session-settings-en", "session-settings-ru"] {
         await run.test(scenario) {
-            let actual = try await sessionScenario(scenario)
+            let actual = scenario.hasPrefix("session-settings")
+                ? try await settingsScenario(scenario)
+                : try await sessionScenario(scenario)
             let source = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
                 .appendingPathComponent("Golden", isDirectory: true)
                 .appendingPathComponent(scenario + ".expected.jsonl")

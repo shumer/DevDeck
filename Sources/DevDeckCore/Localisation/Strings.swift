@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Their names are in their own language, the way every list of languages on a Mac is: somebody
 /// looking for Deutsch is not looking for German.
-public enum AppLanguage: String, Sendable, Equatable, CaseIterable {
+public enum AppLanguage: String, Sendable, Equatable, CaseIterable, Codable {
     case system
     case english = "en"
     case russian = "ru"
