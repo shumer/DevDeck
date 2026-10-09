@@ -187,7 +187,8 @@
    engine foundation (M-2a), the Mac app on the deck runtime (M-2b), every card as a model the
    engine builds (M-3), the menus and banners (M-4), where panels go (M-5), the settings
    window's operations (M-6), the update check (M-7), golden transcripts of the runtime
-   (M-8), the whole protocol on the runtime with the host running it (C-1, W-1).
+   (M-8), the whole protocol on the runtime with the host running it (C-1, W-1) and Windows CI
+   for the Swift side (W-2).
 2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row

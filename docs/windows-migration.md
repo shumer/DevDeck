@@ -82,7 +82,9 @@ nor `DevDeckUI` decides anything by the rule in 0024.
   with C-1: `5dbdb0b` builds clean on Windows, all eleven transcripts match, and the live host
   starts, survives and stops a Windows and a WSL project.
 - **W-2. Windows CI** on `windows-latest`: core and engine build, engine tests, shell tests. The
-  Mac workflow is unchanged.
+  Mac workflow is unchanged. Done for the Swift side: the `windows` job in `tests.yml` builds
+  with Swift 6.4 and runs both suites, with golden transcripts compared byte for byte. The shell
+  tests join it with W-3.
 
 ## Phase 3 - the Windows shell
 
