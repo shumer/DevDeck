@@ -50,10 +50,9 @@ public struct CardCollapsedRow: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 6)
-            // The note goes as soon as the row is carrying controls. It is detail rather than
-            // state - `10 containers`, `pid 48213` - and the dot has already said good, busy or
-            // off by colour. Keeping both leaves the name 91 points and truncates it.
-            if let note, actions.count < 2 {
+            // Whether a row with buttons still carries its note is the model's decision, so the
+            // Windows row makes the same one.
+            if let note {
                 Text(note)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(tone == .alert ? color : DeckTheme.value.opacity(0.55))

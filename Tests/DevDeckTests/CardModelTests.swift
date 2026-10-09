@@ -351,7 +351,7 @@ func runCardModelTests(_ run: TestRun) async {
         try expectEqual(model.actions.map(\.command), [.project(card, .stop), .project(card, .restart), .revealFolder(card), .openTerminal(card)])
         try expectEqual(model.actions.first?.tone, .alert)
         try expect(model.actions.first?.isProminent == true)
-        try expectEqual(model.collapsed.note, LN("card.containers", 10), "running, the count is the note")
+        try expectNil(model.collapsed.note, "running, the row carries Stop and the log: no room for a note")
     }
 
     await run.test("a stop that did not take effect looks wrong, not fine") {
@@ -392,7 +392,7 @@ func runCardModelTests(_ run: TestRun) async {
         try expectEqual(model.hero.help, L("card.project.startedElsewhere.help"))
         try expect(model.actions[0].isEnabled, "pressing Stop is how the person finds out")
         try expect(!model.actions[1].isEnabled, "a restart would start a second copy on a taken port")
-        try expectEqual(model.collapsed.note, L("card.project.startedElsewhere"))
+        try expectNil(model.collapsed.note, "two buttons on the row: the full card says why")
     }
 
     await run.test("a project the deck started wears its pid, and its log button says whether it is open") {

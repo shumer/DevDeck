@@ -223,11 +223,23 @@ public struct DeckActionModel: Sendable, Equatable, Codable {
 public struct DeckCollapsedModel: Sendable, Equatable, Codable {
     public let mark: DeckMark?
     public let title: String
-    /// The shortest true sentence about the card.
+    /// The shortest true sentence about the card. Absent once the row carries two or more
+    /// buttons: it is detail rather than state (`10 containers`, `pid 48213`), the dot has
+    /// already said good, busy or off by colour, and keeping both leaves the name no room. The
+    /// full card still says it.
     public let note: String?
     public let tone: DeckTone
     public let actions: [DeckActionModel]
     public let help: String
+
+    public init(mark: DeckMark?, title: String, note: String?, tone: DeckTone, actions: [DeckActionModel], help: String) {
+        self.mark = mark
+        self.title = title
+        self.note = actions.count < 2 ? note : nil
+        self.tone = tone
+        self.actions = actions
+        self.help = help
+    }
 }
 
 /// The time words a card wears.
