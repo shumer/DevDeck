@@ -185,8 +185,8 @@
 1. **Windows** - one engine, two thin shells, Windows 11 only. The core already builds there; the
    order of work is [windows-migration.md](windows-migration.md). In: the portable core (M-1), the
    engine foundation (M-2a), the Mac app on the deck runtime (M-2b), every card as a model the
-   engine builds (M-3), the menus and banners (M-4), where panels go (M-5) and the settings
-   window's operations (M-6).
+   engine builds (M-3), the menus and banners (M-4), where panels go (M-5), the settings
+   window's operations (M-6) and the update check (M-7).
 2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
