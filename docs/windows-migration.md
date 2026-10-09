@@ -77,8 +77,10 @@ nor `DevDeckUI` decides anything by the rule in 0024.
   [engine-protocol.md](engine-protocol.md), together with the [Windows style guide](windows-style.md).
   In three steps: the session and its events
   ([adr/0033](adr/0033-protocol-on-the-runtime.md)), settings and updates on the wire, and the host
-  moved onto the session.
-- **W-1. The engine host on Windows from `main`**, with every golden transcript identical.
+  moved onto the session. Done.
+- **W-1. The engine host on Windows from `main`**, with every golden transcript identical. Done
+  with C-1: `5dbdb0b` builds clean on Windows, all eleven transcripts match, and the live host
+  starts, survives and stops a Windows and a WSL project.
 - **W-2. Windows CI** on `windows-latest`: core and engine build, engine tests, shell tests. The
   Mac workflow is unchanged.
 
