@@ -190,6 +190,8 @@
 
 - WidgetKit widgets in Notification Center. They need Xcode and their own refresh budget; the
   panels already sit on the desktop. Revisit only if Xcode gets installed.
-- Linux. Windows was decided against in [adr/0001-native-macos-app.md](adr/0001-native-macos-app.md)
-  and then taken up in [adr/0024-one-engine-two-shells.md](adr/0024-one-engine-two-shells.md);
-  Linux has not been asked for.
+- Linux. The engine would port easily, but the deck itself would not: GNOME on Wayland, the most
+  common Linux desktop, lets no app place its windows, keep them under others or own a global
+  key. Windows was decided against in [adr/0001-native-macos-app.md](adr/0001-native-macos-app.md)
+  and then taken up in [adr/0024-one-engine-two-shells.md](adr/0024-one-engine-two-shells.md),
+  which is also why its shell is WPF rather than something cross-platform.
