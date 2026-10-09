@@ -14,7 +14,7 @@ import TestHarness
 // Russian. Each scenario writes one JSON object per line; the same scenario must give the same
 // bytes on the Mac and on Windows, which is what keeps the two shells drawing the same deck.
 
-private enum RuntimeFixture {
+enum RuntimeFixture {
     static let now = Date(timeIntervalSince1970: 1_791_000_000)
 
     static let pulls = """
@@ -69,13 +69,13 @@ private enum RuntimeFixture {
 }
 
 /// Returns at once.
-private struct InstantSleeper: Sleeper {
+struct InstantSleeper: Sleeper {
     func sleep(seconds: TimeInterval) async throws {}
 }
 
 /// A deck with every kind of card, in-memory everything and a fixed clock.
 @MainActor
-private func goldenRuntime(http: FakeHTTPClient = RuntimeFixture.http) -> (DeckRuntime, Preferences) {
+func goldenRuntime(http: FakeHTTPClient = RuntimeFixture.http) -> (DeckRuntime, Preferences) {
     let preferences = Preferences(backend: InMemoryPreferences())
     preferences.notificationsEnabled = true
     preferences.actionsRepositories = ["demo/site"]

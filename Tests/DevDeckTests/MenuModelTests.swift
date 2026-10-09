@@ -146,4 +146,18 @@ func runMenuModelTests(_ run: TestRun) async {
         try expectEqual(grouped.first?.target, .menu)
         try expectEqual(grouped.first?.source, .github)
     }
+
+    await run.test("a clicked banner goes where it points, and a card it names is put on the deck with its log open") {
+        let project = LocalProject(id: "feed", title: "Feed", folder: "/tmp", startCommand: "npm run dev")
+        let deck = Deck(cards: [], localProjects: [project])
+        deck.runtime.cards.setEnabled(false, for: project.cardID)
+        deck.runtime.perform(.followAlert(.card(project.cardID)))
+        try expect(deck.runtime.cards.isEnabled(project.cardID), "on the deck")
+        try expectEqual(deck.effects, [.cardsChanged, .openLogs(project.cardID), .showCard(project.cardID)])
+
+        deck.effects.removeAll()
+        deck.runtime.perform(.followAlert(.menu))
+        deck.runtime.perform(.followAlert(.accountSettings(service: "gitlab", account: "")))
+        try expectEqual(deck.effects, [.openMenu, .openAccountSettings(.gitlab, account: nil)])
+    }
 }

@@ -172,6 +172,8 @@
 "card.allAccounts" = "todas las cuentas";
 "card.asOf" = "a las %@";
 "card.branch.checkedOut" = "rama activa";
+"project.place.windows" = "Windows";
+"project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, la rama es %2$@";
 "card.catalog.actions.subtitle" = "Tasa de éxito de los workflows y jobs en marcha";
 "card.catalog.arc.subtitle" = "Orgs, sitios y versiones de bundle en producción";

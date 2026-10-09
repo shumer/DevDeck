@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DevDeck Windows card style</title>
+<style>
+  :root {
+    /* The deck's own tones, exactly as DeckTheme has them on the Mac. */
+    --good: #70c799;
+    --alert: #f0c26b;
+    --bad: #e88484;
+    --info: #7faedd;
+    --text: rgba(255, 255, 255, 0.95);
+    --text-2: rgba(255, 255, 255, 0.66);
+    --text-3: rgba(255, 255, 255, 0.42);
+    --stroke: rgba(255, 255, 255, 0.075);
+    --control: rgba(255, 255, 255, 0.06);
+    --control-stroke: rgba(255, 255, 255, 0.09);
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --mono: "Cascadia Mono", "Cascadia Code", "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--sans);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(60% 70% at 18% 92%, rgba(48, 98, 196, 0.85), transparent 70%),
+      radial-gradient(45% 55% at 82% 8%, rgba(56, 150, 190, 0.45), transparent 70%),
+      linear-gradient(160deg, #0b1424 0%, #102544 55%, #0c1a33 100%);
+  }
+  .deck {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 28px;
+  }
+  .column { display: flex; flex-direction: column; gap: 12px; }
+
+  /* Acrylic: a blurred, tinted, faintly grained surface. Windows 11 draws the real one
+     through DWM; this is its look, not its implementation. */
+  .card {
+    position: relative;
+    width: 352px;
+    padding: 14px 16px 14px;
+    border-radius: 8px;
+    background: rgba(40, 40, 44, 0.66);
+    backdrop-filter: blur(30px) saturate(125%);
+    -webkit-backdrop-filter: blur(30px) saturate(125%);
+    border: 1px solid var(--stroke);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.26), 0 0 0 0.5px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
+  }
+  .card::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  }
+
+  .header { display: flex; align-items: center; gap: 8px; height: 20px; }
+  .mark { width: 16px; height: 16px; flex: none; color: var(--text); }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .spacer { flex: 1; }
+  .time { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .icon-button {
+    width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center;
+    color: var(--text-2);
+  }
+  .icon-button:hover { background: var(--control); }
+  .icon-button svg { width: 14px; height: 14px; }
+
+  .hero { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
+  .number { font-size: 30px; font-weight: 600; line-height: 1; }
+  .unit { font-size: 14px; color: var(--text-2); }
+  .badge {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .tone-good { color: var(--good); }
+  .tone-alert { color: var(--alert); }
+  .tone-bad { color: var(--bad); }
+  .tone-info { color: var(--info); }
+  .badge.tone-good { background: rgba(112, 199, 153, 0.12); }
+  .badge.tone-alert { background: rgba(240, 194, 107, 0.12); }
+  .badge.tone-bad { background: rgba(232, 132, 132, 0.12); }
+
+  .bar { display: flex; gap: 2px; height: 3px; margin: 10px 0 4px; border-radius: 2px; overflow: hidden; }
+  .bar span { display: block; height: 100%; }
+
+  .row {
+    display: flex; align-items: center; gap: 8px;
+    height: 30px; padding: 0 6px; margin: 0 -6px; border-radius: 4px;
+    font-size: 13px;
+  }
+  .row + .row { border-top: 1px solid rgba(255, 255, 255, 0.05); }
+  .row:hover { background: var(--control); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
+  .key {
+    font-family: var(--mono); font-size: 11px; color: var(--text-2);
+    padding: 1px 5px; border-radius: 3px; background: var(--control);
+  }
+  .title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .code { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .expander {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    height: 26px; margin-top: 2px; font-size: 12px; color: var(--text-2);
+  }
+  .expander svg { width: 12px; height: 12px; }
+  .footer { margin-top: 6px; font-size: 12px; color: var(--text-3); }
+
+  .state { display: flex; align-items: center; gap: 9px; margin-top: 10px; }
+  .state .dot { width: 9px; height: 9px; }
+  .state-text { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .state .aside { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .branch { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-family: var(--mono); font-size: 12px; color: var(--info); }
+  .branch svg { width: 13px; height: 13px; }
+  .meta { display: flex; justify-content: space-between; margin-top: 3px; font-size: 12px; color: var(--text-2); }
+  .meta .command { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .place {
+    display: inline-flex; align-items: center;
+    height: 24px; padding: 0 7px; border-radius: 4px;
+    font-size: 11px; color: var(--text-2);
+    border: 1px dashed var(--control-stroke);
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 24px; padding: 0 8px; border-radius: 4px;
+    font-size: 12px; color: var(--text);
+    background: var(--control); border: 1px solid var(--control-stroke);
+  }
+  .chip svg { width: 12px; height: 12px; color: var(--text-2); }
+  .chip.off { color: var(--text-3); background: transparent; }
+
+  .actions { display: flex; gap: 6px; margin-top: 12px; }
+  .button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 32px; padding: 0 12px; border-radius: 4px;
+    font-size: 13px; font-weight: 600; color: var(--text);
+    background: var(--control); border: 1px solid var(--control-stroke);
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+  .button svg { width: 14px; height: 14px; }
+  .button.square { width: 36px; padding: 0; }
+  .button.primary { flex: 1; }
+  .button.good { color: var(--good); background: rgba(112, 199, 153, 0.13); border-color: rgba(112, 199, 153, 0.28); }
+  .button.bad { color: var(--bad); background: rgba(232, 132, 132, 0.12); border-color: rgba(232, 132, 132, 0.26); }
+  .button.disabled { color: var(--text-3); background: transparent; }
+</style>
+</head>
+<body>
+<!-- Reference mock for docs/windows-style.md. Neutral sample data; the deck's real content comes from the engine. -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-node" viewBox="0 0 16 16"><path fill="none" stroke="#7fbf6a" stroke-width="1.3" stroke-linejoin="round" d="M8 1.2l5.9 3.4v6.8L8 14.8l-5.9-3.4V4.6z"/><text x="8" y="10.4" text-anchor="middle" font-family="Segoe UI, system-ui" font-size="5.6" font-weight="700" fill="#7fbf6a">JS</text></symbol>
+    <symbol id="i-play" viewBox="0 0 16 16"><path fill="currentColor" d="M5 3.2v9.6c0 .5.5.8.9.5l7.2-4.8c.4-.3.4-.8 0-1L5.9 2.7c-.4-.3-.9 0-.9.5z"/></symbol>
+    <symbol id="i-power" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M8 1.8v6M4.6 4a5.2 5.2 0 106.8 0"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M13 8a5 5 0 11-1.6-3.7M13 2.5v2.8h-2.8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M1.8 4.3c0-.7.5-1.2 1.2-1.2h3.2l1.4 1.5h5.4c.7 0 1.2.5 1.2 1.2v6.1c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.2l2 1.8-2 1.8M8 10.2h3"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 16 16"><circle cx="4.5" cy="3.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="4.5" cy="12.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11.5" cy="5.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path fill="none" stroke="currentColor" stroke-width="1.3" d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3.2-5.6 3.9"/></symbol>
+    <symbol id="i-open" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M9.5 2.5h4v4M13.3 2.7L8 8M12 9.5v3.3c0 .4-.3.7-.7.7H3.2c-.4 0-.7-.3-.7-.7V4.7c0-.4.3-.7.7-.7h3.3"/></symbol>
+    <symbol id="i-log" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M3 4h10M3 8h10M3 12h6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M4 6l4 4 4-4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.3" d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<div class="deck">
+  <div class="column">
+    <div class="card">
+      <div class="header">
+        <svg class="mark"><use href="#i-github"/></svg>
+        <span class="eyebrow">GitHub · pull requests</span>
+        <span class="spacer"></span>
+        <span class="time">14:32:08</span>
+      </div>
+      <div class="hero">
+        <span class="number">3</span><span class="unit">open</span>
+        <span class="badge tone-bad">1 blocked</span>
+      </div>
+      <div class="bar"><span style="flex:1;background:var(--bad)"></span><span style="flex:1;background:var(--alert)"></span><span style="flex:1;background:var(--good)"></span></div>
+      <div class="row tone-bad"><span class="dot"></span><span class="key">DEMO-118</span><span class="title" style="color:var(--text)">Cache headers for the feed</span><span class="code">CF</span></div>
+      <div class="row tone-alert"><span class="dot"></span><svg width="14" height="14" style="color:var(--alert)"><use href="#i-eye"/></svg><span class="title" style="color:var(--text)">Checkout address step</span><span class="code">RV</span></div>
+      <div class="row tone-good"><span class="dot"></span><span class="key">DEMO-123</span><span class="title" style="color:var(--text)">Demo update</span><span class="code">AP</span></div>
+      <div class="footer">2 repos · 1 org</div>
+    </div>
+  </div>
+
+  <div class="column">
+    <div class="card">
+      <div class="header">
+        <svg class="mark"><use href="#i-node"/></svg>
+        <span class="eyebrow">Project · Sample WSL</span>
+        <span class="spacer"></span>
+        <span class="icon-button"><svg><use href="#i-log"/></svg></span>
+        <span class="time">14:32:08</span>
+      </div>
+      <div class="state tone-good"><span class="dot"></span><span class="state-text" style="color:var(--text)">running</span><span class="aside">pid 2410</span></div>
+      <div class="branch"><svg><use href="#i-branch"/></svg>feat/demo-123<svg style="width:11px;height:11px;color:var(--text-3)"><use href="#i-open"/></svg></div>
+      <div class="meta"><span>node · demo</span><span class="command">npm run dev</span></div>
+      <div class="chips">
+        <span class="chip"><svg><use href="#i-open"/></svg>Local site</span>
+        <span class="chip">Storybook</span>
+        <span class="place">WSL · Ubuntu-24.04</span>
+      </div>
+      <div class="actions">
+        <span class="button bad primary"><svg><use href="#i-power"/></svg>Stop</span>
+        <span class="button"><svg><use href="#i-restart"/></svg>Restart</span>
+        <span class="button square"><svg><use href="#i-folder"/></svg></span>
+        <span class="button square"><svg><use href="#i-terminal"/></svg></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="header">
+        <svg class="mark"><use href="#i-node"/></svg>
+        <span class="eyebrow">Project · Sample Windows</span>
+        <span class="spacer"></span>
+        <span class="icon-button"><svg><use href="#i-log"/></svg></span>
+        <span class="time">14:32:05</span>
+      </div>
+      <div class="state" style="color:var(--text-3)"><span class="dot"></span><span class="state-text" style="color:var(--text-2)">stopped</span></div>
+      <div class="branch"><svg><use href="#i-branch"/></svg>main<svg style="width:11px;height:11px;color:var(--text-3)"><use href="#i-open"/></svg></div>
+      <div class="meta"><span>node · demo-windows</span><span class="command">npm start</span></div>
+      <div class="chips">
+        <span class="chip off">Local site</span>
+        <span class="place">Windows</span>
+      </div>
+      <div class="actions">
+        <span class="button good primary"><svg><use href="#i-play"/></svg>Start</span>
+        <span class="button disabled"><svg><use href="#i-restart"/></svg>Restart</span>
+        <span class="button square"><svg><use href="#i-folder"/></svg></span>
+        <span class="button square"><svg><use href="#i-terminal"/></svg></span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

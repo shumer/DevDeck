@@ -113,6 +113,8 @@ public enum DeckCommand: Sendable, Equatable, Codable {
     case openAccountSettings(AttentionService, account: String?)
     /// Bring a card into view, putting it on the deck if it is not.
     case showCard(CardID)
+    /// A banner was clicked: go where it points.
+    case followAlert(DeckAlert.Target)
     /// Forget what was reported about a project until something new happens to it.
     case dismissAttention(id: String)
     case installUpdate

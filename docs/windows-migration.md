@@ -73,7 +73,11 @@ nor `DevDeckUI` decides anything by the rule in 0024.
 - **C-1. Protocol v2 in full**: every intent and event, plus what the Windows style needs: where a
   project runs, the branch with its link, the effective command, header buttons, the health strip,
   semantic icons, and why Stop cannot reach a project (`LocalProjectStatus.stopBlock`, see
-  [adr/0026](adr/0026-stop-only-what-the-deck-holds.md)). Documented in `docs/engine-protocol.md`, together with the Windows style guide.
+  [adr/0026](adr/0026-stop-only-what-the-deck-holds.md)). Documented in
+  [engine-protocol.md](engine-protocol.md), together with the [Windows style guide](windows-style.md).
+  In three steps: the session and its events
+  ([adr/0033](adr/0033-protocol-on-the-runtime.md)), settings and updates on the wire, and the host
+  moved onto the session.
 - **W-1. The engine host on Windows from `main`**, with every golden transcript identical.
 - **W-2. Windows CI** on `windows-latest`: core and engine build, engine tests, shell tests. The
   Mac workflow is unchanged.

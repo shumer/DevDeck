@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import DevDeckCore
+import DevDeckEngine
 
 /// The log of one project, in a window of its own.
 ///
@@ -28,7 +29,7 @@ final class LogWindowController: NSWindowController, NSWindowDelegate {
 
     private static let defaultSize = NSSize(width: 640, height: 380)
     /// How often the window re-reads while it is on screen. A log is watched, not polled once.
-    private static let interval: TimeInterval = 2
+    private static let interval = DeckRuntime.logWindowInterval
 
     init(card: CardID, title: String, controller: DeckController) {
         self.card = card

@@ -228,10 +228,8 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         case .openCardSettings(let card): openCardSettings(card)
         case .openAccountSettings(let service, let account): openAccountSettings(service, account)
         case .showCard(let card): showCard(card)
+        case .openMenu: open()
         case .installUpdate: updater.install()
-        case .openReleaseNotes:
-            guard let update = updater.available else { return }
-            LinkOpener.open(update.pageURL, using: .systemDefault)
         case .quit: quit()
         case .arrangementApplied:
             panels.syncPanels()

@@ -51,11 +51,15 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         public let repository: DeckCommand?
         public let leading: String?
         public let trailing: String?
+        /// Where the project runs, `Windows` or `WSL · Ubuntu-24.04`, where there is more than
+        /// one place it could. Information, not a link.
+        public let place: String?
 
-        init(branch: String?, repositoryURL: URL?, card: CardID, leading: String?, trailing: String?) {
+        init(branch: String?, repositoryURL: URL?, card: CardID, folder: String?, leading: String?, trailing: String?) {
             self.branch = branch
             branchHelp = repositoryURL.map { L("card.branch.help", $0.absoluteString, branch ?? "") } ?? L("card.branch.checkedOut")
             repository = repositoryURL.map { .openProjectLink(card, $0) }
+            place = ProjectLocation(folder: folder)?.label
             self.leading = leading
             self.trailing = trailing
         }
@@ -158,6 +162,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
                 branch: status.branch,
                 repositoryURL: status.repositoryURL,
                 card: card,
+                folder: project.folder,
                 // While a command runs, the line it just printed takes the meta slot: it is the
                 // only thing on the card that is changing.
                 leading: status.isBusy ? (status.progressLine ?? project.organization) : project.organization,
@@ -233,6 +238,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
                 branch: status.branch,
                 repositoryURL: status.repositoryURL,
                 card: card,
+                folder: project.folder,
                 leading: leading.isEmpty ? nil : leading.joined(separator: " · "),
                 trailing: status.versionsLine
             ),
@@ -338,6 +344,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
                 branch: status.branch,
                 repositoryURL: status.repositoryURL,
                 card: card,
+                folder: project.folder,
                 leading: leading.isEmpty ? nil : leading.joined(separator: " · "),
                 trailing: project.startCommandSummary
             ),

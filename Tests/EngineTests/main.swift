@@ -309,4 +309,5 @@ await run.test("multiple project cards retain independent state and ordered plac
 }
 await runGoldenTranscriptTests(run)
 await runRuntimeGoldenTests(run)
+await runSessionGoldenTests(run)
 run.finish()

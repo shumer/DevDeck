@@ -28,22 +28,28 @@ that reaches for a window cannot be covered by it.
 
 ## Engine protocol
 
-`DevDeckEngine` is the portable boundary between platform shells and deck behaviour. Protocol
-v2 is a JSON Lines stream: a shell sends versioned intents and the engine replies with versioned
-events carrying complete card models. `DevDeckEngineHost` exposes that stream over standard input
-and standard output, so a shell can restart without taking a project down.
+`DevDeckEngine` is the portable boundary between platform shells and deck behaviour. The Mac
+app links it and calls `DeckRuntime` directly. A shell in another process talks to `DeckSession`,
+which wraps the same runtime, over protocol v2: JSON Lines, intents in (displays, sizes, moves,
+log windows, and clicks as the commands the events carried), events out (card models and their
+menus, the tray status and menu, panel changes, log lines, banners and effects).
+`DevDeckEngineHost` exposes that stream over standard input and standard output, so a shell can
+restart without taking a project down. The contract is [engine-protocol.md](engine-protocol.md);
+the decision is [adr/0033-protocol-on-the-runtime.md](adr/0033-protocol-on-the-runtime.md).
 
-`DevDeckEngineTests` replay three English and Russian input transcripts and compare every output
-byte with the committed golden files. This keeps event order, text, tone, visibility and state
-changes identical across platforms.
+`DevDeckEngineTests` compare three kinds of golden transcripts byte for byte with the committed
+files:
 
-The deck runtime has transcripts of its own, `Tests/EngineTests/RuntimeGolden.swift`: every
-card's model before and after a pass, folded and expanded; the menu-bar menu, a card's menu and
-the status, before and after; the banners over two passes and a summary; and placement through
-an unplugged monitor and back. One JSON object per line, sorted keys, clocks in UTC, every input
-fixed. The same bytes on the Mac and on Windows are what keeps two shells drawing one deck; a
-change that alters them is regenerated on purpose (see development.md) and the diff read. The protocol front-end still has the proof of concept's own
-polling; moving it onto `DeckRuntime`, which the Mac already runs on, is C-1.
+- the runtime's, `Tests/EngineTests/RuntimeGolden.swift`: every card's model before and after a
+  pass, folded and expanded; the menu-bar menu, a card's menu and the status; the banners over
+  two passes and a summary; and placement through an unplugged monitor and back;
+- the protocol's, `Tests/EngineTests/SessionGolden.swift`: a session driven by intent lines as a
+  shell writes them, in English and Russian, with every event it sends back;
+- the proof of concept's three input transcripts, until the host moves onto the session.
+
+One JSON object per line, sorted keys, clocks in UTC, every input fixed. The same bytes on the
+Mac and on Windows are what keeps two shells drawing one deck; a change that alters them is
+regenerated on purpose (see development.md) and the diff read.
 
 ## The deck runtime
 

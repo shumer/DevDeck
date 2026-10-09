@@ -71,7 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openAccountSettings: { [unowned self] service, id in
             self.settingsController.show(service == .github ? .github : .gitlab, id: id)
         },
-        showCard: { [unowned self] card in self.showCard(card) },
+        // The runtime has put the card on the deck and opened its log; what is left is the Mac's.
+        showCard: { [unowned self] _ in self.summoner.present() },
         quit: { [unowned self] in
             self.controller.stop()
             NSApp.terminate(nil)
@@ -164,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // A banner opens what it is about: a page in the browser profile of the account that owns
         // it, a project's card, an account's settings, or the menu that lists a summary's items.
-        notifier.onTarget = { [weak self] target in self?.open(target) }
+        notifier.onTarget = { [weak self] target in self?.controller.runtime.perform(.followAlert(target)) }
         controller.onAlerts = { [weak self] alerts in self?.notifier.post(alerts) }
         controller.updateStatusItem = { [weak self] in self?.menu.updateStatusItem() }
         controller.onAppEffect = { [weak self] effect in
@@ -246,34 +247,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--update") {
             updater.checkAndInstall()
         }
-    }
-
-    /// Where a clicked banner goes.
-    private func open(_ target: DeckAlert.Target) {
-        switch target {
-        case .url(let url, let accountID):
-            let isGitLab = controller.gitlabAccountLabels[accountID] != nil
-            LinkOpener.open(url, using: isGitLab ? controller.gitlabBrowser(for: accountID) : controller.browser(for: accountID))
-        case .card(let card):
-            showCard(card)
-        case .accountSettings(let service, let accountID):
-            settingsController.show(service == "gitlab" ? .gitlab : .github, id: accountID.isEmpty ? nil : accountID)
-        case .menu:
-            menu.open()
-        }
-    }
-
-    /// Brings the deck up with this card's log open in its window: what a row about a project
-    /// promises. A folded card has a log like any other; the window is not on the card.
-    private func showCard(_ card: CardID) {
-        if !cards.isEnabled(card) {
-            cards.setEnabled(true, for: card)
-            panels.syncPanels()
-        }
-        if controller.hasLogSource(card), !controller.isShowingLogs(card) {
-            controller.toggleLogs(for: card)
-        }
-        summoner.present()
     }
 
     /// Anything in settings changed: a project added or removed changes the card list, not just

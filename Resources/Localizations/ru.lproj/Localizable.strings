@@ -172,6 +172,8 @@
 "card.allAccounts" = "все аккаунты";
 "card.asOf" = "на %@";
 "card.branch.checkedOut" = "текущая ветка";
+"project.place.windows" = "Windows";
+"project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, ветка %2$@";
 "card.catalog.actions.subtitle" = "Доля успешных workflow и запущенные джобы";
 "card.catalog.arc.subtitle" = "Организации, сайты и версии живых бандлов";

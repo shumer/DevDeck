@@ -40,9 +40,11 @@ public enum DeckEffect: Sendable, Equatable {
     case openSettings
     case openCardSettings(CardID)
     case openAccountSettings(AttentionService, account: String?)
+    /// Bring the deck up for this card, which is already on it with its log open if it has one.
     case showCard(CardID)
+    /// Open the menu-bar menu, for a banner that summarised several things.
+    case openMenu
     case installUpdate
-    case openReleaseNotes
     case quit
     /// A saved arrangement changed the cards, their folds and their placements: open the panels
     /// and put them where the placements say.
@@ -1210,7 +1212,10 @@ public final class DeckRuntime {
         logTails[card] = nil
     }
 
-    /// Read now, because a window asked. The window is what sets the cadence while it is open.
+    /// How often an open log window is read again.
+    public static let logWindowInterval: TimeInterval = 2
+
+    /// Read now, because a window asked, every `logWindowInterval` while it is open.
     public func refreshLogsNow(for card: CardID) {
         guard hasLogSource(card) else { return }
         spawn { [weak self] in await self?.refreshLogs(for: card) }
@@ -1823,13 +1828,17 @@ public final class DeckRuntime {
         case .openAccountSettings(let service, let account):
             effect(.openAccountSettings(service, account: account))
         case .showCard(let card):
-            effect(.showCard(card))
+            showCard(card)
+        case .followAlert(let target):
+            follow(target)
         case .dismissAttention(let id):
             dismissAttention(id: id)
         case .installUpdate:
             effect(.installUpdate)
         case .openReleaseNotes:
-            effect(.openReleaseNotes)
+            // The release page in the default browser: it is the project's, not an account's.
+            guard let update = updates?.available else { return }
+            effect(.openURL(update.pageURL, .systemDefault))
         case .quit:
             effect(.quit)
         case .powerOffDDEV:
@@ -1846,6 +1855,35 @@ public final class DeckRuntime {
             // Through the first account's browser, like every other GitHub link on the deck.
             guard let url = dashboardURL(for: .githubPullRequests) else { return }
             effect(.openURL(url, firstGitHubBrowser))
+        }
+    }
+
+    /// What a row about a project promises: the card on the deck, its log open, the deck up.
+    private func showCard(_ card: CardID) {
+        let list = cards
+        if !list.isEnabled(card) {
+            list.setEnabled(true, for: card)
+            effect(.cardsChanged)
+        }
+        if hasLogSource(card), !isShowingLogs(card) {
+            toggleLogs(for: card)
+        }
+        effect(.showCard(card))
+    }
+
+    /// Where a clicked banner goes: a page in the browser profile of the account that owns it, a
+    /// project's card, an account's settings, or the menu that lists a summary's items.
+    private func follow(_ target: DeckAlert.Target) {
+        switch target {
+        case .url(let url, let account):
+            let isGitLab = gitlabAccountLabels[account] != nil
+            effect(.openURL(url, isGitLab ? gitlabBrowser(for: account) : browser(for: account)))
+        case .card(let card):
+            showCard(card)
+        case .accountSettings(let service, let account):
+            effect(.openAccountSettings(AttentionService(rawValue: service) ?? .github, account: account.isEmpty ? nil : account))
+        case .menu:
+            effect(.openMenu)
         }
     }
 

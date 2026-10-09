@@ -172,6 +172,8 @@
 "card.allAccounts" = "alle Accounts";
 "card.asOf" = "Stand %@";
 "card.branch.checkedOut" = "ausgecheckter Branch";
+"project.place.windows" = "Windows";
+"project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, der Branch ist %2$@";
 "card.catalog.actions.subtitle" = "Erfolgsquote der Workflows und laufende Jobs";
 "card.catalog.arc.subtitle" = "Orgs, Sites und Live-Bundle-Versionen";
