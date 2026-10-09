@@ -63,7 +63,7 @@ only has to draw.
 - **M-7. The update check in the engine.** Installing stays in the shell. Done; see
   [adr/0032](adr/0032-the-update-check-in-the-engine.md).
 - **M-8. Golden transcripts** for every card, the menu, notifications and placement, in English
-  and Russian. See `Tests/EngineTests/RuntimeGolden.swift`.
+  and Russian. Done; see `Tests/EngineTests/RuntimeGolden.swift`, byte for byte on both platforms.
 
 Phase 1 is done when the Mac app behaves as before, every suite is green and neither `DevDeckApp`
 nor `DevDeckUI` decides anything by the rule in 0024.
