@@ -28,5 +28,6 @@ await runIdentityTests(run)
 await runCheckSummaryTests(run)
 await runLocalisationTests(run)
 await runAttentionTests(run)
+await runDeckRuntimeTests(run)
 
 run.finish()

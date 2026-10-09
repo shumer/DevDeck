@@ -40,7 +40,13 @@ public final class TestRun: @unchecked Sendable {
         if isSectionActive { print("\n\(name)") }
     }
 
-    public func test(_ name: String, _ body: () async throws -> Void) async {
+    /// Runs on the caller's actor, so a suite written for the main actor can hand over a body
+    /// that touches main-actor state.
+    public func test(
+        _ name: String,
+        isolation: isolated (any Actor)? = #isolation,
+        _ body: () async throws -> Void
+    ) async {
         guard isSectionActive else {
             skipped += 1
             return
