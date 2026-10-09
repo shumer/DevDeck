@@ -1,56 +1,22 @@
 import DevDeckCore
+import DevDeckEngine
 import SwiftUI
-
-/// A link on a project card, whatever kind of project it is.
-public struct ProjectChip: Identifiable, Equatable {
-    public enum Kind: Equatable {
-        /// Something you work in: PageBuilder, Mailpit, an admin page.
-        case tool
-        /// The site itself, in some environment.
-        case site
-    }
-
-    public let label: String
-    public let url: URL
-    public let kind: Kind
-
-    public init(label: String, url: URL, kind: Kind) {
-        self.label = label
-        self.url = url
-        self.kind = kind
-    }
-
-    public var id: String { label }
-}
 
 /// The chip block: tooling, a divider, then the environments.
 public struct ProjectChipRow: View {
-    private let tools: [ProjectChip]
-    private let environments: [ProjectChip]
-    private let isLocalReachable: Bool
-    private let onOpen: (URL) -> Void
+    private let tools: [DeckProjectCardModel.Chip]
+    private let environments: [DeckProjectCardModel.Chip]
+    private let onCommand: (DeckCommand) -> Void
 
     public init(
-        tools: [ProjectChip],
-        environments: [ProjectChip],
-        isLocalReachable: Bool,
-        onOpen: @escaping (URL) -> Void
+        tools: [DeckProjectCardModel.Chip],
+        environments: [DeckProjectCardModel.Chip],
+        onCommand: @escaping (DeckCommand) -> Void
     ) {
         self.tools = tools
         self.environments = environments
-        self.isLocalReachable = isLocalReachable
-        self.onOpen = onOpen
+        self.onCommand = onCommand
     }
-
-    /// The label DDEV, Arc and plain projects all give the local environment.
-    public nonisolated static var localLabel: String { L("card.localSite") }
-    /// PageBuilder's editor as this stack serves it.
-    ///
-    /// Named to match its neighbour rather than shortened. "PB editor" beside a "PageBuilder"
-    /// chip three places to the left is two names for one product and no clue which of them is
-    /// the one you are running; "Local site" and "Local PageBuilder" say what they are and that
-    /// they are the same stack.
-    public nonisolated static var localPageBuilderLabel: String { L("card.localPageBuilder") }
 
     public var body: some View {
         // The divider is a subview like any other, so the layout is told which index it sits at
@@ -75,35 +41,21 @@ public struct ProjectChipRow: View {
         .padding(.top, CardChipFlow.topPadding)
     }
 
-    @ViewBuilder
-    private func view(for chip: ProjectChip) -> some View {
-        // By where it points rather than by what it is called: the local site is not the only
-        // local thing on the card any more, and a link into a stopped stack lands on a connection
-        // error that reads as a broken app rather than a stopped one.
-        let isLocal = chip.kind == .site && LocalAddress.isServedHere(chip.url)
-        // A deployed environment is reachable whether or not anything is running here; only the
-        // local one goes nowhere, and a link into a stopped project lands on a connection error
-        // that reads as a broken app rather than a stopped one.
-        let isDimmed = isLocal && !isLocalReachable
-
-        CardChip(
-            chip.label,
-            color: Self.colour(for: chip, isLocal: isLocal),
-            isDimmed: isDimmed,
-            help: isDimmed
-                ? L("card.chip.notRunning", chip.url.absoluteString)
-                : chip.url.absoluteString
-        ) {
-            guard !isDimmed else { return }
-            onOpen(chip.url)
+    private func view(for chip: DeckProjectCardModel.Chip) -> some View {
+        CardChip(chip.label, color: Self.colour(for: chip.kind), isDimmed: chip.isDimmed, help: chip.help) {
+            guard let command = chip.command else { return }
+            onCommand(command)
         }
     }
 
-    public nonisolated static func colour(for chip: ProjectChip, isLocal: Bool) -> Color {
-        guard chip.kind == .site else { return DeckTheme.blue }
-        if isLocal { return DeckTheme.green }
-        // Production is the one worth a beat of hesitation, so it is the one that is not calm.
-        return chip.label.lowercased().contains("prod") ? DeckTheme.amber : DeckTheme.violet
+    /// Production is the one worth a beat of hesitation, so it is the one that is not calm.
+    public nonisolated static func colour(for kind: DeckProjectCardModel.Chip.Kind) -> Color {
+        switch kind {
+        case .tool: return DeckTheme.blue
+        case .local: return DeckTheme.green
+        case .production: return DeckTheme.amber
+        case .environment: return DeckTheme.violet
+        }
     }
 }
 
@@ -125,14 +77,5 @@ public enum ProjectCardMetrics {
             + CardChipFlow.height(tools: tools, environments: environments)
             + CardActionRow.height
             + CardChromeMetrics.bottomPadding
-    }
-
-    /// The time of the last check, as the card header shows it.
-    public nonisolated static func timestamp(_ date: Date?) -> String {
-        guard let date else { return L("card.na") }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "HH:mm:ss"
-        return formatter.string(from: date)
     }
 }

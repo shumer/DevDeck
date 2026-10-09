@@ -11,6 +11,12 @@ import GitLabKit
 import ProjectKit
 import TestHarness
 
+/// An Arc card's model with nothing else going on: no Docker trouble, no logs, no phone.
+private func arcModel(_ project: ArcProject, _ status: LocalStackStatus, collapsed: Bool = false) -> DeckProjectCardModel {
+    .arc(project, status: status, docker: DockerStatus(state: .unknown), canStartDocker: false,
+         isShowingLogs: false, isCollapsed: collapsed, phoneURL: nil)
+}
+
 func runPresentationTests(_ run: TestRun) async {
     run.section("Cards - expanding")
 
@@ -446,12 +452,12 @@ func runPresentationTests(_ run: TestRun) async {
         let stopped = LocalStackStatus(state: .stopped)
 
         project.links = [ArcLink(label: "PageBuilder", urlTemplate: "https://example.com", isEnabled: true)]
-        let oneLine = ArcProjectCard.size(for: project, status: stopped)
+        let oneLine = ProjectCard.size(for: arcModel(project, stopped))
 
         // Five tools plus the environments cannot share a 292-point line.
         project.links = ["PageBuilder", "Composer", "Deployer", "Site Service", "Delivery API"]
             .map { ArcLink(label: $0, urlTemplate: "https://example.com/\($0)", isEnabled: true) }
-        let twoLines = ArcProjectCard.size(for: project, status: stopped)
+        let twoLines = ProjectCard.size(for: arcModel(project, stopped))
 
         try expectEqual(twoLines.height - oneLine.height, CardChip.height + CardChipFlow.lineSpacing)
         try expectEqual(oneLine.width, CardMetrics.width, "the width never moves")
@@ -459,8 +465,8 @@ func runPresentationTests(_ run: TestRun) async {
 
     await run.test("the branch line adds its own height") {
         let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
-        let without = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped))
-        let with = ArcProjectCard.size(for: project, status: LocalStackStatus(state: .stopped, branch: "main"))
+        let without = ProjectCard.size(for: arcModel(project, LocalStackStatus(state: .stopped)))
+        let with = ProjectCard.size(for: arcModel(project, LocalStackStatus(state: .stopped, branch: "main")))
         try expectEqual(with.height - without.height, CardMetaBlock.branchHeight)
     }
 
@@ -682,13 +688,13 @@ func runPresentationTests(_ run: TestRun) async {
         let quiet = ArcProject(id: "q", title: "Q", organization: "o", folder: "/tmp")
         let status = LocalStackStatus(state: .running, branch: "main")
 
-        let one = ArcProjectCard.size(for: busy, status: status, isCollapsed: true)
-        let two = ArcProjectCard.size(for: quiet, status: LocalStackStatus(state: .stopped), isCollapsed: true)
+        let one = ProjectCard.size(for: arcModel(busy, status, collapsed: true))
+        let two = ProjectCard.size(for: arcModel(quiet, LocalStackStatus(state: .stopped), collapsed: true))
         try expectEqual(one.height, CollapsedCardMetrics.height, "44 points, and nothing to measure")
         try expectEqual(one.height, two.height, "the same for every card, however much it was holding")
         try expectEqual(one.width, CardMetrics.width, "the width does not change; the deck is still a column")
 
-        let whole = ArcProjectCard.size(for: busy, status: status)
+        let whole = ProjectCard.size(for: arcModel(busy, status))
         try expect(whole.height > one.height * 3, "the saving is the point: 209 against 44")
     }
 
@@ -717,13 +723,9 @@ func runPresentationTests(_ run: TestRun) async {
 
     await run.test("a folded project keeps its controls, and drops the note to fit them") {
         let project = ArcProject(id: "p", title: "Libero", organization: "acme", folder: "/tmp")
-        // A view is main-actor work even when all that is asked of it is arithmetic, so the
-        // answers are taken over there and compared here.
-        let (running, showsNote, stopped) = await MainActor.run {
-            let up = ArcProjectCard(project: project, status: LocalStackStatus(state: .running, containers: 10))
-            let down = ArcProjectCard(project: project, status: LocalStackStatus(state: .stopped))
-            return (up.collapsedActionTitles, up.showsCollapsedNote, down.collapsedActionTitles)
-        }
+        let up = arcModel(project, LocalStackStatus(state: .running, containers: 10)).collapsed.actions
+        let down = arcModel(project, LocalStackStatus(state: .stopped)).collapsed.actions
+        let (running, showsNote, stopped) = (up.map(\.title), up.count < 2, down.map(\.title))
 
         // Four squares take 108 points of the 324 a row has. The note is what pays for them:
         // `10 containers` is 78, and the dot has already said running.
@@ -739,7 +741,7 @@ func runPresentationTests(_ run: TestRun) async {
         let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let status = LocalStackStatus(state: .running)
         try expectEqual(
-            ArcProjectCard.size(for: project, status: status, isCollapsed: true).height,
+            ProjectCard.size(for: arcModel(project, status, collapsed: true)).height,
             CollapsedCardMetrics.height,
             "a card folded to a row is a row"
         )
@@ -795,16 +797,16 @@ func runPresentationTests(_ run: TestRun) async {
         // moved every time somebody opened one. The window is the whole point.
         let project = ArcProject(id: "p", title: "P", organization: "o", folder: "/tmp")
         let status = LocalStackStatus(state: .running, branch: "main")
-        let height = ArcProjectCard.size(for: project, status: status).height
+        let height = ProjectCard.size(for: arcModel(project, status)).height
         // The tray was another 120 points on top of this, and the column under the card moved
         // every time one opened. Nothing a log does may change this number.
         try expect(height < 260, "a project card stays a card: \(height)")
 
         let ddev = DDEVProject(id: "d", name: "shop", folder: "/tmp")
-        try expect(DDEVProjectCard.size(for: ddev, status: DDEVStatus(state: .running)).height < 260)
+        try expect(ProjectCard.size(for: .ddev(ddev, status: DDEVStatus(state: .running), docker: DockerStatus(state: .unknown), canStartDocker: false, isShowingLogs: false, isCollapsed: false, phoneURL: nil)).height < 260)
 
         let local = LocalProject(id: "l", title: "feed", folder: "/tmp", startCommand: "npm run dev")
-        try expect(LocalProjectCard.size(for: local, status: LocalProjectStatus(state: .running)).height < 260)
+        try expect(ProjectCard.size(for: .local(local, status: LocalProjectStatus(state: .running), docker: DockerStatus(state: .unknown), canStartDocker: false, isShowingLogs: false, isCollapsed: false, phoneURL: nil)).height < 260)
     }
 
     run.section("Cards - the palette")

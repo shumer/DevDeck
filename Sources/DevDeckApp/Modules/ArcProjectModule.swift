@@ -1,6 +1,7 @@
 import AppKit
 import ArcKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import SwiftUI
 
@@ -37,35 +38,15 @@ final class ArcProjectModule: CardModule, SettingsSection {
     }
 
     func view(for card: CardID) -> AnyView {
-        guard let project = store.project(forCard: card) else { return AnyView(EmptyView()) }
-        let status = controller.stackStatus(for: project)
-        return AnyView(ArcProjectCard(
-            project: project,
-            status: status,
-            docker: controller.docker,
-            isShowingLogs: controller.isShowingLogs(card),
-            isCollapsed: controller.isCollapsed(card),
-            // Where the site is served is read from the checkout's `.env`, and the stack says
-            // whether it is up.
-            phoneURL: controller.phoneURL(for: status.siteURL ?? project.localSiteURL, isRunning: status.isRunning),
-            onOpen: { LinkOpener.open($0, using: project.browser) },
-            onAction: { [controller] in controller.perform($0, for: project) },
-            onRevealFolder: { LocalFolder.reveal(project.folderURL) },
-            onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
-            onStartDocker: context.startDocker,
-            onToggleLogs: { [controller] in controller.toggleLogs(for: card) }
-        ))
+        guard case .project(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(ProjectCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
-        guard let project = store.project(forCard: card) else {
+        guard case .project(let model)? = controller.model(for: card) else {
             return NSSize(width: CardMetrics.width, height: 150)
         }
-        return ArcProjectCard.size(
-            for: project,
-            status: controller.stackStatus(for: project),
-            isCollapsed: controller.isCollapsed(card)
-        )
+        return ProjectCard.size(for: model)
     }
 
     func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) {

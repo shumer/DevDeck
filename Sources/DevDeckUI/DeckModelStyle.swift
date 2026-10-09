@@ -35,7 +35,26 @@ public extension DeckGlyph {
         switch self {
         case .review: return "eye"
         case .openExternal: return "arrow.up.forward"
+        case .start: return "play.fill"
+        case .stop: return "power"
+        case .restart: return "arrow.clockwise"
+        case .terminal: return "terminal"
+        case .folder: return "folder"
+        case .docker: return "shippingbox.fill"
         }
+    }
+}
+
+public extension CardAction {
+    init(_ model: DeckActionModel, onCommand: @escaping (DeckCommand) -> Void) {
+        self.init(
+            model.title,
+            systemImage: model.glyph?.systemImage,
+            tint: model.tone?.color ?? DeckTheme.value,
+            isEnabled: model.isEnabled,
+            isProminent: model.isProminent,
+            action: { onCommand(model.command) }
+        )
     }
 }
 
@@ -59,14 +78,7 @@ public extension CardCollapsedRow {
             note: model.note,
             tone: model.tone.stateTone,
             color: model.tone.color,
-            actions: model.actions.map { action in
-                CardAction(
-                    action.title,
-                    systemImage: action.glyph?.systemImage,
-                    isEnabled: action.isEnabled,
-                    action: { onCommand(action.command) }
-                )
-            },
+            actions: model.actions.map { CardAction($0, onCommand: onCommand) },
             help: model.help
         )
     }

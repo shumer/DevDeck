@@ -1,4 +1,5 @@
 import DevDeckCore
+import DevDeckEngine
 import AppKit
 import SwiftUI
 
@@ -423,23 +424,19 @@ public struct CardHeroRow: View {
 /// them, and "which branch is this" must not be the thing that gets truncated.
 public struct CardMetaBlock: View {
     private let branch: String?
-    private let repositoryURL: URL?
+    private let branchHelp: String
+    private let repository: DeckCommand?
     private let leading: String?
     private let trailing: String?
-    private let onOpenRepository: ((URL) -> Void)?
+    private let onCommand: (DeckCommand) -> Void
 
-    public init(
-        branch: String?,
-        repositoryURL: URL? = nil,
-        leading: String?,
-        trailing: String? = nil,
-        onOpenRepository: ((URL) -> Void)? = nil
-    ) {
-        self.branch = branch
-        self.repositoryURL = repositoryURL
-        self.leading = leading
-        self.trailing = trailing
-        self.onOpenRepository = onOpenRepository
+    public init(_ meta: DeckProjectCardModel.Meta, onCommand: @escaping (DeckCommand) -> Void) {
+        branch = meta.branch
+        branchHelp = meta.branchHelp
+        repository = meta.repository
+        leading = meta.leading
+        trailing = meta.trailing
+        self.onCommand = onCommand
     }
 
     public nonisolated static let branchHeight: Double = 15
@@ -497,7 +494,7 @@ public struct CardMetaBlock: View {
     /// click was to reach the repository without hunting for it.
     @ViewBuilder
     private func branchRow(_ branch: String) -> some View {
-        let isLink = repositoryURL != nil && onOpenRepository != nil
+        let isLink = repository != nil
 
         HStack(spacing: 5) {
             Text("⎇ \(branch)")
@@ -516,9 +513,9 @@ public struct CardMetaBlock: View {
         .contentShape(Rectangle())
         .clickable(cornerRadius: 5, isEnabled: isLink)
         .onTapGesture {
-            guard let repositoryURL, let onOpenRepository else { return }
-            onOpenRepository(repositoryURL)
+            guard let repository else { return }
+            onCommand(repository)
         }
-        .help(repositoryURL.map { L("card.branch.help", $0.absoluteString, branch) } ?? L("card.branch.checkedOut"))
+        .help(branchHelp)
     }
 }

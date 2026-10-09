@@ -31,6 +31,18 @@ public enum DeckGlyph: String, Sendable, Equatable, Codable {
     case review
     /// Opens something outside the deck, in the browser.
     case openExternal
+    case start
+    case stop
+    case restart
+    case terminal
+    case folder
+    /// The container runtime, for the button that launches it.
+    case docker
+}
+
+/// What a project's lifecycle buttons ask for, whichever kind of project it is.
+public enum DeckProjectAction: String, Sendable, Equatable, Codable {
+    case start, stop, restart
 }
 
 /// An icon in a row: what it means, how loud it is, and what it says under the pointer.
@@ -70,6 +82,18 @@ public enum DeckCommand: Sendable, Equatable, Codable {
     case openSetting(DeckSetting)
     /// Open a terminal in a checkout's folder.
     case openCheckout(id: String)
+    /// A project card's link, in that project's own browser.
+    case openProjectLink(CardID, URL)
+    /// Start, stop or restart a project.
+    case project(CardID, DeckProjectAction)
+    /// Show a project's folder.
+    case revealFolder(CardID)
+    /// Open a terminal in a project's folder.
+    case openTerminal(CardID)
+    /// Launch the container runtime's app.
+    case startDocker
+    /// Open a project's log window, or close it.
+    case toggleLogs(CardID)
 }
 
 /// The settings a card can point at.
@@ -134,13 +158,26 @@ public struct DeckPlaceholderModel: Sendable, Equatable, Codable {
 public struct DeckActionModel: Sendable, Equatable, Codable {
     public let title: String
     public let glyph: DeckGlyph?
+    /// Nil for a quiet button; a tone for the one the state implies.
+    public let tone: DeckTone?
     public let isEnabled: Bool
+    /// The action that matters, which the row gives more room.
+    public let isProminent: Bool
     public let command: DeckCommand
 
-    public init(_ title: String, glyph: DeckGlyph? = nil, isEnabled: Bool = true, command: DeckCommand) {
+    public init(
+        _ title: String,
+        glyph: DeckGlyph? = nil,
+        tone: DeckTone? = nil,
+        isEnabled: Bool = true,
+        isProminent: Bool = false,
+        command: DeckCommand
+    ) {
         self.title = title
         self.glyph = glyph
+        self.tone = tone
         self.isEnabled = isEnabled
+        self.isProminent = isProminent
         self.command = command
     }
 }

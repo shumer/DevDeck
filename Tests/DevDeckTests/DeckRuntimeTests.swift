@@ -466,6 +466,33 @@ func runDeckRuntimeTests(_ run: TestRun) async {
         try expect(deck.effects.isEmpty)
     }
 
+    await run.test("a project's links open in that project's browser, and its buttons reach it") {
+        let chrome = BrowserChoice(bundleIdentifier: "com.google.Chrome", profileDirectory: "Profile 2")
+        var project = LocalProject(id: "links-\(UUID().uuidString)", title: "Links", folder: FileManager.default.temporaryDirectory.path, startCommand: "npm run dev")
+        project.browser = chrome
+        // Runtime files in a folder of its own, so a start leaves nothing under Application Support.
+        let files = ProjectRuntimeFiles(directory: FileManager.default.temporaryDirectory.appendingPathComponent("devdeck-links-\(UUID().uuidString)"))
+        let deck = Deck(cards: [project.cardID], localProjects: [project], projectFiles: files)
+        let site = URL(string: "http://localhost:3000")!
+        deck.runtime.perform(.openProjectLink(project.cardID, site))
+        deck.runtime.perform(.revealFolder(project.cardID))
+        deck.runtime.perform(.openTerminal(project.cardID))
+        try expectEqual(deck.effects, [
+            .openURL(site, chrome),
+            .revealFolder(try expectNotNil(project.folderURL, "folder")),
+            .openTerminal(try expectNotNil(project.folderURL, "folder")),
+        ])
+        deck.runtime.perform(.project(project.cardID, .start))
+        try expectEqual(deck.runtime.localStatus(for: project).state, .working, "Start reached the project")
+        await deck.runtime.settle()
+    }
+
+    await run.test("the card's Start Docker is the runtime's own") {
+        let deck = Deck(cards: [], canStartDocker: true)
+        deck.runtime.perform(.startDocker)
+        try expectEqual(deck.runtime.docker.state, .starting)
+    }
+
     run.section("Deck runtime - banners")
 
     await run.test("the first pass is quiet, a repeat is not news, and something new is") {

@@ -30,6 +30,8 @@ public enum DeckEffect: Sendable, Equatable {
     case openSetting(DeckSetting)
     /// Open a terminal in this folder.
     case openTerminal(URL)
+    /// Show this folder.
+    case revealFolder(URL)
 }
 
 /// A card's model, whichever card it is. See `DeckRuntime.model(for:)`.
@@ -38,6 +40,7 @@ public enum DeckCardModel: Sendable, Equatable {
     case inbox(InboxCardModel)
     case actions(ActionsCardModel)
     case workInFlight(WorkInFlightCardModel)
+    case project(DeckProjectCardModel)
 }
 
 /// Owns the data every card renders and the loops that keep it fresh, on every platform.
@@ -1579,8 +1582,49 @@ public final class DeckRuntime {
                 isCollapsed: isCollapsed(card)
             ))
         default:
-            return nil
+            return projectModel(for: card)
         }
+    }
+
+    /// An Arc, DDEV or plain project's card, whichever kind owns this card.
+    private func projectModel(for card: CardID) -> DeckCardModel? {
+        if let project = project(forCard: card) {
+            let status = stackStatus(for: project)
+            return .project(.arc(
+                project, status: status, docker: docker, canStartDocker: canStartDocker,
+                isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
+                // Where the site is served is read from the checkout's `.env`, and the stack says
+                // whether it is up.
+                phoneURL: phoneURL(for: status.siteURL ?? project.localSiteURL, isRunning: status.isRunning)
+            ))
+        }
+        if let project = ddevProject(forCard: card) {
+            let status = ddevStatus(for: project)
+            return .project(.ddev(
+                project, status: status, docker: docker, canStartDocker: canStartDocker,
+                isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
+                // DDEV knows where it serves; `ddev list` says so.
+                phoneURL: phoneURL(for: status.entry?.primaryURL, isRunning: status.isRunning)
+            ))
+        }
+        if let project = localProject(forCard: card) {
+            let status = localStatus(for: project)
+            return .project(.local(
+                project, status: status, docker: docker, canStartDocker: canStartDocker,
+                isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
+                // A plain project was told where it serves; nothing can find out for it.
+                phoneURL: phoneURL(for: project.siteURL ?? project.healthCheckURL, isRunning: status.isRunning)
+            ))
+        }
+        return nil
+    }
+
+    /// The folder and the browser of whichever project owns a card.
+    private func projectPlace(for card: CardID) -> (folder: URL?, browser: BrowserChoice)? {
+        if let project = project(forCard: card) { return (project.folderURL, project.browser) }
+        if let project = ddevProject(forCard: card) { return (project.folderURL, project.browser) }
+        if let project = localProject(forCard: card) { return (project.folderURL, project.browser) }
+        return nil
     }
 
     /// Carries out a click from a card.
@@ -1610,6 +1654,27 @@ public final class DeckRuntime {
         case .openCheckout(let id):
             guard let state = checkouts.first(where: { $0.id == id }), let folder = folder(forCheckout: state) else { return }
             effect(.openTerminal(folder))
+        case .openProjectLink(let card, let url):
+            guard let place = projectPlace(for: card) else { return }
+            effect(.openURL(url, place.browser))
+        case .project(let card, let action):
+            if let project = project(forCard: card) {
+                perform(LocalStackAction(rawValue: action.rawValue) ?? .start, for: project)
+            } else if let project = ddevProject(forCard: card) {
+                perform(DDEVAction(rawValue: action.rawValue) ?? .start, for: project)
+            } else if let project = localProject(forCard: card) {
+                perform(LocalProjectAction(rawValue: action.rawValue) ?? .start, for: project)
+            }
+        case .revealFolder(let card):
+            guard let folder = projectPlace(for: card)?.folder else { return }
+            effect(.revealFolder(folder))
+        case .openTerminal(let card):
+            guard let folder = projectPlace(for: card)?.folder else { return }
+            effect(.openTerminal(folder))
+        case .startDocker:
+            startDockerRuntime()
+        case .toggleLogs(let card):
+            toggleLogs(for: card)
         }
     }
 

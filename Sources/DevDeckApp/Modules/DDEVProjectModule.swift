@@ -1,6 +1,7 @@
 import AppKit
 import DDEVKit
 import DevDeckCore
+import DevDeckEngine
 import DevDeckUI
 import SwiftUI
 
@@ -38,34 +39,15 @@ final class DDEVProjectModule: CardModule, SettingsSection {
     }
 
     func view(for card: CardID) -> AnyView {
-        guard let project = store.project(forCard: card) else { return AnyView(EmptyView()) }
-        let status = controller.ddevStatus(for: project)
-        return AnyView(DDEVProjectCard(
-            project: project,
-            status: status,
-            docker: controller.docker,
-            isShowingLogs: controller.isShowingLogs(card),
-            isCollapsed: controller.isCollapsed(card),
-            // DDEV knows where it serves; `ddev list` says so.
-            phoneURL: controller.phoneURL(for: status.entry?.primaryURL, isRunning: status.isRunning),
-            onOpen: { LinkOpener.open($0, using: project.browser) },
-            onAction: { [controller] in controller.perform($0, for: project) },
-            onRevealFolder: { LocalFolder.reveal(project.folderURL) },
-            onOpenTerminal: { LocalFolder.openTerminal(project.folderURL) },
-            onStartDocker: context.startDocker,
-            onToggleLogs: { [controller] in controller.toggleLogs(for: card) }
-        ))
+        guard case .project(let model)? = controller.model(for: card) else { return AnyView(EmptyView()) }
+        return AnyView(ProjectCard(model: model, onCommand: context.perform))
     }
 
     func size(for card: CardID) -> NSSize {
-        guard let project = store.project(forCard: card) else {
+        guard case .project(let model)? = controller.model(for: card) else {
             return NSSize(width: CardMetrics.width, height: 150)
         }
-        return DDEVProjectCard.size(
-            for: project,
-            status: controller.ddevStatus(for: project),
-            isCollapsed: controller.isCollapsed(card)
-        )
+        return ProjectCard.size(for: model)
     }
 
     func settingsTarget(for card: CardID) -> (section: SettingsWindowController.Section, id: String?) {

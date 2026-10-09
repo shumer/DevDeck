@@ -186,11 +186,8 @@
 "card.chrome.merges" = "GitLab · merge requests";
 "card.chrome.pulls" = "GitHub · pull requests";
 "card.ddev.notListed" = "no está en ddev list";
-"card.docker.noDocker" = "sin docker";
 "card.docker.notInstalled.note" = "Docker no está instalado, aquí no puede funcionar nada";
-"card.docker.off" = "docker apagado";
 "card.docker.off.note" = "Docker no está en marcha, arráncalo primero";
-"card.docker.starting" = "docker arrancando…";
 "card.docker.starting.note" = "arrancando Docker…";
 "card.duration.minutes" = "%1$dmin %2$ds";
 "card.duration.seconds" = "%ds";

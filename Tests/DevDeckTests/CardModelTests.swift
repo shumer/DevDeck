@@ -1,8 +1,11 @@
+import ArcKit
+import DDEVKit
 import DevDeckCore
 import DevDeckEngine
 import Foundation
 import GitHubKit
 import GitLabKit
+import ProjectKit
 import TestHarness
 
 // What a card shows, decided in the engine and checked here without drawing anything. Every
@@ -84,6 +87,22 @@ private func actionsModel(_ runs: [WorkflowRun], repositories: [String] = ["acme
 
 private func checkout(_ id: String, dirty: Int = 0, ahead: Int = 0) -> CheckoutState {
     CheckoutState(id: id, title: id, branch: "main", dirtyFiles: dirty, ahead: ahead, behind: 0, hasUpstream: true)
+}
+
+private let upDocker = DockerStatus(state: .running)
+
+private func arcCard(
+    _ status: LocalStackStatus,
+    docker: DockerStatus = upDocker,
+    canStartDocker: Bool = true,
+    project: ArcProject = ArcProject(id: "arc", title: "Libero", organization: "acme", folder: "/tmp")
+) -> DeckProjectCardModel {
+    .arc(project, status: status, docker: docker, canStartDocker: canStartDocker, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+}
+
+private func localCard(_ status: LocalProjectStatus, project: LocalProject? = nil) -> DeckProjectCardModel {
+    let project = project ?? LocalProject(id: "site", title: "Site", folder: "/tmp", startCommand: "npm run dev", holdsProcess: true)
+    return .local(project, status: status, docker: upDocker, canStartDocker: true, isShowingLogs: true, isCollapsed: false, phoneURL: nil)
 }
 
 func runCardModelTests(_ run: TestRun) async {
@@ -320,5 +339,97 @@ func runCardModelTests(_ run: TestRun) async {
         try expectEqual(model.collapsed.title, title, "the folded title was English in every language")
         try expectEqual(model.collapsed.tone, .good)
         try expectNil(model.pill)
+    }
+
+    run.section("Card models - projects")
+
+    await run.test("a running stack says so, counts its containers, and offers Stop and Restart") {
+        let model = arcCard(LocalStackStatus(state: .running, containers: 10))
+        try expectEqual(model.hero.tone, .good)
+        try expectEqual(model.hero.note, LN("card.containers", 10))
+        let card = ArcProject(id: "arc", title: "Libero", organization: "acme", folder: "/tmp").cardID
+        try expectEqual(model.actions.map(\.command), [.project(card, .stop), .project(card, .restart), .revealFolder(card), .openTerminal(card)])
+        try expectEqual(model.actions.first?.tone, .alert)
+        try expect(model.actions.first?.isProminent == true)
+        try expectEqual(model.collapsed.note, LN("card.containers", 10), "running, the count is the note")
+    }
+
+    await run.test("a stop that did not take effect looks wrong, not fine") {
+        let model = arcCard(LocalStackStatus(state: .running, detail: "still running after stop"))
+        try expectEqual(model.hero.tone, .attention)
+        try expectEqual(model.hero.text, "still running after stop")
+    }
+
+    await run.test("with Docker down the card offers to start Docker, or a disabled Start without an app to open") {
+        let stopped = LocalStackStatus(state: .stopped)
+        let down = arcCard(stopped, docker: DockerStatus(state: .notRunning))
+        try expectEqual(down.hero.text, DockerGate.text(DockerStatus(state: .notRunning)))
+        try expectEqual(down.hero.tone, .attention)
+        try expectEqual(down.actions.first?.command, .startDocker)
+        try expect(down.actions.first?.isEnabled == true)
+
+        let noApp = arcCard(stopped, docker: DockerStatus(state: .notRunning), canStartDocker: false)
+        try expectEqual(noApp.actions.first?.title, L("card.action.start"))
+        try expect(noApp.actions.first?.isEnabled == false)
+
+        let missing = arcCard(stopped, docker: DockerStatus(state: .notInstalled))
+        try expectEqual(missing.hero.tone, .alert)
+    }
+
+    await run.test("a DDEV project nobody lists is red and says who does not know it") {
+        let project = DDEVProject(id: "d", name: "shop", folder: "/tmp")
+        let model = DeckProjectCardModel.ddev(project, status: DDEVStatus(state: .unknown), docker: upDocker, canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectEqual(model.hero.tone, .alert)
+        try expectEqual(model.hero.note, L("card.ddev.notListed"))
+        let paused = DeckProjectCardModel.ddev(project, status: DDEVStatus(state: .paused), docker: upDocker, canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectEqual(paused.hero.text, L("card.state.paused"))
+        try expectEqual(paused.hero.tone, .attention)
+    }
+
+    await run.test("a project started elsewhere keeps Stop, loses Restart, and says why") {
+        let model = localCard(LocalProjectStatus(state: .running, stopBlock: .startedElsewhere))
+        try expectEqual(model.hero.note, L("card.project.startedElsewhere"))
+        try expectEqual(model.hero.help, L("card.project.startedElsewhere.help"))
+        try expect(model.actions[0].isEnabled, "pressing Stop is how the person finds out")
+        try expect(!model.actions[1].isEnabled, "a restart would start a second copy on a taken port")
+        try expectEqual(model.collapsed.note, L("card.project.startedElsewhere"))
+    }
+
+    await run.test("a project the deck started wears its pid, and its log button says whether it is open") {
+        let model = localCard(LocalProjectStatus(state: .running, pid: 4242))
+        try expectEqual(model.hero.note, "pid 4242")
+        try expect(model.header.logIsOn)
+        try expectEqual(model.header.logHelp, L("card.log.window.close"))
+        try expectEqual(model.header.log, .toggleLogs(CardID(rawValue: "project.site")))
+    }
+
+    await run.test("the local site is dimmed while nothing serves it, and production is not calm") {
+        let project = LocalProject(
+            id: "site", title: "Site", folder: "/tmp", startCommand: "npm run dev", holdsProcess: true,
+            healthURL: "http://localhost:3000",
+            links: [
+                LocalProjectLink(label: "Prod", urlTemplate: "https://www.example.com", kind: .site),
+                LocalProjectLink(label: "Test", urlTemplate: "https://test.example.com", kind: .site),
+            ]
+        )
+        let stopped = localCard(LocalProjectStatus(state: .stopped), project: project)
+        let local = try expectNotNil(stopped.environments.first { $0.kind == .local }, "local chip")
+        try expect(local.isDimmed)
+        try expectNil(local.command, "a link into a stopped project goes nowhere")
+        try expectEqual(stopped.environments.first { $0.label == "Prod" }?.kind, .production)
+        try expectEqual(stopped.environments.first { $0.label == "Test" }?.kind, .environment)
+
+        let running = localCard(LocalProjectStatus(state: .running), project: project)
+        try expect(running.environments.first { $0.kind == .local }?.isDimmed == false)
+    }
+
+    await run.test("the branch opens the repository, and says so") {
+        let repository = URL(string: "https://github.com/acme/site")!
+        let model = localCard(LocalProjectStatus(state: .stopped, branch: "main", repositoryURL: repository))
+        try expectEqual(model.meta.repository, .openProjectLink(CardID(rawValue: "project.site"), repository))
+        try expectEqual(model.meta.branchHelp, L("card.branch.help", repository.absoluteString, "main"))
+        let bare = localCard(LocalProjectStatus(state: .stopped, branch: "main"))
+        try expectNil(bare.meta.repository)
+        try expectEqual(bare.meta.branchHelp, L("card.branch.checkedOut"))
     }
 }

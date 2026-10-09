@@ -132,6 +132,7 @@ final class DeckController: ObservableObject {
         case .openURL(let url, let browser): LinkOpener.open(url, using: browser)
         case .openSetting(.actionsRepositories): showSetting?(.cards, CardsSettingsPage.actionsRepositoriesField)
         case .openTerminal(let folder): LocalFolder.openTerminal(folder)
+        case .revealFolder(let folder): LocalFolder.reveal(folder)
         }
     }
 
