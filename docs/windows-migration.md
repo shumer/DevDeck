@@ -46,7 +46,8 @@ only has to draw.
   yet. Done.
 - **M-2b. Mac application on the engine.** `DeckController`'s logic moves into `DeckRuntime`: polling,
   smoothing, project actions, the inbox and attention. A portable change stream replaces
-  `@Published`, and the Mac shell wraps it for SwiftUI.
+  `@Published`, and the Mac shell wraps it for SwiftUI. Done; see
+  [adr/0025-the-deck-runtime-on-the-main-actor.md](adr/0025-the-deck-runtime-on-the-main-actor.md).
 - **M-3. Every card model in the engine.** Text, tones, badges, order and footers move out of the
   SwiftUI cards into model builders. The views draw models; presentation tests stop depending on
   SwiftUI.
