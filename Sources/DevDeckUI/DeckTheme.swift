@@ -73,7 +73,7 @@ public enum DeckTheme {
 
     public static let cornerRadius: CGFloat = 20
     /// Vertical spacing between stacked panels.
-    public static let panelGap: CGFloat = 12
+    public static let panelGap = CGFloat(CardMetrics.panelGap)
 
     public static func sectionLabel(_ text: String) -> some View {
         Text(text.uppercased())

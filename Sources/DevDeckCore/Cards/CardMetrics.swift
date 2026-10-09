@@ -12,6 +12,8 @@ public enum CardMetrics {
     /// the label truncated on every card that had one. The row is the widest fixed thing on a
     /// card, so it is what sets the width.
     public static let width: Double = 352
+    /// The space between two panels in a column, and between columns.
+    public static let panelGap: Double = 12
     public static let rowHeight: Double = 28
     public static let expanderHeight: Double = 22
 

@@ -57,8 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var cards: DeckCards = DeckCards(controller: controller)
     private lazy var panels: PanelCoordinator = PanelCoordinator(
         preferences: preferences,
-        controller: controller,
-        cards: cards
+        controller: controller
     ) { [unowned self] card in self.menu.contextMenu(for: card) }
     private lazy var arrangements: ArrangementsController = ArrangementsController(
         preferences: preferences,

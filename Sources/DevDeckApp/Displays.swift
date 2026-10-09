@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 
 /// The screens as `PanelPlacement` needs to see them.
 ///
@@ -14,6 +15,14 @@ enum Displays {
             guard let id = identifier(of: screen) else { return nil }
             return DisplayFrame(id: id, visibleFrame: screen.visibleFrame)
         }
+    }
+
+    /// Every screen, the main one and the fallback, as the engine's placement asks for them.
+    static func deck() -> DeckDisplays {
+        let main = NSScreen.main.flatMap { screen in
+            identifier(of: screen).map { DisplayFrame(id: $0, visibleFrame: screen.visibleFrame) }
+        }
+        return DeckDisplays(screens: current(), main: main, fallback: fallback())
     }
 
     /// Where a card goes when its own display is not connected.

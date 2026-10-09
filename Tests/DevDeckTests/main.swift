@@ -31,5 +31,6 @@ await runAttentionTests(run)
 await runDeckRuntimeTests(run)
 await runCardModelTests(run)
 await runMenuModelTests(run)
+await runPlacementTests(run)
 
 run.finish()
