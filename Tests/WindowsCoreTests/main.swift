@@ -59,6 +59,13 @@ await run.test("Credential Manager keeps a token, reads it back and forgets it")
     try store.setToken(nil, for: key)
 }
 
+await run.test("a WSL folder is handed to wsl.exe as the distribution sees it") {
+    let unc = URL(fileURLWithPath: #"\\wsl.localhost\Ubuntu-24.04\home\demo\site"#)
+    try expectEqual(WSLCommandRunner.linuxPath(unc, "Ubuntu-24.04"), "/home/demo/site")
+    let legacy = URL(fileURLWithPath: #"\\wsl$\Ubuntu-24.04\srv\app"#)
+    try expectEqual(WSLCommandRunner.linuxPath(legacy, "Ubuntu-24.04"), "/srv/app")
+}
+
 await run.test("Windows code identity is unsigned") {
     try expectEqual(CodeIdentity.current(), .unsigned)
     try expectEqual(CodeIdentity.kind(ofBundleAt: URL(fileURLWithPath: "C:/demo")), .unsigned)

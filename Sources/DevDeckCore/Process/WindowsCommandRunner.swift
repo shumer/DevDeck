@@ -38,6 +38,17 @@ public struct WSLCommandRunner: CommandRunning, DetachedProjectLaunching {
         }
     }
 
+    /// A folder as the distribution sees it: `\\wsl.localhost\Ubuntu\home\demo` is `/home/demo`.
+    /// Every `wsl.exe --cd` goes through it, the short commands and the long-lived project alike.
+    public static func linuxPath(_ directory: URL, _ distribution: String) -> String {
+        let path = directory.path.replacingOccurrences(of: "\\", with: "/")
+        for host in ["wsl.localhost", "wsl$"] {
+            let prefix = "//\(host)/\(distribution)"
+            if path.hasPrefix(prefix + "/") { return String(path.dropFirst(prefix.count)) }
+        }
+        return path
+    }
+
     private final class Execution: @unchecked Sendable {
         private let lock = NSLock()
         private let process = Process()
@@ -88,7 +99,7 @@ public struct WSLCommandRunner: CommandRunning, DetachedProjectLaunching {
             let supervisor =
                 "mkdir -p \(state) && { setsid bash -lc \(Self.quoted(child)) & child=$!; wait $child; code=$?; rm -rf \(state); exit $code; }"
             process.arguments = [
-                "-d", distribution, "--cd", Self.linuxPath(directory, distribution),
+                "-d", distribution, "--cd", WSLCommandRunner.linuxPath(directory, distribution),
                 "--exec", "bash", "-lc", supervisor,
             ]
             let output = Pipe()
@@ -209,15 +220,6 @@ public struct WSLCommandRunner: CommandRunning, DetachedProjectLaunching {
 
         private static func quoted(_ value: String) -> String {
             "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
-        }
-
-        private static func linuxPath(_ directory: URL, _ distribution: String) -> String {
-            let path = directory.path.replacingOccurrences(of: "\\", with: "/")
-            for host in ["wsl.localhost", "wsl$"] {
-                let prefix = "//\(host)/\(distribution)"
-                if path.hasPrefix(prefix + "/") { return String(path.dropFirst(prefix.count)) }
-            }
-            return path
         }
 
         private static func drain(

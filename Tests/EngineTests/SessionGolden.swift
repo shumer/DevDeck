@@ -54,7 +54,9 @@ private func sessionScenario(_ name: String) async throws -> Data {
     session.handle(line: intent(7, "logWindow.changed", #"\#(feed),"isOpen":true"#))
     await runtime.settle()
     session.flush()
-    session.handle(line: intent(8, "command", #""command":{"revealFolder":{"_0":"project.feed"}}"#))
+    // A card taken off the deck: its panel closes and the menu ticks it off. (A folder effect is
+    // not here: it is spelled the platform's way, which is the point of it, so the bytes differ.)
+    session.handle(line: intent(8, "command", #""command":{"toggleCard":{"_0":"github.actions"}}"#))
     session.handle(line: intent(9, "command", #""command":{"toggleCollapsed":{"_0":"project.feed"}}"#))
     session.handle(line: intent(10, "command", #""command":{"toggleLock":{}}"#))
 
@@ -182,7 +184,11 @@ func runSessionGoldenTests(_ run: TestRun) async {
     }
 
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {
-        try expectEqual(DeckSession.platformPath(URL(fileURLWithPath: "/invalid/feed")), "/invalid/feed")
+        #if os(Windows)
+        try expectEqual(DeckSession.platformPath(URL(fileURLWithPath: #"C:\Users\demo\site"#)), #"C:\Users\demo\site"#)
+        #else
+        try expectEqual(DeckSession.platformPath(URL(fileURLWithPath: "/Users/demo/site")), "/Users/demo/site")
+        #endif
         try expectEqual(ProjectLocation(folder: #"C:\Users\demo\site"#), .windows(path: #"C:\Users\demo\site"#))
         try expectEqual(ProjectLocation(folder: #"\\wsl.localhost\Ubuntu-24.04\home\demo\site"#), .wsl(distribution: "Ubuntu-24.04", path: "/home/demo/site"))
         try expectEqual(ProjectLocation(folder: "//wsl$/Debian/srv/app"), .wsl(distribution: "Debian", path: "/srv/app"))

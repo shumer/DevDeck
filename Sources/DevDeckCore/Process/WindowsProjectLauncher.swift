@@ -31,7 +31,7 @@ extension WSLCommandRunner {
         let encodedCommand = Data(command.utf8).base64EncodedString()
         let foreground = "printf %s \(encodedCommand) | base64 --decode | setsid --wait /bin/bash"
         let arguments = [
-            executable, "-d", distribution, "--cd", directory.path,
+            executable, "-d", distribution, "--cd", Self.linuxPath(directory, distribution),
             "--exec", "bash", "-lc", foreground,
         ]
         var commandLine = Array((arguments.map(Self.windowsArgument).joined(separator: " ") + "\0").utf16)
