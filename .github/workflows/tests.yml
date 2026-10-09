@@ -43,13 +43,6 @@ jobs:
           cache: true
       - name: Swift version
         run: swift --version
-      - name: Restore Swift build cache
-        uses: actions/cache@v4
-        with:
-          path: .build
-          key: windows-swift-6.4.0-build-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**', 'Tests/**') }}
-          restore-keys: |
-            windows-swift-6.4.0-build-
       - name: Build without project warnings
         shell: pwsh
         run: |
