@@ -175,6 +175,8 @@ public final class DeckRuntime {
     private let dockerEnvironment: DockerEnvironment
     private let commandRunner: any CommandRunning
     private let http: (any HTTPClient)?
+    private let projectHTTP: (any HTTPClient)?
+    private let projectFiles: ProjectRuntimeFiles
     private let clock: any DateProvider
     private let sleeper: any Sleeper
     private let currentAddress: @MainActor () -> String?
@@ -197,6 +199,9 @@ public final class DeckRuntime {
     /// - `http`: what the GitHub and GitLab clients talk to; nil is the real network, built the
     ///   way the cards always built it.
     /// - `localAddress`: this machine's address on the network a phone shares, asked once per pass.
+    /// - `projectHTTP`: what a plain project's health check talks to; nil is the real network,
+    ///   with the short timeout a local check uses.
+    /// - `projectFiles`: where plain projects keep their logs and process ids.
     public init(
         preferences: Preferences,
         tokenStore: any TokenStore,
@@ -209,6 +214,8 @@ public final class DeckRuntime {
         canStartDocker: Bool,
         localAddress: @escaping @MainActor () -> String?,
         http: (any HTTPClient)? = nil,
+        projectHTTP: (any HTTPClient)? = nil,
+        projectFiles: ProjectRuntimeFiles = .standard(),
         clock: any DateProvider = SystemDateProvider(),
         sleeper: any Sleeper = TaskSleeper(),
         settings: GitHubSettings = .default
@@ -226,6 +233,8 @@ public final class DeckRuntime {
         self.canStartDocker = canStartDocker
         self.currentAddress = localAddress
         self.http = http
+        self.projectHTTP = projectHTTP
+        self.projectFiles = projectFiles
         self.clock = clock
         self.sleeper = sleeper
         self.baseSettings = settings
@@ -594,10 +603,41 @@ public final class DeckRuntime {
         localProjectsStore.project(forCard: card)
     }
 
+    /// What the card draws. Whether Stop can reach the project is decided on the way out, so a
+    /// stop command added in Settings counts at once rather than a poll later.
     public func localStatus(for project: LocalProject) -> LocalProjectStatus {
-        localStatuses[project.id] ?? (project.supportsCommands
+        var status = localStatuses[project.id] ?? (project.supportsCommands
             ? LocalProjectStatus(state: .stopped)
             : .unavailable)
+        status.stopBlock = Self.stopBlock(for: project, status: status)
+        return status
+    }
+
+    /// Why Stop cannot reach a running project, nil when it can.
+    ///
+    /// The health URL answers for a server whoever started it, so "running" alone says nothing
+    /// about whether DevDeck can stop it. It can when it holds a live process from its own start
+    /// or has a stop command to run. Without either there is nothing to try: never a port, never
+    /// a process found by name, because that could be anybody's server.
+    public nonisolated static func stopBlock(for project: LocalProject, status: LocalProjectStatus) -> ProjectStopBlock? {
+        guard status.isRunning, status.pid == nil,
+              project.stopCommand.trimmingCharacters(in: .whitespaces).isEmpty
+        else { return nil }
+        return project.holdsProcess ? .startedElsewhere : .noStopCommand
+    }
+
+    private func localService(for project: LocalProject) -> LocalProjectService {
+        guard let projectHTTP else {
+            return LocalProjectService(project: project, runner: commandRunner, clock: clock, sleeper: sleeper, files: projectFiles)
+        }
+        return LocalProjectService(
+            project: project,
+            runner: commandRunner,
+            httpClient: projectHTTP,
+            clock: clock,
+            sleeper: sleeper,
+            files: projectFiles
+        )
     }
 
 
@@ -607,8 +647,7 @@ public final class DeckRuntime {
             // flips the card back to "stopped" mid-restart. A stale "working" is overruled: a
             // task that died without reporting must not freeze the card for the session.
             if !finished.contains(project.id), isLocalBusyAndFresh(project.id) { continue }
-            let service = LocalProjectService(project: project, runner: commandRunner)
-            let probed = await service.status()
+            let probed = await localService(for: project).status()
             // A dev server rebuilding drops requests for a second or two, and the card would
             // call that stopped.
             guard finished.contains(project.id) || settler.shouldApply(
@@ -643,6 +682,13 @@ public final class DeckRuntime {
         // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
         settler.reset("project.\(project.id)")
         guard project.supportsCommands else { return }
+        if action != .start, let block = localStatus(for: project).stopBlock {
+            // Nothing DevDeck holds can stop it, so nothing is run. Running the stop anyway is
+            // how the menu came to say a stop "did not work" that was never tried, and a restart
+            // would go on to start a second copy onto a port that is taken.
+            watch.noteCannotStop(project.id, block, at: clock.now)
+            return
+        }
         watch.noteAction(project.id, isStop: action == .stop, at: clock.now)
         let previous = localStatuses[project.id]
         localStatuses[project.id] = LocalProjectStatus(
@@ -655,7 +701,7 @@ public final class DeckRuntime {
 
         spawn { [weak self] in
             guard let self else { return }
-            let service = LocalProjectService(project: project, runner: self.commandRunner)
+            let service = self.localService(for: project)
             let result = await service.perform(action)
 
             if let result, !result.succeeded {
@@ -1123,7 +1169,7 @@ public final class DeckRuntime {
         } else if let project = ddevProject(forCard: card) {
             logTails[card] = await ddevEnvironment.logs(for: project, limit: limit)
         } else if let project = localProject(forCard: card) {
-            logTails[card] = await LocalProjectService(project: project, runner: commandRunner).logs(limit: limit)
+            logTails[card] = await localService(for: project).logs(limit: limit)
         }
     }
 

@@ -100,6 +100,9 @@
 "attention.local.noRemote.title" = "Branch auf keinem Remote: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · ältester vor %2$@";
 "attention.local.unpushed.title" = "%1$@ nur auf diesem Mac: %2$@";
+"attention.project.cannotStop.noStopCommand" = "Kein Stoppbefehl gesetzt · in den Einstellungen hinzufügen";
+"attention.project.cannotStop.startedElsewhere" = "Außerhalb von DevDeck gestartet · dort stoppen, wo es gestartet wurde";
+"attention.project.cannotStop.title" = "DevDeck kann %@ nicht stoppen";
 "attention.project.silent.title" = "%@ läuft, antwortet aber nicht";
 "attention.project.startFailed.title" = "%@ ist nicht gestartet";
 "attention.project.stillRunning.subtitle" = "Stopp hat nicht gewirkt, es antwortet weiter";
@@ -246,6 +249,10 @@
 "card.pill.open" = "%d offen";
 "card.pill.toReview" = "%d zu reviewen";
 "card.pill.toReviewOpen" = "%1$d zu reviewen · %2$d offen";
+"card.project.noStopCommand" = "kein Stoppbefehl";
+"card.project.noStopCommand.help" = "DevDeck hat für dieses Projekt keinen Stoppbefehl. In den Einstellungen einen hinzufügen, um es von hier zu stoppen.";
+"card.project.startedElsewhere" = "außerhalb von DevDeck gestartet";
+"card.project.startedElsewhere.help" = "Außerhalb von DevDeck gestartet, daher kann DevDeck es nicht stoppen. Dort stoppen, wo es gestartet wurde.";
 "card.showLess" = "weniger zeigen ⌃";
 "card.showMore" = "%d mehr zeigen ⌄";
 "card.state.notConfigured" = "nicht eingerichtet";

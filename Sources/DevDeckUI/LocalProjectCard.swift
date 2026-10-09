@@ -89,7 +89,7 @@ public struct LocalProjectCard: View {
             tone: heroState.tone,
             color: heroState.color,
             actions: collapsedActions,
-            help: status.detail ?? heroText
+            help: stopHelp ?? status.detail ?? heroText
         )
     }
 
@@ -114,6 +114,7 @@ public struct LocalProjectCard: View {
     /// Running says how many containers; anything else says what it is. The dot has already
     /// said which of the two this is, so the words do not repeat it.
     private var collapsedNote: String? {
+        if let stopNote { return stopNote }
         if status.isRunning, let pid = status.pid { return "pid \(pid)" }
         return heroText
     }
@@ -162,9 +163,27 @@ public struct LocalProjectCard: View {
             color: heroState.color,
             tone: heroState.tone,
             text: heroText,
-            note: status.pid.map { "pid \($0)" },
-            help: status.detail ?? heroText
+            note: stopNote ?? status.pid.map { "pid \($0)" },
+            help: stopHelp ?? status.detail ?? heroText
         )
+    }
+
+    /// Why Stop cannot reach it, in the slot the pid takes when it can. The runtime decides
+    /// which; the card only words it.
+    private var stopNote: String? {
+        switch status.stopBlock {
+        case .startedElsewhere: return L("card.project.startedElsewhere")
+        case .noStopCommand: return L("card.project.noStopCommand")
+        case nil: return nil
+        }
+    }
+
+    private var stopHelp: String? {
+        switch status.stopBlock {
+        case .startedElsewhere: return L("card.project.startedElsewhere.help")
+        case .noStopCommand: return L("card.project.noStopCommand.help")
+        case nil: return nil
+        }
     }
 
     private var heroState: (color: Color, tone: CardStateTone) {
@@ -228,11 +247,18 @@ public struct LocalProjectCard: View {
             ]
         }
         if status.isRunning || status.state == .starting {
+            // Stop stays pressable when it cannot reach the project: pressing it is how the
+            // person finds out, and the menu then says why. Restart does not, because it would
+            // start a second copy onto a port that is taken.
             return [
                 CardAction(L("card.action.stop"), systemImage: "power", tint: DeckTheme.red, isProminent: true) {
                     onAction(.stop)
                 },
-                CardAction(L("card.action.restart"), systemImage: "arrow.clockwise") { onAction(.restart) },
+                CardAction(
+                    L("card.action.restart"),
+                    systemImage: "arrow.clockwise",
+                    isEnabled: status.stopBlock == nil
+                ) { onAction(.restart) },
             ]
         }
         return [

@@ -382,6 +382,12 @@ but keeps a caption or Check URL you already filled in.
 - **Stop kills the whole tree** when there is no stop command of your own. `npm run dev` is a
   wrapper, and killing it alone leaves the server it spawned holding the port - which then makes
   the next start fail for a reason nothing on screen would explain.
+- **Stop never touches what DevDeck did not start.** A project started in a terminal answers its
+  health URL and reads as running, but DevDeck holds no process for it. The card says `started
+  outside DevDeck` where the pid would be, Restart is off, and Stop runs nothing: the menu says
+  DevDeck can't stop it and to stop it where it was started. A command that returns, such as
+  `docker compose up -d`, with no stop command says `no stop command` the same way. Nothing is
+  ever stopped by its port.
 - **The health URL decides whether it is running**, exactly as the Arc card asks the engine - so
   a stack you started yourself in a terminal reads as running too. Without one, running means the
   process it started is still alive. Up means 2xx, 3xx, 401 or 403;
@@ -485,7 +491,7 @@ so they read without colour vision and on a bar tinted by the wallpaper:
 | red dot | **Waiting on you** | a review on GitHub or GitLab, a mention, an assignment, a security alert |
 | dot in the bar's ink | **Needs fixing** | a token that stopped working, a project on this Mac that stopped on its own, did not start, is up but not answering, or has a broken file sync, Docker quitting under running projects |
 | ring | **Your work is stuck** | your pull request or merge request with a conflict, failed checks, a failed pipeline or requested changes; a workflow still failing on a main branch |
-| none | **Good to know** | a new version, commits that have been only on this Mac for more than three days, Docker off while a project needs it, a rate limit or a network blip |
+| none | **Good to know** | a new version, commits that have been only on this Mac for more than three days, Docker off while a project needs it, Stop pressed on a project DevDeck did not start, a rate limit or a network blip |
 
 The most urgent tier wins. Red is kept for the one thing that costs somebody else time. The
 tooltip counts by tier, `DevDeck: 2 waiting on you, 1 to fix`, and VoiceOver reads the same.

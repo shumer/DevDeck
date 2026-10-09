@@ -193,6 +193,15 @@ inside WSL and one for projects in Windows folders. Each one keeps its process a
 quits and stops the whole tree, not just the process it recorded - see
 [adr/0023-project-process-lifetime.md](adr/0023-project-process-lifetime.md).
 
+**Stop reaches only what the deck holds.** The health URL answers for a server whoever started
+it, so a project started in a terminal reads as running, and DevDeck has no process and often no
+stop command for it. `DeckRuntime.stopBlock` decides that as the status is read and hands it to the
+card on `LocalProjectStatus.stopBlock`: `startedElsewhere` for a command that holds its process,
+`noStopCommand` for one that returns. Stop and Restart then run nothing and go to `ProjectWatch` as
+`cannotStop`, so the menu says DevDeck cannot stop it rather than that a stop did not work. Nothing
+is ever stopped by port or by name - see
+[adr/0026-stop-only-what-the-deck-holds.md](adr/0026-stop-only-what-the-deck-holds.md).
+
 ## The Docker gate
 
 `DockerEnvironment` in `DevDeckCore` runs one probe for the whole deck at the top of the local
@@ -536,7 +545,8 @@ cannot disagree about what needs you. See [adr/0019-attention-in-tiers.md](adr/0
   for work only on this Mac, `UpdateAttention` for a new version. Each also builds the banners for
   the same facts, as `DeckAlert`s.
 - **`ProjectWatch`** remembers what a card stops saying a poll later: that a project was running
-  and nobody pressed Stop, why a start failed, since when a health check has been silent. It is
+  and nobody pressed Stop, why a start failed, since when a health check has been silent, that
+  Stop was pressed on a project nothing here could stop. It is
   fed only what `StateSettler` let through and what a button did, and reports nothing about the
   state a launch found.
 - **`DeckAttention.digest`** in the UI module puts it together from the controller's state, one
