@@ -352,6 +352,7 @@
 "menu.place.desktop" = "Mantener en el escritorio (detrás de las ventanas)";
 "menu.place.floating" = "Flotar sobre las ventanas";
 "menu.quit" = "Salir de DevDeck";
+"engine.unavailable" = "Motor detenido";
 "menu.refresh" = "Actualizar ahora";
 "menu.settings" = "Ajustes…";
 "menu.tidy" = "Ordenar los paneles en columnas";

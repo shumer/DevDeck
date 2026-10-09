@@ -5,6 +5,9 @@ import PackageDescription
 // concurrency, while the AppKit/SwiftUI shell stays on the 5 mode where main-actor
 // isolation of the framework types is inferred rather than enforced.
 // See docs/adr/0002-spm-only-toolchain.md.
+//
+// Windows builds the portable layers, the engine and its host: nothing that draws is built there.
+// See docs/windows-migration.md, and docs/adr/0023-project-process-lifetime.md for the process host.
 #if os(Windows)
 let package = Package(
     name: "DevDeck",

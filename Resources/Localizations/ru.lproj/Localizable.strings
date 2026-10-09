@@ -352,6 +352,7 @@
 "menu.place.desktop" = "Держать на рабочем столе (за окнами)";
 "menu.place.floating" = "Держать поверх окон";
 "menu.quit" = "Завершить DevDeck";
+"engine.unavailable" = "Движок остановлен";
 "menu.refresh" = "Обновить сейчас";
 "menu.settings" = "Настройки…";
 "menu.tidy" = "Разложить панели по колонкам";
