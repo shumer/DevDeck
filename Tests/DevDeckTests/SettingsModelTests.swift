@@ -126,3 +126,91 @@ func runSettingsModelTests(_ run: TestRun) async {
         try expect(!deck.runtime.hasToken(deck.account.tokenKey))
     }
 }
+
+// MARK: Updates
+
+private func release(_ tag: String) -> String {
+    """
+    {"tag_name":"\(tag)","html_url":"https://github.com/shumer/DevDeck/releases/tag/\(tag)",
+     "draft":false,"prerelease":false,"published_at":"2026-10-01T10:00:00Z",
+     "assets":[{"name":"DevDeck-\(tag.dropFirst())-1.zip","browser_download_url":"https://example.com/DevDeck.zip","size":2097152}]}
+    """
+}
+
+@MainActor
+func runUpdateModelTests(_ run: TestRun) async {
+    run.section("Updates - checking")
+
+    await run.test("a newer release is on offer, said once in a banner, and not again for the same version") {
+        let deck = Deck(cards: [], notifications: true)
+        deck.preferences.notifiesUpdates = true
+        let http = FakeHTTPClient([.success(.json(release("v9.0"))), .success(.json(release("v9.0")))])
+        let updates = deck.runtime.watchForUpdates(currentVersion: "0.19.2", canInstall: true, http: http)
+        await updates.check(quietly: false)
+        try expectEqual(updates.available?.version.description, "9.0")
+        try expectEqual(deck.effects.filter { if case .offerUpdate = $0 { return true }; return false }.count, 1)
+        await updates.check(quietly: true)
+        try expectEqual(deck.effects.filter { if case .offerUpdate = $0 { return true }; return false }.count, 1, "a restart is not news")
+        try expect(deck.runtime.menu().contains { if case .header = $0 { return true }; return false })
+    }
+
+    await run.test("the same version or an older one is not an update") {
+        let deck = Deck(cards: [])
+        let updates = deck.runtime.watchForUpdates(currentVersion: "9.0", canInstall: true, http: FakeHTTPClient([.success(.json(release("v9.0")))]))
+        await updates.check(quietly: false)
+        try expectNil(updates.available)
+        try expectEqual(updates.row().summary.state, L("update.upToDate"))
+    }
+
+    await run.test("a background check that fails keeps quiet; one somebody asked for says why") {
+        let deck = Deck(cards: [])
+        let updates = deck.runtime.watchForUpdates(currentVersion: "0.19.2", canInstall: true, http: FakeHTTPClient([.success(.status(500))]))
+        await updates.check(quietly: true)
+        try expectEqual(updates.state, .idle)
+        try expectEqual(updates.row().summary.state, L("update.couldNotCheck"))
+    }
+
+    await run.test("a copy with nothing to replace says so and offers nothing") {
+        let deck = Deck(cards: [])
+        let updates = deck.runtime.watchForUpdates(currentVersion: nil, canInstall: false, http: FakeHTTPClient([]))
+        try expect(!updates.isSupported)
+        try expectEqual(updates.row().summary.state, L("update.notFromBundle"))
+        try expect(!updates.row().isEnabled)
+    }
+
+    run.section("Updates - installing")
+
+    await run.test("an install waits while a card is mid-command, and says which") {
+        let project = LocalProject(id: "busy-\(UUID().uuidString)", title: "Busy", folder: FileManager.default.temporaryDirectory.path, startCommand: "npm run dev")
+        let files = ProjectRuntimeFiles(directory: FileManager.default.temporaryDirectory.appendingPathComponent("devdeck-update-\(UUID().uuidString)"))
+        let deck = Deck(cards: [project.cardID], localProjects: [project], projectFiles: files)
+        let updates = deck.runtime.watchForUpdates(currentVersion: "0.19.2", canInstall: true, http: FakeHTTPClient([.success(.json(release("v9.0")))]))
+        var handedOver: AvailableUpdate?
+        updates.onInstall = { handedOver = $0 }
+        await updates.check(quietly: false)
+        deck.runtime.perform(.project(project.cardID, .start))
+        updates.install()
+        try expectEqual(updates.waitingFor, "Busy")
+        try expectNil(handedOver, "nothing is replaced under a running command")
+        try expectEqual(updates.row().summary.state, L("update.waits", "9.0"))
+        await deck.runtime.settle()
+        updates.install()
+        try expectEqual(handedOver?.version.description, "9.0")
+        guard case .downloading = updates.state else {
+            throw TestFailure(message: "the install should be under way: \(updates.state)", file: #filePath, line: #line)
+        }
+    }
+
+    await run.test("the installer's progress and failure are on the row") {
+        let deck = Deck(cards: [])
+        let updates = deck.runtime.watchForUpdates(currentVersion: "0.19.2", canInstall: true, http: FakeHTTPClient([.success(.json(release("v9.0")))]))
+        updates.onInstall = { _ in }
+        await updates.check(quietly: false)
+        updates.install()
+        updates.downloaded(0.42)
+        try expectEqual(updates.row().summary.detail, "42%")
+        updates.failed("disk full")
+        try expectEqual(updates.row().summary.detail, "disk full")
+        try expectEqual(updates.row().button, L("update.button.retry"))
+    }
+}

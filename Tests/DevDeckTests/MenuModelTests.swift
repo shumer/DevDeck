@@ -29,7 +29,7 @@ func runMenuModelTests(_ run: TestRun) async {
 
     await run.test("with nothing to say the menu says so, then the cards and the things you do") {
         let deck = Deck(cards: [.githubPullRequests])
-        let entries = deck.runtime.menu(update: nil)
+        let entries = deck.runtime.menu()
         guard case .item(let calm)? = entries.first else {
             throw TestFailure(message: "the menu should open on a row", file: #filePath, line: #line)
         }
@@ -45,7 +45,7 @@ func runMenuModelTests(_ run: TestRun) async {
     await run.test("built-in cards sit at the top, projects in a submenu that counts what is shown") {
         let project = LocalProject(id: "menu-site", title: "Site", folder: "/tmp", startCommand: "npm run dev")
         let deck = Deck(cards: [.githubPullRequests], localProjects: [project])
-        let entries = deck.runtime.menu(update: nil)
+        let entries = deck.runtime.menu()
         let pulls = try expectNotNil(items(entries).first { $0.command == .toggleCard(.githubPullRequests) }, "pull requests row")
         try expect(pulls.isIndented)
         let group = entries.compactMap { entry -> (DeckMenuItem, [DeckMenuEntry])? in
@@ -61,9 +61,9 @@ func runMenuModelTests(_ run: TestRun) async {
 
     await run.test("the lock is a checkmark that follows the preference") {
         let deck = Deck(cards: [])
-        try expect(item(L("menu.lock"), in: deck.runtime.menu(update: nil))?.isOn == deck.runtime.isLocked)
+        try expect(item(L("menu.lock"), in: deck.runtime.menu())?.isOn == deck.runtime.isLocked)
         deck.runtime.perform(.toggleLock)
-        try expect(item(L("menu.lock"), in: deck.runtime.menu(update: nil))?.isOn == deck.runtime.isLocked)
+        try expect(item(L("menu.lock"), in: deck.runtime.menu())?.isOn == deck.runtime.isLocked)
         try expectEqual(deck.effects.last, .lockChanged)
     }
 
@@ -72,7 +72,7 @@ func runMenuModelTests(_ run: TestRun) async {
             ("/notifications", .success(.json(Fixtures.notifications))),
         ]))
         _ = await deck.runtime.refreshOnce()
-        let rows = items(deck.runtime.menu(update: nil)).filter {
+        let rows = items(deck.runtime.menu()).filter {
             if case .markRead? = $0.alternate?.command { return true }
             return false
         }

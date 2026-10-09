@@ -1,224 +1,65 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import ProjectKit
 
-/// Keeps the installed copy current, by asking rather than by doing.
+/// Puts a newer copy in place when the runtime's update watch says to.
 ///
-/// Asks GitHub for the latest release now and then, says so when it is newer, and installs it
-/// when a person chooses to: download, unpack, check that what came out is this app at the
-/// promised version, put the old bundle in the Trash, the new one in its place, and relaunch.
-/// Nothing is downloaded, let alone installed, without a click. The decisions are
-/// `UpdateCheck` in Core, which is where the suite checks them.
+/// Whether there is a newer build, when to look, what to say about it and whether to wait for a
+/// card that is mid-command are `DeckUpdates` in the engine. This is the Mac's half: download,
+/// unpack, check that what came out is this app at the promised version and signed by the same
+/// identity, put the old bundle in the Trash and the new one in its place, and relaunch. The
+/// rules it checks with are `UpdateCheck` in Core.
 ///
-/// What is downloaded by the app itself carries no quarantine, so after the first install
-/// the right-click-to-open dance is over for whoever runs this.
+/// What is downloaded by the app itself carries no quarantine, so after the first install the
+/// right-click-to-open dance is over for whoever runs this.
 @MainActor
 final class Updater {
-    enum State: Equatable {
-        case idle
-        case checking
-        case available(AvailableUpdate)
-        case downloading(AvailableUpdate, fraction: Double)
-        case installing(AvailableUpdate)
-        case failed(AvailableUpdate, reason: String)
-    }
-
-    private(set) var state: State = .idle {
-        didSet { onChange?() }
-    }
-    /// When GitHub last answered, and what it said if it did not.
-    private(set) var lastCheckedAt: Date?
-    private(set) var lastCheckFailure: String?
-
-    /// Something to redraw: the settings page, mostly.
-    var onChange: (() -> Void)?
-    /// A newer build has just been found, for the banner. Once per version.
-    var onAvailable: ((AvailableUpdate) -> Void)?
-    /// The card whose command is still running, by title, or nil. Asked before every install,
-    /// whichever way it was asked for: the menu, the banner, the settings page or `--update`.
-    var workingCard: (() -> String?)?
-    /// The card an install someone asked for is waiting on, while it waits.
-    private(set) var waitingFor: String?
-    private var waitTask: Task<Void, Never>?
-
-    private let preferences: Preferences
-    private let http: any HTTPClient
+    let updates: DeckUpdates
     private let runner: any CommandRunning
-    private var loop: Task<Void, Never>?
 
-    /// The version this copy runs, and where it lives. Both nil under `swift run`, which has
-    /// no bundle to replace and no version to compare, so the updater stays quiet there.
-    let currentVersion: String?
+    /// Where this copy lives. Nil under `swift run`, which has no bundle to replace, so the
+    /// updates stay quiet there.
     let bundleURL: URL?
 
-    init(
-        preferences: Preferences,
-        http: any HTTPClient = URLSessionHTTPClient.makeDefault(),
-        runner: any CommandRunning = ShellCommandRunner()
-    ) {
-        self.preferences = preferences
-        self.http = http
+    init(runtime: DeckRuntime, runner: any CommandRunning = ShellCommandRunner()) {
         self.runner = runner
         let url = Bundle.main.bundleURL
-        bundleURL = url.pathExtension == "app" ? url : nil
-        currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        let bundle = url.pathExtension == "app" ? url : nil
+        bundleURL = bundle
+        updates = runtime.watchForUpdates(
+            currentVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+            canInstall: bundle != nil,
+            http: URLSessionHTTPClient.makeDefault()
+        )
+        updates.onInstall = { [weak self] update in self?.put(update) }
     }
 
-    var isSupported: Bool { currentVersion != nil && bundleURL != nil }
+    // MARK: The runtime's watch, as the app asks for it
 
-    /// The update on offer, in whichever state it is in.
-    var available: AvailableUpdate? {
-        switch state {
-        case .available(let update), .downloading(let update, _), .installing(let update), .failed(let update, _):
-            return update
-        case .idle, .checking:
-            return nil
-        }
+    var available: AvailableUpdate? { updates.available }
+    var onChange: (() -> Void)? {
+        get { updates.onChange }
+        set { updates.onChange = newValue }
     }
-
-    // MARK: Checking
-
-    /// Once after a pause, then every few hours. Nothing while the switch is off.
-    func start() {
-        loop?.cancel()
-        loop = nil
-        guard isSupported, preferences.checksForUpdates else {
-            Log.app.info("Update checks off: supported \(self.isSupported, privacy: .public), enabled \(self.preferences.checksForUpdates, privacy: .public)")
-            return
-        }
-        Log.app.info("Update checks armed, first in \(Int(UpdateCheck.firstCheckDelay), privacy: .public)s")
-        loop = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(UpdateCheck.firstCheckDelay * 1_000_000_000))
-            while !Task.isCancelled {
-                guard let self else { return }
-                await self.check(quietly: true)
-                try? await Task.sleep(nanoseconds: UInt64(UpdateCheck.interval * 1_000_000_000))
-            }
-        }
-    }
-
-    /// The switch was flipped in settings.
-    func applyPreferences() {
-        if preferences.checksForUpdates {
-            if loop == nil { start() }
-        } else {
-            loop?.cancel()
-            loop = nil
-        }
-    }
-
-    /// Asked for from the settings page. Says what it found, including nothing.
-    func checkNow() {
-        Task { await check(quietly: false) }
-    }
-
-    /// `open -a DevDeck --args --update`: check, and install whatever is newer. Typed by a
-    /// person, so it counts as the click the install otherwise waits for.
-    func checkAndInstall() {
-        Task {
-            await check(quietly: false)
-            if case .available = state { install() }
-        }
-    }
-
-    /// `quietly` is the background pass: a check that could not reach GitHub keeps whatever
-    /// the deck already knew rather than putting a failure in front of anyone. A check a
-    /// person asked for reports it.
-    private func check(quietly: Bool) async {
-        guard isSupported, let current = currentVersion else { return }
-        // A download in flight is not interrupted by a timer.
-        switch state {
-        case .downloading, .installing: return
-        default: break
-        }
-        if !quietly { state = .checking }
-
-        do {
-            let response = try await http.send(UpdateCheck.request())
-            guard (200..<300).contains(response.statusCode) else {
-                throw APIError.server(status: response.statusCode, message: nil)
-            }
-            let release = try UpdateCheck.decode(response.body)
-            lastCheckedAt = Date()
-            lastCheckFailure = nil
-            if let update = UpdateCheck.available(current: current, release: release) {
-                let wasKnown = available?.version == update.version
-                Log.app.info("Update check: \(update.version.description, privacy: .public) is available, running \(current, privacy: .public)")
-                state = .available(update)
-                if !wasKnown, preferences.announcedUpdate != update.version.description {
-                    preferences.announcedUpdate = update.version.description
-                    onAvailable?(update)
-                }
-            } else {
-                Log.app.info("Update check: \(current, privacy: .public) is the latest")
-                state = .idle
-            }
-        } catch {
-            let reason = APIError.wrapping(error).displayMessage
-            Log.app.error("Update check failed: \(reason, privacy: .public)")
-            lastCheckFailure = reason
-            if !quietly, case .checking = state { state = .idle }
-            onChange?()
-        }
-    }
+    func start() { updates.start() }
+    func applyPreferences() { updates.applyPreferences() }
+    func checkAndInstall() { updates.checkAndInstall() }
+    func install() { updates.install() }
 
     // MARK: Installing
 
-    /// Looks again every few seconds until no card is working, then installs.
-    private func waitForCommands() {
-        guard waitTask == nil else { return }
-        waitTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                guard let self, !Task.isCancelled else { return }
-                if let working = self.workingCard?() {
-                    if working != self.waitingFor {
-                        self.waitingFor = working
-                        self.onChange?()
-                    }
-                    continue
-                }
-                self.waitTask = nil
-                self.install()
-                return
-            }
-        }
-    }
-
-    /// The whole sequence, in order, with the running copy untouched until the new one has
-    /// been unpacked and checked.
-    ///
-    /// Waits while a card is mid-command, because replacing the bundle and quitting under a
-    /// running `fusion start` leaves a stack half up with nothing on screen to say so. The
-    /// install was asked for, so it goes ahead by itself once the command is done.
-    func install() {
-        guard let update = available, let bundleURL else { return }
-        switch state {
-        case .downloading, .installing: return
-        default: break
-        }
-        if let working = workingCard?() {
-            waitingFor = working
-            Log.app.info("Update to \(update.version.description, privacy: .public) waits for \(working, privacy: .public)")
-            onChange?()
-            waitForCommands()
-            return
-        }
-        waitTask?.cancel()
-        waitTask = nil
-        waitingFor = nil
-        state = .downloading(update, fraction: 0)
-
+    /// The whole sequence, in order, with the running copy untouched until the new one has been
+    /// unpacked and checked.
+    private func put(_ update: AvailableUpdate) {
+        guard let bundleURL else { return }
         Task { [weak self] in
             guard let self else { return }
             do {
                 let data = try await Self.download(update.asset) { [weak self] fraction in
-                    Task { @MainActor in
-                        guard let self, case .downloading = self.state else { return }
-                        self.state = .downloading(update, fraction: fraction)
-                    }
+                    Task { @MainActor in self?.updates.downloaded(fraction) }
                 }
-                self.state = .installing(update)
+                self.updates.installing()
                 let unpacked = try await self.unpack(data, named: update.asset.name)
                 guard let fresh = UpdateCheck.bundle(inUnpacked: unpacked) else {
                     throw UpdateFailure("the archive holds no application")
@@ -243,7 +84,7 @@ final class Updater {
             } catch {
                 let reason = (error as? UpdateFailure)?.reason ?? error.localizedDescription
                 Log.app.error("Update failed: \(reason, privacy: .public)")
-                self.state = .failed(update, reason: reason)
+                self.updates.failed(reason)
             }
         }
     }

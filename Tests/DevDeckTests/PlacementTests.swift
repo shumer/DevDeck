@@ -233,7 +233,7 @@ func runPlacementTests(_ run: TestRun) async {
         desk.deck.runtime.perform(.saveArrangement(name: " Work "))
         try expectEqual(desk.deck.preferences.arrangements.map(\.name), ["Work"])
 
-        let submenu = desk.deck.runtime.menu(update: nil).compactMap { entry -> [DeckMenuEntry]? in
+        let submenu = desk.deck.runtime.menu().compactMap { entry -> [DeckMenuEntry]? in
             if case .submenu(let item, let children) = entry, item.title == L("menu.arrangements") { return children }
             return nil
         }.first ?? []

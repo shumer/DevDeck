@@ -68,11 +68,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     /// A newer build exists. Carries no mark: this one is the app's own news, and the application
     /// icon macOS puts on every banner is exactly right for it.
-    func postUpdate(_ version: String) {
+    func postUpdate(title: String, body: String, version: String) {
         guard isAuthorized else { return }
         let content = UNMutableNotificationContent()
-        content.title = L("notify.update.title", version)
-        content.body = L("notify.update.body")
+        content.title = title
+        content.body = body
         content.userInfo = ["action": "update"]
         content.threadIdentifier = "devdeck.update"
         add(content, identifier: "devdeck.update.\(version)")

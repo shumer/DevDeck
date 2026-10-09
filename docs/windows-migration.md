@@ -60,7 +60,8 @@ only has to draw.
   the runtime: add, save, remove, Detect, the health, stack and token checks, link tests. The
   forms and the four pages stay AppKit until W-10. Done; see
   [adr/0031](adr/0031-settings-operations-in-the-engine.md).
-- **M-7. The update check in the engine.** Installing stays in the shell.
+- **M-7. The update check in the engine.** Installing stays in the shell. See
+  [adr/0032](adr/0032-the-update-check-in-the-engine.md).
 - **M-8. Golden transcripts** for every card, the menu, notifications and placement, in English
   and Russian.
 

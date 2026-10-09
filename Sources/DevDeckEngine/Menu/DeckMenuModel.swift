@@ -107,15 +107,16 @@ extension DeckRuntime {
         )
     }
 
-    /// The menu-bar menu, as it should be the moment it opens.
+    /// The menu-bar menu, as it should be the moment it opens, with the update's own tier when
+    /// there is one.
     ///
     /// What the badge is about comes first, as the things themselves; then the cards; then the
     /// things you do. What the deck is (where panels sit, whether ⌥Space raises them) lives in
     /// Settings: a menu that mixes the two grows until the thing you came for is in the middle.
     ///
     /// - `samples`: rows of every tier with made-up names, for a screenshot of a busy menu.
-    public func menu(update: DeckUpdateOffer?, samples: Bool = false) -> [DeckMenuEntry] {
-        var entries = attentionEntries(update: update, samples: samples)
+    public func menu(samples: Bool = false) -> [DeckMenuEntry] {
+        var entries = attentionEntries(update: updates?.offer(), samples: samples)
 
         entries.append(.header(L("menu.cards")))
         let list = cards

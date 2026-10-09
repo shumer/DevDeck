@@ -33,5 +33,6 @@ await runCardModelTests(run)
 await runMenuModelTests(run)
 await runPlacementTests(run)
 await runSettingsModelTests(run)
+await runUpdateModelTests(run)
 
 run.finish()

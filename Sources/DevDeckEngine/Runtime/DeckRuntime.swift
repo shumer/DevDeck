@@ -47,6 +47,8 @@ public enum DeckEffect: Sendable, Equatable {
     /// A saved arrangement changed the cards, their folds and their placements: open the panels
     /// and put them where the placements say.
     case arrangementApplied
+    /// A newer build is out: one banner, in these words, whose click installs it.
+    case offerUpdate(title: String, body: String, version: String)
 }
 
 /// A card's model, whichever card it is. See `DeckRuntime.model(for:)`.
@@ -1596,6 +1598,28 @@ public final class DeckRuntime {
     /// The runtime's clock, for what it builds outside this file.
     var now: Date {
         clock.now
+    }
+
+    // MARK: Updates
+
+    /// Whether a newer build is out, once a shell has said which version it runs. See
+    /// `DeckUpdates`.
+    public private(set) var updates: DeckUpdates?
+
+    /// Starts watching for updates for the copy that is running: its version, nil where there is
+    /// none, and whether this shell can put a new copy in place.
+    public func watchForUpdates(currentVersion: String?, canInstall: Bool, http: any HTTPClient) -> DeckUpdates {
+        let made = DeckUpdates(
+            runtime: self,
+            preferences: preferences,
+            http: http,
+            clock: clock,
+            sleeper: sleeper,
+            currentVersion: currentVersion,
+            canInstall: canInstall
+        )
+        updates = made
+        return made
     }
 
     // MARK: Placement

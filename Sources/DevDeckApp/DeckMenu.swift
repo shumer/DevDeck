@@ -8,7 +8,7 @@ import DevDeckUI
 /// Every menu here is repopulated as it opens, so a checkmark can never show state from
 /// whenever the menu happened to be created: a menu built once keeps the checkmarks it had at
 /// creation, which is how the lock toggle looked stuck on. What the menus say, which rows are on,
-/// off or disabled and what each one does are `DeckRuntime.menu(update:samples:)` and
+/// off or disabled and what each one does are `DeckRuntime.menu(samples:)` and
 /// `cardMenu(for:)`; the icon and tooltip are `status()`. This turns them into AppKit and carries
 /// out what only the Mac can do.
 @MainActor
@@ -107,32 +107,8 @@ final class DeckMenu: NSObject, NSMenuDelegate {
         if let card = menuOwners[ObjectIdentifier(menu)] {
             fill(menu, with: controller.runtime.cardMenu(for: card))
         } else {
-            fill(menu, with: controller.runtime.menu(update: updateOffer, samples: showsSamples))
+            fill(menu, with: controller.runtime.menu(samples: showsSamples))
         }
-    }
-
-    /// The update, as a row of its own tier, or nothing when there is none.
-    private var updateOffer: DeckUpdateOffer? {
-        guard let update = updater.available else { return nil }
-        let version = update.version.description
-        let item: AttentionItem
-        switch updater.state {
-        case .available:
-            if let working = updater.waitingFor {
-                item = UpdateAttention.item(version: version, phase: .waiting(card: working))
-            } else {
-                item = UpdateAttention.item(version: version, phase: .available)
-            }
-        case .downloading(_, let fraction):
-            item = UpdateAttention.item(version: version, phase: .downloading(fraction: fraction))
-        case .installing:
-            item = UpdateAttention.item(version: version, phase: .installing)
-        case .failed(_, let reason):
-            item = UpdateAttention.item(version: version, phase: .failed(reason: reason))
-        case .idle, .checking:
-            return nil
-        }
-        return DeckUpdateOffer(item: item, version: version)
     }
 
     private func fill(_ menu: NSMenu, with entries: [DeckMenuEntry]) {

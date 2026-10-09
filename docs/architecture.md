@@ -553,10 +553,14 @@ itself that one of them could do.
 - `Summoner` owns the key that raises the deck, the tap-to-latch rule, the veils, and the click
   or Esc that puts back a deck raised from the menu or a banner; what
   "raised" does to the panels is the coordinator's.
-- `Updater` asks GitHub for the latest release and, when told to, installs it: download,
-  `ditto`, a check of the unpacked bundle, the old copy to the Trash, the new one in its place,
-  relaunch. What counts as an update and whether the unpacked bundle is trusted is
-  `UpdateCheck` in Core, under tests. See [adr/0016-self-update.md](adr/0016-self-update.md).
+- `DeckUpdates` in the engine watches for a newer build: when to ask GitHub, what counts as
+  newer, the one banner per version, waiting for a card that is mid-command before an install,
+  and every word about it (the menu's own tier, the settings row, the banner). `Updater` is the
+  Mac's installer, handed an update when someone chooses it: download, `ditto`, a check of the
+  unpacked bundle, the old copy to the Trash, the new one in its place, relaunch, reporting
+  progress back. What counts as an update and whether the unpacked bundle is trusted is
+  `UpdateCheck` in Core, under tests. See [adr/0016-self-update.md](adr/0016-self-update.md) and
+  [adr/0032-the-update-check-in-the-engine.md](adr/0032-the-update-check-in-the-engine.md).
 - `SettingsWindowController` owns the settings window, its sidebar and the form column. The
   four pages at the top are `SettingsPage`s; each kind of account or project is a
   `SettingsSection`. See [The settings window](#the-settings-window).

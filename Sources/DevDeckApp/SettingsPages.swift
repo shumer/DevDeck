@@ -57,10 +57,10 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
             subtitle: L("settings.general.checkAutomatically.detail"),
             control: SettingsForm.makeSwitch(isOn: preferences.checksForUpdates, title: L("settings.general.checkAutomatically"), target: self, action: #selector(updatesChanged(_:)))
         )
-        let status = updateStatus
-        let line = StatusLine(tone: status.tone, state: status.title, detail: status.detail)
-        let button = SettingsForm.button(status.button, target: self, action: #selector(updateAction))
-        button.isEnabled = status.isEnabled
+        let row = updater.updates.row()
+        let line = StatusLine(row.summary)
+        let button = SettingsForm.button(row.button, target: self, action: #selector(updateAction))
+        button.isEnabled = row.isEnabled
         form.statusRow(line, button: button)
         form.endGroup()
         updateLine = line
@@ -75,43 +75,10 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
     /// being rebuilt under the pointer.
     func refreshUpdateRow() {
         guard let updateLine, let updateButton else { return }
-        let status = updateStatus
-        updateLine.update(tone: status.tone, state: status.title, detail: status.detail)
-        updateButton.title = status.button
-        updateButton.isEnabled = status.isEnabled
-    }
-
-    private var updateStatus: (tone: StatusLine.Tone, title: String, detail: String, button: String, isEnabled: Bool) {
-        let clock = DateFormatter()
-        clock.locale = Strings.locale
-        clock.setLocalizedDateFormatFromTemplate("j:mm")
-        guard updater.isSupported else {
-            return (.idle, L("update.notFromBundle"), L("update.notFromBundle.detail"), L("update.button.check"), false)
-        }
-        switch updater.state {
-        case .available(let update):
-            if let working = updater.waitingFor {
-                return (.busy, L("update.waits", update.version.description), L("update.waits.detail", working), L("update.button.update"), false)
-            }
-            let size = ByteCountFormatter.string(fromByteCount: Int64(update.asset.size), countStyle: .file)
-            return (.busy, L("update.available", update.version.description), size, L("update.button.update"), true)
-        case .downloading(let update, let fraction):
-            return (.busy, L("update.downloading", update.version.description), "\(Int((fraction * 100).rounded()))%", L("update.button.update"), false)
-        case .installing(let update):
-            return (.busy, L("update.installing", update.version.description), "", L("update.button.update"), false)
-        case .failed(_, let reason):
-            return (.bad, L("update.failed"), reason, L("update.button.retry"), true)
-        case .checking:
-            return (.idle, L("update.checking"), "", L("update.button.check"), false)
-        case .idle:
-            if let failure = updater.lastCheckFailure {
-                return (.busy, L("update.couldNotCheck"), failure, L("update.button.check"), true)
-            }
-            if let checked = updater.lastCheckedAt {
-                return (.good, L("update.upToDate"), L("update.upToDate.detail", updater.currentVersion ?? "", clock.string(from: checked)), L("update.button.check"), true)
-            }
-            return (.idle, L("update.notCheckedYet"), updater.currentVersion ?? "", L("update.button.check"), true)
-        }
+        let row = updater.updates.row()
+        updateLine.update(row.summary)
+        updateButton.title = row.button
+        updateButton.isEnabled = row.isEnabled
     }
 
     @objc private func loginItemChanged(_ sender: NSSwitch) {
@@ -139,10 +106,7 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
     }
 
     @objc private func updateAction() {
-        switch updater.state {
-        case .available, .failed: updater.install()
-        default: updater.checkNow()
-        }
+        updater.updates.act()
     }
 }
 
