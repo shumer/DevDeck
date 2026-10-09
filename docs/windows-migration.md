@@ -48,7 +48,7 @@ only has to draw.
   smoothing, project actions, the inbox and attention. A portable change stream replaces
   `@Published`, and the Mac shell wraps it for SwiftUI. Done; see
   [adr/0025-the-deck-runtime-on-the-main-actor.md](adr/0025-the-deck-runtime-on-the-main-actor.md).
-- **M-3. Every card model in the engine.** See [adr/0027](adr/0027-card-models-in-the-engine.md). Text, tones, badges, order and footers move out of the
+- **M-3. Every card model in the engine.** Done; see [adr/0027](adr/0027-card-models-in-the-engine.md). Text, tones, badges, order and footers move out of the
   SwiftUI cards into model builders. The views draw models; presentation tests stop depending on
   SwiftUI.
 - **M-4. Menu, attention and notifications in the engine.** `DeckMenu` builds an `NSMenu` from a
