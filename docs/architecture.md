@@ -734,7 +734,7 @@ shared logic:
 | Running a command | `ShellCommandRunner`, login zsh | `WSLCommandRunner` in one distribution, or `NativeWindowsCommandRunner` |
 | A project's process | `ShellProjectLauncher` | `WSLProjectLauncher`, `NativeWindowsProjectLauncher` with `DevDeckProcessHost` |
 | Preferences | `UserDefaults` | `FilePreferencesBackend`, `%LOCALAPPDATA%\DevDeck\preferences.json` |
-| Tokens | Keychain | in memory only; Credential Manager belongs to the Windows shell |
+| Tokens | Keychain | Credential Manager, owned by `DevDeckEngineHost`; the Windows shell never reads tokens |
 | HTTP | `URLSession` | `URLSession` from FoundationNetworking |
 | Plural forms | the stringsdict, through Foundation | `PluralCategory`, because Foundation on Windows cannot expand it |
 

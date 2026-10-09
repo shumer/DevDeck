@@ -1,0 +1,133 @@
+using System.Text.Json;
+
+namespace DevDeck.Shell;
+
+public interface IShellSurface : IDisposable
+{
+    event Action<CardMeasurement>? CardMeasured;
+    event Action<CardMove>? CardMoved;
+    event Action<DeckCommand>? CommandInvoked;
+    void BeginSession();
+    void ApplyDeck(DeckPresentation presentation);
+    void ApplyPanels(IReadOnlyList<PanelChange> panels);
+    void UpdateCard(string card, JsonElement model, JsonElement stopped);
+    void UpdateStatus(JsonElement status);
+    void ShowStopped();
+}
+
+public sealed class ShellSurface : IShellSurface
+{
+    private readonly Dictionary<string, CardWindow> windows = [];
+    private readonly Dictionary<string, CardState> cards = [];
+    private bool isLocked;
+    private string displayMode = "desktop";
+    private JsonElement? stoppedStatus;
+
+    public event Action<CardMeasurement>? CardMeasured;
+    public event Action<CardMove>? CardMoved;
+    public event Action<DeckCommand>? CommandInvoked;
+
+    public void BeginSession()
+    {
+        foreach (var window in windows.Values)
+        {
+            window.Close();
+        }
+        windows.Clear();
+        cards.Clear();
+        stoppedStatus = null;
+    }
+
+    public void ApplyDeck(DeckPresentation presentation)
+    {
+        isLocked = presentation.IsLocked;
+        displayMode = presentation.DisplayMode;
+        stoppedStatus = presentation.StoppedStatus;
+        foreach (var window in windows.Values)
+        {
+            window.SetLocked(isLocked);
+            window.SetDisplayMode(displayMode);
+        }
+    }
+
+    public void ApplyPanels(IReadOnlyList<PanelChange> panels)
+    {
+        foreach (var panel in panels)
+        {
+            switch (panel.Change)
+            {
+                case "open":
+                    Open(panel.Card).ApplyFrame(panel.Frame);
+                    break;
+                case "place" when windows.TryGetValue(panel.Card, out var window):
+                    window.ApplyFrame(panel.Frame);
+                    break;
+                case "close":
+                    Close(panel.Card);
+                    break;
+            }
+        }
+    }
+
+    public void UpdateCard(string card, JsonElement model, JsonElement stopped)
+    {
+        cards[card] = new CardState(model, stopped);
+        if (windows.TryGetValue(card, out var window))
+        {
+            window.Update(model);
+        }
+    }
+
+    public void UpdateStatus(JsonElement status)
+    {
+    }
+
+    public void ShowStopped()
+    {
+        foreach (var item in windows)
+        {
+            if (cards.TryGetValue(item.Key, out var state))
+            {
+                item.Value.ShowStopped(state.Stopped, stoppedStatus);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        BeginSession();
+    }
+
+    private CardWindow Open(string card)
+    {
+        if (windows.TryGetValue(card, out var existing))
+        {
+            return existing;
+        }
+
+        var window = new CardWindow(
+            card,
+            measurement => CardMeasured?.Invoke(measurement),
+            move => CardMoved?.Invoke(move),
+            command => CommandInvoked?.Invoke(command));
+        windows.Add(card, window);
+        window.Show();
+        window.SetLocked(isLocked);
+        window.SetDisplayMode(displayMode);
+        if (cards.TryGetValue(card, out var state))
+        {
+            window.Update(state.Model);
+        }
+        return window;
+    }
+
+    private void Close(string card)
+    {
+        if (windows.Remove(card, out var window))
+        {
+            window.Close();
+        }
+    }
+
+    private sealed record CardState(JsonElement Model, JsonElement Stopped);
+}

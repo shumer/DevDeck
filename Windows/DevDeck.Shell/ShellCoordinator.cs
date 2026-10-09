@@ -1,0 +1,220 @@
+using System.Globalization;
+using System.Text.Json;
+using System.Windows.Threading;
+
+namespace DevDeck.Shell;
+
+public sealed class ProtocolState
+{
+    public int Revision { get; private set; }
+
+    public void Reset()
+    {
+        Revision = 0;
+    }
+
+    public bool Accept(DeckEvent message)
+    {
+        if (message.ProtocolVersion != 2 || message.Revision <= Revision)
+        {
+            return false;
+        }
+
+        Revision = message.Revision;
+        return true;
+    }
+}
+
+public sealed class ShellCoordinator : IAsyncDisposable
+{
+    private readonly Dispatcher dispatcher;
+    private readonly string enginePath;
+    private readonly IShellSurface surface;
+    private readonly DisplayWatcher displayWatcher;
+    private readonly ProtocolState protocol = new();
+    private readonly CancellationTokenSource cancellation = new();
+    private readonly object engineLock = new();
+    private EngineClient? engine;
+    private Task? hostLoop;
+    private long nextId;
+    private bool beganSession;
+
+    public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface)
+    {
+        this.dispatcher = dispatcher;
+        this.enginePath = enginePath;
+        this.surface = surface;
+        displayWatcher = new DisplayWatcher(dispatcher);
+        displayWatcher.Changed += OnDisplaysChanged;
+        surface.CardMeasured += OnCardMeasured;
+        surface.CardMoved += OnCardMoved;
+        surface.CommandInvoked += OnCommandInvoked;
+    }
+
+    public Task StartLiveAsync()
+    {
+        hostLoop = RunHostLoopAsync();
+        return Task.CompletedTask;
+    }
+
+    public async Task StartReplayAsync(string path)
+    {
+        protocol.Reset();
+        beganSession = false;
+        foreach (var line in File.ReadLines(path))
+        {
+            if (line.Length == 0)
+            {
+                continue;
+            }
+            Apply(DeckEvent.Parse(line));
+        }
+        await Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        var current = CurrentEngine();
+        if (current is not null)
+        {
+            await current.SendAsync(ProtocolWriter.SessionStop(NextId()));
+        }
+        cancellation.Cancel();
+        if (hostLoop is not null)
+        {
+            try
+            {
+                await hostLoop;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+        displayWatcher.Dispose();
+        surface.Dispose();
+        cancellation.Dispose();
+    }
+
+    private async Task RunHostLoopAsync()
+    {
+        var hadSession = false;
+        while (!cancellation.IsCancellationRequested)
+        {
+            await using var client = new EngineClient(enginePath);
+            client.EventReceived += message => dispatcher.BeginInvoke(() => Apply(message));
+            lock (engineLock)
+            {
+                engine = client;
+            }
+
+            protocol.Reset();
+            beganSession = false;
+            try
+            {
+                client.Start();
+                await client.SendAsync(
+                    ProtocolWriter.SessionStart(
+                        NextId(),
+                        CultureInfo.CurrentUICulture.Name,
+                        DisplayProvider.Current()));
+                hadSession = true;
+                await client.Completion.WaitAsync(cancellation.Token);
+            }
+            catch (Exception exception) when (
+                exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                Console.Error.WriteLine("Engine host could not start.");
+                return;
+            }
+            finally
+            {
+                lock (engineLock)
+                {
+                    if (ReferenceEquals(engine, client))
+                    {
+                        engine = null;
+                    }
+                }
+            }
+
+            if (!cancellation.IsCancellationRequested && hadSession)
+            {
+                await dispatcher.InvokeAsync(surface.ShowStopped);
+            }
+        }
+    }
+
+    private void Apply(DeckEvent message)
+    {
+        if (!protocol.Accept(message))
+        {
+            return;
+        }
+
+        switch (message.Event)
+        {
+            case "deck.changed" when message.Deck is { } deck:
+                if (!beganSession)
+                {
+                    surface.BeginSession();
+                    beganSession = true;
+                }
+                surface.ApplyDeck(deck);
+                break;
+            case "panels.changed" when message.Panels is { } panels:
+                surface.ApplyPanels(panels);
+                break;
+            case "card.changed" when
+                message.Card is { } card &&
+                message.Model is { } model &&
+                message.Stopped is { } stopped &&
+                CardRenderer.CanRender(model):
+                surface.UpdateCard(card, model, stopped);
+                break;
+            case "status.changed" when message.Status is { } status:
+                surface.UpdateStatus(status);
+                break;
+            case "effect" when message.Effect is { } effect:
+                PlatformEffects.Apply(effect);
+                break;
+        }
+    }
+
+    private void OnDisplaysChanged()
+    {
+        _ = SendAsync(ProtocolWriter.DisplaysChanged(NextId(), DisplayProvider.Current()));
+    }
+
+    private void OnCardMeasured(CardMeasurement measurement)
+    {
+        _ = SendAsync(ProtocolWriter.CardMeasured(NextId(), measurement));
+    }
+
+    private void OnCardMoved(CardMove move)
+    {
+        _ = SendAsync(ProtocolWriter.CardMoved(NextId(), move));
+    }
+
+    private void OnCommandInvoked(DeckCommand command)
+    {
+        _ = SendAsync(ProtocolWriter.Command(NextId(), command));
+    }
+
+    private Task SendAsync(string line)
+    {
+        return CurrentEngine()?.SendAsync(line) ?? Task.CompletedTask;
+    }
+
+    private EngineClient? CurrentEngine()
+    {
+        lock (engineLock)
+        {
+            return engine;
+        }
+    }
+
+    private string NextId()
+    {
+        return Interlocked.Increment(ref nextId).ToString(CultureInfo.InvariantCulture);
+    }
+}
