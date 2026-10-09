@@ -76,6 +76,14 @@ public static class WindowsTheme
         return frame;
     }
 
+    public static Border CollapsedCardFrame(FrameworkElement content)
+    {
+        var frame = CardFrame(content);
+        frame.Padding = new Thickness(16, 6, 16, 6);
+        frame.Height = 44;
+        return frame;
+    }
+
     public static FontFamily Sans => (FontFamily)Application.Current.FindResource("DevDeckSans");
     public static FontFamily Mono => (FontFamily)Application.Current.FindResource("DevDeckMono");
 }

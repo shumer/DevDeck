@@ -183,6 +183,10 @@
   back without rewriting their JSON, applies frames from the engine and keeps product decisions
   in the runtime. Pull requests and Windows and WSL project cards use the shared vector marks,
   Segoe Fluent Icons, Windows materials, system corners and a solid accessibility fallback. W-3.
+- **Every Windows card uses the native visual system** - inbox, Actions, GitLab, work in flight,
+  Arc and DDEV now share the Windows measurements, materials, typography and interaction states
+  with the first cards. Expanded lists report their new height and collapsed cards stay at 44
+  pixels. W-4.
 
 ## Next
 
@@ -192,7 +196,8 @@
    engine builds (M-3), the menus and banners (M-4), where panels go (M-5), the settings
    window's operations (M-6), the update check (M-7), golden transcripts of the runtime
    (M-8), the whole protocol on the runtime with the host running it (C-1, W-1), Windows CI
-   (W-2), and the WPF shell on protocol v2 with the first Windows styled cards (W-3).
+   (W-2), the WPF shell on protocol v2 with its first styled cards (W-3), and the remaining
+   card styles (W-4).
 2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row

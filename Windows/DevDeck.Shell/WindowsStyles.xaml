@@ -12,6 +12,7 @@
   <SolidColorBrush x:Key="ToneAlert" Color="#E88484" />
   <SolidColorBrush x:Key="TonePersonal" Color="#A99BE0" />
   <SolidColorBrush x:Key="LinkInfo" Color="#7FAEDD" />
+  <SolidColorBrush x:Key="EnvironmentInfo" Color="#A99BE0" />
   <SolidColorBrush x:Key="ControlFill" Color="#0FFFFFFF" />
   <SolidColorBrush x:Key="ControlHover" Color="#17FFFFFF" />
   <SolidColorBrush x:Key="ControlPressed" Color="#0AFFFFFF" />
@@ -102,6 +103,12 @@
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+
+  <Style x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource ExpanderButton}">
+    <Setter Property="Foreground" Value="{StaticResource LinkInfo}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="3,0" />
   </Style>
 
   <Style x:Key="ChipButton" TargetType="Button" BasedOn="{StaticResource FluentButton}">

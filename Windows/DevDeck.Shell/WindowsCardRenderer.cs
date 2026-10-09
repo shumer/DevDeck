@@ -74,6 +74,133 @@ public static class WindowsCardRenderer
         return WindowsTheme.CardFrame(stack);
     }
 
+    public static FrameworkElement Inbox(JsonElement model, Action<DeckCommand> command)
+    {
+        if (JsonModel.Bool(model, "isCollapsed") && JsonModel.Object(model, "collapsed", out var collapsed))
+        {
+            return Collapsed(collapsed, command);
+        }
+
+        var stack = Stack();
+        var pill = JsonModel.Object(model, "pill", out var actualPill) ? actualPill : (JsonElement?)null;
+        stack.Children.Add(Header(null, JsonModel.String(model, "title"), null, pill));
+        if (!JsonModel.Object(model, "content", out var content))
+        {
+            AddPlaceholder(stack, model);
+            return WindowsTheme.CardFrame(stack);
+        }
+
+        stack.Children.Add(ListHero(
+            JsonModel.String(content, "count"),
+            JsonModel.String(content, "unit"),
+            JsonModel.String(content, "countTone")));
+        if (JsonModel.Array(content, "rows", out var rows))
+        {
+            var rowIndex = 0;
+            foreach (var row in rows.EnumerateArray())
+            {
+                stack.Children.Add(InboxRow(row, rowIndex > 0, command));
+                rowIndex++;
+            }
+        }
+        AddExpander(stack, content, command);
+        if (JsonModel.Object(content, "footer", out var footer))
+        {
+            stack.Children.Add(InboxFooter(footer, command));
+        }
+        return WindowsTheme.CardFrame(stack);
+    }
+
+    public static FrameworkElement ActionRuns(JsonElement model, Action<DeckCommand> command)
+    {
+        if (JsonModel.Bool(model, "isCollapsed") && JsonModel.Object(model, "collapsed", out var collapsed))
+        {
+            return Collapsed(collapsed, command);
+        }
+
+        var stack = Stack();
+        var pill = JsonModel.Object(model, "pill", out var actualPill) ? actualPill : (JsonElement?)null;
+        stack.Children.Add(Header(null, JsonModel.String(model, "title"), null, pill));
+        if (!JsonModel.Object(model, "content", out var content))
+        {
+            AddPlaceholder(stack, model);
+            return WindowsTheme.CardFrame(stack);
+        }
+
+        var variant = content.EnumerateObject().FirstOrDefault();
+        if (variant.Value.ValueKind != JsonValueKind.Object)
+        {
+            return WindowsTheme.CardFrame(stack);
+        }
+        if (variant.Name == "runs")
+        {
+            var runs = variant.Value;
+            stack.Children.Add(ListHero(
+                JsonModel.String(runs, "headline"),
+                JsonModel.String(runs, "caption"),
+                JsonModel.String(runs, "headlineTone")));
+            if (JsonModel.Array(runs, "rows", out var rows))
+            {
+                var rowIndex = 0;
+                foreach (var row in rows.EnumerateArray())
+                {
+                    stack.Children.Add(ActionRow(row, rowIndex > 0, command));
+                    rowIndex++;
+                }
+            }
+            if (JsonModel.Object(runs, "footer", out var footer))
+            {
+                stack.Children.Add(Footer(footer));
+            }
+        }
+        else
+        {
+            var notice = NoticePayload(variant.Value);
+            stack.Children.Add(Notice(notice, command));
+            if (NoticeFooter(variant.Value) is { } footer)
+            {
+                stack.Children.Add(Footer(footer));
+            }
+        }
+
+        return WindowsTheme.CardFrame(stack);
+    }
+
+    public static FrameworkElement WorkInFlight(JsonElement model, Action<DeckCommand> command)
+    {
+        if (JsonModel.Bool(model, "isCollapsed") && JsonModel.Object(model, "collapsed", out var collapsed))
+        {
+            return Collapsed(collapsed, command);
+        }
+
+        var stack = Stack();
+        var pill = JsonModel.Object(model, "pill", out var actualPill) ? actualPill : (JsonElement?)null;
+        stack.Children.Add(Header(
+            null,
+            JsonModel.String(model, "title"),
+            JsonModel.String(model, "timestamp"),
+            pill));
+        stack.Children.Add(ListHero(
+            JsonModel.NumberText(model, "count"),
+            JsonModel.String(model, "unit"),
+            null));
+        if (JsonModel.Array(model, "rows", out var rows))
+        {
+            var rowIndex = 0;
+            foreach (var row in rows.EnumerateArray())
+            {
+                stack.Children.Add(WorkRow(row, rowIndex > 0, command));
+                rowIndex++;
+            }
+        }
+        AddExpander(stack, model, command);
+        if (JsonModel.Object(model, "footer", out var footer))
+        {
+            stack.Children.Add(Footer(footer));
+        }
+        return WindowsTheme.CardFrame(stack);
+    }
+
     public static FrameworkElement Project(JsonElement model, Action<DeckCommand> command)
     {
         if (JsonModel.Bool(model, "isCollapsed") && JsonModel.Object(model, "collapsed", out var collapsed))
@@ -115,7 +242,11 @@ public static class WindowsCardRenderer
         return WindowsTheme.CardFrame(stack);
     }
 
-    private static FrameworkElement Header(string? mark, string? title, string? timestamp)
+    private static FrameworkElement Header(
+        string? mark,
+        string? title,
+        string? timestamp,
+        JsonElement? pill = null)
     {
         var row = new DockPanel { Height = 20, Margin = new Thickness(1, 0, 1, 8) };
         if (timestamp is not null)
@@ -124,9 +255,23 @@ public static class WindowsCardRenderer
             DockPanel.SetDock(time, Dock.Right);
             row.Children.Add(time);
         }
-        row.Children.Add(Mark(mark));
+        if (pill is { } headerPill)
+        {
+            var pillText = Text(
+                JsonModel.String(headerPill, "text"),
+                12,
+                WindowsTheme.Tone(JsonModel.String(headerPill, "tone")));
+            pillText.FontWeight = FontWeights.SemiBold;
+            pillText.Margin = new Thickness(8, 0, 0, 0);
+            DockPanel.SetDock(pillText, Dock.Right);
+            row.Children.Add(pillText);
+        }
+        if (mark is not null)
+        {
+            row.Children.Add(Mark(mark));
+        }
         var titleText = Eyebrow(title);
-        titleText.Margin = new Thickness(8, 0, 6, 0);
+        titleText.Margin = new Thickness(mark is null ? 0 : 8, 0, 6, 0);
         row.Children.Add(titleText);
         return row;
     }
@@ -190,6 +335,24 @@ public static class WindowsCardRenderer
             Grid.SetColumn(pillText, 2);
             grid.Children.Add(pillText);
         }
+        return grid;
+    }
+
+    private static FrameworkElement ListHero(string? value, string? unit, string? tone)
+    {
+        var grid = new Grid { Margin = new Thickness(1, 0, 1, 7) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var count = Text(
+            value,
+            30,
+            tone is null ? WindowsTheme.Brush("TextPrimary") : WindowsTheme.Tone(tone));
+        count.FontWeight = FontWeights.SemiBold;
+        grid.Children.Add(count);
+        var unitText = Text(unit, 14, WindowsTheme.Brush("TextSecondary"));
+        unitText.Margin = new Thickness(7, 11, 0, 0);
+        Grid.SetColumn(unitText, 1);
+        grid.Children.Add(unitText);
         return grid;
     }
 
@@ -262,6 +425,106 @@ public static class WindowsCardRenderer
             return ReviewRowFrame(row, hasSeparator);
         }
         var button = CommandButton(row, rowCommand, true, command, "RowButton");
+        button.ToolTip = JsonModel.String(model, "help");
+        return ReviewRowFrame(button, hasSeparator);
+    }
+
+    private static FrameworkElement InboxRow(JsonElement model, bool hasSeparator, Action<DeckCommand> command)
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var reason = new Border
+        {
+            Background = WindowsTheme.Brush("ControlFill"),
+            CornerRadius = new CornerRadius(3),
+            Margin = new Thickness(0, 5, 6, 5),
+            Padding = new Thickness(5, 0, 5, 0),
+            Child = Text(JsonModel.String(model, "chip"), 11, WindowsTheme.Brush("TextSecondary")),
+        };
+        row.Children.Add(reason);
+        if (JsonModel.String(model, "account") is { } account)
+        {
+            var accountText = Text(account, 11, WindowsTheme.Brush("TextTertiary"));
+            accountText.Margin = new Thickness(0, 0, 6, 0);
+            Grid.SetColumn(accountText, 1);
+            row.Children.Add(accountText);
+        }
+        var isRead = JsonModel.Bool(model, "isRead");
+        var title = Text(
+            JsonModel.String(model, "title"),
+            13,
+            WindowsTheme.Brush(isRead ? "TextSecondary" : "TextPrimary"));
+        title.FontWeight = isRead ? FontWeights.Normal : FontWeights.SemiBold;
+        title.Margin = new Thickness(0, 0, 6, 0);
+        Grid.SetColumn(title, 2);
+        row.Children.Add(title);
+        var age = Text(JsonModel.String(model, "age"), 11, WindowsTheme.Brush("TextTertiary"));
+        Grid.SetColumn(age, 3);
+        row.Children.Add(age);
+        return StyledRow(row, model, hasSeparator, command);
+    }
+
+    private static FrameworkElement ActionRow(JsonElement model, bool hasSeparator, Action<DeckCommand> command)
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7));
+        var title = Text(JsonModel.String(model, "title"), 13, WindowsTheme.Brush("TextPrimary"));
+        title.Margin = new Thickness(0, 0, 6, 0);
+        Grid.SetColumn(title, 1);
+        row.Children.Add(title);
+        var trailing = Text(JsonModel.String(model, "trailing"), 11, WindowsTheme.Brush("TextTertiary"));
+        Grid.SetColumn(trailing, 2);
+        row.Children.Add(trailing);
+        return StyledRow(row, model, hasSeparator, command);
+    }
+
+    private static FrameworkElement WorkRow(JsonElement model, bool hasSeparator, Action<DeckCommand> command)
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7));
+        var title = Text(JsonModel.String(model, "title"), 12, WindowsTheme.Brush("TextPrimary"));
+        title.Margin = new Thickness(0, 0, 7, 0);
+        Grid.SetColumn(title, 1);
+        row.Children.Add(title);
+        var branch = Text(JsonModel.String(model, "branch"), 11, WindowsTheme.Brush("LinkInfo"), true);
+        branch.Margin = new Thickness(0, 0, 7, 0);
+        Grid.SetColumn(branch, 2);
+        row.Children.Add(branch);
+        var tone = JsonModel.String(model, "tone");
+        var summary = Text(
+            JsonModel.String(model, "summary"),
+            11,
+            tone == "neutral" ? WindowsTheme.Brush("TextTertiary") : WindowsTheme.Tone(tone),
+            true);
+        summary.FontWeight = FontWeights.SemiBold;
+        Grid.SetColumn(summary, 3);
+        row.Children.Add(summary);
+        return StyledRow(row, model, hasSeparator, command);
+    }
+
+    private static FrameworkElement StyledRow(
+        FrameworkElement content,
+        JsonElement model,
+        bool hasSeparator,
+        Action<DeckCommand> command)
+    {
+        content.ToolTip = JsonModel.String(model, "help");
+        if (JsonModel.Command(model) is not { } rowCommand)
+        {
+            return ReviewRowFrame(content, hasSeparator);
+        }
+        var button = CommandButton(content, rowCommand, true, command, "RowButton");
         button.ToolTip = JsonModel.String(model, "help");
         return ReviewRowFrame(button, hasSeparator);
     }
@@ -341,11 +604,13 @@ public static class WindowsCardRenderer
         }
         foreach (var chip in chips.EnumerateArray())
         {
+            var chipBrush = ChipBrush(JsonModel.String(chip, "kind"));
             FrameworkElement view;
             if (JsonModel.Command(chip) is { } chipCommand)
             {
                 var button = CommandButton(JsonModel.String(chip, "label"), chipCommand, !JsonModel.Bool(chip, "isDimmed"), command, "ChipButton");
                 button.ToolTip = JsonModel.String(chip, "help");
+                button.Foreground = chipBrush;
                 view = button;
             }
             else
@@ -355,13 +620,25 @@ public static class WindowsCardRenderer
                     Background = WindowsTheme.Brush("ControlFill"),
                     CornerRadius = new CornerRadius(4),
                     Padding = new Thickness(7, 3, 7, 3),
-                    Child = Text(JsonModel.String(chip, "label"), 12, WindowsTheme.Brush("TextSecondary")),
+                    Child = Text(JsonModel.String(chip, "label"), 12, chipBrush),
                 };
             }
             view.Margin = new Thickness(1, 1, 4, 1);
             view.Opacity = JsonModel.Bool(chip, "isDimmed") ? 0.42 : 1;
             row.Children.Add(view);
         }
+    }
+
+    private static Brush ChipBrush(string? kind)
+    {
+        return kind switch
+        {
+            "tool" => WindowsTheme.Brush("LinkInfo"),
+            "local" => WindowsTheme.Brush("ToneGood"),
+            "production" => WindowsTheme.Brush("ToneAttention"),
+            "environment" => WindowsTheme.Brush("EnvironmentInfo"),
+            _ => WindowsTheme.Brush("TextPrimary"),
+        };
     }
 
     private static FrameworkElement Actions(JsonElement actions, Action<DeckCommand> command)
@@ -419,32 +696,63 @@ public static class WindowsCardRenderer
 
     private static FrameworkElement Collapsed(JsonElement model, Action<DeckCommand> command)
     {
-        var row = new DockPanel { Height = 30 };
+        var row = new Grid { Height = 30 };
         row.ToolTip = JsonModel.String(model, "help");
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        if (JsonModel.String(model, "mark") is { } mark)
+        {
+            row.Children.Add(Mark(mark));
+        }
+        var status = StatusDot(JsonModel.String(model, "tone"), 9);
+        Grid.SetColumn(status, 1);
+        row.Children.Add(status);
+        var title = Text(JsonModel.String(model, "title"), 14, WindowsTheme.Brush("TextPrimary"));
+        title.FontWeight = FontWeights.SemiBold;
+        title.Margin = new Thickness(6, 0, 4, 0);
+        Grid.SetColumn(title, 2);
+        row.Children.Add(title);
+        if (JsonModel.String(model, "note") is { } note)
+        {
+            var tone = JsonModel.String(model, "tone");
+            var noteText = TrackedText(
+                note,
+                11,
+                tone == "alert" ? WindowsTheme.Tone(tone) : WindowsTheme.Brush("TextTertiary"),
+                WindowsTheme.Mono,
+                0,
+                DeckTextTrimming.End);
+            noteText.HorizontalAlignment = HorizontalAlignment.Right;
+            noteText.VerticalAlignment = VerticalAlignment.Center;
+            noteText.Margin = new Thickness(7, 0, 7, 0);
+            Grid.SetColumn(noteText, 3);
+            row.Children.Add(noteText);
+        }
+
+        var actionColumn = 4;
         if (JsonModel.Array(model, "actions", out var actions))
         {
-            foreach (var action in actions.EnumerateArray().Reverse())
+            foreach (var action in actions.EnumerateArray())
             {
                 if (JsonModel.Command(action) is not { } actionCommand)
                 {
                     continue;
                 }
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 var button = CommandButton(DeckIcons.Create(JsonModel.String(action, "glyph"), 13), actionCommand, Enabled(action), command, "HeaderIconButton");
                 button.Width = 28;
                 button.Height = 28;
                 button.ToolTip = JsonModel.String(action, "help") ?? JsonModel.String(action, "title");
                 AutomationProperties.SetName(button, JsonModel.String(action, "title") ?? "");
-                DockPanel.SetDock(button, Dock.Right);
+                Grid.SetColumn(button, actionColumn);
                 row.Children.Add(button);
+                actionColumn++;
             }
         }
-        row.Children.Add(Mark(JsonModel.String(model, "mark")));
-        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 9));
-        var title = Text(JsonModel.String(model, "title"), 14, WindowsTheme.Brush("TextPrimary"));
-        title.FontWeight = FontWeights.SemiBold;
-        title.Margin = new Thickness(6, 0, 4, 0);
-        row.Children.Add(title);
-        return WindowsTheme.CardFrame(row);
+        return WindowsTheme.CollapsedCardFrame(row);
     }
 
     private static FrameworkElement Mark(string? name)
@@ -539,6 +847,139 @@ public static class WindowsCardRenderer
             Trimming = trimming,
             VerticalAlignment = VerticalAlignment.Center,
         };
+    }
+
+    private static void AddExpander(Panel stack, JsonElement parent, Action<DeckCommand> command)
+    {
+        if (!JsonModel.Object(parent, "expander", out var expander) ||
+            JsonModel.Command(expander) is not { } expanderCommand)
+        {
+            return;
+        }
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        content.Children.Add(Text(
+            ExpanderLabel(JsonModel.String(expander, "label")),
+            12,
+            WindowsTheme.Brush("TextSecondary")));
+        var icon = DeckIcons.Create(JsonModel.Bool(expander, "isExpanded") ? "collapse" : "expand", 12);
+        icon.Margin = new Thickness(4, 0, 0, 0);
+        content.Children.Add(icon);
+        var button = CommandButton(content, expanderCommand, true, command, "ExpanderButton");
+        button.Foreground = WindowsTheme.Brush("TextSecondary");
+        button.Margin = new Thickness(0, 2, 0, 0);
+        stack.Children.Add(button);
+    }
+
+    private static FrameworkElement Footer(JsonElement footer)
+    {
+        var row = new DockPanel { Margin = new Thickness(2, 7, 2, 0) };
+        if (JsonModel.String(footer, "trailing") is { } trailing)
+        {
+            var trailingText = Text(trailing, 11, WindowsTheme.Brush("TextTertiary"), true);
+            DockPanel.SetDock(trailingText, Dock.Right);
+            row.Children.Add(trailingText);
+        }
+        row.Children.Add(Text(
+            JsonModel.String(footer, "leading"),
+            12,
+            WindowsTheme.Brush("TextTertiary")));
+        return row;
+    }
+
+    private static FrameworkElement InboxFooter(JsonElement footer, Action<DeckCommand> command)
+    {
+        var stack = new StackPanel { Margin = new Thickness(0, 5, 0, 0) };
+        if (JsonModel.String(footer, "progress") is { } progress)
+        {
+            var progressRow = FooterLine(progress, JsonModel.String(footer, "clock"));
+            if (JsonModel.Bool(footer, "progressFailed") &&
+                progressRow.Children.OfType<TextBlock>().FirstOrDefault() is { } progressText)
+            {
+                progressText.Foreground = WindowsTheme.Brush("ToneAlert");
+            }
+            stack.Children.Add(progressRow);
+            return stack;
+        }
+
+        if (JsonModel.Object(footer, "clearing", out var clearing))
+        {
+            var first = new DockPanel();
+            var clock = Text(JsonModel.String(footer, "clock"), 11, WindowsTheme.Brush("TextTertiary"), true);
+            DockPanel.SetDock(clock, Dock.Right);
+            first.Children.Add(clock);
+            first.Children.Add(LinkButton(clearing, command));
+            stack.Children.Add(first);
+            if (JsonModel.Object(footer, "clearingWithOption", out var alternate))
+            {
+                stack.Children.Add(LinkButton(alternate, command));
+            }
+            return stack;
+        }
+
+        stack.Children.Add(FooterLine(
+            JsonModel.String(footer, "leading"),
+            JsonModel.String(footer, "clock")));
+        return stack;
+    }
+
+    private static DockPanel FooterLine(string? leading, string? trailing)
+    {
+        var row = new DockPanel();
+        if (trailing is not null)
+        {
+            var trailingText = Text(trailing, 11, WindowsTheme.Brush("TextTertiary"), true);
+            DockPanel.SetDock(trailingText, Dock.Right);
+            row.Children.Add(trailingText);
+        }
+        row.Children.Add(Text(leading, 12, WindowsTheme.Brush("TextTertiary")));
+        return row;
+    }
+
+    private static Button LinkButton(JsonElement link, Action<DeckCommand> command)
+    {
+        var linkCommand = JsonModel.Command(link);
+        var button = linkCommand is { } actualCommand
+            ? CommandButton(JsonModel.String(link, "title"), actualCommand, true, command, "LinkButton")
+            : new Button
+            {
+                Content = JsonModel.String(link, "title"),
+                Style = WindowsTheme.Style("LinkButton"),
+            };
+        button.ToolTip = JsonModel.String(link, "help");
+        return button;
+    }
+
+    private static FrameworkElement Notice(JsonElement notice, Action<DeckCommand> command)
+    {
+        var stack = new StackPanel { Margin = new Thickness(1, 8, 1, 8) };
+        var title = Text(JsonModel.String(notice, "title"), 13, WindowsTheme.Brush("TextPrimary"));
+        title.FontWeight = FontWeights.SemiBold;
+        stack.Children.Add(title);
+        var detail = Text(JsonModel.String(notice, "detail"), 11, WindowsTheme.Brush("TextSecondary"));
+        detail.Margin = new Thickness(0, 4, 0, 0);
+        detail.TextWrapping = TextWrapping.Wrap;
+        stack.Children.Add(detail);
+        if (JsonModel.Object(notice, "link", out var link))
+        {
+            var linkButton = LinkButton(link, command);
+            linkButton.Margin = new Thickness(0, 6, 0, 0);
+            stack.Children.Add(linkButton);
+        }
+        return stack;
+    }
+
+    private static JsonElement NoticePayload(JsonElement variant)
+    {
+        return JsonModel.Object(variant, "_0", out var notice) ? notice : variant;
+    }
+
+    private static JsonElement? NoticeFooter(JsonElement variant)
+    {
+        if (JsonModel.Object(variant, "footer", out var footer))
+        {
+            return footer;
+        }
+        return JsonModel.Object(variant, "_1", out footer) ? footer : null;
     }
 
     private static FrameworkElement ReviewRowFrame(FrameworkElement content, bool hasSeparator)
