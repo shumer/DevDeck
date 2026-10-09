@@ -186,6 +186,10 @@
 4. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
    Tailscale for the rest. The QR code covers the same network; this covers the customer on a
    call.
+5. **An MCP server, after the Windows beta** - so an agent can ask what is waiting on you, read a
+   card, or start and stop a local project. The engine already speaks a small JSON protocol to
+   the Windows shell, so this is a thin layer over it rather than a second way in. Read-only
+   first; anything that starts, stops or marks read asks before it acts.
 
 ## Not planned
 
