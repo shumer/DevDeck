@@ -1,0 +1,1 @@
+{"event":"notify","notifications":[{"body":"It was running at 11:42 and nobody pressed Stop. Click to see the log.","command":{"followAlert":{"_0":{"card":{"_0":"project.w6-live-project"}}}},"id":"down:w6-live-project:1791625384","isQuiet":true,"source":"project","subtitle":"npm","title":"w6-live-project stopped on its own"}],"protocolVersion":2,"revision":20}

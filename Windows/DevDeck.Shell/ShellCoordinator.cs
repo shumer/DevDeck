@@ -186,6 +186,9 @@ public sealed class ShellCoordinator : IAsyncDisposable
             case "menu.changed" when message.Menu is { } menu:
                 surface.UpdateMenu(menu);
                 break;
+            case "notify" when message.Notifications is { } notifications:
+                surface.ShowNotifications(notifications);
+                break;
             case "effect" when message.Effect is { } effect:
                 ApplyEffect(effect);
                 break;
@@ -206,6 +209,11 @@ public sealed class ShellCoordinator : IAsyncDisposable
                 break;
             case "menu":
                 surface.UpdateMenu(value);
+                break;
+            case "firstPass":
+            case "secondPass":
+            case "summary":
+                surface.ShowNotifications(ReplayNotificationAdapter.Parse(value));
                 break;
         }
     }

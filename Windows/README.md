@@ -24,10 +24,13 @@ Replay reads protocol events from a golden transcript instead of starting the en
 no network request and reads no token.
 
 ```powershell
-dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl
-dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/session-ru.expected.jsonl
-dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/runtime-menu-en.expected.jsonl
-dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/runtime-menu-ru.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/session-ru.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/runtime-menu-en.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/runtime-menu-ru.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/runtime-banners-en.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/runtime-banners-ru.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/session-settings-en.expected.jsonl
 ```
 
 Screenshots must use these neutral golden sessions.
@@ -45,7 +48,7 @@ the English golden session. It adds only the engine-owned `meta.place` values ne
 Windows and WSL variants:
 
 ```powershell
-dotnet run --project Windows/DevDeck.Shell -- --replay docs/poc/windows-ui/windows-style-sample.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay docs/poc/windows-ui/windows-style-sample.jsonl
 ```
 
 The left side of each comparison is the accepted HTML mock. The right side is the WPF renderer
@@ -115,6 +118,32 @@ supplied tier. Tier 3 uses the calm mark because it does not ask for immediate a
 
 ![Tray icons for a dark taskbar](../docs/poc/windows-ui/w5-tray-icons-dark.png)
 
+The shell posts every `notify` model as a Windows toast. The title, subtitle, body, quiet flag,
+source mark and command come from the engine. Repeated ids stay quiet for the lifetime of the
+shell, including engine restarts. The capture renderer below uses the same engine models and
+shared vector marks; Windows supplies the final system chrome on the live toast.
+
+![GitHub notification](../docs/poc/windows-ui/w6-toast-github.png)
+
+![GitLab notification](../docs/poc/windows-ui/w6-toast-gitlab.png)
+
+![Project notification from a live stopped project](../docs/poc/windows-ui/w6-toast-project.png)
+
+![DevDeck update notification](../docs/poc/windows-ui/w6-toast-devdeck.png)
+
+![Grouped notification](../docs/poc/windows-ui/w6-toast-summary.png)
+
+## Toast registration
+
+The unpackaged self-contained executable uses Windows App SDK 1.8 and calls
+`AppNotificationManager.Register()`. For an unpackaged app Windows derives the AUMID from the
+executable and registers an in-process COM activator for the current user. This needs no MSIX
+package and no Start Menu shortcut. It also fits the protocol boundary: toast activation is
+handled only while the shell is running, so the exact command can stay in memory and never be
+written to an activation argument. The shell calls `UnregisterAll` on a normal exit, which also
+removes its per-user registration. This registration is the only machine state the toast
+implementation creates.
+
 ## Backdrop behavior
 
 The Windows 11 test confirms that a borderless WPF window receives the system backdrop when
@@ -132,7 +161,7 @@ clipping to DWM, so neither mode produces square corner artifacts.
 Run the shell against a locally built host:
 
 ```powershell
-dotnet run --project Windows/DevDeck.Shell -- --engine .build\out\Products\Debug-windows-x86_64\DevDeckEngineHost.exe
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --engine .build\out\Products\Debug-windows-x86_64\DevDeckEngineHost.exe
 ```
 
 The development commands add and remove a local project through the engine settings operation and
@@ -159,6 +188,11 @@ open menu without closing its popup. The tray and card menus return engine comma
 only a prompt fills the command's `name`. `openMenu` opens the tray menu and `quit` closes the
 shell after the host stops its cycles. `openSettings` is logged until W-10 supplies that window.
 
+`notify` posts one Windows toast per model with the source mark from `BrandMarks.json`. Quiet
+models add the system silent audio flag. A click returns the stored command without changing its
+JSON. Notification ids are remembered by the shell so a restarted host cannot show the same
+banner twice.
+
 All five model kinds and collapsed rows use the Windows visual system in
 [`docs/windows-style.md`](../docs/windows-style.md). Review lists cover both GitHub pull requests
 and GitLab merge requests. Arc, DDEV, Windows and WSL projects share the project renderer while
@@ -169,7 +203,6 @@ part of W-11.
 
 The following protocol features are intentionally deferred:
 
-- Notifications are W-6.
 - Full per-monitor placement, mixed scaling, unplug and sleep behavior are W-7.
 - The log window is W-8.
 - Settings UI is W-10. The development flags are command line helpers only.

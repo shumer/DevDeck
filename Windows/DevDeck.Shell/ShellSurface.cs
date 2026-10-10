@@ -14,6 +14,7 @@ public interface IShellSurface : IDisposable
     void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped);
     void UpdateStatus(JsonElement status);
     void UpdateMenu(JsonElement menu);
+    void ShowNotifications(IReadOnlyList<DeckNotification> notifications);
     void OpenMenu();
     void Quit();
     void ShowStopped();
@@ -24,6 +25,7 @@ public sealed class ShellSurface : IShellSurface
     private readonly Dictionary<string, CardWindow> windows = [];
     private readonly Dictionary<string, CardState> cards = [];
     private readonly TrayController tray;
+    private readonly NotificationController notifications;
     private bool isLocked;
     private string displayMode = "desktop";
     private JsonElement? stoppedStatus;
@@ -35,6 +37,10 @@ public sealed class ShellSurface : IShellSurface
     public ShellSurface()
     {
         tray = new TrayController(command => CommandInvoked?.Invoke(command));
+        notifications = new NotificationController(
+            new WindowsToastPlatform(),
+            NotificationArtwork.FileUri,
+            command => CommandInvoked?.Invoke(command));
     }
 
     public void BeginSession()
@@ -99,6 +105,11 @@ public sealed class ShellSurface : IShellSurface
         tray.UpdateMenu(menu);
     }
 
+    public void ShowNotifications(IReadOnlyList<DeckNotification> value)
+    {
+        notifications.Show(value);
+    }
+
     public void OpenMenu()
     {
         tray.OpenMenu();
@@ -123,6 +134,7 @@ public sealed class ShellSurface : IShellSurface
     public void Dispose()
     {
         BeginSession();
+        notifications.Dispose();
         tray.Dispose();
     }
 
