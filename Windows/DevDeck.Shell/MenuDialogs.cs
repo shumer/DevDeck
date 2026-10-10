@@ -67,14 +67,9 @@ public sealed class MenuDialogs : IMenuDialogs
         {
             field = new TextBox
             {
-                FontFamily = WindowsTheme.Sans,
-                FontSize = 13,
-                Padding = new Thickness(8, 6, 8, 6),
-                ToolTip = placeholder,
+                Style = WindowsTheme.Style("PromptTextBox"),
+                Tag = placeholder,
                 Margin = new Thickness(0, 0, 0, 16),
-                Background = WindowsTheme.Brush("ControlFill"),
-                Foreground = WindowsTheme.Brush("TextPrimary"),
-                BorderBrush = WindowsTheme.Brush("ControlStroke"),
             };
             System.Windows.Automation.AutomationProperties.SetHelpText(field, placeholder);
             content.Children.Add(field);

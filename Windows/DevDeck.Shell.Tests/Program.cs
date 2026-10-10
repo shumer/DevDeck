@@ -74,6 +74,7 @@ public static class Program
         Run("menu alternates send their own command", MenuAlternatesSendTheirOwnCommand);
         Run("card windows accept their context menu", CardWindowsAcceptTheirContextMenu);
         Run("tray status creates every icon tier", TrayStatusCreatesEveryIconTier);
+        Run("prompt fields show their model placeholder and focus ring", PromptFieldsShowTheirModelPlaceholderAndFocusRing);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -636,6 +637,53 @@ public static class Program
                 Equal(new System.Drawing.Size(32, 32), icon.Size);
             }
         }
+
+        var lightNeedsFixing = Pixel(TrayIconFactory.Preview(32, 1, true), 26, 26);
+        var darkNeedsFixing = Pixel(TrayIconFactory.Preview(32, 1, false), 26, 26);
+        var waiting = Pixel(TrayIconFactory.Preview(32, 0, false), 26, 26);
+        True(lightNeedsFixing.R < 80 && lightNeedsFixing.G < 80 && lightNeedsFixing.B < 80);
+        True(darkNeedsFixing.R > 200 && darkNeedsFixing.G > 200 && darkNeedsFixing.B > 200);
+        True(waiting.R > waiting.G + 40 && waiting.R > waiting.B + 40);
+    }
+
+    private static void PromptFieldsShowTheirModelPlaceholderAndFocusRing()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: false);
+        var prompt = Flatten(DeckMenuEntryModel.ParseList(value))
+            .Select(entry => entry.Item?.Prompt)
+            .Single(model => model is not null) ?? throw new Exception();
+        var window = MenuDialogs.Build(prompt, prompt.Placeholder, out var field, out _);
+        var textBox = field ?? throw new Exception();
+        window.Show();
+        textBox.ApplyTemplate();
+        window.UpdateLayout();
+
+        Equal(WindowsTheme.Brush("ControlFill"), textBox.Background);
+        Equal(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush);
+        var placeholder = (TextBlock)textBox.Template.FindName("Placeholder", textBox);
+        Equal(prompt.Placeholder, placeholder.Text);
+        Equal(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground);
+        Equal(Visibility.Visible, placeholder.Visibility);
+
+        textBox.Text = "Desk";
+        window.UpdateLayout();
+        Equal(Visibility.Collapsed, placeholder.Visibility);
+
+        textBox.Text = "";
+        _ = textBox.Focus();
+        textBox.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        var focusBorder = (Border)textBox.Template.FindName("FocusBorder", textBox);
+        var controlBorder = (Border)textBox.Template.FindName("ControlBorder", textBox);
+        Equal(WindowsTheme.Brush("FocusOuter"), focusBorder.BorderBrush);
+        Equal(WindowsTheme.Brush("FocusInner"), controlBorder.BorderBrush);
+        window.Close();
+    }
+
+    private static Color Pixel(System.Windows.Media.Imaging.BitmapSource image, int x, int y)
+    {
+        var pixel = new byte[4];
+        image.CopyPixels(new Int32Rect(x, y, 1, 1), pixel, 4, 0);
+        return Color.FromArgb(pixel[3], pixel[2], pixel[1], pixel[0]);
     }
 
     private static IEnumerable<DeckMenuEntryModel> Flatten(IReadOnlyList<DeckMenuEntryModel> entries)

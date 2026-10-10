@@ -172,14 +172,15 @@ public static class TrayIconFactory
                 Height = size * 0.34,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Bottom,
-                Fill = tier == 0 ? WindowsTheme.Brush("ToneAlert") : WindowsTheme.Brush("ToneAttention"),
+                Fill = tier switch
+                {
+                    0 => WindowsTheme.Brush("ToneAlert"),
+                    1 => foreground,
+                    _ => Brushes.Transparent,
+                },
                 Stroke = tier == 2 ? foreground : null,
                 StrokeThickness = tier == 2 ? Math.Max(1, size / 16.0) : 0,
             };
-            if (tier == 2)
-            {
-                badge.Fill = Brushes.Transparent;
-            }
             root.Children.Add(badge);
         }
         root.Measure(new Size(size, size));
