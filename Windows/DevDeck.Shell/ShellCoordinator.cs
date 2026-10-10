@@ -49,6 +49,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
         surface.CardMeasured += OnCardMeasured;
         surface.CardMoved += OnCardMoved;
         surface.CommandInvoked += OnCommandInvoked;
+        surface.LogWindowChanged += OnLogWindowChanged;
     }
 
     public Task StartLiveAsync()
@@ -189,6 +190,9 @@ public sealed class ShellCoordinator : IAsyncDisposable
             case "notify" when message.Notifications is { } notifications:
                 surface.ShowNotifications(notifications);
                 break;
+            case "log.changed" when message.Card is { } logCard && message.Log is { } log:
+                surface.UpdateLog(logCard, log);
+                break;
             case "effect" when message.Effect is { } effect:
                 ApplyEffect(effect);
                 break;
@@ -231,6 +235,12 @@ public sealed class ShellCoordinator : IAsyncDisposable
             case "openSettings":
                 Console.Error.WriteLine("Ignored engine effect: openSettings.");
                 break;
+            case "openLogs" when JsonModel.String(effect, "card") is { } openCard:
+                surface.OpenLogs(openCard);
+                break;
+            case "closeLogs" when JsonModel.String(effect, "card") is { } closeCard:
+                surface.CloseLogs(closeCard);
+                break;
             default:
                 PlatformEffects.Apply(effect);
                 break;
@@ -255,6 +265,11 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private void OnCommandInvoked(DeckCommand command)
     {
         _ = SendAsync(ProtocolWriter.Command(NextId(), command));
+    }
+
+    private void OnLogWindowChanged(LogWindowChange change)
+    {
+        _ = SendAsync(ProtocolWriter.LogWindowChanged(NextId(), change));
     }
 
     private Task SendAsync(string line)

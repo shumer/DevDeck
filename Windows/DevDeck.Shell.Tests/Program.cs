@@ -31,6 +31,12 @@ public static class Program
             Application.Current.Shutdown();
             return 0;
         }
+        if (arguments.Length == 2 && arguments[0] == "--capture-w8")
+        {
+            W8Screenshots.Generate(Path.GetFullPath(arguments[1]));
+            Application.Current.Shutdown();
+            return 0;
+        }
         if (arguments.Length == 4 && arguments[0] == "--capture-reference")
         {
             ReferenceScreenshots.Generate(
@@ -87,6 +93,10 @@ public static class Program
         Run("quiet notifications silence their toast XML", QuietNotificationsSilenceToastXml);
         Run("notification ids are shown only once", NotificationIdsAreShownOnlyOnce);
         Run("every notification source has a shared mark", EveryNotificationSourceHasSharedMark);
+        Run("log updates append only their new lines", LogUpdatesAppendOnlyNewLines);
+        Run("empty logs show the engine detail", EmptyLogsShowEngineDetail);
+        Run("closing a log reports that it is closed", ClosingLogReportsClosed);
+        Run("opening a log twice keeps one window", OpeningLogTwiceKeepsOneWindow);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -982,6 +992,67 @@ public static class Program
         }
     }
 
+    private static void LogUpdatesAppendOnlyNewLines()
+    {
+        var buffer = new LogBuffer();
+        var first = buffer.Apply(new DeckLog(["one", "two"], "tail sample.log", null));
+        var second = buffer.Apply(new DeckLog(["one", "two", "three"], "tail sample.log", null));
+        True(!first.Reset);
+        Equal(2, first.Added.Count);
+        True(!second.Reset);
+        Equal(1, second.Added.Count);
+        Equal("three", second.Added[0]);
+        Equal(3, buffer.Lines.Count);
+    }
+
+    private static void EmptyLogsShowEngineDetail()
+    {
+        var window = new LogWindow("project.sample");
+        window.Update(new DeckLog([], "tail sample.log", "nothing has been started from here yet"));
+        True(window.DetailIsVisible);
+        window.Close();
+    }
+
+    private static void ClosingLogReportsClosed()
+    {
+        var created = new List<RecordingLogWindow>();
+        var registry = new LogWindowRegistry(_ =>
+        {
+            var window = new RecordingLogWindow();
+            created.Add(window);
+            return window;
+        });
+        var changes = new List<LogWindowChange>();
+        registry.WindowChanged += changes.Add;
+        registry.Open("project.sample");
+        registry.Close("project.sample");
+        Equal(2, changes.Count);
+        True(changes[0].IsOpen);
+        True(!changes[1].IsOpen);
+        Equal("project.sample", changes[1].Card);
+        using var document = JsonDocument.Parse(ProtocolWriter.LogWindowChanged("9", changes[1]));
+        Equal("logWindow.changed", document.RootElement.GetProperty("intent").GetString());
+        Equal("project.sample", document.RootElement.GetProperty("card").GetString());
+        True(!document.RootElement.GetProperty("isOpen").GetBoolean());
+    }
+
+    private static void OpeningLogTwiceKeepsOneWindow()
+    {
+        var created = new List<RecordingLogWindow>();
+        var registry = new LogWindowRegistry(_ =>
+        {
+            var window = new RecordingLogWindow();
+            created.Add(window);
+            return window;
+        });
+        registry.Open("project.sample");
+        registry.Open("project.sample");
+        Equal(1, created.Count);
+        Equal(1, registry.Count);
+        Equal(1, created[0].Activations);
+        registry.CloseAll(false);
+    }
+
     private static IReadOnlyList<string> GoldenPaths()
     {
         var root = RepositoryRoot();
@@ -1055,6 +1126,34 @@ public static class Program
         public string? Prompt(DeckMenuPromptModel model)
         {
             return PromptAnswer;
+        }
+    }
+
+    private sealed class RecordingLogWindow : ILogWindow
+    {
+        public event EventHandler? Closed;
+        public int Activations { get; private set; }
+
+        public void Show()
+        {
+        }
+
+        public void Activate()
+        {
+            Activations++;
+        }
+
+        public void Close()
+        {
+            Closed?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetTitle(string title)
+        {
+        }
+
+        public void Update(DeckLog log)
+        {
         }
     }
 

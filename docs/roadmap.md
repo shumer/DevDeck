@@ -194,6 +194,10 @@
   quiet flag and click command. The unpackaged self-contained shell uses Windows App SDK toast
   registration, suppresses repeated ids across host restarts and keeps activation in process.
   W-6.
+- **The Windows log follows the engine** - each card gets one normal resizable log window. The
+  shell appends changed lines, follows the tail until the user scrolls away, searches locally and
+  reports window state through protocol v2. The engine still owns the title, source, empty detail
+  and card highlight. W-8.
 
 ## Next
 

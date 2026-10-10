@@ -8,6 +8,7 @@ public interface IShellSurface : IDisposable
     event Action<CardMeasurement>? CardMeasured;
     event Action<CardMove>? CardMoved;
     event Action<DeckCommand>? CommandInvoked;
+    event Action<LogWindowChange>? LogWindowChanged;
     void BeginSession();
     void ApplyDeck(DeckPresentation presentation);
     void ApplyPanels(IReadOnlyList<PanelChange> panels);
@@ -15,6 +16,9 @@ public interface IShellSurface : IDisposable
     void UpdateStatus(JsonElement status);
     void UpdateMenu(JsonElement menu);
     void ShowNotifications(IReadOnlyList<DeckNotification> notifications);
+    void UpdateLog(string card, DeckLog log);
+    void OpenLogs(string card);
+    void CloseLogs(string card);
     void OpenMenu();
     void Quit();
     void ShowStopped();
@@ -26,6 +30,7 @@ public sealed class ShellSurface : IShellSurface
     private readonly Dictionary<string, CardState> cards = [];
     private readonly TrayController tray;
     private readonly NotificationController notifications;
+    private readonly LogWindowRegistry logs;
     private bool isLocked;
     private string displayMode = "desktop";
     private JsonElement? stoppedStatus;
@@ -33,6 +38,7 @@ public sealed class ShellSurface : IShellSurface
     public event Action<CardMeasurement>? CardMeasured;
     public event Action<CardMove>? CardMoved;
     public event Action<DeckCommand>? CommandInvoked;
+    public event Action<LogWindowChange>? LogWindowChanged;
 
     public ShellSurface()
     {
@@ -41,6 +47,8 @@ public sealed class ShellSurface : IShellSurface
             new WindowsToastPlatform(),
             NotificationArtwork.FileUri,
             command => CommandInvoked?.Invoke(command));
+        logs = new LogWindowRegistry(card => new LogWindow(card));
+        logs.WindowChanged += change => LogWindowChanged?.Invoke(change);
     }
 
     public void BeginSession()
@@ -51,6 +59,7 @@ public sealed class ShellSurface : IShellSurface
         }
         windows.Clear();
         cards.Clear();
+        logs.CloseAll(false);
         stoppedStatus = null;
     }
 
@@ -88,6 +97,7 @@ public sealed class ShellSurface : IShellSurface
     public void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped)
     {
         cards[card] = new CardState(model, menu, stopped);
+        logs.UpdateTitle(card, CardTitle(model));
         if (windows.TryGetValue(card, out var window))
         {
             window.Update(model);
@@ -108,6 +118,21 @@ public sealed class ShellSurface : IShellSurface
     public void ShowNotifications(IReadOnlyList<DeckNotification> value)
     {
         notifications.Show(value);
+    }
+
+    public void UpdateLog(string card, DeckLog log)
+    {
+        logs.UpdateLog(card, log);
+    }
+
+    public void OpenLogs(string card)
+    {
+        logs.Open(card);
+    }
+
+    public void CloseLogs(string card)
+    {
+        logs.Close(card);
     }
 
     public void OpenMenu()
@@ -171,4 +196,10 @@ public sealed class ShellSurface : IShellSurface
     }
 
     private sealed record CardState(JsonElement Model, JsonElement Menu, JsonElement Stopped);
+
+    private static string CardTitle(JsonElement model)
+    {
+        var card = model.EnumerateObject().Single().Value;
+        return JsonModel.String(card, "title") ?? "";
+    }
 }

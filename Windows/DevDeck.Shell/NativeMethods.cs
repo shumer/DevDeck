@@ -50,6 +50,16 @@ public static class NativeMethods
         return cornerPreference;
     }
 
+    public static void ApplyLogWindowStyles(nint handle)
+    {
+        var cornerPreference = RoundedWindowCorners;
+        _ = DwmSetWindowAttribute(
+            handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
+        var darkMode = 1;
+        _ = DwmSetWindowAttribute(
+            handle, ImmersiveDarkMode, ref darkMode, Marshal.SizeOf<int>());
+    }
+
     public static int GetWindowAttribute(nint handle, int attribute)
     {
         _ = DwmGetWindowAttribute(handle, attribute, out var value, Marshal.SizeOf<int>());
