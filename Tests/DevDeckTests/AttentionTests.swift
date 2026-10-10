@@ -397,7 +397,7 @@ func runAttentionTests(_ run: TestRun) async {
         try expect(none.isEmpty)
     }
 
-    run.section("Attention - work only on this Mac")
+    run.section("Attention - work only on this computer")
 
     await run.test("local commits are counted and dated from one git command") {
         let parsed = WorkInFlight.parseLocalCommits("1789990000\n1789000000\n\n")
@@ -413,7 +413,7 @@ func runAttentionTests(_ run: TestRun) async {
         let orphan = CheckoutState(id: "o", title: "spike", branch: "spike/cache", dirtyFiles: 0, ahead: 0, behind: 0, hasUpstream: false,
                                    localCommits: 2, oldestLocalCommitAt: now.addingTimeInterval(-9 * 86_400))
         let rows = CheckoutAttention.items(checkouts: [old, fresh, orphan], folders: ["w": URL(fileURLWithPath: "/tmp/w")], now: now)
-        try expectEqual(rows.map(\.title), ["4 commits only on this Mac: widgets", "Branch not on any remote: spike"])
+        try expectEqual(rows.map(\.title), ["4 commits only on this computer: widgets", "Branch not on any remote: spike"])
         try expect(rows.allSatisfy { $0.tier == .goodToKnow })
         try expectEqual(rows.first?.action, .openTerminal(URL(fileURLWithPath: "/tmp/w")))
     }
