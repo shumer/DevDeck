@@ -241,6 +241,16 @@ covering the cards already on the primary display.
 
 ![Cards parked after the external display is disconnected](../docs/poc/windows-ui/w7-monitor-disconnected.png)
 
+The DPI hotfix acceptance uses real full desktop captures from Snipping Tool with the golden
+session models. The first capture shows three cards opened directly on the 100 percent external
+display. The second shows the Work in Flight card after a live drag from the 250 percent primary
+display to the external display. Each card keeps a 352 DIP width and complete content at its local
+scale.
+
+![Cards opened on the external display](../docs/poc/windows-ui/w7-dpi-opened-external.png)
+
+![Card dragged to the external display](../docs/poc/windows-ui/w7-dpi-dragged.png)
+
 ## Summon
 
 The shell asks the engine for deck preferences when a session starts and after every preferences
