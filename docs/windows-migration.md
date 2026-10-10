@@ -127,7 +127,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
   its QR locally from the engine supplied address.
 - **W-12.** Docker Desktop, DDEV natively and in WSL, Arc in WSL; the 0023 scenarios become
   standing checks.
-- **W-13.** Start at login.
+- **W-13.** Start at login. Done: the General switch reads and writes the current user's
+  `DevDeck` Run value, the installer flag enables the same entry, and the GUI executable starts
+  at sign-in without a console window.
 
 ## Phase 4 - delivery
 

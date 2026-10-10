@@ -170,9 +170,20 @@ public static class NativeMethods
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(nint handle, ref Margins margins);
 
-    [DllImport("kernel32.dll")]
+    public static void AttachToParentConsole()
+    {
+        const uint parentProcess = 0xFFFFFFFF;
+        if (!AttachConsole(parentProcess))
+        {
+            return;
+        }
+        Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+        Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool FreeConsole();
+    private static extern bool AttachConsole(uint processId);
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForSystem();

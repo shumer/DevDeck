@@ -304,8 +304,8 @@ back. The engine continues to own Credential Manager storage. Project location l
 engine's `project.place.windows` and `project.place.wsl` words. The shell only extracts a WSL
 distribution name from the UNC path.
 
-Start at login stays disabled until W-13. Browser fields list applications registered under
-`SOFTWARE\Clients\StartMenuInternet` and store that registry key as the protocol identifier.
+Browser fields list applications registered under `SOFTWARE\Clients\StartMenuInternet` and
+store that registry key as the protocol identifier.
 Edge, Chrome, Brave and Vivaldi get a second profile picker from the browser's `Local State`
 file in Local AppData. Firefox and other browsers have no profile picker. The replay source for
 settings screenshots
@@ -332,6 +332,24 @@ The popup contains only `phoneTitle`, `phoneNote` and `phoneURL` supplied by the
 Windows, `LocalAddress.current()` reads IPv4 adapters through `GetAdaptersAddresses`, keeps active
 physical adapters, prefers Wi-Fi and ignores loopback, Hyper-V, WSL, VPN and other virtual
 adapters. Nothing is sent to a QR service.
+
+## Start at login
+
+The General page controls the current user's `DevDeck` string value under
+`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Its data is the current shell executable
+path in quotes. The switch is on only when the stored command matches the running executable, so
+moving or reinstalling the shell leaves the old entry visibly off until it is enabled again.
+
+`DevDeck.Shell.exe --enable-login-item` writes the same value for setup scripts and the W-17
+installer. The shell is a Windows GUI executable, so starting it at sign-in does not create a
+console window. Developer commands attach to their parent console when one exists.
+
+W-17 and W-18 installers must remove the `DevDeck` Run value during uninstall. Disabling the
+switch removes it immediately.
+
+![Start at login on the General page](../docs/poc/windows-ui/w13-general.png)
+
+![DevDeck enabled in Task Manager Startup apps](../docs/poc/windows-ui/w13-startup-app.png)
 
 ![Browser and profile choice](../docs/poc/windows-ui/w11-browser-profile.png)
 
