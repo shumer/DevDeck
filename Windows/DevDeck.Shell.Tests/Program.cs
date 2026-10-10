@@ -97,6 +97,7 @@ public static class Program
         Run("empty logs show the engine detail", EmptyLogsShowEngineDetail);
         Run("closing a log reports that it is closed", ClosingLogReportsClosed);
         Run("opening a log twice keeps one window", OpeningLogTwiceKeepsOneWindow);
+        Run("log search uses an unclipped Fluent chevron", LogSearchUsesUnclippedFluentChevron);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -1051,6 +1052,15 @@ public static class Program
         Equal(1, registry.Count);
         Equal(1, created[0].Activations);
         registry.CloseAll(false);
+    }
+
+    private static void LogSearchUsesUnclippedFluentChevron()
+    {
+        var window = new LogWindow("project.sample");
+        var glyph = window.SearchNextButton.Content as TextBlock ?? throw new Exception();
+        Equal(DeckIcons.Text("expand"), glyph.Text);
+        Equal(new Thickness(0), window.SearchNextButton.Padding);
+        window.Close();
     }
 
     private static IReadOnlyList<string> GoldenPaths()

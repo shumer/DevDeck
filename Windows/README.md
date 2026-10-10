@@ -155,6 +155,11 @@ written to an activation argument. The shell calls `UnregisterAll` on a normal e
 removes its per-user registration. This registration is the only machine state the toast
 implementation creates.
 
+Toast notifications require a runtime-specific Windows build, such as `-r win-x64` or the output
+of `Tools/Build-WindowsShell.ps1`. The project disables automatic Windows App SDK bootstrap in the
+project file and bundles that runtime only for a self-contained runtime-specific build. A plain
+`dotnet run` without `-r win-x64` can render the shell, but it cannot register or show a toast.
+
 ## Backdrop behavior
 
 The Windows 11 test confirms that a borderless WPF window receives the system backdrop when
