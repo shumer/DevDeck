@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\DevDeck.Shell\DevDeck.Shell.csproj" />
+    <ProjectReference
+      Include="..\DevDeck.Shell\DevDeck.Shell.csproj"
+      AdditionalProperties="WindowsAppSdkBootstrapInitialize=false;WindowsAppSdkDeploymentManagerInitialize=false" />
   </ItemGroup>
 
   <PropertyGroup>
