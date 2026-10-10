@@ -9,6 +9,8 @@ public interface IShellSurface : IDisposable
     event Action<CardMove>? CardMoved;
     event Action<DeckCommand>? CommandInvoked;
     event Action<LogWindowChange>? LogWindowChanged;
+    event Action<SettingsWireRequest>? SettingsRequested;
+    event Action<string>? IntentRequested;
     event Action? DisplayConfigurationChanged;
     void BeginSession();
     void ApplyDeck(DeckPresentation presentation);
@@ -20,6 +22,9 @@ public interface IShellSurface : IDisposable
     void UpdateLog(string card, DeckLog log);
     void OpenLogs(string card);
     void CloseLogs(string card);
+    void UpdateSettings(string? id, JsonElement answer);
+    void UpdateSettingsUpdate(JsonElement update);
+    void OpenSettings(JsonElement effect);
     void ApplySummonPreferences(SummonPreferences preferences);
     void PresentDeck();
     void OpenMenu();
@@ -35,6 +40,8 @@ public sealed class ShellSurface : IShellSurface
     private readonly NotificationController notifications;
     private readonly LogWindowRegistry logs;
     private readonly SummonController summon;
+    private readonly SettingsClient settings;
+    private readonly SettingsWindowRegistry settingsWindows;
     private readonly List<SummonVeilWindow> veils = [];
     private bool isLocked;
     private bool isSummoned;
@@ -45,6 +52,8 @@ public sealed class ShellSurface : IShellSurface
     public event Action<CardMove>? CardMoved;
     public event Action<DeckCommand>? CommandInvoked;
     public event Action<LogWindowChange>? LogWindowChanged;
+    public event Action<SettingsWireRequest>? SettingsRequested;
+    public event Action<string>? IntentRequested;
     public event Action? DisplayConfigurationChanged;
 
     public ShellSurface()
@@ -59,6 +68,11 @@ public sealed class ShellSurface : IShellSurface
         summon = new SummonController(
             Application.Current.Dispatcher,
             ApplySummonPresentation);
+        settings = new SettingsClient();
+        settings.RequestSent += request => SettingsRequested?.Invoke(request);
+        settings.IntentSent += intent => IntentRequested?.Invoke(intent);
+        settings.CommandSent += command => CommandInvoked?.Invoke(command);
+        settingsWindows = new SettingsWindowRegistry(settings);
     }
 
     public void BeginSession()
@@ -71,6 +85,7 @@ public sealed class ShellSurface : IShellSurface
         cards.Clear();
         logs.CloseAll(false);
         stoppedStatus = null;
+        settings.BeginSession();
     }
 
     public void ApplyDeck(DeckPresentation presentation)
@@ -107,6 +122,7 @@ public sealed class ShellSurface : IShellSurface
     public void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped)
     {
         cards[card] = new CardState(model, menu, stopped);
+        settingsWindows.RefreshList();
         logs.UpdateTitle(card, CardTitle(model));
         if (windows.TryGetValue(card, out var window))
         {
@@ -123,6 +139,7 @@ public sealed class ShellSurface : IShellSurface
     public void UpdateMenu(JsonElement menu)
     {
         tray.UpdateMenu(menu);
+        settingsWindows.UpdateMenu(menu);
     }
 
     public void ShowNotifications(IReadOnlyList<DeckNotification> value)
@@ -143,6 +160,21 @@ public sealed class ShellSurface : IShellSurface
     public void CloseLogs(string card)
     {
         logs.Close(card);
+    }
+
+    public void UpdateSettings(string? id, JsonElement answer)
+    {
+        settings.Receive(id, answer);
+    }
+
+    public void UpdateSettingsUpdate(JsonElement update)
+    {
+        settingsWindows.Update(update);
+    }
+
+    public void OpenSettings(JsonElement effect)
+    {
+        settingsWindows.Open(effect);
     }
 
     public void ApplySummonPreferences(SummonPreferences preferences)
@@ -179,6 +211,7 @@ public sealed class ShellSurface : IShellSurface
     public void Dispose()
     {
         summon.Dispose();
+        settingsWindows.Dispose();
         CloseVeils();
         BeginSession();
         notifications.Dispose();

@@ -21,6 +21,11 @@ public static class DeckIcons
             ["phone"] = "\uED14",
             ["expand"] = "\uE70D",
             ["collapse"] = "\uE70E",
+            ["settings"] = "\uE713",
+            ["deck"] = "\uE80A",
+            ["grid"] = "\uECA5",
+            ["notification"] = "\uEA8F",
+            ["remove"] = "\uE74D",
         };
 
     public static FrameworkElement Create(string? name, double size = 14)

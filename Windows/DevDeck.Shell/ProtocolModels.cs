@@ -23,6 +23,7 @@ public sealed class DeckEvent
     public DeckLog? Log { get; private init; }
     public JsonElement? Effect { get; private init; }
     public JsonElement? Answer { get; private init; }
+    public JsonElement? Update { get; private init; }
     public IReadOnlyList<DeckNotification>? Notifications { get; private init; }
     public string RawLine { get; private init; } = "";
 
@@ -51,6 +52,7 @@ public sealed class DeckEvent
             Log = TryProperty(root, "log", out var log) ? DeckLog.Parse(log) : null,
             Effect = Clone(root, "effect"),
             Answer = Clone(root, "answer"),
+            Update = Clone(root, "update"),
             Notifications = TryProperty(root, "notifications", out var notifications)
                 ? ParseNotifications(notifications)
                 : null,
@@ -315,6 +317,11 @@ public static class ProtocolWriter
     public static string SessionStop(string id)
     {
         return Write(id, "session.stop", null);
+    }
+
+    public static string Intent(string id, string intent)
+    {
+        return Write(id, intent, null);
     }
 
     private static string Write(string id, string intent, Action<Utf8JsonWriter>? fields)

@@ -1,5 +1,7 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -115,6 +117,13 @@ public static class Program
         Run("window size recalculates when DPI changes", WindowSizeRecalculatesWhenDpiChanges);
         Run("a system move reports one final frame", SystemMoveReportsOneFinalFrame);
         Run("display changes contain the full current list", DisplayChangesContainFullCurrentList);
+        Run("settings pages build from engine words", SettingsPagesBuildFromEngineWords);
+        Run("settings source has no visible text literals", SettingsSourceHasNoVisibleTextLiterals);
+        Run("settings tokens leave the form once", SettingsTokensLeaveTheFormOnce);
+        Run("settings words substitute their named value", SettingsWordsSubstituteNamedValue);
+        Run("settings answers stay with their request", SettingsAnswersStayWithTheirRequest);
+        Run("settings cards use the settings protocol", SettingsCardsUseSettingsProtocol);
+        Run("token page requests keep their account shape", TokenPageRequestsKeepAccountShape);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -705,6 +714,9 @@ public static class Program
 
         Equal(WindowsTheme.Brush("ControlFill"), textBox.Background);
         Equal(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush);
+        Equal(32.0, textBox.Height);
+        Equal(VerticalAlignment.Center, textBox.VerticalContentAlignment);
+        Equal(150.0, SettingsWindow.FormLabelWidth);
         var placeholder = (TextBlock)textBox.Template.FindName("Placeholder", textBox);
         Equal(prompt.Placeholder, placeholder.Text);
         Equal(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground);
@@ -1380,6 +1392,109 @@ public static class Program
         publisher.Publish();
         Equal(1, received?.Count);
         Equal("first", received?[0].Id);
+    }
+
+    private static void SettingsPagesBuildFromEngineWords()
+    {
+        var client = new SettingsClient();
+        client.Receive("words", Json("{\"words\":{\"_0\":{\"settings.window.title\":\"Settings\",\"settings.general.title\":\"General\",\"settings.deck.title\":\"Deck\",\"settings.cards.title\":\"Cards\",\"settings.notifications.title\":\"Notifications\"}}}"));
+        client.Receive("list", Json("{\"list\":{\"_0\":{\"accounts\":[],\"projects\":[]}}}"));
+        client.Receive("cards", Json("{\"cards\":{\"_0\":[{\"id\":\"github.pullRequests\",\"title\":\"Pull requests\",\"detail\":\"Reviews\",\"isEnabled\":true}]}}"));
+        client.Receive("preferences", Json("{\"preferences\":{\"_0\":{\"language\":\"system\",\"displayMode\":\"desktop\",\"isLocked\":false,\"packsColumns\":false,\"refreshIntervalSeconds\":120,\"notificationsEnabled\":true,\"notifiesUpdates\":true,\"checksForUpdates\":true,\"summonEnabled\":true,\"summonDims\":true,\"actionsRepositories\":[],\"projectsQuietWhenDown\":[],\"projectsQuietWhenStartFails\":[]}}}"));
+        var window = new SettingsWindow(client);
+        window.Apply(client.Words, client.List, client.Cards, client.Preferences, null);
+        window.Receive(Json("{\"githubAccount\":{\"_0\":{\"id\":\"account\",\"label\":\"Account\",\"apiBaseURL\":\"https://example.invalid\",\"organizations\":[],\"isEnabled\":true,\"browser\":{}}}}"));
+        window.Receive(Json("{\"gitlabAccount\":{\"_0\":{\"id\":\"instance\",\"label\":\"Instance\",\"host\":\"https://example.invalid\",\"isEnabled\":true,\"browser\":{}}}}"));
+        window.Receive(Json("{\"localProject\":{\"_0\":{\"id\":\"site\",\"title\":\"Site\",\"folder\":\"C:/Sample\",\"startCommand\":\"run\",\"stopCommand\":\"\",\"holdsProcess\":true,\"requiresDocker\":false,\"healthURL\":\"\",\"localSiteURL\":\"\",\"isEnabled\":true,\"browser\":{}}}}"));
+        window.Receive(Json("{\"arcProject\":{\"_0\":{\"id\":\"arc\",\"title\":\"Arc\",\"organization\":\"sample\",\"folder\":null,\"startCommand\":\"run\",\"stopCommand\":\"stop\",\"healthPath\":\"/health\",\"localURL\":\"\",\"isEnabled\":true,\"browser\":{}}}}"));
+        window.Receive(Json("{\"ddevProject\":{\"_0\":{\"id\":\"shop\",\"name\":\"shop\",\"title\":\"\",\"folder\":\"C:/Sample\",\"showsMailpit\":true,\"showsXhgui\":false,\"isEnabled\":true,\"browser\":{}}}}"));
+        foreach (var route in new[]
+        {
+            new SettingsRoute("general", null),
+            new SettingsRoute("deck", null),
+            new SettingsRoute("cards", null),
+            new SettingsRoute("notifications", null),
+            new SettingsRoute("github", "account"),
+            new SettingsRoute("gitlab", "instance"),
+            new SettingsRoute("project", "site"),
+            new SettingsRoute("arc", "arc"),
+            new SettingsRoute("ddev", "shop"),
+        })
+        {
+            window.Navigate(route);
+            Equal(route.Page, window.CurrentPage);
+        }
+        window.Close();
+    }
+
+    private static void SettingsSourceHasNoVisibleTextLiterals()
+    {
+        var path = Path.Combine(RepositoryRoot(), "Windows", "DevDeck.Shell", "SettingsWindow.cs");
+        var source = File.ReadAllText(path);
+        var directText = new Regex("(?:Text|Content|Header|Title|ToolTip)\\s*=\\s*\\\"[A-Za-z]{2}", RegexOptions.CultureInvariant);
+        True(!directText.IsMatch(source));
+    }
+
+    private static void SettingsTokensLeaveTheFormOnce()
+    {
+        var token = new TokenSubmission { Typed = "temporary-secret" };
+        var account = JsonNode.Parse("{\"id\":\"sample\"}") ?? throw new Exception();
+        var request = SettingsJson.Token("checkGitHubToken", account, token.Take());
+        Equal(1, Regex.Matches(request, "temporary-secret", RegexOptions.CultureInvariant).Count);
+        Equal("", token.Typed);
+        Equal("", token.Take());
+    }
+
+    private static void SettingsWordsSubstituteNamedValue()
+    {
+        var words = new SettingsWords();
+        words.Replace(Json("{\"words\":{\"_0\":{\"settings.remove.account.title\":\"Remove %@?\"}}}"));
+        Equal("Remove Sample?", words.Get("settings.remove.account.title", "Sample"));
+    }
+
+    private static void SettingsAnswersStayWithTheirRequest()
+    {
+        var client = new SettingsClient();
+        var first = 0;
+        var second = 0;
+        var ids = new List<string>();
+        client.RequestSent += request => ids.Add(request.Id);
+        client.Request(SettingsJson.Empty("checkLocalProject"), _ => first++);
+        client.Request(SettingsJson.Empty("checkArcStack"), _ => second++);
+        client.Receive(ids[1], Json("{\"check\":{\"_0\":{\"tone\":\"good\",\"state\":\"ok\",\"detail\":\"\"}}}"));
+        Equal(0, first);
+        Equal(1, second);
+    }
+
+    private static void SettingsCardsUseSettingsProtocol()
+    {
+        var client = new SettingsClient();
+        var requests = new List<SettingsWireRequest>();
+        client.RequestSent += requests.Add;
+        client.BeginSession();
+        True(requests.Any(request => request.Json == "{\"cards\":{}}"));
+        client.Receive(
+            "settings.cards",
+            Json("{\"cards\":{\"_0\":[{\"id\":\"github.inbox\",\"title\":\"Inbox\",\"detail\":\"Notifications\",\"isEnabled\":true}]}}"));
+        Equal("github.inbox", client.Cards?[0]?["id"]?.GetValue<string>());
+        Equal(
+            "{\"setCard\":{\"id\":\"github.inbox\",\"isEnabled\":false}}",
+            SettingsJson.SetCard("github.inbox", false));
+    }
+
+    private static void TokenPageRequestsKeepAccountShape()
+    {
+        var account = JsonNode.Parse("{\"id\":\"sample\",\"host\":\"https://example.invalid\"}") ?? throw new Exception();
+        Equal("{\"openGitHubTokenPage\":{}}", SettingsJson.Empty("openGitHubTokenPage"));
+        Equal(
+            "{\"openGitLabTokenPage\":{\"_0\":{\"id\":\"sample\",\"host\":\"https://example.invalid\"}}}",
+            SettingsJson.Value("openGitLabTokenPage", account));
+    }
+
+    private static JsonElement Json(string text)
+    {
+        using var document = JsonDocument.Parse(text);
+        return document.RootElement.Clone();
     }
 
     private static IReadOnlyList<string> GoldenPaths()
