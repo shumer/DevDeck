@@ -97,7 +97,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
 - **W-4.** Finish the style for Inbox, Actions, GitLab, Work in flight, Arc, DDEV, the folded row
   and the expanded list. Done: every card of the golden sessions, checked next to the Mac's
   drawing of the same transcript (`CardPreview`), captures in `docs/poc/windows-ui/w4-*.png`.
-- **W-5.** Tray icon and menu from the engine's menu model.
+- **W-5.** Tray icon and menu from the engine's menu model. Done: the tray icon by tier with the
+  Mac icon's rules, the tray and card menus from `menu.changed` and `card.changed`, confirmation
+  and prompt dialogs in the model's words; captures in `docs/poc/windows-ui/w5-*.png`.
 - **W-6.** Toast notifications with the source's logo; a click goes where the engine says.
 - **W-7.** Windows and displays: moves reported to the engine, plans applied, parking on unplug,
   two monitors with different scaling, sleep and wake.
