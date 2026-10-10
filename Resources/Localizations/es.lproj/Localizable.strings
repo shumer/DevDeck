@@ -484,6 +484,7 @@
 "settings.notifications.accounts" = "Cuentas";
 "settings.notifications.allow" = "Permitir notificaciones";
 "settings.notifications.allow.detail" = "macOS pide permiso la primera vez.";
+"settings.notifications.allow.detail.windows" = "Se muestran como notificaciones de Windows y se guardan en el centro de notificaciones.";
 "settings.notifications.column.down" = "Se cayó";
 "settings.notifications.column.review" = "Solicitudes de review";
 "settings.notifications.column.runs" = "Runs fallidos";

@@ -484,6 +484,7 @@
 "settings.notifications.accounts" = "Аккаунты";
 "settings.notifications.allow" = "Разрешить уведомления";
 "settings.notifications.allow.detail" = "macOS спросит разрешение в первый раз.";
+"settings.notifications.allow.detail.windows" = "Показываются как уведомления Windows и остаются в центре уведомлений.";
 "settings.notifications.column.down" = "Упал";
 "settings.notifications.column.review" = "Запросы на review";
 "settings.notifications.column.runs" = "Упавшие runs";

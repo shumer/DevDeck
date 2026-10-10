@@ -183,6 +183,26 @@ func runSessionGoldenTests(_ run: TestRun) async {
         try expect(checked >= 8, "every kind of card was sent: \(checked)")
     }
 
+    await run.test("a settings window gets every word it says, in the deck's language") {
+        defer { Strings.use(.english, lookingIn: LocalizationResources.root) }
+        Strings.use(.russian, lookingIn: LocalizationResources.root)
+        let (runtime, _) = goldenRuntime()
+        guard case .words(let russian) = await runtime.answer(.words) else {
+            throw TestFailure(message: "words expected", file: #filePath, line: #line)
+        }
+        try expectEqual(russian["settings.deck.title"], "Дека")
+        try expectEqual(russian["button.cancel"], L("button.cancel"))
+        try expect(russian["settings.notifications.allow.detail.windows"]?.contains("Windows") == true)
+        try expectNil(russian["card.asOf"], "a card's words are the model's, not the window's")
+        try expect(russian.count > 150, "the whole window: \(russian.count)")
+        Strings.use(.english, lookingIn: LocalizationResources.root)
+        guard case .words(let english) = await runtime.answer(.words) else {
+            throw TestFailure(message: "words expected", file: #filePath, line: #line)
+        }
+        try expectEqual(english["settings.deck.title"], "Deck")
+        try expectEqual(Set(english.keys), Set(russian.keys), "every language says everything English says")
+    }
+
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {
         #if os(Windows)
         try expectEqual(DeckSession.platformPath(URL(fileURLWithPath: #"C:\Users\demo\site"#)), #"C:\Users\demo\site"#)

@@ -37,6 +37,9 @@ public struct DeckPreferencesModel: Sendable, Equatable, Codable {
 public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     /// The sidebar.
     case list
+    /// Every word a settings window says, in the deck's language: the keys under
+    /// `DeckSettingsWords.prefixes` with their translations.
+    case words
     case preferences
     case setPreferences(DeckPreferencesModel)
 
@@ -100,6 +103,7 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
 /// What the engine answers.
 public enum DeckSettingsAnswer: Sendable, Equatable, Codable {
     case list(DeckSettingsList)
+    case words([String: String])
     case preferences(DeckPreferencesModel)
     case localProject(LocalProject?)
     case arcProject(ArcProject?)
@@ -118,6 +122,14 @@ public enum DeckSettingsAnswer: Sendable, Equatable, Codable {
     case note(String?)
     case ddevCandidates(DeckDDEVCandidates)
     case token(DeckTokenCheck)
+}
+
+/// Which keys a settings window needs: its pages, its forms, the token and check rows, the
+/// buttons, the update row and the notification toggles.
+public enum DeckSettingsWords {
+    public static let prefixes = [
+        "settings.", "account.", "project.", "token.", "ddev.", "check.", "button.", "update.", "notify.toggle.",
+    ]
 }
 
 extension DeckRuntime {
@@ -161,6 +173,7 @@ extension DeckRuntime {
     public func answer(_ request: DeckSettingsRequest) async -> DeckSettingsAnswer {
         switch request {
         case .list: return .list(settingsList())
+        case .words: return .words(Strings.words(withPrefixes: DeckSettingsWords.prefixes))
         case .preferences: return .preferences(preferencesModel)
         case .setPreferences(let model):
             apply(model)

@@ -484,6 +484,7 @@
 "settings.notifications.accounts" = "Accounts";
 "settings.notifications.allow" = "Allow notifications";
 "settings.notifications.allow.detail" = "macOS asks for permission the first time.";
+"settings.notifications.allow.detail.windows" = "Shown as Windows notifications, and kept in the notification centre.";
 "settings.notifications.column.down" = "Went down";
 "settings.notifications.column.review" = "Review requests";
 "settings.notifications.column.runs" = "Failed runs";

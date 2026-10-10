@@ -113,6 +113,71 @@ public enum Strings {
         return key
     }
 
+    /// Every key under these prefixes with its translation, the English one where the chosen
+    /// language has none. For a shell in another process, which has no tables of its own and
+    /// draws its settings window from these words.
+    public static func words(withPrefixes prefixes: [String]) -> [String: String] {
+        let (chosen, fallback) = store.bundles
+        var result: [String: String] = [:]
+        for bundle in [fallback, chosen].compactMap({ $0 }) {
+            let file = bundle.bundleURL.appendingPathComponent("Localizable.strings")
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            for (key, value) in parse(stringsTable: text) where prefixes.contains(where: { key.hasPrefix($0) }) {
+                result[key] = value
+            }
+        }
+        return result
+    }
+
+    /// `"key" = "value";` pairs, with `\"`, `\n` and `\\` unescaped, comments skipped.
+    static func parse(stringsTable text: String) -> [String: String] {
+        var pairs: [String: String] = [:]
+        var strings: [String] = []
+        var characters = text.makeIterator()
+        var pending: Character? = nil
+        func next() -> Character? {
+            if let held = pending { pending = nil; return held }
+            return characters.next()
+        }
+        while let character = next() {
+            switch character {
+            case "/":
+                guard let second = next() else { break }
+                if second == "*" {
+                    var previous: Character = " "
+                    while let inner = next() {
+                        if previous == "*", inner == "/" { break }
+                        previous = inner
+                    }
+                } else if second == "/" {
+                    while let inner = next(), inner != "\n" {}
+                } else {
+                    pending = second
+                }
+            case "\"":
+                var value = ""
+                while let inner = next(), inner != "\"" {
+                    if inner == "\\", let escaped = next() {
+                        switch escaped {
+                        case "n": value.append("\n")
+                        case "t": value.append("\t")
+                        default: value.append(escaped)
+                        }
+                    } else {
+                        value.append(inner)
+                    }
+                }
+                strings.append(value)
+            case ";":
+                if strings.count == 2 { pairs[strings[0]] = strings[1] }
+                strings.removeAll()
+            default:
+                break
+            }
+        }
+        return pairs
+    }
+
     /// A key whose translation carries a count, from `Localizable.stringsdict`: one file per
     /// language decides how many forms there are, because Russian has three where English has two
     /// and no amount of string joining gets that right.
