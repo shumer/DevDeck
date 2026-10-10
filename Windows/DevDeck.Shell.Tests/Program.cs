@@ -89,12 +89,8 @@ public static class Program
         Run("every notification source has a shared mark", EveryNotificationSourceHasSharedMark);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
-        var exitCode = failed == 0 ? 0 : 1;
         Application.Current.Shutdown();
-        Console.Out.Flush();
-        Console.Error.Flush();
-        Environment.Exit(exitCode);
-        return exitCode;
+        return failed == 0 ? 0 : 1;
     }
 
     private static void GoldenSessionsParseAndRender()
