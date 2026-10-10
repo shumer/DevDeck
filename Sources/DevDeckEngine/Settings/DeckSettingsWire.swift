@@ -173,7 +173,14 @@ extension DeckRuntime {
     public func answer(_ request: DeckSettingsRequest) async -> DeckSettingsAnswer {
         switch request {
         case .list: return .list(settingsList())
-        case .words: return .words(Strings.words(withPrefixes: DeckSettingsWords.prefixes))
+        case .words:
+            var words = Strings.words(withPrefixes: DeckSettingsWords.prefixes)
+            // The one line that names the platform: how banners are kept. The window asks for
+            // the same key on both, and the engine says the right thing for the machine it is on.
+            #if os(Windows)
+            words["settings.notifications.allow.detail"] = L("settings.notifications.allow.detail.windows")
+            #endif
+            return .words(words)
         case .preferences: return .preferences(preferencesModel)
         case .setPreferences(let model):
             apply(model)
