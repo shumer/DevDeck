@@ -123,6 +123,10 @@ source mark and command come from the engine. Repeated ids stay quiet for the li
 shell, including engine restarts. The capture renderer below uses the same engine models and
 shared vector marks; Windows supplies the final system chrome on the live toast.
 
+This is a real Windows toast from the unpackaged shell, using neutral golden data:
+
+![System toast from the unpackaged shell](../docs/poc/windows-ui/w6-toast-system.png)
+
 ![GitHub notification](../docs/poc/windows-ui/w6-toast-github.png)
 
 ![GitLab notification](../docs/poc/windows-ui/w6-toast-gitlab.png)
@@ -146,14 +150,25 @@ Window size and position are kept in `%LOCALAPPDATA%\DevDeck\shell-log-windows.j
 
 ## Toast registration
 
-The unpackaged self-contained executable uses Windows App SDK 1.8 and calls
-`AppNotificationManager.Register()`. For an unpackaged app Windows derives the AUMID from the
-executable and registers an in-process COM activator for the current user. This needs no MSIX
-package and no Start Menu shortcut. It also fits the protocol boundary: toast activation is
-handled only while the shell is running, so the exact command can stay in memory and never be
-written to an activation argument. The shell calls `UnregisterAll` on a normal exit, which also
-removes its per-user registration. This registration is the only machine state the toast
-implementation creates.
+The unpackaged shell uses the classic Windows toast API with the stable AUMID `DevDeck.Shell`.
+At startup it creates or updates the current user's
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\DevDeck.lnk`, points it at the running
+executable and gives it the same AUMID. Windows uses that shortcut to associate notifications
+with DevDeck. Activation is handled only while the shell is running, so the exact command stays
+in memory and is never written to an activation argument.
+
+Source marks are rendered as square 256 pixel PNG files in
+`%PROGRAMDATA%\DevDeck\NotificationAssets`. That location lets the Windows notification renderer
+read the image. The XML uses an absolute `file:///C:\...` source. The executable embeds the
+DevDeck app icon, which is also used by the Start Menu shortcut and the toast header.
+The shortcut and notification asset directory are the only persistent machine state created for
+notifications.
+
+The earlier Windows App SDK 1.8 implementation called `AppNotificationManager.Register()` and
+reported notifications as enabled, but Windows Shell did not display or retain them. This matches
+[Windows App SDK issue 6821](https://github.com/microsoft/WindowsAppSDK/issues/6821). The classic
+API and Start Menu shortcut work for both `dotnet run` and the self-contained output of
+`Tools/Build-WindowsShell.ps1`.
 
 ## Backdrop behavior
 
@@ -187,6 +202,41 @@ dotnet run --project Windows/DevDeck.Shell -- --remove-project project.sample-ap
 The host stores tokens in Windows Credential Manager. The shell contains no token storage code and
 never reads a token.
 
+## Displays and coordinates
+
+The shell sends monitor work areas, panel measurements and panel frames in one virtual desktop
+coordinate system. Its unit is a DIP on the primary monitor, with the origin at the virtual
+desktop's primary monitor and y increasing downward. Windows reports monitor work areas in
+physical pixels, so the shell divides every coordinate by the primary monitor scale at the
+protocol boundary. A
+panel on another monitor still renders with that monitor's scale because the manifest selects Per
+Monitor V2 awareness. The reverse conversion happens once when the shell applies a frame from the
+engine.
+
+Each display id is the monitor device interface path returned by Windows. That path follows the
+physical monitor across disconnects and reconnects, unlike names such as `DISPLAY1`. The reported
+frame excludes the taskbar and other app bars, and exactly one connected display is primary.
+
+The shell sends the complete display list after `WM_DISPLAYCHANGE`, a work area
+`WM_SETTINGCHANGE`, a panel `WM_DPICHANGED`, and resume from sleep. It reports one final
+`card.moved` after an unlocked user drag. Window moves caused by `panels.changed` are suppressed,
+while other Windows initiated moves are reported after the corresponding display event when one
+is available. The engine owns the settling delay, parking, restoring and Tidy placement.
+
+The live check used a 250 percent primary display and a 100 percent external display. Two cards
+were dragged to the external display, aligned there with Tidy, and restored there after restarting
+the shell. Disconnecting the external display parked both cards in a free column on the primary
+display at the primary scale. Reconnecting it restored their previous positions. Sleep and resume
+kept both stable display ids and all panel frames, without a move reported for the system shift.
+
+These captures use the WPF renderer with neutral golden data. The connected capture presents both
+display scales in one canvas. The disconnected capture shows the same two cards parked without
+covering the cards already on the primary display.
+
+![Two displays with different scales](../docs/poc/windows-ui/w7-monitor-connected.png)
+
+![Cards parked after the external display is disconnected](../docs/poc/windows-ui/w7-monitor-disconnected.png)
+
 ## Current boundary
 
 The shell renders the five card model kinds and collapsed rows, applies `deck.changed` and
@@ -218,7 +268,6 @@ part of W-11.
 
 The following protocol features are intentionally deferred:
 
-- Full per-monitor placement, mixed scaling, unplug and sleep behavior are W-7.
 - Settings UI is W-10. The development flags are command line helpers only.
 - Browser profiles and the full Windows and WSL terminal and folder behavior are W-11.
 - Effects for settings and updates are logged by kind and ignored.

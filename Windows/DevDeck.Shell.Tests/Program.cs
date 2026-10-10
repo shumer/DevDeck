@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using DevDeck.Shell;
@@ -91,12 +92,23 @@ public static class Program
         Run("notification transcripts parse into complete models", NotificationTranscriptsParse);
         Run("notification clicks send the exact command", NotificationClicksSendExactCommand);
         Run("quiet notifications silence their toast XML", QuietNotificationsSilenceToastXml);
+        Run("toast XML keeps text before its source mark", ToastXmlKeepsTextBeforeSourceMark);
         Run("notification ids are shown only once", NotificationIdsAreShownOnlyOnce);
         Run("every notification source has a shared mark", EveryNotificationSourceHasSharedMark);
+        Run("notification artwork is an existing square file URI", NotificationArtworkIsExistingSquareFileUri);
+        Run("toast registration uses a stable application id", ToastRegistrationUsesStableApplicationId);
         Run("log updates append only their new lines", LogUpdatesAppendOnlyNewLines);
         Run("empty logs show the engine detail", EmptyLogsShowEngineDetail);
         Run("closing a log reports that it is closed", ClosingLogReportsClosed);
         Run("opening a log twice keeps one window", OpeningLogTwiceKeepsOneWindow);
+        Run("log search uses an unclipped Fluent chevron", LogSearchUsesUnclippedFluentChevron);
+        Run("display coordinates use primary monitor DIPs", DisplayCoordinatesUsePrimaryMonitorDips);
+        Run("stable display ids do not use display indexes", StableDisplayIdsDoNotUseDisplayIndexes);
+        Run("programmatic panel placement reports no move", ProgrammaticPanelPlacementReportsNoMove);
+        Run("a drag reports one final move", DragReportsOneFinalMove);
+        Run("a DPI change waits for a cross-display drag", DpiChangeWaitsForCrossDisplayDrag);
+        Run("a system move reports one final frame", SystemMoveReportsOneFinalFrame);
+        Run("display changes contain the full current list", DisplayChangesContainFullCurrentList);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -565,7 +577,12 @@ public static class Program
         True(expanded.ActualHeight > compact.ActualHeight);
 
         var measurements = new List<CardMeasurement>();
-        var window = new CardWindow("github.pullRequests", measurements.Add, _ => { }, _ => { });
+        var window = new CardWindow(
+            "github.pullRequests",
+            measurements.Add,
+            _ => { },
+            _ => { },
+            () => { });
         window.Show();
         window.Update(compactModel);
         window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
@@ -749,6 +766,27 @@ public static class Program
         True(audibleDocument.Root?.Element("audio") is null);
     }
 
+    private static void ToastXmlKeepsTextBeforeSourceMark()
+    {
+        var notification = RuntimeNotifications("runtime-banners-en.expected.jsonl").First();
+        var document = XDocument.Parse(ToastPayload.Build(notification, "file:///mark.png"));
+        var children = document.Root?
+            .Element("visual")?
+            .Element("binding")?
+            .Elements()
+            .Select(element => element.Name.LocalName)
+            .ToArray() ?? [];
+        Equal("text,text,text,image", string.Join(',', children));
+        Equal(
+            "file:///mark.png",
+            document.Root?
+                .Element("visual")?
+                .Element("binding")?
+                .Element("image")?
+                .Attribute("src")?
+                .Value);
+    }
+
     private static void NotificationIdsAreShownOnlyOnce()
     {
         var notification = SessionNotifications("session-settings-en.expected.jsonl").Single();
@@ -765,6 +803,72 @@ public static class Program
         {
             True(BrandMarks.Names.Contains(source, StringComparer.Ordinal));
         }
+    }
+
+    private static void NotificationArtworkIsExistingSquareFileUri()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"devdeck-toast-{Guid.NewGuid():N}");
+        try
+        {
+            var value = NotificationArtwork.FileUri("github", directory);
+            var uri = new Uri(value);
+            True(value.StartsWith("file:///", StringComparison.Ordinal));
+            True(value.Contains('\\'));
+            True(uri.IsAbsoluteUri);
+            True(uri.IsFile);
+            True(File.Exists(uri.LocalPath));
+            using var stream = File.OpenRead(uri.LocalPath);
+            var decoder = BitmapDecoder.Create(
+                stream,
+                BitmapCreateOptions.PreservePixelFormat,
+                BitmapCacheOption.OnLoad);
+            var frame = decoder.Frames.Single();
+            Equal(256, frame.PixelWidth);
+            Equal(frame.PixelWidth, frame.PixelHeight);
+            var chunks = PngChunkTypes(File.ReadAllBytes(uri.LocalPath));
+            True(!chunks.Contains("gAMA", StringComparer.Ordinal));
+            True(!chunks.Contains("pHYs", StringComparer.Ordinal));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
+    private static void ToastRegistrationUsesStableApplicationId()
+    {
+        Equal("DevDeck.Shell", ToastShortcutRegistration.AppId);
+        Equal(
+            Path.Combine(
+                "profile",
+                "Microsoft",
+                "Windows",
+                "Start Menu",
+                "Programs",
+                "DevDeck.lnk"),
+            ToastShortcutRegistration.ShortcutPath("profile"));
+    }
+
+    private static IReadOnlyList<string> PngChunkTypes(byte[] bytes)
+    {
+        var result = new List<string>();
+        var offset = 8;
+        while (offset + 12 <= bytes.Length)
+        {
+            var length = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(
+                bytes.AsSpan(offset, 4));
+            var type = System.Text.Encoding.ASCII.GetString(bytes, offset + 4, 4);
+            result.Add(type);
+            offset += length + 12;
+            if (type == "IEND")
+            {
+                break;
+            }
+        }
+        return result;
     }
 
     private static Color Pixel(System.Windows.Media.Imaging.BitmapSource image, int x, int y)
@@ -944,7 +1048,7 @@ public static class Program
 
     private static CardWindow CreateWindow()
     {
-        return new CardWindow("project.sample", _ => { }, _ => { }, _ => { });
+        return new CardWindow("project.sample", _ => { }, _ => { }, _ => { }, () => { });
     }
 
     private static double[] FirstPanelFrame()
@@ -1051,6 +1155,120 @@ public static class Program
         Equal(1, registry.Count);
         Equal(1, created[0].Activations);
         registry.CloseAll(false);
+    }
+
+    private static void LogSearchUsesUnclippedFluentChevron()
+    {
+        var window = new LogWindow("project.sample");
+        var glyph = window.SearchNextButton.Content as TextBlock ?? throw new Exception();
+        Equal(DeckIcons.Text("expand"), glyph.Text);
+        Equal(new Thickness(0), window.SearchNextButton.Padding);
+        window.Close();
+    }
+
+    private static void DisplayCoordinatesUsePrimaryMonitorDips()
+    {
+        var displays = DisplayProvider.InPrimaryDisplayDips(
+        [
+            new PhysicalDisplay("primary", [0, 0, 2880, 1560], true, 1.5),
+            new PhysicalDisplay("secondary", [2880, -400, 3840, 2160], false, 2.0),
+        ],
+        1.5);
+        Equal(2, displays.Count);
+        Equal("primary", displays[0].Id);
+        Equal(1920.0, displays[1].Frame[0]);
+        Equal(-400.0 / 1.5, displays[1].Frame[1]);
+        Equal(2560.0, displays[1].Frame[2]);
+        Equal(1440.0, displays[1].Frame[3]);
+        Equal("primary", displays.Single(display => display.IsPrimary).Id);
+        Equal(
+            469.333,
+            Math.Round(DisplayProvider.LocalDipsInPrimaryDisplayDips(352, 2.0, 1.5), 3));
+    }
+
+    private static void StableDisplayIdsDoNotUseDisplayIndexes()
+    {
+        var interfacePath = @"\\?\DISPLAY#SAMPLE#1#{identifier}";
+        Equal(
+            interfacePath,
+            DisplayProvider.StableId(interfacePath, @"DISPLAY\SAMPLE\1", "device key"));
+    }
+
+    private static void ProgrammaticPanelPlacementReportsNoMove()
+    {
+        var moves = new List<CardMove>();
+        var window = new CardWindow(
+            "project.sample",
+            _ => { },
+            moves.Add,
+            _ => { },
+            () => { });
+        window.Show();
+        window.ApplyFrame([32, 32, 352, 120]);
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(0, moves.Count);
+        window.Close();
+    }
+
+    private static void DragReportsOneFinalMove()
+    {
+        var tracker = new CardMoveTracker();
+        tracker.BeginDrag();
+        True(!tracker.PositionChanged());
+        True(!tracker.PositionChanged());
+        True(tracker.EndDrag());
+        True(!tracker.EndDrag());
+    }
+
+    private static void DpiChangeWaitsForCrossDisplayDrag()
+    {
+        var tracker = new CardMoveTracker();
+        tracker.BeginDrag();
+        True(!tracker.DpiChanged());
+        True(tracker.EndDrag());
+        True(tracker.TakeDelayedDpiChange());
+        True(!tracker.TakeDelayedDpiChange());
+        True(tracker.DpiChanged());
+    }
+
+    private static void SystemMoveReportsOneFinalFrame()
+    {
+        var moves = new List<CardMove>();
+        var window = new CardWindow(
+            "project.sample",
+            _ => { },
+            moves.Add,
+            _ => { },
+            () => { });
+        window.Show();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        moves.Clear();
+        NativeMethods.SetWindowFrame(window.Handle, 48, 48, 352, 120);
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(1, moves.Count);
+        Equal(48.0, moves[0].Frame[0]);
+        Equal(48.0, moves[0].Frame[1]);
+        window.Close();
+    }
+
+    private static void DisplayChangesContainFullCurrentList()
+    {
+        IReadOnlyList<DisplayModel> current =
+        [
+            new DisplayModel("first", [0, 0, 1920, 1040], true),
+            new DisplayModel("second", [1920, 0, 1280, 720], false),
+        ];
+        var publisher = new DisplayChangePublisher(() => current);
+        IReadOnlyList<DisplayModel>? received = null;
+        publisher.Changed += displays => received = displays;
+        publisher.Publish();
+        Equal(2, received?.Count);
+        Equal("first", received?[0].Id);
+        Equal("second", received?[1].Id);
+        current = [new DisplayModel("first", [0, 0, 1920, 1040], true)];
+        publisher.Publish();
+        Equal(1, received?.Count);
+        Equal("first", received?[0].Id);
     }
 
     private static IReadOnlyList<string> GoldenPaths()

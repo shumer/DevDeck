@@ -44,12 +44,13 @@ public sealed class ShellCoordinator : IAsyncDisposable
         this.dispatcher = dispatcher;
         this.enginePath = enginePath;
         this.surface = surface;
-        displayWatcher = new DisplayWatcher(dispatcher);
+        displayWatcher = new DisplayWatcher(dispatcher, () => DisplayProvider.Current());
         displayWatcher.Changed += OnDisplaysChanged;
         surface.CardMeasured += OnCardMeasured;
         surface.CardMoved += OnCardMoved;
         surface.CommandInvoked += OnCommandInvoked;
         surface.LogWindowChanged += OnLogWindowChanged;
+        surface.DisplayConfigurationChanged += displayWatcher.Refresh;
     }
 
     public Task StartLiveAsync()
@@ -247,9 +248,9 @@ public sealed class ShellCoordinator : IAsyncDisposable
         }
     }
 
-    private void OnDisplaysChanged()
+    private void OnDisplaysChanged(IReadOnlyList<DisplayModel> displays)
     {
-        _ = SendAsync(ProtocolWriter.DisplaysChanged(NextId(), DisplayProvider.Current()));
+        _ = SendAsync(ProtocolWriter.DisplaysChanged(NextId(), displays));
     }
 
     private void OnCardMeasured(CardMeasurement measurement)

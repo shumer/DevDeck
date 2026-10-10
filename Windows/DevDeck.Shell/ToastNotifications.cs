@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
@@ -5,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Xml;
-using Microsoft.Windows.AppNotifications;
+using Windows.UI.Notifications;
 
 namespace DevDeck.Shell;
 
@@ -80,14 +81,14 @@ public static class ToastPayload
             writer.WriteStartElement("visual");
             writer.WriteStartElement("binding");
             writer.WriteAttributeString("template", "ToastGeneric");
+            WriteText(writer, notification.Title);
+            WriteText(writer, notification.Subtitle);
+            WriteText(writer, notification.Body);
             writer.WriteStartElement("image");
             writer.WriteAttributeString("placement", "appLogoOverride");
             writer.WriteAttributeString("hint-crop", "circle");
             writer.WriteAttributeString("src", artworkUri);
             writer.WriteEndElement();
-            WriteText(writer, notification.Title);
-            WriteText(writer, notification.Subtitle);
-            WriteText(writer, notification.Body);
             writer.WriteEndElement();
             writer.WriteEndElement();
             if (notification.IsQuiet)
@@ -109,77 +110,146 @@ public static class ToastPayload
 
 public sealed class WindowsToastPlatform : IToastPlatform
 {
-    private readonly AppNotificationManager manager;
-    private bool isRegistered;
+    private readonly Dictionary<ToastNotification, string> active = [];
+    private readonly ToastNotifier notifier;
 
     public event Action<string>? Activated;
 
     public WindowsToastPlatform()
     {
-        manager = AppNotificationManager.Default;
-        manager.NotificationInvoked += OnNotificationInvoked;
-        manager.Register();
-        isRegistered = true;
+        ToastShortcutRegistration.Ensure();
+        notifier = ToastNotificationManager.CreateToastNotifier(ToastShortcutRegistration.AppId);
     }
 
     public void Show(string xml)
     {
-        manager.Show(new AppNotification(xml));
+        var document = new Windows.Data.Xml.Dom.XmlDocument();
+        document.LoadXml(xml);
+        var notification = new ToastNotification(document);
+        var id = document.DocumentElement.GetAttribute("launch");
+        notification.Activated += OnActivated;
+        notification.Dismissed += OnDismissed;
+        notification.Failed += OnFailed;
+        lock (active)
+        {
+            active[notification] = id;
+        }
+        notifier.Show(notification);
     }
 
     public void Dispose()
     {
-        manager.NotificationInvoked -= OnNotificationInvoked;
-        if (isRegistered)
+        lock (active)
         {
-            manager.UnregisterAll();
-            isRegistered = false;
+            foreach (var notification in active.Keys)
+            {
+                notification.Activated -= OnActivated;
+                notification.Dismissed -= OnDismissed;
+                notification.Failed -= OnFailed;
+            }
+            active.Clear();
         }
     }
 
-    private void OnNotificationInvoked(
-        AppNotificationManager sender,
-        AppNotificationActivatedEventArgs arguments)
+    private void OnActivated(ToastNotification sender, object arguments)
     {
-        Activated?.Invoke(arguments.Argument);
+        if (Take(sender, out var id))
+        {
+            Activated?.Invoke(id);
+        }
+    }
+
+    private void OnDismissed(ToastNotification sender, ToastDismissedEventArgs arguments)
+    {
+        _ = Take(sender, out _);
+    }
+
+    private void OnFailed(ToastNotification sender, ToastFailedEventArgs arguments)
+    {
+        _ = Take(sender, out _);
+    }
+
+    private bool Take(ToastNotification notification, out string id)
+    {
+        lock (active)
+        {
+            if (!active.Remove(notification, out id!))
+            {
+                return false;
+            }
+        }
+        notification.Activated -= OnActivated;
+        notification.Dismissed -= OnDismissed;
+        notification.Failed -= OnFailed;
+        return true;
     }
 }
 
 public static class NotificationArtwork
 {
-    private const int Size = 128;
+    private const int Size = 256;
 
     public static string FileUri(string source)
+    {
+        var directory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "DevDeck",
+            "NotificationAssets");
+        return FileUri(source, directory);
+    }
+
+    public static string FileUri(string source, string directory)
     {
         if (!BrandMarks.Names.Contains(source, StringComparer.Ordinal))
         {
             throw new InvalidDataException($"Unknown notification source: {source}.");
         }
 
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "DevDeck",
-            "NotificationAssets");
         Directory.CreateDirectory(directory);
-        var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)))[..16];
+        var name = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes($"toast-v2:{source}")))[..16];
         var path = Path.Combine(directory, $"{name}.png");
-        if (!File.Exists(path))
+        if (!IsUsable(path))
         {
             Render(source, path);
         }
-        return new Uri(path).AbsoluteUri;
+        return "file:///" + Path.GetFullPath(path);
+    }
+
+    private static bool IsUsable(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var decoder = BitmapDecoder.Create(
+                stream,
+                BitmapCreateOptions.PreservePixelFormat,
+                BitmapCacheOption.OnLoad);
+            var frame = decoder.Frames.Single();
+            return frame.PixelWidth == Size &&
+                frame.PixelHeight == Size &&
+                HasCompatibleMetadata(File.ReadAllBytes(path));
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
     }
 
     private static void Render(string source, string path)
     {
-        var mark = BrandMarks.Create(source, 76.8);
+        var mark = BrandMarks.Create(source, 153.6);
         mark.HorizontalAlignment = HorizontalAlignment.Center;
         mark.VerticalAlignment = VerticalAlignment.Center;
         var tile = new Border
         {
             Width = Size,
             Height = Size,
-            CornerRadius = new CornerRadius(28),
+            CornerRadius = new CornerRadius(56),
             Background = new SolidColorBrush(Color.FromRgb(26, 30, 36)),
             Child = mark,
         };
@@ -191,7 +261,51 @@ public static class NotificationArtwork
         bitmap.Render(tile);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
-        using var stream = File.Create(path);
-        encoder.Save(stream);
+        using var encoded = new MemoryStream();
+        encoder.Save(encoded);
+        WriteCompatiblePng(encoded.ToArray(), path);
+    }
+
+    private static bool HasCompatibleMetadata(byte[] bytes)
+    {
+        var offset = 8;
+        while (offset + 12 <= bytes.Length)
+        {
+            var length = BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(offset, 4));
+            if (length < 0 || offset + length + 12 > bytes.Length)
+            {
+                return false;
+            }
+            var type = Encoding.ASCII.GetString(bytes, offset + 4, 4);
+            if (type is "gAMA" or "pHYs")
+            {
+                return false;
+            }
+            offset += length + 12;
+            if (type == "IEND")
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void WriteCompatiblePng(byte[] bytes, string path)
+    {
+        using var output = File.Create(path);
+        output.Write(bytes, 0, 8);
+        var offset = 8;
+        while (offset < bytes.Length)
+        {
+            var length = BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(offset, 4));
+            var type = Encoding.ASCII.GetString(bytes, offset + 4, 4);
+            var chunkLength = length + 12;
+            // Windows toast drops WPF PNG files that retain physical size and gamma chunks.
+            if (type is not "gAMA" and not "pHYs")
+            {
+                output.Write(bytes, offset, chunkLength);
+            }
+            offset += chunkLength;
+        }
     }
 }

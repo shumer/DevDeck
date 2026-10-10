@@ -287,7 +287,8 @@ public final class DeckPlacement {
             return DeckParking.Card(
                 id: card,
                 placement: placement,
-                size: CGSize(width: frame.width, height: CollapsedCardMetrics.height)
+                homeSize: frame.size,
+                parkedSize: CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
             )
         }
         let plan = DeckParking.plan(cards, displays: screens.screens, fallback: screens.fallback, gap: gap)
@@ -303,8 +304,11 @@ public final class DeckPlacement {
             place(card, topLeft: topLeft, size: size)
         }
         for (card, topLeft) in plan.parked {
-            guard let frame = frames[card] else { continue }
-            place(card, topLeft: topLeft, size: CGSize(width: frame.width, height: CollapsedCardMetrics.height))
+            place(
+                card,
+                topLeft: topLeft,
+                size: CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
+            )
         }
     }
 

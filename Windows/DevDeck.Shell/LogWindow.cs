@@ -18,6 +18,7 @@ public sealed class LogWindow : Window, ILogWindow
     private readonly TextBlock detail = new();
     private readonly TextBlock source = new();
     private readonly TextBox search = new();
+    private readonly Button nextSearch = new();
     private readonly List<TextBlock> lineViews = [];
     private bool followsEnd = true;
     private int currentMatch = -1;
@@ -45,6 +46,7 @@ public sealed class LogWindow : Window, ILogWindow
 
     public LogBuffer Buffer => buffer;
     public TextBox SearchBox => search;
+    public Button SearchNextButton => nextSearch;
     public bool DetailIsVisible => detail.Visibility == Visibility.Visible;
 
     void ILogWindow.Activate()
@@ -121,17 +123,13 @@ public sealed class LogWindow : Window, ILogWindow
         search.TextChanged += (_, _) => RefreshSearch(true);
         searchBar.Children.Add(search);
 
-        var next = new Button
-        {
-            Content = "\uE70D",
-            FontFamily = new FontFamily("Segoe Fluent Icons"),
-            FontSize = 13,
-            Width = 32,
-            Style = WindowsTheme.Style("FluentButton"),
-        };
-        next.Click += (_, _) => SelectNextMatch();
-        Grid.SetColumn(next, 1);
-        searchBar.Children.Add(next);
+        nextSearch.Content = DeckIcons.Create("expand", 14);
+        nextSearch.Width = 32;
+        nextSearch.Padding = new Thickness(0);
+        nextSearch.Style = WindowsTheme.Style("FluentButton");
+        nextSearch.Click += (_, _) => SelectNextMatch();
+        Grid.SetColumn(nextSearch, 1);
+        searchBar.Children.Add(nextSearch);
         DockPanel.SetDock(searchBar, Dock.Top);
         root.Children.Add(searchBar);
 
