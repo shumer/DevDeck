@@ -20,6 +20,128 @@
   <SolidColorBrush x:Key="SeparatorStroke" Color="#0DFFFFFF" />
   <SolidColorBrush x:Key="FocusOuter" Color="#F2FFFFFF" />
   <SolidColorBrush x:Key="FocusInner" Color="#FF202024" />
+  <SolidColorBrush x:Key="MenuFill" Color="#FA2B2B2F" />
+  <SolidColorBrush x:Key="MenuHover" Color="#24FFFFFF" />
+
+  <Style x:Key="DeckMenuItem" TargetType="MenuItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+    <Setter Property="FontFamily" Value="{StaticResource DevDeckSans}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="MenuItem">
+          <Grid>
+            <Border
+                x:Name="ItemBackground"
+                Background="{TemplateBinding Background}"
+                CornerRadius="4"
+                MinHeight="28">
+              <Grid Margin="{TemplateBinding Padding}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="20" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="16" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    x:Name="CheckGlyph"
+                    Text="&#xE73E;"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="12"
+                    Foreground="{StaticResource TextPrimary}"
+                    VerticalAlignment="Center"
+                    Visibility="Collapsed" />
+                <ContentPresenter
+                    Grid.Column="1"
+                    ContentSource="Header"
+                    VerticalAlignment="Center"
+                    RecognizesAccessKey="False" />
+                <TextBlock
+                    Grid.Column="2"
+                    Text="{TemplateBinding InputGestureText}"
+                    Foreground="{StaticResource TextSecondary}"
+                    Margin="12,0,4,0"
+                    VerticalAlignment="Center" />
+                <TextBlock
+                    x:Name="SubmenuGlyph"
+                    Grid.Column="3"
+                    Text="&#xE76C;"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="11"
+                    Foreground="{StaticResource TextSecondary}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Visibility="Collapsed" />
+              </Grid>
+            </Border>
+            <Popup
+                x:Name="PART_Popup"
+                Placement="Right"
+                IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                AllowsTransparency="True"
+                Focusable="False"
+                PopupAnimation="Fade">
+              <Border
+                  Background="{StaticResource MenuFill}"
+                  BorderBrush="{StaticResource ControlStroke}"
+                  BorderThickness="1"
+                  CornerRadius="6"
+                  Padding="4">
+                <ItemsPresenter />
+              </Border>
+            </Popup>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+              <Setter TargetName="ItemBackground" Property="Background" Value="{StaticResource MenuHover}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="Role" Value="SubmenuHeader">
+              <Setter TargetName="SubmenuGlyph" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="DeckMenuSeparator" TargetType="Separator">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Separator">
+          <Border Height="1" Background="{StaticResource SeparatorStroke}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="DeckContextMenu" TargetType="ContextMenu">
+    <Setter Property="Background" Value="{StaticResource MenuFill}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ControlStroke}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContextMenu">
+          <Border
+              Background="{TemplateBinding Background}"
+              BorderBrush="{TemplateBinding BorderBrush}"
+              BorderThickness="{TemplateBinding BorderThickness}"
+              CornerRadius="6"
+              Padding="{TemplateBinding Padding}">
+            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
 
   <Style x:Key="FluentButton" TargetType="Button">
     <Setter Property="Background" Value="{StaticResource ControlFill}" />

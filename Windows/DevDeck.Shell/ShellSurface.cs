@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Windows;
 
 namespace DevDeck.Shell;
 
@@ -10,8 +11,11 @@ public interface IShellSurface : IDisposable
     void BeginSession();
     void ApplyDeck(DeckPresentation presentation);
     void ApplyPanels(IReadOnlyList<PanelChange> panels);
-    void UpdateCard(string card, JsonElement model, JsonElement stopped);
+    void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped);
     void UpdateStatus(JsonElement status);
+    void UpdateMenu(JsonElement menu);
+    void OpenMenu();
+    void Quit();
     void ShowStopped();
 }
 
@@ -19,6 +23,7 @@ public sealed class ShellSurface : IShellSurface
 {
     private readonly Dictionary<string, CardWindow> windows = [];
     private readonly Dictionary<string, CardState> cards = [];
+    private readonly TrayController tray;
     private bool isLocked;
     private string displayMode = "desktop";
     private JsonElement? stoppedStatus;
@@ -26,6 +31,11 @@ public sealed class ShellSurface : IShellSurface
     public event Action<CardMeasurement>? CardMeasured;
     public event Action<CardMove>? CardMoved;
     public event Action<DeckCommand>? CommandInvoked;
+
+    public ShellSurface()
+    {
+        tray = new TrayController(command => CommandInvoked?.Invoke(command));
+    }
 
     public void BeginSession()
     {
@@ -69,17 +79,34 @@ public sealed class ShellSurface : IShellSurface
         }
     }
 
-    public void UpdateCard(string card, JsonElement model, JsonElement stopped)
+    public void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped)
     {
-        cards[card] = new CardState(model, stopped);
+        cards[card] = new CardState(model, menu, stopped);
         if (windows.TryGetValue(card, out var window))
         {
             window.Update(model);
+            window.UpdateMenu(menu);
         }
     }
 
     public void UpdateStatus(JsonElement status)
     {
+        tray.UpdateStatus(status);
+    }
+
+    public void UpdateMenu(JsonElement menu)
+    {
+        tray.UpdateMenu(menu);
+    }
+
+    public void OpenMenu()
+    {
+        tray.OpenMenu();
+    }
+
+    public void Quit()
+    {
+        Application.Current.Shutdown();
     }
 
     public void ShowStopped()
@@ -96,6 +123,7 @@ public sealed class ShellSurface : IShellSurface
     public void Dispose()
     {
         BeginSession();
+        tray.Dispose();
     }
 
     private CardWindow Open(string card)
@@ -117,6 +145,7 @@ public sealed class ShellSurface : IShellSurface
         if (cards.TryGetValue(card, out var state))
         {
             window.Update(state.Model);
+            window.UpdateMenu(state.Menu);
         }
         return window;
     }
@@ -129,5 +158,5 @@ public sealed class ShellSurface : IShellSurface
         }
     }
 
-    private sealed record CardState(JsonElement Model, JsonElement Stopped);
+    private sealed record CardState(JsonElement Model, JsonElement Menu, JsonElement Stopped);
 }

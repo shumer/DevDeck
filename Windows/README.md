@@ -26,6 +26,8 @@ no network request and reads no token.
 ```powershell
 dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl
 dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/session-ru.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/runtime-menu-en.expected.jsonl
+dotnet run --project Windows/DevDeck.Shell -- --replay Tests/EngineTests/Golden/runtime-menu-ru.expected.jsonl
 ```
 
 Screenshots must use these neutral golden sessions.
@@ -91,6 +93,28 @@ project card.
 
 ![Windows button keyboard focus](../docs/poc/windows-ui/windows-style-button-focus.png)
 
+The runtime menu replays drive the same tray and menu renderer as the live host. The menu keeps
+the engine supplied order, words, marks, attention tiers, alternates, checks and submenus. Card
+menus use that renderer on right click. Confirmation and prompt dialogs also use only the words
+in the menu model.
+
+![English tray menu](../docs/poc/windows-ui/w5-tray-menu-en.png)
+
+![Russian tray menu](../docs/poc/windows-ui/w5-tray-menu-ru.png)
+
+![Card context menu](../docs/poc/windows-ui/w5-card-context-menu.png)
+
+![Confirmation dialog](../docs/poc/windows-ui/w5-confirmation.png)
+
+![Prompt dialog](../docs/poc/windows-ui/w5-prompt.png)
+
+The tray mark has 16 and 32 pixel icon frames. It follows the taskbar theme and draws the engine
+supplied tier. Tier 3 uses the calm mark because it does not ask for immediate action.
+
+![Tray icons for a light taskbar](../docs/poc/windows-ui/w5-tray-icons-light.png)
+
+![Tray icons for a dark taskbar](../docs/poc/windows-ui/w5-tray-icons-dark.png)
+
 ## Backdrop behavior
 
 The Windows 11 test confirms that a borderless WPF window receives the system backdrop when
@@ -130,6 +154,11 @@ The shell renders the five card model kinds and collapsed rows, applies `deck.ch
 effects and restarts a failed host. It shows the last stopped model and stopped status while the
 host is unavailable.
 
+The tray renders `status.changed` and `menu.changed`. A menu update replaces the items in the
+open menu without closing its popup. The tray and card menus return engine commands unchanged;
+only a prompt fills the command's `name`. `openMenu` opens the tray menu and `quit` closes the
+shell after the host stops its cycles. `openSettings` is logged until W-10 supplies that window.
+
 All five model kinds and collapsed rows use the Windows visual system in
 [`docs/windows-style.md`](../docs/windows-style.md). Review lists cover both GitHub pull requests
 and GitLab merge requests. Arc, DDEV, Windows and WSL projects share the project renderer while
@@ -140,12 +169,11 @@ part of W-11.
 
 The following protocol features are intentionally deferred:
 
-- The engine menu model and tray UI are W-5.
 - Notifications are W-6.
 - Full per-monitor placement, mixed scaling, unplug and sleep behavior are W-7.
 - The log window is W-8.
 - Settings UI is W-10. The development flags are command line helpers only.
 - Browser profiles and the full Windows and WSL terminal and folder behavior are W-11.
-- Effects for logs, settings, menus, updates and application exit are logged by kind and ignored.
+- Effects for logs, settings and updates are logged by kind and ignored.
 
 `openURL` uses the system browser. `openTerminal` and `revealFolder` use the Windows system tools.

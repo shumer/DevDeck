@@ -13,7 +13,7 @@ public static class BrandMarks
 
     public static IReadOnlyCollection<string> Names => Marks.Value.Keys.ToArray();
 
-    public static FrameworkElement Create(string? name, double size = 16)
+    public static FrameworkElement Create(string? name, double size = 16, Brush? tint = null)
     {
         if (name is null || !Marks.Value.TryGetValue(name, out var mark))
         {
@@ -35,7 +35,7 @@ public static class BrandMarks
             canvas.Children.Add(new System.Windows.Shapes.Path
             {
                 Data = geometry,
-                Fill = (Brush)new BrushConverter().ConvertFromString(path.Color)!,
+                Fill = tint ?? (Brush)new BrushConverter().ConvertFromString(path.Color)!,
             });
         }
 
