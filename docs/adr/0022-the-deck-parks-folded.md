@@ -65,3 +65,9 @@ card home, at the placement that was never touched, standing at the height its d
   it is thin and is not, since a headless suite cannot unplug a monitor.
 - `Displays.fallback()` still means `NSScreen.main`, which with separate Spaces per display is
   the screen being worked on, the one the Dock is on. The parked column lands where the eyes are.
+- Amended with W-7 (2026-10-10): the parked column never covers a card that is already on the
+  fallback display; when its spot is taken it moves to the nearest free column, towards the
+  screen's edge if need be. And it is measured in the fallback display's own folded size rather
+  than the absent display's, because on Windows the two displays can have different scales and
+  a card measured on one is the wrong size on the other. On the Mac, where points are the same
+  everywhere, only the first of the two changes anything.
