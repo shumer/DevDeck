@@ -284,9 +284,14 @@ public static class WindowsCardRenderer
         row.Children.Add(time);
         if (JsonModel.Object(model, "header", out var header))
         {
-            if (JsonModel.String(header, "phoneURL") is not null)
+            if (JsonModel.String(header, "phoneURL") is { } phoneURL)
             {
                 var phone = IconButton("phone", JsonModel.String(header, "phoneHelp"), "project.header.phone");
+                PhonePopover.Attach(
+                    phone,
+                    phoneURL,
+                    JsonModel.String(header, "phoneTitle") ?? "",
+                    JsonModel.String(header, "phoneNote") ?? "");
                 DockPanel.SetDock(phone, Dock.Right);
                 row.Children.Add(phone);
             }

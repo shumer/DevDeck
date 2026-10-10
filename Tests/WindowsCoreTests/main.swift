@@ -66,6 +66,29 @@ await run.test("a WSL folder is handed to wsl.exe as the distribution sees it") 
     try expectEqual(WSLCommandRunner.linuxPath(legacy, "Ubuntu-24.04"), "/srv/app")
 }
 
+await run.test("a local address ignores virtual and unavailable adapters") {
+    let adapters = [
+        LocalAddress.Adapter(
+            name: "vEthernet (WSL)", description: "Hyper-V Virtual Ethernet Adapter",
+            address: "172.20.0.1", isUp: true, isLoopback: false, isWireless: false),
+        LocalAddress.Adapter(
+            name: "VPN", description: "WireGuard Tunnel",
+            address: "10.10.0.2", isUp: true, isLoopback: false, isWireless: false),
+        LocalAddress.Adapter(
+            name: "Ethernet", description: "Physical Ethernet Adapter",
+            address: "192.168.1.20", isUp: true, isLoopback: false, isWireless: false),
+        LocalAddress.Adapter(
+            name: "Wi-Fi", description: "Physical Wireless Adapter",
+            address: "192.168.1.21", isUp: true, isLoopback: false, isWireless: true),
+        LocalAddress.Adapter(
+            name: "Old Ethernet", description: "Physical Ethernet Adapter",
+            address: "192.168.1.22", isUp: false, isLoopback: false, isWireless: false),
+    ]
+    try expectEqual(
+        LocalAddress.preferredAddresses(from: adapters),
+        ["192.168.1.21", "192.168.1.20"])
+}
+
 await run.test("Windows code identity is unsigned") {
     try expectEqual(CodeIdentity.current(), .unsigned)
     try expectEqual(CodeIdentity.kind(ofBundleAt: URL(fileURLWithPath: "C:/demo")), .unsigned)

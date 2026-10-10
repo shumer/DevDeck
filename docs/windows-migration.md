@@ -122,7 +122,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
   engine's `words`, `list`, `cards`, `preferences` and record answers and owns no text of its
   own (a test sweeps its source for literals); captures in `docs/poc/windows-ui/w10-*.png`.
 - **W-11.** Browsers and profiles, the terminal and the folder for both Windows and WSL projects,
-  the phone QR code.
+  the phone QR code. Done: registered browsers and Chromium profiles follow the engine's choice,
+  both folder kinds open in the right terminal and Explorer context, and the phone popup builds
+  its QR locally from the engine supplied address.
 - **W-12.** Docker Desktop, DDEV natively and in WSL, Arc in WSL; the 0023 scenarios become
   standing checks.
 - **W-13.** Start at login.

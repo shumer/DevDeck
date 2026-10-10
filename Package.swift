@@ -24,10 +24,10 @@ let package = Package(
         .executable(name: "DevDeckProcessHost", targets: ["DevDeckProcessHost"]),
     ],
     targets: [
-        // The login-shell PATH and the local address lookup are Mac-only and have no Windows twin.
+        // The login-shell PATH is Mac-only. LocalAddress has a Windows adapter in the same file.
         .target(
             name: "DevDeckCore",
-            exclude: ["Process/ShellPath.swift", "Process/LocalAddress.swift"]
+            exclude: ["Process/ShellPath.swift"]
         ),
         .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
         .target(name: "GitLabKit", dependencies: ["DevDeckCore"]),

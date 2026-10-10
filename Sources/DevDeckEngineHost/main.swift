@@ -49,9 +49,9 @@ let runtime = DeckRuntime(
     ddevProjectsStore: DDEVProjectsStore(backend: backend),
     localProjectsStore: LocalProjectsStore(backend: backend),
     commandRunner: runner,
-    // Starting Docker Desktop and the address a phone can reach come with W-12 and W-11.
+    // Starting Docker Desktop comes with W-12.
     canStartDocker: false,
-    localAddress: { nil },
+    localAddress: { LocalAddress.current() },
     projectRunner: projectRunner
 )
 let session = DeckSession(runtime: runtime, localizationRoot: LocalizationResources.root) { data in

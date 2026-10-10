@@ -6,6 +6,56 @@ import Foundation
 /// third party, nothing published to the internet. The site is already being served; it is only
 /// being asked for by the wrong name, because `localhost` on a phone means the phone.
 public enum LocalAddress {
+    /// One IPv4 address reported by a network adapter.
+    public struct Adapter: Sendable, Equatable {
+        public let name: String
+        public let description: String
+        public let address: String
+        public let isUp: Bool
+        public let isLoopback: Bool
+        public let isWireless: Bool
+
+        public init(
+            name: String,
+            description: String,
+            address: String,
+            isUp: Bool,
+            isLoopback: Bool,
+            isWireless: Bool
+        ) {
+            self.name = name
+            self.description = description
+            self.address = address
+            self.isUp = isUp
+            self.isLoopback = isLoopback
+            self.isWireless = isWireless
+        }
+    }
+
+    /// Real adapters a phone can share, with wifi before wired Ethernet.
+    public static func preferredAddresses(from adapters: [Adapter]) -> [String] {
+        adapters
+            .filter { adapter in
+                adapter.isUp
+                    && !adapter.isLoopback
+                    && !isVirtualAdapter(name: adapter.name, description: adapter.description)
+            }
+            .sorted { left, right in
+                if left.isWireless != right.isWireless { return left.isWireless }
+                return left.name.localizedStandardCompare(right.name) == .orderedAscending
+            }
+            .map(\.address)
+    }
+
+    private static func isVirtualAdapter(name: String, description: String) -> Bool {
+        let text = "\(name) \(description)".lowercased()
+        let virtualMarkers = [
+            "hyper-v", "vethernet", "wsl", "vpn", "virtual", "tunnel", "wireguard",
+            "tailscale", "zerotier", "docker", "tap-windows", "loopback",
+        ]
+        return virtualMarkers.contains { text.contains($0) }
+    }
+
     /// Whether the site behind this URL is served by this machine, whatever name it goes by.
     ///
     /// Wider than `isLoopback`: DDEV serves `*.ddev.site`, which public DNS points back at

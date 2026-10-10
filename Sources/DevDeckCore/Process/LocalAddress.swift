@@ -1,7 +1,78 @@
 import Foundation
 
-/// Reading this machine's interfaces, which only the Mac does this way. The rules about which
-/// URLs are this machine are in `LocalAddressRules.swift` and hold on every platform.
+#if os(Windows)
+import WinSDK
+
+/// Reading this machine's physical Windows adapters through IP Helper.
+extension LocalAddress {
+    /// The address, or nil when this machine is not on a network the phone could share.
+    public static func current() -> String? {
+        addresses().first
+    }
+
+    /// Every IPv4 address on a real adapter, best first.
+    public static func addresses() -> [String] {
+        let flags = ULONG(
+            GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER)
+        var byteCount: ULONG = 0
+        let measured = GetAdaptersAddresses(ULONG(AF_INET), flags, nil, nil, &byteCount)
+        guard measured == ERROR_BUFFER_OVERFLOW, byteCount > 0 else { return [] }
+
+        let memory = UnsafeMutableRawPointer.allocate(
+            byteCount: Int(byteCount), alignment: MemoryLayout<IP_ADAPTER_ADDRESSES_LH>.alignment)
+        defer { memory.deallocate() }
+        let first = memory.bindMemory(to: IP_ADAPTER_ADDRESSES_LH.self, capacity: 1)
+        guard GetAdaptersAddresses(ULONG(AF_INET), flags, nil, first, &byteCount) == NO_ERROR else {
+            return []
+        }
+
+        var adapters: [Adapter] = []
+        var current: UnsafeMutablePointer<IP_ADAPTER_ADDRESSES_LH>? = first
+        while let adapter = current {
+            let value = adapter.pointee
+            let name = value.FriendlyName.map(wideString) ?? ""
+            let description = value.Description.map(wideString) ?? ""
+            var unicast = value.FirstUnicastAddress
+            while let address = unicast {
+                if let socketAddress = address.pointee.Address.lpSockaddr,
+                   socketAddress.pointee.sa_family == ADDRESS_FAMILY(AF_INET),
+                   let text = ipv4String(socketAddress, address.pointee.Address.iSockaddrLength) {
+                    adapters.append(Adapter(
+                        name: name,
+                        description: description,
+                        address: text,
+                        isUp: value.OperStatus == IfOperStatusUp,
+                        isLoopback: value.IfType == ULONG(IF_TYPE_SOFTWARE_LOOPBACK),
+                        isWireless: value.IfType == ULONG(IF_TYPE_IEEE80211)
+                    ))
+                }
+                unicast = address.pointee.Next
+            }
+            current = value.Next
+        }
+        return preferredAddresses(from: adapters)
+    }
+
+    private static func wideString(_ pointer: UnsafeMutablePointer<WCHAR>) -> String {
+        String(decodingCString: pointer, as: UTF16.self)
+    }
+
+    private static func ipv4String(_ address: LPSOCKADDR, _ length: INT) -> String? {
+        var buffer = [WCHAR](repeating: 0, count: 46)
+        var bufferLength = DWORD(buffer.count)
+        let result = buffer.withUnsafeMutableBufferPointer { output in
+            WSAAddressToStringW(address, DWORD(length), nil, output.baseAddress, &bufferLength)
+        }
+        guard result == 0 else { return nil }
+        return buffer.withUnsafeBufferPointer { output in
+            guard let start = output.baseAddress else { return nil }
+            return String(decodingCString: start, as: UTF16.self)
+        }
+    }
+}
+#else
+/// Reading this machine's interfaces on the Mac. The shared selection rules are in
+/// `LocalAddressRules.swift`.
 extension LocalAddress {
     /// Interfaces worth offering, in the order they are worth offering.
     ///
@@ -57,3 +128,4 @@ extension LocalAddress {
         return found.sorted { $0.name < $1.name }.map(\.address)
     }
 }
+#endif
