@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Xml;
-using Microsoft.Windows.AppNotifications;
+using Windows.UI.Notifications;
 
 namespace DevDeck.Shell;
 
@@ -109,39 +109,78 @@ public static class ToastPayload
 
 public sealed class WindowsToastPlatform : IToastPlatform
 {
-    private readonly AppNotificationManager manager;
-    private bool isRegistered;
+    private readonly Dictionary<ToastNotification, string> active = [];
+    private readonly ToastNotifier notifier;
 
     public event Action<string>? Activated;
 
     public WindowsToastPlatform()
     {
-        manager = AppNotificationManager.Default;
-        manager.NotificationInvoked += OnNotificationInvoked;
-        manager.Register();
-        isRegistered = true;
+        ToastShortcutRegistration.Ensure();
+        notifier = ToastNotificationManager.CreateToastNotifier(ToastShortcutRegistration.AppId);
     }
 
     public void Show(string xml)
     {
-        manager.Show(new AppNotification(xml));
+        var document = new Windows.Data.Xml.Dom.XmlDocument();
+        document.LoadXml(xml);
+        var notification = new ToastNotification(document);
+        var id = document.DocumentElement.GetAttribute("launch");
+        notification.Activated += OnActivated;
+        notification.Dismissed += OnDismissed;
+        notification.Failed += OnFailed;
+        lock (active)
+        {
+            active[notification] = id;
+        }
+        notifier.Show(notification);
     }
 
     public void Dispose()
     {
-        manager.NotificationInvoked -= OnNotificationInvoked;
-        if (isRegistered)
+        lock (active)
         {
-            manager.UnregisterAll();
-            isRegistered = false;
+            foreach (var notification in active.Keys)
+            {
+                notification.Activated -= OnActivated;
+                notification.Dismissed -= OnDismissed;
+                notification.Failed -= OnFailed;
+            }
+            active.Clear();
         }
     }
 
-    private void OnNotificationInvoked(
-        AppNotificationManager sender,
-        AppNotificationActivatedEventArgs arguments)
+    private void OnActivated(ToastNotification sender, object arguments)
     {
-        Activated?.Invoke(arguments.Argument);
+        if (Take(sender, out var id))
+        {
+            Activated?.Invoke(id);
+        }
+    }
+
+    private void OnDismissed(ToastNotification sender, ToastDismissedEventArgs arguments)
+    {
+        _ = Take(sender, out _);
+    }
+
+    private void OnFailed(ToastNotification sender, ToastFailedEventArgs arguments)
+    {
+        _ = Take(sender, out _);
+    }
+
+    private bool Take(ToastNotification notification, out string id)
+    {
+        lock (active)
+        {
+            if (!active.Remove(notification, out id!))
+            {
+                return false;
+            }
+        }
+        notification.Activated -= OnActivated;
+        notification.Dismissed -= OnDismissed;
+        notification.Failed -= OnFailed;
+        return true;
     }
 }
 

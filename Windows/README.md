@@ -123,6 +123,10 @@ source mark and command come from the engine. Repeated ids stay quiet for the li
 shell, including engine restarts. The capture renderer below uses the same engine models and
 shared vector marks; Windows supplies the final system chrome on the live toast.
 
+This is a real Windows toast from the unpackaged shell, using neutral golden data:
+
+![System toast from the unpackaged shell](../docs/poc/windows-ui/w6-toast-system.png)
+
 ![GitHub notification](../docs/poc/windows-ui/w6-toast-github.png)
 
 ![GitLab notification](../docs/poc/windows-ui/w6-toast-gitlab.png)
@@ -146,19 +150,19 @@ Window size and position are kept in `%LOCALAPPDATA%\DevDeck\shell-log-windows.j
 
 ## Toast registration
 
-The unpackaged self-contained executable uses Windows App SDK 1.8 and calls
-`AppNotificationManager.Register()`. For an unpackaged app Windows derives the AUMID from the
-executable and registers an in-process COM activator for the current user. This needs no MSIX
-package and no Start Menu shortcut. It also fits the protocol boundary: toast activation is
-handled only while the shell is running, so the exact command can stay in memory and never be
-written to an activation argument. The shell calls `UnregisterAll` on a normal exit, which also
-removes its per-user registration. This registration is the only machine state the toast
-implementation creates.
+The unpackaged shell uses the classic Windows toast API with the stable AUMID `DevDeck.Shell`.
+At startup it creates or updates the current user's
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\DevDeck.lnk`, points it at the running
+executable and gives it the same AUMID. Windows uses that shortcut to associate notifications
+with DevDeck. This shortcut is the only persistent machine state created for notifications.
+Activation is handled only while the shell is running, so the exact command stays in memory and
+is never written to an activation argument.
 
-Toast notifications require a runtime-specific Windows build, such as `-r win-x64` or the output
-of `Tools/Build-WindowsShell.ps1`. The project disables automatic Windows App SDK bootstrap in the
-project file and bundles that runtime only for a self-contained runtime-specific build. A plain
-`dotnet run` without `-r win-x64` can render the shell, but it cannot register or show a toast.
+The earlier Windows App SDK 1.8 implementation called `AppNotificationManager.Register()` and
+reported notifications as enabled, but Windows Shell did not display or retain them. This matches
+[Windows App SDK issue 6821](https://github.com/microsoft/WindowsAppSDK/issues/6821). The classic
+API and Start Menu shortcut work for both `dotnet run` and the self-contained output of
+`Tools/Build-WindowsShell.ps1`.
 
 ## Backdrop behavior
 

@@ -101,8 +101,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
   Mac icon's rules, the tray and card menus from `menu.changed` and `card.changed`, confirmation
   and prompt dialogs in the model's words; captures in `docs/poc/windows-ui/w5-*.png`.
 - **W-6.** Toast notifications with the source's logo; a click goes where the engine says. Done:
-  one toast per `notify` model through Windows App SDK, registered without a package or a
-  shortcut, the command sent back on a click; captures in `docs/poc/windows-ui/w6-*.png`.
+  one toast per `notify` model through the classic Windows API, associated with the unpackaged
+  shell by a stable AUMID and a current-user Start Menu shortcut, the command sent back on a
+  click; captures in `docs/poc/windows-ui/w6-*.png`.
 - **W-7.** Windows and displays: moves reported to the engine, plans applied, parking on unplug,
   two monitors with different scaling, sleep and wake. Done in the shell: stable device interface
   ids, full work areas in primary-display DIPs, Per Monitor V2 rendering, one move after a drag,

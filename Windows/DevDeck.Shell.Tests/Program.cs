@@ -93,6 +93,7 @@ public static class Program
         Run("quiet notifications silence their toast XML", QuietNotificationsSilenceToastXml);
         Run("notification ids are shown only once", NotificationIdsAreShownOnlyOnce);
         Run("every notification source has a shared mark", EveryNotificationSourceHasSharedMark);
+        Run("toast registration uses a stable application id", ToastRegistrationUsesStableApplicationId);
         Run("log updates append only their new lines", LogUpdatesAppendOnlyNewLines);
         Run("empty logs show the engine detail", EmptyLogsShowEngineDetail);
         Run("closing a log reports that it is closed", ClosingLogReportsClosed);
@@ -778,6 +779,20 @@ public static class Program
         {
             True(BrandMarks.Names.Contains(source, StringComparer.Ordinal));
         }
+    }
+
+    private static void ToastRegistrationUsesStableApplicationId()
+    {
+        Equal("DevDeck.Shell", ToastShortcutRegistration.AppId);
+        Equal(
+            Path.Combine(
+                "profile",
+                "Microsoft",
+                "Windows",
+                "Start Menu",
+                "Programs",
+                "DevDeck.lnk"),
+            ToastShortcutRegistration.ShortcutPath("profile"));
     }
 
     private static Color Pixel(System.Windows.Media.Imaging.BitmapSource image, int x, int y)

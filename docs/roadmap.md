@@ -191,8 +191,8 @@
   alternates, checks, prompts and confirmations are rendered from protocol v2 without shell owned
   product decisions. W-5.
 - **Windows notifications follow the engine** - protocol v2 supplies every word, source mark,
-  quiet flag and click command. The unpackaged self-contained shell uses Windows App SDK toast
-  registration, suppresses repeated ids across host restarts and keeps activation in process.
+  quiet flag and click command. The unpackaged shell uses a stable AUMID and current-user Start
+  Menu shortcut, suppresses repeated ids across host restarts and keeps activation in process.
   W-6.
 - **Windows panels follow stable displays** - the shell identifies monitors by their device
   interface paths, reports work areas in one primary-display DIP coordinate system, applies engine
