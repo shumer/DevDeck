@@ -285,6 +285,26 @@ Start and Alt+Tab continued to work. Escape returned all cards to their previous
 
 ![Cards returned after Summon](../docs/poc/windows-ui/w9-summon-released.png)
 
+## Settings
+
+The `openSettings` effect opens one reusable settings window. Its navigation, forms, status rows,
+dialogs and controls use the `words`, `list`, `preferences` and record answers from the engine.
+Requests keep their protocol id until the matching `settings.answered` arrives, so a slow check
+for one record cannot update another form. A preferences answer asks for `words` again because
+the language may have changed.
+
+The token field is a `PasswordBox`. Save moves its text into one `checkGitHubToken` or
+`checkGitLabToken` request, clears both the control and its form buffer, and never reads the token
+back. The engine continues to own Credential Manager storage. Project location labels use the
+engine's `project.place.windows` and `project.place.wsl` words. The shell only extracts a WSL
+distribution name from the UNC path.
+
+Start at login stays disabled until W-13. Browser fields list applications registered with
+Windows and preserve the chosen executable. Profile discovery and opening in that choice remain
+W-11. The replay source for settings screenshots
+is [`windows-settings-sample.jsonl`](../docs/poc/windows-ui/windows-settings-sample.jsonl). It was
+recorded from a live host in an isolated profile with neutral account and project names.
+
 ## Current boundary
 
 The shell renders the five card model kinds and collapsed rows, applies `deck.changed` and
@@ -295,7 +315,7 @@ host is unavailable.
 The tray renders `status.changed` and `menu.changed`. A menu update replaces the items in the
 open menu without closing its popup. The tray and card menus return engine commands unchanged;
 only a prompt fills the command's `name`. `openMenu` opens the tray menu and `quit` closes the
-shell after the host stops its cycles. `openSettings` is logged until W-10 supplies that window.
+shell after the host stops its cycles. `openSettings` opens the engine backed settings window.
 
 `notify` posts one Windows toast per model with the source mark from `BrandMarks.json`. Quiet
 models add the system silent audio flag. A click returns the stored command without changing its
@@ -320,8 +340,7 @@ part of W-11.
 
 The following protocol features are intentionally deferred:
 
-- Settings UI is W-10. The development flags are command line helpers only.
 - Browser profiles and the full Windows and WSL terminal and folder behavior are W-11.
-- Effects for settings and updates are logged by kind and ignored.
+- Installing an update from the `installUpdate` effect remains outside this shell milestone.
 
 `openURL` uses the system browser. `openTerminal` and `revealFolder` use the Windows system tools.

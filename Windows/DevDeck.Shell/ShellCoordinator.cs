@@ -50,6 +50,8 @@ public sealed class ShellCoordinator : IAsyncDisposable
         surface.CardMoved += OnCardMoved;
         surface.CommandInvoked += OnCommandInvoked;
         surface.LogWindowChanged += OnLogWindowChanged;
+        surface.SettingsRequested += OnSettingsRequested;
+        surface.IntentRequested += OnIntentRequested;
         surface.DisplayConfigurationChanged += displayWatcher.Refresh;
     }
 
@@ -127,10 +129,6 @@ public sealed class ShellCoordinator : IAsyncDisposable
                         NextId(),
                         CultureInfo.CurrentUICulture.Name,
                         DisplayProvider.Current()));
-                await client.SendAsync(
-                    ProtocolWriter.Settings(
-                        NextId(),
-                        "{\"preferences\":{}}"));
                 hadSession = true;
                 await client.Completion.WaitAsync(cancellation.Token);
             }
@@ -201,10 +199,15 @@ public sealed class ShellCoordinator : IAsyncDisposable
             case "effect" when message.Effect is { } effect:
                 ApplyEffect(effect);
                 break;
-            case "settings.answered" when
-                message.Answer is { } answer &&
-                SummonPreferences.TryParse(answer, out var preferences):
-                surface.ApplySummonPreferences(preferences);
+            case "settings.answered" when message.Answer is { } answer:
+                surface.UpdateSettings(message.Id, answer);
+                if (SummonPreferences.TryParse(answer, out var preferences))
+                {
+                    surface.ApplySummonPreferences(preferences);
+                }
+                break;
+            case "update.changed" when message.Update is { } update:
+                surface.UpdateSettingsUpdate(update);
                 break;
         }
     }
@@ -243,7 +246,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
                 surface.Quit();
                 break;
             case "openSettings":
-                Console.Error.WriteLine("Ignored engine effect: openSettings.");
+                surface.OpenSettings(effect);
                 break;
             case "openLogs" when JsonModel.String(effect, "card") is { } openCard:
                 surface.OpenLogs(openCard);
@@ -283,6 +286,16 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private void OnLogWindowChanged(LogWindowChange change)
     {
         _ = SendAsync(ProtocolWriter.LogWindowChanged(NextId(), change));
+    }
+
+    private void OnSettingsRequested(SettingsWireRequest request)
+    {
+        _ = SendAsync(ProtocolWriter.Settings(request.Id, request.Json));
+    }
+
+    private void OnIntentRequested(string intent)
+    {
+        _ = SendAsync(ProtocolWriter.Intent(NextId(), intent));
     }
 
     private Task SendAsync(string line)
