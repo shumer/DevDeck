@@ -265,6 +265,8 @@ The live check used a 250 percent primary display and a 100 percent external dis
 matched their complete monitor work areas. The cards stayed above them without taking focus, and
 Start and Alt+Tab continued to work. Escape returned all cards to their previous layer.
 
+![Cards on both displays before Summon](../docs/poc/windows-ui/w9-summon-before.png)
+
 ![Summon raised across two displays](../docs/poc/windows-ui/w9-summon-raised.png)
 
 ![Cards returned after Summon](../docs/poc/windows-ui/w9-summon-released.png)
