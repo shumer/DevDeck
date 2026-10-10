@@ -263,7 +263,7 @@ extension DeckRuntime {
     /// The stack's status, asked the way the deck asks it. Nil for a project with no local stack.
     public func checkArcStack(_ project: ArcProject) async -> LocalStackStatus? {
         guard project.supportsLocalStack else { return nil }
-        return await LocalStackService(project: project, runner: commandRunner, neighbours: arcCheckouts).status()
+        return await LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts).status()
     }
 
     /// What the stack line says before a project has a folder to check.
@@ -282,7 +282,7 @@ extension DeckRuntime {
 
     /// What can be added, from `ddev list`.
     public func ddevCandidates() async -> DeckDDEVCandidates {
-        guard let entries = await ddevEnvironment.list() else { return .unavailable }
+        guard let entries = await ddevList() else { return .unavailable }
         guard !entries.isEmpty else { return .none }
         let known = Set(ddevProjectsStore.projects().map(\.name))
         let fresh = entries.filter { !known.contains($0.name) }
@@ -319,8 +319,8 @@ extension DeckRuntime {
 
     /// The project's first link, which only `ddev list` knows.
     public func testLink(_ project: DDEVProject) async -> DeckLinkTest {
-        let entries = await ddevEnvironment.list()
-        let status = ddevEnvironment.status(for: project, entries: entries)
+        let entries = await ddevList()
+        let status = ddevEnvironment(for: project).status(for: project, entries: entries)
         guard let link = project.links(status: status).first else { return .note(L("ddev.noURL")) }
         return .open(link.url, project.browser)
     }

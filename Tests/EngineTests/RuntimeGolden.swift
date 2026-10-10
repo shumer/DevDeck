@@ -75,7 +75,11 @@ struct InstantSleeper: Sleeper {
 
 /// A deck with every kind of card, in-memory everything and a fixed clock.
 @MainActor
-func goldenRuntime(http: FakeHTTPClient = RuntimeFixture.http) -> (DeckRuntime, Preferences) {
+func goldenRuntime(
+    http: FakeHTTPClient = RuntimeFixture.http,
+    commandRunner: any CommandRunning = StubCommandRunner([]),
+    folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil
+) -> (DeckRuntime, Preferences) {
     let preferences = Preferences(backend: InMemoryPreferences())
     preferences.notificationsEnabled = true
     preferences.actionsRepositories = ["demo/site"]
@@ -102,14 +106,15 @@ func goldenRuntime(http: FakeHTTPClient = RuntimeFixture.http) -> (DeckRuntime, 
         projectsStore: arc,
         ddevProjectsStore: ddev,
         localProjectsStore: local,
-        commandRunner: StubCommandRunner([]),
+        commandRunner: commandRunner,
         canStartDocker: true,
         localAddress: { nil },
         http: http,
         projectHTTP: FakeHTTPClient([.failure(APIError.transport("offline fixture"))]),
         projectFiles: ProjectRuntimeFiles(directory: URL(fileURLWithPath: "/invalid/runtime")),
         clock: MutableDateProvider(now: RuntimeFixture.now),
-        sleeper: InstantSleeper()
+        sleeper: InstantSleeper(),
+        folderRunner: folderRunner
     )
     for descriptor in runtime.cards.catalog {
         runtime.cards.setEnabled(descriptor.isImplemented, for: descriptor.id)

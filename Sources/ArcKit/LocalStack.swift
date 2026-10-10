@@ -333,7 +333,9 @@ public struct LocalStackService: Sendable {
     /// same for every checkout on the machine. The working directory is the label that actually
     /// says whose containers these are.
     public static let listCommand =
-        "docker ps --format '{{.Names}}\t{{.Image}}\t{{.Label \"com.docker.compose.project.working_dir\"}}\t{{.Ports}}'"
+        // Double quotes outside, which bash and cmd.exe both strip; the label's own quotes
+        // are escaped the way docker reads them in either shell.
+        "docker ps --format \"{{.Names}}\t{{.Image}}\t{{.Label \\\"com.docker.compose.project.working_dir\\\"}}\t{{.Ports}}\""
 
     /// The rows belonging to one checkout: the ones whose compose file lives inside it.
     ///

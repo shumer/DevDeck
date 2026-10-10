@@ -60,7 +60,8 @@ public struct DockerStatus: Sendable, Equatable {
 public struct DockerEnvironment: Sendable {
     /// Server version only - it fails fast and says nothing when the daemon is down, which is
     /// exactly the two answers this needs.
-    public static let probeCommand = "docker version --format '{{.Server.Version}}'"
+    /// Double quotes rather than single: bash strips either, cmd.exe only these.
+    public static let probeCommand = "docker version --format \"{{.Server.Version}}\""
 
     private let runner: any CommandRunning
     private let clock: any DateProvider

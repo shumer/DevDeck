@@ -207,11 +207,11 @@ public final class DeckRuntime {
     let projectsStore: ArcProjectsStore
     let ddevProjectsStore: DDEVProjectsStore
     let localProjectsStore: LocalProjectsStore
-    let ddevEnvironment: DDEVEnvironment
     private let dockerEnvironment: DockerEnvironment
     let commandRunner: any CommandRunning
-    /// The runner a plain project's commands go through, when it is not `commandRunner`.
-    private let projectRunner: (@Sendable (LocalProject) -> any CommandRunning)?
+    /// The runner a project's commands go through, picked from its folder, when it is not
+    /// `commandRunner`.
+    private let folderRunner: (@Sendable (String?) -> any CommandRunning)?
     let http: (any HTTPClient)?
     let projectHTTP: (any HTTPClient)?
     let projectFiles: ProjectRuntimeFiles
@@ -244,8 +244,9 @@ public final class DeckRuntime {
     /// - `projectHTTP`: what a plain project's health check talks to; nil is the real network,
     ///   with the short timeout a local check uses.
     /// - `projectFiles`: where plain projects keep their logs and process ids.
-    /// - `projectRunner`: picks a plain project's runner from the project, as Windows does: a
-    ///   folder inside a WSL distribution runs through that distribution. Nil is `commandRunner`.
+    /// - `folderRunner`: picks a project's runner from its folder, as Windows does: a folder
+    ///   inside a WSL distribution runs through that distribution, whichever kind of project it
+    ///   is. Nil is `commandRunner` for everything.
     public init(
         preferences: Preferences,
         tokenStore: any TokenStore,
@@ -263,7 +264,7 @@ public final class DeckRuntime {
         clock: any DateProvider = SystemDateProvider(),
         sleeper: any Sleeper = TaskSleeper(),
         settings: GitHubSettings = .default,
-        projectRunner: (@Sendable (LocalProject) -> any CommandRunning)? = nil
+        folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil
     ) {
         self.preferences = preferences
         self.tokenStore = tokenStore
@@ -274,10 +275,9 @@ public final class DeckRuntime {
         self.localProjectsStore = localProjectsStore
         // On the runtime's clock, like everything else it times: a status checked at one time
         // and drawn as checked at another is a card that disagrees with itself.
-        self.ddevEnvironment = DDEVEnvironment(runner: commandRunner, clock: clock)
         self.dockerEnvironment = DockerEnvironment(runner: commandRunner, clock: clock)
         self.commandRunner = commandRunner
-        self.projectRunner = projectRunner
+        self.folderRunner = folderRunner
         self.canStartDocker = canStartDocker
         self.currentAddress = localAddress
         self.http = http
@@ -365,7 +365,7 @@ public final class DeckRuntime {
             // A command issued from the card owns the status until it finishes; probing over
             // the top of it would flip the card back to "stopped" mid-restart.
             if stackStatuses[project.id]?.isBusy == true { continue }
-            let service = LocalStackService(project: project, runner: commandRunner, neighbours: arcCheckouts)
+            let service = LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts)
             let probed = await service.status()
             // One failed probe is a hiccup: the engine drops a request while it reloads and the
             // card would say "stopped" about a stack that is up.
@@ -405,7 +405,7 @@ public final class DeckRuntime {
 
         spawn { [weak self] in
             guard let self else { return }
-            let service = LocalStackService(project: project, runner: self.commandRunner)
+            let service = LocalStackService(project: project, runner: self.runner(forFolder: project.folder))
             // Every line the command prints lands on the card as it arrives. A Fusion start
             // takes a minute and says plenty on the way; showing none of it is what made the
             // card look asleep while it was working.
@@ -501,13 +501,13 @@ public final class DeckRuntime {
         let projects = activeDDEVProjects
         guard !projects.isEmpty else { return }
 
-        let entries = await ddevEnvironment.list()
+        let entries = await ddevList()
         for project in projects {
             // A command from the card owns the status while it runs, or the poll would flip
             // the card back mid-restart. A stale "working" is overruled: a task that died
             // without reporting must not freeze the card for the rest of the session.
             if !finished.contains(project.id), isBusyAndFresh(project.id) { continue }
-            let probed = ddevEnvironment.status(for: project, entries: entries)
+            let probed = ddevEnvironment(for: project).status(for: project, entries: entries)
             // `ddev list` answers slowly while a project is starting and occasionally not at
             // all, and the card would say "not in ddev list" about a project that is running.
             // A command that has just finished is not a poll, so it goes straight through.
@@ -551,7 +551,7 @@ public final class DeckRuntime {
 
         spawn { [weak self] in
             guard let self else { return }
-            let result = await self.ddevEnvironment.perform(action, for: project)
+            let result = await self.ddevEnvironment(for: project).perform(action, for: project)
 
             if let result, !result.succeeded {
                 // A failed start is the moment the card is most worth reading, so the reason
@@ -598,7 +598,9 @@ public final class DeckRuntime {
         spawn { [weak self] in
             guard let self else { return }
             let powered = Set(self.activeDDEVProjects.map(\.id))
-            _ = await self.ddevEnvironment.powerOff()
+            for environment in self.ddevEnvironments() {
+                _ = await environment.powerOff()
+            }
             // Every card was marked working a moment ago, so every card is the one this
             // refresh is clearing.
             await self.refreshDDEV(finished: powered)
@@ -641,6 +643,52 @@ public final class DeckRuntime {
         }
     }
 
+    // MARK: Where a project's commands run
+
+    /// The runner for a project in this folder.
+    func runner(forFolder folder: String?) -> any CommandRunning {
+        folderRunner?(folder) ?? commandRunner
+    }
+
+    /// The `ddev` that knows this project: the one in its folder's place.
+    func ddevEnvironment(for project: DDEVProject) -> DDEVEnvironment {
+        DDEVEnvironment(runner: runner(forFolder: project.folder), clock: clock)
+    }
+
+    /// Every place a `ddev` may live: this machine, and each WSL distribution a configured
+    /// project is in. One `ddev list` per place; on the Mac that is one.
+    func ddevEnvironments() -> [DDEVEnvironment] {
+        var seen: Set<String> = [""]
+        var environments = [DDEVEnvironment(runner: commandRunner, clock: clock)]
+        for project in ddevProjectsStore.projects() {
+            guard case .wsl(let distribution, _)? = ProjectLocation(folder: project.folder), seen.insert(distribution).inserted else { continue }
+            environments.append(DDEVEnvironment(runner: runner(forFolder: project.folder), clock: clock))
+        }
+        return environments
+    }
+
+    /// `ddev list` from every place, as one list. A project inside a distribution is listed
+    /// with its folder spelled the way Windows reaches it, which is the folder the deck stores.
+    /// Nil when no place answered at all.
+    func ddevList() async -> [DDEVListEntry]? {
+        var merged: [DDEVListEntry] = []
+        var answered = false
+        var distributions = ddevProjectsStore.projects().compactMap { project -> String? in
+            guard case .wsl(let distribution, _)? = ProjectLocation(folder: project.folder) else { return nil }
+            return distribution
+        }
+        distributions = distributions.reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
+        for (index, environment) in ddevEnvironments().enumerated() {
+            guard let entries = await environment.list() else { continue }
+            answered = true
+            let distribution = index == 0 ? nil : distributions[index - 1]
+            for entry in entries where !merged.contains(where: { $0.name == entry.name }) {
+                merged.append(distribution.map { entry.reached(through: $0) } ?? entry)
+            }
+        }
+        return answered ? merged : nil
+    }
+
     // MARK: Plain projects
 
     private var activeLocalProjects: [LocalProject] {
@@ -675,7 +723,7 @@ public final class DeckRuntime {
     }
 
     func localService(for project: LocalProject) -> LocalProjectService {
-        let runner = projectRunner?(project) ?? commandRunner
+        let runner = runner(forFolder: project.folder)
         guard let projectHTTP else {
             return LocalProjectService(project: project, runner: runner, clock: clock, sleeper: sleeper, files: projectFiles)
         }
@@ -1252,9 +1300,9 @@ public final class DeckRuntime {
     private func refreshLogs(for card: CardID) async {
         let limit = LogTail.windowLineLimit
         if let project = project(forCard: card) {
-            logTails[card] = await LocalStackService(project: project, runner: commandRunner).logs(limit: limit)
+            logTails[card] = await LocalStackService(project: project, runner: runner(forFolder: project.folder)).logs(limit: limit)
         } else if let project = ddevProject(forCard: card) {
-            logTails[card] = await ddevEnvironment.logs(for: project, limit: limit)
+            logTails[card] = await ddevEnvironment(for: project).logs(for: project, limit: limit)
         } else if let project = localProject(forCard: card) {
             logTails[card] = await localService(for: project).logs(limit: limit)
         }

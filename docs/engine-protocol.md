@@ -208,9 +208,14 @@ Credential Manager, a project in a Windows folder started through `DevDeckProces
 a WSL folder (`\\wsl.localhost\<distribution>\...`) through that distribution's own client.
 When standard input closes it stops its loops and exits; the projects keep running (ADR 0023).
 
-Not wired yet, each with its task in [windows-migration.md](windows-migration.md): starting Docker
-Desktop and the address a phone can reach (W-11, W-12), and an installer to hand updates to
-(W-17), so the update row says there is nothing to replace.
+A project's commands run where its folder is: a folder inside a WSL distribution runs through
+that distribution's `wsl.exe`, any other through the process host, whichever kind of project it
+is. `ddev list` is asked in every such place and the answers are one list, a project inside a
+distribution listed by the `\\wsl.localhost\...` folder Windows reaches it at. Docker Desktop
+is launched by the shell on the `launchDocker` effect when the host found it installed.
+
+Not wired yet: an installer to hand updates to (W-17), so the update row says there is nothing
+to replace.
 
 ## Testing
 

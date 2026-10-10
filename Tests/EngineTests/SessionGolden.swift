@@ -1,3 +1,5 @@
+import ArcKit
+import DDEVKit
 import DevDeckCore
 import DevDeckEngine
 import GitHubKit
@@ -232,6 +234,40 @@ func runSessionGoldenTests(_ run: TestRun) async {
             .openURL(DeckTokenPages.github, .systemDefault),
             .openURL(URL(string: "https://gitlab.example.invalid/-/user_settings/personal_access_tokens?name=DevDeck&scopes=read_api")!, .systemDefault),
         ])
+    }
+
+    await run.test("a project in a WSL folder runs through that distribution, whichever kind it is") {
+        let native = StubCommandRunner([])
+        let wsl = StubCommandRunner([("ddev list", CommandResult(exitCode: 0, standardOutput: #"{"raw":[{"name":"inside","approot":"/srv/inside","type":"php","status":"running"}]}"#, standardError: ""))])
+        let (runtime, _) = goldenRuntime(commandRunner: native, folderRunner: { folder in
+            if case .wsl? = ProjectLocation(folder: folder) { return wsl }
+            return native
+        })
+        let shop = DDEVProject(id: "wslshop", name: "wslshop", folder: #"\\wsl.localhost\Ubuntu-24.04\srv\shop"#)
+        let paper = ArcProject(id: "wslpaper", title: "Paper WSL", organization: "demo", folder: #"\\wsl.localhost\Ubuntu-24.04\home\demo\paper"#)
+        runtime.saveDDEVProject(shop)
+        runtime.saveArcProject(paper)
+        runtime.cards.setEnabled(true, for: shop.cardID)
+        runtime.cards.setEnabled(true, for: paper.cardID)
+        runtime.setActiveCards(Set(runtime.cards.visible))
+        runtime.stop()
+
+        runtime.perform(.project(shop.cardID, .start))
+        runtime.perform(.project(paper.cardID, .start))
+        await runtime.settle()
+        let inside = await wsl.commands
+        let outside = await native.commands
+        try expect(inside.contains { $0.hasPrefix("ddev start") }, "ddev start went to the distribution: \(inside)")
+        try expect(inside.contains { $0.contains("fusion") }, "the stack's command went to the distribution: \(inside)")
+        try expect(!outside.contains { $0.hasPrefix("ddev start") || $0.contains("fusion") }, "and not to this machine: \(outside)")
+
+        // Both places are asked what ddev knows, and a project inside is listed by the folder
+        // Windows reaches it at.
+        guard case .some(let fresh) = await runtime.ddevCandidates() else {
+            throw TestFailure(message: "the distribution answered", file: #filePath, line: #line)
+        }
+        try expect(await native.commands.contains("ddev list -j"), "this machine was asked")
+        try expectEqual(fresh.map(\.approot), [#"\\wsl.localhost\Ubuntu-24.04\srv\inside"#])
     }
 
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {

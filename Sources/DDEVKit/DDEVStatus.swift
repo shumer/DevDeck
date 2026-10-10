@@ -28,6 +28,18 @@ public enum DDEVState: String, Sendable, Equatable, Codable {
 
 /// One project as `ddev list` reports it.
 public struct DDEVListEntry: Sendable, Equatable, Codable {
+    /// The same entry with its folder spelled the way Windows reaches a distribution:
+    /// `/home/demo/site` in `Ubuntu-24.04` is `\\wsl.localhost\Ubuntu-24.04\home\demo\site`.
+    public func reached(through distribution: String) -> DDEVListEntry {
+        guard approot.hasPrefix("/") else { return self }
+        let folder = "\\\\wsl.localhost\\" + distribution + approot.replacingOccurrences(of: "/", with: "\\")
+        return DDEVListEntry(
+            name: name, approot: folder, type: type, state: state, statusDescription: statusDescription,
+            primaryURL: primaryURL, mailpitURL: mailpitURL, xhguiURL: xhguiURL,
+            mutagenEnabled: mutagenEnabled, mutagenStatus: mutagenStatus
+        )
+    }
+
     public let name: String
     public let approot: String
     public let type: String

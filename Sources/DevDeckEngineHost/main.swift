@@ -24,12 +24,15 @@ let tokenStore: any TokenStore = WindowsCredentialTokenStore()
 // Native projects run through the process host, so they outlive this process; a project in a
 // WSL distribution runs through that distribution's own client. See ADR 0023.
 let runner: any CommandRunning = NativeWindowsCommandRunner()
-let projectRunner: @Sendable (LocalProject) -> any CommandRunning = { project in
-    if case .wsl(let distribution, _) = ProjectLocation(folder: project.folder) {
+let folderRunner: @Sendable (String?) -> any CommandRunning = { folder in
+    if case .wsl(let distribution, _)? = ProjectLocation(folder: folder) {
         return WSLCommandRunner(distribution: distribution)
     }
     return NativeWindowsCommandRunner()
 }
+// Docker Desktop, where its installer puts it. The shell launches it on the engine's say-so.
+let programFiles = ProcessInfo.processInfo.environment["ProgramFiles"] ?? "C:\\Program Files"
+let canStartDocker = FileManager.default.fileExists(atPath: programFiles + "\\Docker\\Docker\\Docker Desktop.exe")
 #else
 // On the Mac the host is for development: it keeps its own preferences, apart from the app's,
 // and never opens the app's Keychain items. A token for it is typed into a check and forgotten
@@ -37,7 +40,8 @@ let projectRunner: @Sendable (LocalProject) -> any CommandRunning = { project in
 let backend: any PreferencesBackend = UserDefaults(suiteName: "com.shumer.devdeck.host") ?? .standard
 let tokenStore: any TokenStore = InMemoryTokenStore()
 let runner: any CommandRunning = ShellCommandRunner()
-let projectRunner: (@Sendable (LocalProject) -> any CommandRunning)? = nil
+let folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil
+let canStartDocker = false
 #endif
 
 let runtime = DeckRuntime(
@@ -49,10 +53,9 @@ let runtime = DeckRuntime(
     ddevProjectsStore: DDEVProjectsStore(backend: backend),
     localProjectsStore: LocalProjectsStore(backend: backend),
     commandRunner: runner,
-    // Starting Docker Desktop comes with W-12.
-    canStartDocker: false,
+    canStartDocker: canStartDocker,
     localAddress: { LocalAddress.current() },
-    projectRunner: projectRunner
+    folderRunner: folderRunner
 )
 let session = DeckSession(runtime: runtime, localizationRoot: LocalizationResources.root) { data in
     FileHandle.standardOutput.write(data)
