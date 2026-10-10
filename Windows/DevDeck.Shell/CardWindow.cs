@@ -12,6 +12,7 @@ public sealed class CardWindow : Window
     private readonly Action<CardMeasurement> measured;
     private readonly Action<CardMove> moved;
     private readonly Action<DeckCommand> command;
+    private readonly MenuPresenter contextMenu;
     private nint handle;
     private bool isLocked;
     private (int Width, int Height) lastMeasurement;
@@ -26,6 +27,7 @@ public sealed class CardWindow : Window
         this.measured = measured;
         this.moved = moved;
         this.command = command;
+        contextMenu = new MenuPresenter(command);
         AllowsTransparency = false;
         Background = Brushes.Transparent;
         ShowActivated = false;
@@ -37,6 +39,7 @@ public sealed class CardWindow : Window
         ResizeMode = ResizeMode.NoResize;
         SourceInitialized += OnSourceInitialized;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
+        ContextMenu = contextMenu.View;
     }
 
     public nint Handle => handle;
@@ -50,6 +53,11 @@ public sealed class CardWindow : Window
     public void ShowStopped(JsonElement stopped, JsonElement? status)
     {
         Content = CardRenderer.CreateStopped(stopped, status);
+    }
+
+    public void UpdateMenu(JsonElement menu)
+    {
+        contextMenu.Update(menu);
     }
 
     public void ApplyFrame(double[] frame)

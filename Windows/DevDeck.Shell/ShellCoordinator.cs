@@ -67,7 +67,15 @@ public sealed class ShellCoordinator : IAsyncDisposable
             {
                 continue;
             }
-            Apply(DeckEvent.Parse(line));
+            using var document = JsonDocument.Parse(line);
+            if (document.RootElement.TryGetProperty("protocolVersion", out _))
+            {
+                Apply(DeckEvent.Parse(line));
+            }
+            else
+            {
+                ApplyReplayStep(document.RootElement);
+            }
         }
         await Task.CompletedTask;
     }
@@ -167,14 +175,55 @@ public sealed class ShellCoordinator : IAsyncDisposable
             case "card.changed" when
                 message.Card is { } card &&
                 message.Model is { } model &&
+                message.Menu is { } cardMenu &&
                 message.Stopped is { } stopped &&
                 CardRenderer.CanRender(model):
-                surface.UpdateCard(card, model, stopped);
+                surface.UpdateCard(card, model, cardMenu, stopped);
                 break;
             case "status.changed" when message.Status is { } status:
                 surface.UpdateStatus(status);
                 break;
+            case "menu.changed" when message.Menu is { } menu:
+                surface.UpdateMenu(menu);
+                break;
             case "effect" when message.Effect is { } effect:
+                ApplyEffect(effect);
+                break;
+        }
+    }
+
+    private void ApplyReplayStep(JsonElement step)
+    {
+        var name = DeckEvent.RequiredString(step, "step");
+        if (!DeckEvent.TryProperty(step, "value", out var value))
+        {
+            throw new JsonException();
+        }
+        switch (name)
+        {
+            case "status":
+                surface.UpdateStatus(value);
+                break;
+            case "menu":
+                surface.UpdateMenu(value);
+                break;
+        }
+    }
+
+    private void ApplyEffect(JsonElement effect)
+    {
+        switch (JsonModel.String(effect, "kind"))
+        {
+            case "openMenu":
+                surface.OpenMenu();
+                break;
+            case "quit":
+                surface.Quit();
+                break;
+            case "openSettings":
+                Console.Error.WriteLine("Ignored engine effect: openSettings.");
+                break;
+            default:
                 PlatformEffects.Apply(effect);
                 break;
         }

@@ -18,6 +18,12 @@ public static class Program
     public static int Main(string[] arguments)
     {
         var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        if (arguments.Length == 2 && arguments[0] == "--capture-w5")
+        {
+            W5Screenshots.Generate(Path.GetFullPath(arguments[1]));
+            Application.Current.Shutdown();
+            return 0;
+        }
         if (arguments.Length == 4 && arguments[0] == "--capture-reference")
         {
             ReferenceScreenshots.Generate(
@@ -61,6 +67,14 @@ public static class Program
         Run("action variants and work rows use styled layouts", ActionVariantsAndWorkRowsUseStyledLayouts);
         Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
         Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
+        Run("runtime menu builds every entry kind", RuntimeMenuBuildsEveryEntryKind);
+        Run("menu clicks send the exact command", MenuClicksSendExactCommand);
+        Run("menu prompts fill only the command name", MenuPromptsFillOnlyTheCommandName);
+        Run("cancelled confirmations send no command", CancelledConfirmationsSendNoCommand);
+        Run("menu alternates send their own command", MenuAlternatesSendTheirOwnCommand);
+        Run("card windows accept their context menu", CardWindowsAcceptTheirContextMenu);
+        Run("tray status creates every icon tier", TrayStatusCreatesEveryIconTier);
+        Run("prompt fields show their model placeholder and focus ring", PromptFieldsShowTheirModelPlaceholderAndFocusRing);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -540,6 +554,165 @@ public static class Program
         window.Close();
     }
 
+    private static void RuntimeMenuBuildsEveryEntryKind()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true);
+        var entries = DeckMenuEntryModel.ParseList(value);
+        True(entries.Any(entry => entry.Kind == DeckMenuEntryKind.Item));
+        True(entries.Any(entry => entry.Kind == DeckMenuEntryKind.Header));
+        True(entries.Any(entry => entry.Kind == DeckMenuEntryKind.Separator));
+        True(entries.Any(entry => entry.Kind == DeckMenuEntryKind.Submenu));
+        var presenter = new MenuPresenter(_ => { });
+        presenter.Update(value);
+        Equal(entries.Count, presenter.View.Items.Count);
+    }
+
+    private static void MenuClicksSendExactCommand()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: false);
+        var expected = DeckMenuEntryModel.ParseList(value)
+            .Where(entry => entry.Kind == DeckMenuEntryKind.Item)
+            .Select(entry => entry.Item)
+            .First(item => item?.Command is not null)?.Command ?? throw new Exception();
+        DeckCommand? sent = null;
+        var presenter = new MenuPresenter(command => sent = command);
+        presenter.Update(value);
+        var menuItem = presenter.View.Items.OfType<MenuItem>()
+            .First(item => item.Tag is DeckMenuItemModel model && model.Command?.Json == expected.Json);
+        menuItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Equal(expected.Json, sent?.Json);
+    }
+
+    private static void MenuPromptsFillOnlyTheCommandName()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: false);
+        var promptItem = Flatten(DeckMenuEntryModel.ParseList(value))
+            .Select(entry => entry.Item)
+            .Single(item => item?.Prompt is not null) ?? throw new Exception();
+        var dialogs = new RecordingDialogs { PromptAnswer = "Desk" };
+        DeckCommand? sent = null;
+        new MenuActionRunner(dialogs, command => sent = command).Invoke(promptItem, false);
+        Equal("{\"saveArrangement\":{\"name\":\"Desk\"}}", sent?.Json);
+    }
+
+    private static void CancelledConfirmationsSendNoCommand()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: false);
+        var confirmationItem = Flatten(DeckMenuEntryModel.ParseList(value))
+            .Select(entry => entry.Item)
+            .Single(item => item?.Confirmation is not null) ?? throw new Exception();
+        var dialogs = new RecordingDialogs { ConfirmationAnswer = false };
+        DeckCommand? sent = null;
+        new MenuActionRunner(dialogs, command => sent = command).Invoke(confirmationItem, false);
+        True(sent is null);
+    }
+
+    private static void MenuAlternatesSendTheirOwnCommand()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true);
+        var alternateItem = Flatten(DeckMenuEntryModel.ParseList(value))
+            .Select(entry => entry.Item)
+            .First(item => item?.Alternate is not null) ?? throw new Exception();
+        DeckCommand? sent = null;
+        new MenuActionRunner(new RecordingDialogs(), command => sent = command).Invoke(alternateItem, true);
+        Equal(alternateItem.Alternate?.Command.Json, sent?.Json);
+    }
+
+    private static void CardWindowsAcceptTheirContextMenu()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "projectMenu", last: true);
+        var window = CreateWindow();
+        window.UpdateMenu(value);
+        Equal(DeckMenuEntryModel.ParseList(value).Count, window.ContextMenu?.Items.Count);
+        window.Close();
+    }
+
+    private static void TrayStatusCreatesEveryIconTier()
+    {
+        foreach (var tier in new int?[] { null, 0, 1, 2, 3 })
+        {
+            foreach (var light in new[] { false, true })
+            {
+                using var icon = TrayIconFactory.Create(tier, light);
+                Equal(new System.Drawing.Size(32, 32), icon.Size);
+            }
+        }
+
+        var lightNeedsFixing = Pixel(TrayIconFactory.Preview(32, 1, true), 26, 26);
+        var darkNeedsFixing = Pixel(TrayIconFactory.Preview(32, 1, false), 26, 26);
+        var waiting = Pixel(TrayIconFactory.Preview(32, 0, false), 26, 26);
+        True(lightNeedsFixing.R < 80 && lightNeedsFixing.G < 80 && lightNeedsFixing.B < 80);
+        True(darkNeedsFixing.R > 200 && darkNeedsFixing.G > 200 && darkNeedsFixing.B > 200);
+        True(waiting.R > waiting.G + 40 && waiting.R > waiting.B + 40);
+    }
+
+    private static void PromptFieldsShowTheirModelPlaceholderAndFocusRing()
+    {
+        var value = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: false);
+        var prompt = Flatten(DeckMenuEntryModel.ParseList(value))
+            .Select(entry => entry.Item?.Prompt)
+            .Single(model => model is not null) ?? throw new Exception();
+        var window = MenuDialogs.Build(prompt, prompt.Placeholder, out var field, out _);
+        var textBox = field ?? throw new Exception();
+        window.Show();
+        textBox.ApplyTemplate();
+        window.UpdateLayout();
+
+        Equal(WindowsTheme.Brush("ControlFill"), textBox.Background);
+        Equal(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush);
+        var placeholder = (TextBlock)textBox.Template.FindName("Placeholder", textBox);
+        Equal(prompt.Placeholder, placeholder.Text);
+        Equal(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground);
+        Equal(Visibility.Visible, placeholder.Visibility);
+
+        textBox.Text = "Desk";
+        window.UpdateLayout();
+        Equal(Visibility.Collapsed, placeholder.Visibility);
+
+        textBox.Text = "";
+        _ = textBox.Focus();
+        textBox.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        var focusBorder = (Border)textBox.Template.FindName("FocusBorder", textBox);
+        var controlBorder = (Border)textBox.Template.FindName("ControlBorder", textBox);
+        Equal(WindowsTheme.Brush("FocusOuter"), focusBorder.BorderBrush);
+        Equal(WindowsTheme.Brush("FocusInner"), controlBorder.BorderBrush);
+        window.Close();
+    }
+
+    private static Color Pixel(System.Windows.Media.Imaging.BitmapSource image, int x, int y)
+    {
+        var pixel = new byte[4];
+        image.CopyPixels(new Int32Rect(x, y, 1, 1), pixel, 4, 0);
+        return Color.FromArgb(pixel[3], pixel[2], pixel[1], pixel[0]);
+    }
+
+    private static IEnumerable<DeckMenuEntryModel> Flatten(IReadOnlyList<DeckMenuEntryModel> entries)
+    {
+        foreach (var entry in entries)
+        {
+            yield return entry;
+            foreach (var child in Flatten(entry.Children))
+            {
+                yield return child;
+            }
+        }
+    }
+
+    private static JsonElement RuntimeMenuValue(string fileName, string stepName, bool last)
+    {
+        var values = new List<JsonElement>();
+        var path = Path.Combine(RepositoryRoot(), "Tests", "EngineTests", "Golden", fileName);
+        foreach (var line in File.ReadLines(path))
+        {
+            using var document = JsonDocument.Parse(line);
+            if (document.RootElement.GetProperty("step").GetString() == stepName)
+            {
+                values.Add(document.RootElement.GetProperty("value").Clone());
+            }
+        }
+        return last ? values.Last() : values.First();
+    }
+
     private static FrameworkElement Render(JsonElement model)
     {
         return Arrange(CardRenderer.Create(model, _ => { }));
@@ -761,6 +934,22 @@ public static class Program
         if (!EqualityComparer<T>.Default.Equals(expected, actual))
         {
             throw new Exception($"Expected {expected}, got {actual}.");
+        }
+    }
+
+    private sealed class RecordingDialogs : IMenuDialogs
+    {
+        public bool ConfirmationAnswer { get; init; }
+        public string? PromptAnswer { get; init; }
+
+        public bool Confirm(DeckMenuDialogModel model)
+        {
+            return ConfirmationAnswer;
+        }
+
+        public string? Prompt(DeckMenuPromptModel model)
+        {
+            return PromptAnswer;
         }
     }
 }

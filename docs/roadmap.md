@@ -187,6 +187,9 @@
   Arc and DDEV now share the Windows measurements, materials, typography and interaction states
   with the first cards. Expanded lists report their new height and collapsed cards stay at 44
   pixels. W-4.
+- **The Windows tray and menus follow the engine** - status tiers, tooltips, tray and card menus,
+  alternates, checks, prompts and confirmations are rendered from protocol v2 without shell owned
+  product decisions. W-5.
 
 ## Next
 
