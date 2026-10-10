@@ -117,7 +117,10 @@ Every task ends with screenshots on neutral data and a check against the shell r
   spring loaded, a tap or `present` latches the deck, and optional 30 percent veils cover each
   current monitor work area until the next tap, Escape or a veil click.
 - **W-10.** Settings, starting from a mock that is agreed first: accounts with tokens in
-  Credential Manager, projects with Detect and Test, a Windows or WSL folder.
+  Credential Manager, projects with Detect and Test, a Windows or WSL folder. Done: the mock is
+  `docs/poc/windows-ui/devdeck-windows-settings.html`, the window draws every page from the
+  engine's `words`, `list`, `cards`, `preferences` and record answers and owns no text of its
+  own (a test sweeps its source for literals); captures in `docs/poc/windows-ui/w10-*.png`.
 - **W-11.** Browsers and profiles, the terminal and the folder for both Windows and WSL projects,
   the phone QR code.
 - **W-12.** Docker Desktop, DDEV natively and in WSL, Arc in WSL; the 0023 scenarios become
