@@ -203,6 +203,23 @@ func runSessionGoldenTests(_ run: TestRun) async {
         try expectEqual(Set(english.keys), Set(russian.keys), "every language says everything English says")
     }
 
+    await run.test("the Cards page lists the built-in cards, and a switch takes one off the deck") {
+        let (runtime, _) = goldenRuntime()
+        var effects: [DeckEffect] = []
+        runtime.onEffect = { effects.append($0) }
+        guard case .cards(let cards) = await runtime.answer(.cards) else {
+            throw TestFailure(message: "cards expected", file: #filePath, line: #line)
+        }
+        try expectEqual(cards.map(\.id.rawValue), ["github.pullRequests", "github.inbox", "github.actions", "gitlab.mergeRequests", "local.workInFlight"])
+        try expect(cards.allSatisfy(\.isEnabled))
+        try expect(cards.allSatisfy { !$0.detail.isEmpty }, "each says what it is")
+        guard case .cards(let after) = await runtime.answer(.setCard(id: .githubInbox, isEnabled: false)) else {
+            throw TestFailure(message: "cards expected", file: #filePath, line: #line)
+        }
+        try expectEqual(after.first { $0.id == .githubInbox }?.isEnabled, false)
+        try expectEqual(effects, [.cardsChanged], "the panels follow")
+    }
+
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {
         #if os(Windows)
         try expectEqual(DeckSession.platformPath(URL(fileURLWithPath: #"C:\Users\demo\site"#)), #"C:\Users\demo\site"#)

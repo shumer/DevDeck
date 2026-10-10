@@ -33,10 +33,22 @@ public struct DeckPreferencesModel: Sendable, Equatable, Codable {
     public var projectsQuietWhenStartFails: [String]
 }
 
+/// A built-in card as the Cards page lists it: what it is, and whether it is on the deck.
+public struct DeckSettingsCard: Sendable, Equatable, Codable {
+    public let id: CardID
+    public let title: String
+    public let detail: String
+    public let isEnabled: Bool
+}
+
 /// One thing a settings window asks of the engine.
 public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     /// The sidebar.
     case list
+    /// The Cards page: every built-in card, in deck order, with its switch.
+    case cards
+    /// A switch on the Cards page.
+    case setCard(id: CardID, isEnabled: Bool)
     /// Every word a settings window says, in the deck's language: the keys under
     /// `DeckSettingsWords.prefixes` with their translations.
     case words
@@ -88,7 +100,7 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     /// setting moved.
     var changesDeck: Bool {
         switch self {
-        case .setPreferences, .addLocalProject, .saveLocalProject, .removeLocalProject,
+        case .setPreferences, .setCard, .addLocalProject, .saveLocalProject, .removeLocalProject,
              .addArcProject, .saveArcProject, .restructureArcProject, .removeArcProject,
              .addDDEVProject, .saveDDEVProject, .removeDDEVProject,
              .addGitHubAccount, .addGitLabAccount, .saveGitHubAccount, .saveGitLabAccount,
@@ -103,6 +115,7 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
 /// What the engine answers.
 public enum DeckSettingsAnswer: Sendable, Equatable, Codable {
     case list(DeckSettingsList)
+    case cards([DeckSettingsCard])
     case words([String: String])
     case preferences(DeckPreferencesModel)
     case localProject(LocalProject?)
@@ -173,6 +186,11 @@ extension DeckRuntime {
     public func answer(_ request: DeckSettingsRequest) async -> DeckSettingsAnswer {
         switch request {
         case .list: return .list(settingsList())
+        case .cards: return .cards(settingsCards())
+        case .setCard(let id, let isEnabled):
+            cards.setEnabled(isEnabled, for: id)
+            effect(.cardsChanged)
+            return .cards(settingsCards())
         case .words:
             var words = Strings.words(withPrefixes: DeckSettingsWords.prefixes)
             // The one line that names the platform: how banners are kept. The window asks for
@@ -247,6 +265,14 @@ extension DeckRuntime {
         case .testGitLabAccountLink(let account): return open(testLink(account))
         case .checkGitHubToken(let account, let typed): return .token(await checkGitHubToken(for: account, typed: typed))
         case .checkGitLabToken(let account, let typed): return .token(await checkGitLabToken(for: account, typed: typed))
+        }
+    }
+
+    /// The built-in cards the Cards page switches, as the Mac's page lists them: the ones that
+    /// are implemented, in catalog order, projects and accounts left to their own pages.
+    func settingsCards() -> [DeckSettingsCard] {
+        CardCatalog.all.filter(\.isImplemented).map { descriptor in
+            DeckSettingsCard(id: descriptor.id, title: descriptor.title, detail: descriptor.subtitle, isEnabled: cards.isEnabled(descriptor.id))
         }
     }
 
