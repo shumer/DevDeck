@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import GitHubKit
 import GitLabKit
 
@@ -97,7 +98,6 @@ final class GitHubAccountForm: FlippedContainer, NSTextFieldDelegate {
 
     /// Where a fine-grained token is made, with nothing filled in: the account a person is
     /// signed into in their browser is the one the token belongs to.
-    static let createTokenURL = URL(string: "https://github.com/settings/personal-access-tokens/new")!
 
     init(account: GitHubAccount, hasToken: Bool, isAdvancedOpen: Bool, draft: String = "", width: CGFloat) {
         self.account = account
@@ -173,7 +173,7 @@ final class GitHubAccountForm: FlippedContainer, NSTextFieldDelegate {
     @objc private func changed() { onChange?(self) }
     @objc private func testLink() { onTestLink?(self) }
     @objc private func toggleAdvanced() { onToggleAdvanced?() }
-    @objc private func createToken() { NSWorkspace.shared.open(Self.createTokenURL) }
+    @objc private func createToken() { NSWorkspace.shared.open(DeckTokenPages.github) }
 
     func controlTextDidEndEditing(_ notification: Notification) {
         guard (notification.object as? NSTextField) !== token.field else { return }
@@ -266,12 +266,7 @@ final class GitLabAccountForm: FlippedContainer, NSTextFieldDelegate {
     @objc private func testLink() { onTestLink?(self) }
 
     /// GitLab's own page for a new token, with the name and the one scope filled in.
-    @objc private func createToken() {
-        let base = editedAccount.host
-        var components = URLComponents(url: base.appendingPathComponent("-/user_settings/personal_access_tokens"), resolvingAgainstBaseURL: false)
-        components?.queryItems = [URLQueryItem(name: "name", value: "DevDeck"), URLQueryItem(name: "scopes", value: "read_api")]
-        if let url = components?.url { NSWorkspace.shared.open(url) }
-    }
+    @objc private func createToken() { NSWorkspace.shared.open(DeckTokenPages.gitlab(host: editedAccount.host)) }
 
     func controlTextDidEndEditing(_ notification: Notification) {
         guard (notification.object as? NSTextField) !== token.field else { return }

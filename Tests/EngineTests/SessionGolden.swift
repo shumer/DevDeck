@@ -1,6 +1,7 @@
 import DevDeckCore
 import DevDeckEngine
 import GitHubKit
+import GitLabKit
 import DevDeckLocalization
 import Foundation
 import ProjectKit
@@ -218,6 +219,19 @@ func runSessionGoldenTests(_ run: TestRun) async {
         }
         try expectEqual(after.first { $0.id == .githubInbox }?.isEnabled, false)
         try expectEqual(effects, [.cardsChanged], "the panels follow")
+    }
+
+    await run.test("the link under a token row opens the service's own page for making one") {
+        let (runtime, _) = goldenRuntime()
+        var effects: [DeckEffect] = []
+        runtime.onEffect = { effects.append($0) }
+        _ = await runtime.answer(.openGitHubTokenPage)
+        let lab = GitLabAccount(id: "lab", label: "Lab", host: URL(string: "https://gitlab.example.invalid")!)
+        _ = await runtime.answer(.openGitLabTokenPage(lab))
+        try expectEqual(effects, [
+            .openURL(DeckTokenPages.github, .systemDefault),
+            .openURL(URL(string: "https://gitlab.example.invalid/-/user_settings/personal_access_tokens?name=DevDeck&scopes=read_api")!, .systemDefault),
+        ])
     }
 
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {

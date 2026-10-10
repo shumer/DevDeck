@@ -41,6 +41,18 @@ public struct DeckSettingsCard: Sendable, Equatable, Codable {
     public let isEnabled: Bool
 }
 
+/// Where a new token is made, for the link under a form's token row.
+public enum DeckTokenPages {
+    public static let github = URL(string: "https://github.com/settings/personal-access-tokens/new")!
+
+    /// The instance's own page, with the name and the one scope the card needs filled in.
+    public static func gitlab(host: URL) -> URL {
+        var components = URLComponents(url: host.appendingPathComponent("-/user_settings/personal_access_tokens"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "name", value: "DevDeck"), URLQueryItem(name: "scopes", value: "read_api")]
+        return components?.url ?? host
+    }
+}
+
 /// One thing a settings window asks of the engine.
 public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     /// The sidebar.
@@ -95,6 +107,9 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     /// works is stored; it is never sent back.
     case checkGitHubToken(GitHubAccount, typed: String)
     case checkGitLabToken(GitLabAccount, typed: String)
+    /// The page where a token is made, opened in the default browser.
+    case openGitHubTokenPage
+    case openGitLabTokenPage(GitLabAccount)
 
     /// Whether the answer means the deck itself changed: cards came or went, or a deck-wide
     /// setting moved.
@@ -265,6 +280,12 @@ extension DeckRuntime {
         case .testGitLabAccountLink(let account): return open(testLink(account))
         case .checkGitHubToken(let account, let typed): return .token(await checkGitHubToken(for: account, typed: typed))
         case .checkGitLabToken(let account, let typed): return .token(await checkGitLabToken(for: account, typed: typed))
+        case .openGitHubTokenPage:
+            effect(.openURL(DeckTokenPages.github, .systemDefault))
+            return .done
+        case .openGitLabTokenPage(let account):
+            effect(.openURL(DeckTokenPages.gitlab(host: account.host), .systemDefault))
+            return .done
         }
     }
 

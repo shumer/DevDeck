@@ -182,6 +182,7 @@ so a slow check does not hold up the list. The full list is `DeckSettingsRequest
 | `test...Link` | `note`: words when there is nothing to open; otherwise the page opens as an `openURL` effect |
 | `ddevCandidates`, `ddevFolderNote` | `ddevCandidates`, `note` |
 | `checkGitHubToken`, `checkGitLabToken` | `token`: `works` or `refused`, in words |
+| `openGitHubTokenPage`, `openGitLabTokenPage` | `done`; the page where a token is made opens as an `openURL` effect |
 
 A token travels once, typed, inside a check request. One that works is stored by the engine in
 the system's credential store and never sent back; an empty one checks the stored token. A check
