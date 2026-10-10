@@ -105,7 +105,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
   shortcut, the command sent back on a click; captures in `docs/poc/windows-ui/w6-*.png`.
 - **W-7.** Windows and displays: moves reported to the engine, plans applied, parking on unplug,
   two monitors with different scaling, sleep and wake.
-- **W-8.** The log window with search.
+- **W-8.** The log window with search. Done: one window per card from `openLogs`, lines, source
+  and detail from `log.changed`, the tail appended and followed, a local search, and
+  `logWindow.changed` both ways; captures in `docs/poc/windows-ui/w8-*.png`.
 - **W-9.** Summon: a global key raises the deck and dims the rest.
 - **W-10.** Settings, starting from a mock that is agreed first: accounts with tokens in
   Credential Manager, projects with Detect and Test, a Windows or WSL folder.
