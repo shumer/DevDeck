@@ -276,6 +276,15 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue.storage, forKey: "panels.summon.key") }
     }
 
+    /// The Windows shell's summon shortcut, in the words Windows uses for a key combination,
+    /// such as `Ctrl+Shift+Space`. Kept here so what is saved is the deck's; what the words
+    /// mean is the Windows shell's, the way `summonHotKey` is the Mac's. Nil is the shell's
+    /// default.
+    public var summonShortcutWindows: String? {
+        get { backend.string(forKey: "panels.summon.key.windows") }
+        set { backend.set(newValue, forKey: "panels.summon.key.windows") }
+    }
+
     /// Whether the screen dims while the deck is up.
     public var summonDims: Bool {
         get { backend.string(forKey: "panels.summon.dim") != "0" }

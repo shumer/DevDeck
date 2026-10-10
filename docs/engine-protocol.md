@@ -189,8 +189,12 @@ A request that changes the deck (anything that adds, saves or removes, a token c
 preferences) is followed by what it changed: panels, cards, the menu, the deck's lock, every
 card in a new language.
 
-The summon shortcut is not in the preferences yet: the Mac stores a Mac key code, and the
-Windows shortcut is decided with W-9.
+The Mac's summon key is not in the preferences: it is a Mac key code the Mac's own settings page
+edits. The Windows shortcut is, as `summonShortcutWindows`, text in Windows words such as
+`Ctrl+Shift+Space` that the Windows shell reads and writes; nil means the shell's default. What
+a press does is the engine's: shorter than `DeckRuntime.summonLatchThreshold` it is a tap that
+keeps the deck up until the next press, longer it is a hold that ends on release, and
+`summonDims` says whether the rest of the screen dims meanwhile.
 
 ## The host
 

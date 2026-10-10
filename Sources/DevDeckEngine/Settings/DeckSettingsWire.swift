@@ -11,8 +11,8 @@ import ProjectKit
 
 /// The deck-wide settings a settings window shows and changes.
 ///
-/// The summon key is not here: it is a Mac key code, and a Windows shortcut is its own decision
-/// (W-9).
+/// The Mac's summon key is not here: it is a Mac key code the Mac's own settings page edits. The
+/// Windows shortcut is, as text the Windows shell reads and writes.
 public struct DeckPreferencesModel: Sendable, Equatable, Codable {
     public var language: AppLanguage
     public var displayMode: DisplayMode
@@ -24,6 +24,8 @@ public struct DeckPreferencesModel: Sendable, Equatable, Codable {
     public var checksForUpdates: Bool
     public var summonEnabled: Bool
     public var summonDims: Bool
+    /// `Ctrl+Shift+Space`, in Windows words; nil for the shell's default.
+    public var summonShortcutWindows: String?
     public var actionsRepositories: [String]
     /// Projects whose going down is not worth a banner, by id, sorted.
     public var projectsQuietWhenDown: [String]
@@ -131,6 +133,7 @@ extension DeckRuntime {
             checksForUpdates: preferences.checksForUpdates,
             summonEnabled: preferences.summonEnabled,
             summonDims: preferences.summonDims,
+            summonShortcutWindows: preferences.summonShortcutWindows,
             actionsRepositories: preferences.actionsRepositories,
             projectsQuietWhenDown: preferences.projectsQuietWhenDown.sorted(),
             projectsQuietWhenStartFails: preferences.projectsQuietWhenStartFails.sorted()
@@ -148,6 +151,7 @@ extension DeckRuntime {
         preferences.checksForUpdates = model.checksForUpdates
         preferences.summonEnabled = model.summonEnabled
         preferences.summonDims = model.summonDims
+        preferences.summonShortcutWindows = model.summonShortcutWindows
         preferences.actionsRepositories = model.actionsRepositories
         preferences.projectsQuietWhenDown = Set(model.projectsQuietWhenDown)
         preferences.projectsQuietWhenStartFails = Set(model.projectsQuietWhenStartFails)

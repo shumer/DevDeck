@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 
 /// ⌥Space, held.
 ///
@@ -27,8 +28,8 @@ final class Summoner {
     /// that put it back.
     private var dismissMonitors: [Any] = []
 
-    /// Anything shorter than this was a tap, not a hold.
-    private static let latchThreshold: TimeInterval = 0.25
+    /// Anything shorter than this was a tap, not a hold. The deck's number, so Windows taps alike.
+    private static let latchThreshold = DeckRuntime.summonLatchThreshold
 
     init(preferences: Preferences, onRaise: @escaping (Bool) -> Void) {
         self.preferences = preferences

@@ -1226,6 +1226,10 @@ public final class DeckRuntime {
     /// How often an open log window is read again.
     public static let logWindowInterval: TimeInterval = 2
 
+    /// A press of the summon key shorter than this is a tap, which keeps the deck up until the
+    /// next press; a longer one is a hold, and the deck goes back down on release.
+    public static let summonLatchThreshold: TimeInterval = 0.25
+
     /// Read now, because a window asked, every `logWindowInterval` while it is open.
     public func refreshLogsNow(for card: CardID) {
         guard hasLogSource(card) else { return }
