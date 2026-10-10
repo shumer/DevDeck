@@ -127,6 +127,10 @@ public sealed class ShellCoordinator : IAsyncDisposable
                         NextId(),
                         CultureInfo.CurrentUICulture.Name,
                         DisplayProvider.Current()));
+                await client.SendAsync(
+                    ProtocolWriter.Settings(
+                        NextId(),
+                        "{\"preferences\":{}}"));
                 hadSession = true;
                 await client.Completion.WaitAsync(cancellation.Token);
             }
@@ -197,6 +201,11 @@ public sealed class ShellCoordinator : IAsyncDisposable
             case "effect" when message.Effect is { } effect:
                 ApplyEffect(effect);
                 break;
+            case "settings.answered" when
+                message.Answer is { } answer &&
+                SummonPreferences.TryParse(answer, out var preferences):
+                surface.ApplySummonPreferences(preferences);
+                break;
         }
     }
 
@@ -241,6 +250,9 @@ public sealed class ShellCoordinator : IAsyncDisposable
                 break;
             case "closeLogs" when JsonModel.String(effect, "card") is { } closeCard:
                 surface.CloseLogs(closeCard);
+                break;
+            case "present":
+                surface.PresentDeck();
                 break;
             default:
                 PlatformEffects.Apply(effect);

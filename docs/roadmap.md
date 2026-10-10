@@ -202,6 +202,10 @@
   shell appends changed lines, follows the tail until the user scrolls away, searches locally and
   reports window state through protocol v2. The engine still owns the title, source, empty detail
   and card highlight. W-8.
+- **Windows Summon follows engine preferences** - `RegisterHotKey` raises the existing panels
+  while a shortcut is held, a tap or `present` latches them, and Escape or a veil click returns
+  them to the engine supplied layer. Optional 30 percent veils are rebuilt from the current
+  monitor list for every raise. W-9.
 
 ## Next
 
@@ -212,8 +216,8 @@
    window's operations (M-6), the update check (M-7), golden transcripts of the runtime
    (M-8), the whole protocol on the runtime with the host running it (C-1, W-1), Windows CI
    (W-2), the WPF shell on protocol v2 with its first styled cards (W-3), and the remaining
-   card styles (W-4), tray and menus (W-5), notifications (W-6), and display-aware placement
-   (W-7).
+   card styles (W-4), tray and menus (W-5), notifications (W-6), display-aware placement
+   (W-7), the log window (W-8), and Summon (W-9).
 2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
