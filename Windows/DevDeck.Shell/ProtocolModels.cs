@@ -20,6 +20,7 @@ public sealed class DeckEvent
     public JsonElement? Menu { get; private init; }
     public JsonElement? Stopped { get; private init; }
     public JsonElement? Status { get; private init; }
+    public DeckLog? Log { get; private init; }
     public JsonElement? Effect { get; private init; }
     public JsonElement? Answer { get; private init; }
     public IReadOnlyList<DeckNotification>? Notifications { get; private init; }
@@ -47,6 +48,7 @@ public sealed class DeckEvent
             Menu = Clone(root, "menu"),
             Stopped = Clone(root, "stopped"),
             Status = Clone(root, "status"),
+            Log = TryProperty(root, "log", out var log) ? DeckLog.Parse(log) : null,
             Effect = Clone(root, "effect"),
             Answer = Clone(root, "answer"),
             Notifications = TryProperty(root, "notifications", out var notifications)
@@ -209,6 +211,24 @@ public sealed record CardMeasurement(string Card, double[] Size);
 
 public sealed record CardMove(string Card, double[] Frame);
 
+public sealed record LogWindowChange(string Card, bool IsOpen);
+
+public sealed record DeckLog(IReadOnlyList<string> Lines, string? Source, string? Detail)
+{
+    public static DeckLog Parse(JsonElement value)
+    {
+        if (!DeckEvent.TryProperty(value, "lines", out var lines) || lines.ValueKind != JsonValueKind.Array)
+        {
+            throw new JsonException();
+        }
+
+        return new DeckLog(
+            lines.EnumerateArray().Select(item => item.GetString() ?? throw new JsonException()).ToArray(),
+            DeckEvent.OptionalString(value, "source"),
+            DeckEvent.OptionalString(value, "detail"));
+    }
+}
+
 public readonly record struct DeckCommand(string Json)
 {
     public static DeckCommand From(JsonElement value)
@@ -262,6 +282,15 @@ public static class ProtocolWriter
             writer.WriteString("card", move.Card);
             writer.WritePropertyName("frame");
             JsonSerializer.Serialize(writer, move.Frame, JsonOptions);
+        });
+    }
+
+    public static string LogWindowChanged(string id, LogWindowChange change)
+    {
+        return Write(id, "logWindow.changed", writer =>
+        {
+            writer.WriteString("card", change.Card);
+            writer.WriteBoolean("isOpen", change.IsOpen);
         });
     }
 

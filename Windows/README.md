@@ -133,6 +133,17 @@ shared vector marks; Windows supplies the final system chrome on the live toast.
 
 ![Grouped notification](../docs/poc/windows-ui/w6-toast-summary.png)
 
+The project log opens in one normal Windows window per card. Its title, lines, source and empty
+detail come from protocol v2. New tail lines are appended without rebuilding the existing visual
+rows. The view follows the end until it is scrolled up, and Ctrl+F filters and highlights matches.
+Window size and position are kept in `%LOCALAPPDATA%\DevDeck\shell-log-windows.json`.
+
+![Log detail supplied by the engine](../docs/poc/windows-ui/w8-log-detail.png)
+
+![Live project log](../docs/poc/windows-ui/w8-log-live.png)
+
+![Log search highlights](../docs/poc/windows-ui/w8-log-search.png)
+
 ## Toast registration
 
 The unpackaged self-contained executable uses Windows App SDK 1.8 and calls
@@ -193,6 +204,10 @@ models add the system silent audio flag. A click returns the stored command with
 JSON. Notification ids are remembered by the shell so a restarted host cannot show the same
 banner twice.
 
+`openLogs` and `closeLogs` manage one resizable log window for each card. The shell returns
+`logWindow.changed` for both engine and user initiated changes. Card highlighting still changes
+only when the next `card.changed` model carries `header.logIsOn`.
+
 All five model kinds and collapsed rows use the Windows visual system in
 [`docs/windows-style.md`](../docs/windows-style.md). Review lists cover both GitHub pull requests
 and GitLab merge requests. Arc, DDEV, Windows and WSL projects share the project renderer while
@@ -204,9 +219,8 @@ part of W-11.
 The following protocol features are intentionally deferred:
 
 - Full per-monitor placement, mixed scaling, unplug and sleep behavior are W-7.
-- The log window is W-8.
 - Settings UI is W-10. The development flags are command line helpers only.
 - Browser profiles and the full Windows and WSL terminal and folder behavior are W-11.
-- Effects for logs, settings and updates are logged by kind and ignored.
+- Effects for settings and updates are logged by kind and ignored.
 
 `openURL` uses the system browser. `openTerminal` and `revealFolder` use the Windows system tools.
