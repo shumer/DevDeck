@@ -8,32 +8,37 @@ namespace DevDeck.Shell;
 
 public sealed class CardWindow : Window
 {
+    private const double PanelWidth = 352;
     private readonly string cardId;
     private readonly Action<CardMeasurement> measured;
     private readonly Action<CardMove> moved;
     private readonly Action<DeckCommand> command;
+    private readonly Action displayChanged;
     private readonly MenuPresenter contextMenu;
+    private readonly CardMoveTracker moveTracker = new();
     private nint handle;
     private bool isLocked;
-    private (int Width, int Height) lastMeasurement;
+    private (double Width, double Height) lastMeasurement;
 
     public CardWindow(
         string cardId,
         Action<CardMeasurement> measured,
         Action<CardMove> moved,
-        Action<DeckCommand> command)
+        Action<DeckCommand> command,
+        Action displayChanged)
     {
         this.cardId = cardId;
         this.measured = measured;
         this.moved = moved;
         this.command = command;
+        this.displayChanged = displayChanged;
         contextMenu = new MenuPresenter(command);
         AllowsTransparency = false;
         Background = Brushes.Transparent;
         ShowActivated = false;
         ShowInTaskbar = false;
         SizeToContent = SizeToContent.Manual;
-        Width = 352;
+        Width = PanelWidth;
         Height = 44;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
@@ -67,12 +72,11 @@ public sealed class CardWindow : Window
             return;
         }
 
-        NativeMethods.SetWindowFrame(
-            handle,
-            (int)Math.Round(frame[0]),
-            (int)Math.Round(frame[1]),
-            (int)Math.Round(frame[2]),
-            (int)Math.Round(frame[3]));
+        moveTracker.BeginProgrammaticMove();
+        NativeMethods.SetWindowFrame(handle, frame[0], frame[1], frame[2], frame[3]);
+        Dispatcher.BeginInvoke(
+            moveTracker.EndProgrammaticMove,
+            System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
 
     public double[] CurrentFrame()
@@ -120,9 +124,39 @@ public sealed class CardWindow : Window
             return NativeMethods.MouseNoActivate;
         }
 
-        if (message == NativeMethods.ExitSizeMove)
+        if (message == NativeMethods.EnterSizeMove)
         {
-            moved(new CardMove(cardId, NativeMethods.GetWindowFrame(window)));
+            moveTracker.BeginDrag();
+        }
+        else if (message == NativeMethods.ExitSizeMove && moveTracker.EndDrag())
+        {
+            if (moveTracker.TakeDelayedDpiChange())
+            {
+                displayChanged();
+                Dispatcher.BeginInvoke(
+                    () => ReportDragMove(window),
+                    System.Windows.Threading.DispatcherPriority.Background);
+            }
+            else
+            {
+                ReportDragMove(window);
+            }
+        }
+        else if (message == NativeMethods.WindowPositionChanged && moveTracker.PositionChanged())
+        {
+            Dispatcher.BeginInvoke(
+                ReportSystemMove,
+                System.Windows.Threading.DispatcherPriority.Background);
+        }
+        else if (message == NativeMethods.DpiChanged)
+        {
+            if (moveTracker.DpiChanged())
+            {
+                displayChanged();
+                Dispatcher.BeginInvoke(
+                    ReportMeasurement,
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+            }
         }
 
         return 0;
@@ -135,11 +169,21 @@ public sealed class CardWindow : Window
             return;
         }
 
-        var frame = NativeMethods.GetWindowFrame(handle);
-        var availableWidth = frame[2];
-        content.Measure(new Size(availableWidth, double.PositiveInfinity));
-        var width = (int)Math.Ceiling(frame[2]);
-        var height = (int)Math.Ceiling(content.DesiredSize.Height);
+        var localScale = VisualTreeHelper.GetDpi(content);
+        var primaryScale = NativeMethods.PrimaryDesktopScale();
+        content.Measure(new Size(PanelWidth, double.PositiveInfinity));
+        var width = Math.Round(
+            DisplayProvider.LocalDipsInPrimaryDisplayDips(
+                PanelWidth,
+                localScale.DpiScaleX,
+                primaryScale),
+            3);
+        var height = Math.Round(
+            DisplayProvider.LocalDipsInPrimaryDisplayDips(
+                content.DesiredSize.Height,
+                localScale.DpiScaleY,
+                primaryScale),
+            3);
         if (lastMeasurement == (width, height))
         {
             return;
@@ -147,5 +191,19 @@ public sealed class CardWindow : Window
 
         lastMeasurement = (width, height);
         measured(new CardMeasurement(cardId, [width, height]));
+    }
+
+    private void ReportSystemMove()
+    {
+        if (moveTracker.FlushSystemMove())
+        {
+            moved(new CardMove(cardId, NativeMethods.GetWindowFrame(handle)));
+        }
+    }
+
+    private void ReportDragMove(nint window)
+    {
+        moved(new CardMove(cardId, NativeMethods.GetWindowFrame(window)));
+        ReportMeasurement();
     }
 }

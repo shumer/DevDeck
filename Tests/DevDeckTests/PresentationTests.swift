@@ -323,6 +323,25 @@ func runPresentationTests(_ run: TestRun) async {
         try expect(points.values.allSatisfy { $0.x == 1512 - 352 }, "against the right edge, not off it")
     }
 
+    await run.test("parking uses the folded size of the fallback display") {
+        let scaled = DeckParking.Card(
+            id: CardID(rawValue: "scaled"),
+            placement: PanelPlacement(displayID: "external", offset: CGPoint(x: 2200, y: 40)),
+            homeSize: CGSize(width: 141, height: 83),
+            parkedSize: folded
+        )
+        let plan = DeckParking.plan(
+            [scaled],
+            displays: [laptopAlone],
+            fallback: laptopAlone,
+            gap: 12
+        )
+        let point = try expectNotNil(plan.parked[scaled.id], "parked point")
+        let frame = CGRect(x: point.x, y: point.y - folded.height, width: folded.width, height: folded.height)
+        try expect(laptopAlone.visibleFrame.contains(frame), "the fallback scale does not leave it narrow or off screen")
+        try expectEqual(frame.width, CardMetrics.width)
+    }
+
     await run.test("a deck too tall for the screen wraps into a second column rather than piling up") {
         let many = (0..<30).map { parkedCard("card-\($0)", 40, Double(40 + $0 * 260)) }
         let points = DeckParking.layout(many, on: laptopAlone, gap: 12)
@@ -357,6 +376,11 @@ func runPresentationTests(_ run: TestRun) async {
         let plan = DeckParking.plan(mixed, displays: [laptopAlone], fallback: laptopAlone, gap: 12)
         try expectEqual(plan.home[CardID(rawValue: "load")], CGPoint(x: 24, y: 949 - 25))
         try expectEqual(plan.parked.count, 5)
+        let home = CGRect(x: 24, y: 949 - 25 - folded.height, width: folded.width, height: folded.height)
+        try expect(
+            frames(plan.parked, size: folded).allSatisfy { !$0.intersects(home) },
+            "the parked column does not cover a card already on the fallback display"
+        )
     }
 
     await run.test("the window server's shove is not a drag") {

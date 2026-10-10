@@ -98,6 +98,13 @@ public static class Program
         Run("closing a log reports that it is closed", ClosingLogReportsClosed);
         Run("opening a log twice keeps one window", OpeningLogTwiceKeepsOneWindow);
         Run("log search uses an unclipped Fluent chevron", LogSearchUsesUnclippedFluentChevron);
+        Run("display coordinates use primary monitor DIPs", DisplayCoordinatesUsePrimaryMonitorDips);
+        Run("stable display ids do not use display indexes", StableDisplayIdsDoNotUseDisplayIndexes);
+        Run("programmatic panel placement reports no move", ProgrammaticPanelPlacementReportsNoMove);
+        Run("a drag reports one final move", DragReportsOneFinalMove);
+        Run("a DPI change waits for a cross-display drag", DpiChangeWaitsForCrossDisplayDrag);
+        Run("a system move reports one final frame", SystemMoveReportsOneFinalFrame);
+        Run("display changes contain the full current list", DisplayChangesContainFullCurrentList);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -566,7 +573,12 @@ public static class Program
         True(expanded.ActualHeight > compact.ActualHeight);
 
         var measurements = new List<CardMeasurement>();
-        var window = new CardWindow("github.pullRequests", measurements.Add, _ => { }, _ => { });
+        var window = new CardWindow(
+            "github.pullRequests",
+            measurements.Add,
+            _ => { },
+            _ => { },
+            () => { });
         window.Show();
         window.Update(compactModel);
         window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
@@ -945,7 +957,7 @@ public static class Program
 
     private static CardWindow CreateWindow()
     {
-        return new CardWindow("project.sample", _ => { }, _ => { }, _ => { });
+        return new CardWindow("project.sample", _ => { }, _ => { }, _ => { }, () => { });
     }
 
     private static double[] FirstPanelFrame()
@@ -1061,6 +1073,111 @@ public static class Program
         Equal(DeckIcons.Text("expand"), glyph.Text);
         Equal(new Thickness(0), window.SearchNextButton.Padding);
         window.Close();
+    }
+
+    private static void DisplayCoordinatesUsePrimaryMonitorDips()
+    {
+        var displays = DisplayProvider.InPrimaryDisplayDips(
+        [
+            new PhysicalDisplay("primary", [0, 0, 2880, 1560], true, 1.5),
+            new PhysicalDisplay("secondary", [2880, -400, 3840, 2160], false, 2.0),
+        ],
+        1.5);
+        Equal(2, displays.Count);
+        Equal("primary", displays[0].Id);
+        Equal(1920.0, displays[1].Frame[0]);
+        Equal(-400.0 / 1.5, displays[1].Frame[1]);
+        Equal(2560.0, displays[1].Frame[2]);
+        Equal(1440.0, displays[1].Frame[3]);
+        Equal("primary", displays.Single(display => display.IsPrimary).Id);
+        Equal(
+            469.333,
+            Math.Round(DisplayProvider.LocalDipsInPrimaryDisplayDips(352, 2.0, 1.5), 3));
+    }
+
+    private static void StableDisplayIdsDoNotUseDisplayIndexes()
+    {
+        var interfacePath = @"\\?\DISPLAY#SAMPLE#1#{identifier}";
+        Equal(
+            interfacePath,
+            DisplayProvider.StableId(interfacePath, @"DISPLAY\SAMPLE\1", "device key"));
+    }
+
+    private static void ProgrammaticPanelPlacementReportsNoMove()
+    {
+        var moves = new List<CardMove>();
+        var window = new CardWindow(
+            "project.sample",
+            _ => { },
+            moves.Add,
+            _ => { },
+            () => { });
+        window.Show();
+        window.ApplyFrame([32, 32, 352, 120]);
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(0, moves.Count);
+        window.Close();
+    }
+
+    private static void DragReportsOneFinalMove()
+    {
+        var tracker = new CardMoveTracker();
+        tracker.BeginDrag();
+        True(!tracker.PositionChanged());
+        True(!tracker.PositionChanged());
+        True(tracker.EndDrag());
+        True(!tracker.EndDrag());
+    }
+
+    private static void DpiChangeWaitsForCrossDisplayDrag()
+    {
+        var tracker = new CardMoveTracker();
+        tracker.BeginDrag();
+        True(!tracker.DpiChanged());
+        True(tracker.EndDrag());
+        True(tracker.TakeDelayedDpiChange());
+        True(!tracker.TakeDelayedDpiChange());
+        True(tracker.DpiChanged());
+    }
+
+    private static void SystemMoveReportsOneFinalFrame()
+    {
+        var moves = new List<CardMove>();
+        var window = new CardWindow(
+            "project.sample",
+            _ => { },
+            moves.Add,
+            _ => { },
+            () => { });
+        window.Show();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        moves.Clear();
+        NativeMethods.SetWindowFrame(window.Handle, 48, 48, 352, 120);
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(1, moves.Count);
+        Equal(48.0, moves[0].Frame[0]);
+        Equal(48.0, moves[0].Frame[1]);
+        window.Close();
+    }
+
+    private static void DisplayChangesContainFullCurrentList()
+    {
+        IReadOnlyList<DisplayModel> current =
+        [
+            new DisplayModel("first", [0, 0, 1920, 1040], true),
+            new DisplayModel("second", [1920, 0, 1280, 720], false),
+        ];
+        var publisher = new DisplayChangePublisher(() => current);
+        IReadOnlyList<DisplayModel>? received = null;
+        publisher.Changed += displays => received = displays;
+        publisher.Publish();
+        Equal(2, received?.Count);
+        Equal("first", received?[0].Id);
+        Equal("second", received?[1].Id);
+        current = [new DisplayModel("first", [0, 0, 1920, 1040], true)];
+        publisher.Publish();
+        Equal(1, received?.Count);
+        Equal("first", received?[0].Id);
     }
 
     private static IReadOnlyList<string> GoldenPaths()

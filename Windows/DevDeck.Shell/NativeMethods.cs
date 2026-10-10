@@ -14,6 +14,11 @@ public static class NativeMethods
     public const nint MouseNoActivate = 3;
     public const int ExitSizeMove = 0x0232;
     public const int DisplayChange = 0x007E;
+    public const int SettingChange = 0x001A;
+    public const nint SetWorkArea = 0x002F;
+    public const int DpiChanged = 0x02E0;
+    public const int EnterSizeMove = 0x0231;
+    public const int WindowPositionChanged = 0x0047;
     public const int WindowCornerPreference = 33;
     public const int RoundedWindowCorners = 2;
     public const int ImmersiveDarkMode = 20;
@@ -66,9 +71,9 @@ public static class NativeMethods
         return value;
     }
 
-    public static void SetWindowFrame(nint handle, int x, int y, int width, int height)
+    public static void SetWindowFrame(nint handle, double x, double y, double width, double height)
     {
-        var scale = DesktopScale();
+        var scale = PrimaryDesktopScale();
         _ = SetWindowPos(
             handle,
             0,
@@ -86,7 +91,7 @@ public static class NativeMethods
             return [];
         }
 
-        var scale = DesktopScale();
+        var scale = PrimaryDesktopScale();
         return
         [
             FromDevicePixels(rectangle.Left, scale),
@@ -98,7 +103,7 @@ public static class NativeMethods
 
     public static double FromDevicePixels(int value)
     {
-        return FromDevicePixels(value, DesktopScale());
+        return FromDevicePixels(value, PrimaryDesktopScale());
     }
 
     public static void SetWindowLayer(nint handle, string displayMode)
@@ -174,12 +179,12 @@ public static class NativeMethods
         public int Bottom;
     }
 
-    private static double DesktopScale()
+    public static double PrimaryDesktopScale()
     {
         return GetDpiForSystem() / 96.0;
     }
 
-    private static int ToDevicePixels(int value, double scale)
+    private static int ToDevicePixels(double value, double scale)
     {
         return (int)Math.Round(value * scale);
     }

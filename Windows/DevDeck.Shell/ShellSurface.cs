@@ -9,6 +9,7 @@ public interface IShellSurface : IDisposable
     event Action<CardMove>? CardMoved;
     event Action<DeckCommand>? CommandInvoked;
     event Action<LogWindowChange>? LogWindowChanged;
+    event Action? DisplayConfigurationChanged;
     void BeginSession();
     void ApplyDeck(DeckPresentation presentation);
     void ApplyPanels(IReadOnlyList<PanelChange> panels);
@@ -39,6 +40,7 @@ public sealed class ShellSurface : IShellSurface
     public event Action<CardMove>? CardMoved;
     public event Action<DeckCommand>? CommandInvoked;
     public event Action<LogWindowChange>? LogWindowChanged;
+    public event Action? DisplayConfigurationChanged;
 
     public ShellSurface()
     {
@@ -174,7 +176,8 @@ public sealed class ShellSurface : IShellSurface
             card,
             measurement => CardMeasured?.Invoke(measurement),
             move => CardMoved?.Invoke(move),
-            command => CommandInvoked?.Invoke(command));
+            command => CommandInvoked?.Invoke(command),
+            () => DisplayConfigurationChanged?.Invoke());
         windows.Add(card, window);
         window.Show();
         window.SetLocked(isLocked);
