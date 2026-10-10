@@ -99,7 +99,7 @@
 "attention.local.noRemote.subtitle" = "%1$@ · %2$@ · oldest %3$@ ago";
 "attention.local.noRemote.title" = "Branch not on any remote: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · oldest %2$@ ago";
-"attention.local.unpushed.title" = "%1$@ only on this Mac: %2$@";
+"attention.local.unpushed.title" = "%1$@ only on this computer: %2$@";
 "attention.project.cannotStop.noStopCommand" = "No stop command set · add one in Settings";
 "attention.project.cannotStop.startedElsewhere" = "Started outside DevDeck · stop it where you started it";
 "attention.project.cannotStop.title" = "DevDeck can't stop %@";
@@ -238,7 +238,7 @@
 "card.notShown" = " · +%d not shown";
 "card.open" = "open";
 "card.phone.help" = "open this on your phone";
-"card.phone.note" = "Same wifi as this Mac. A dev server bound to localhost only will not answer.";
+"card.phone.note" = "Same wifi as this computer. A dev server bound to localhost only will not answer.";
 "card.phone.title" = "Open on your phone";
 "card.pill.blocked" = "%d blocked";
 "card.pill.blockedOpen" = "%1$d blocked · %2$d open";

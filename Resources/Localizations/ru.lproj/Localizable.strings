@@ -99,7 +99,7 @@
 "attention.local.noRemote.subtitle" = "%1$@ · %2$@ · самый старый %3$@ назад";
 "attention.local.noRemote.title" = "Ветки нет ни на одном remote: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · самый старый %2$@ назад";
-"attention.local.unpushed.title" = "%1$@ только на этом Mac: %2$@";
+"attention.local.unpushed.title" = "%1$@ только на этом компьютере: %2$@";
 "attention.project.cannotStop.noStopCommand" = "Команда остановки не задана · добавьте её в настройках";
 "attention.project.cannotStop.startedElsewhere" = "Запущен не из DevDeck · остановите там, где запускали";
 "attention.project.cannotStop.title" = "DevDeck не может остановить %@";
@@ -238,7 +238,7 @@
 "card.notShown" = " · +%d не показано";
 "card.open" = "открыто";
 "card.phone.help" = "открыть это на телефоне";
-"card.phone.note" = "Тот же wifi, что и у этого Mac. Dev-сервер, привязанный только к localhost, не ответит.";
+"card.phone.note" = "Тот же wifi, что и у этого компьютера. Dev-сервер, привязанный только к localhost, не ответит.";
 "card.phone.title" = "Открыть на телефоне";
 "card.pill.blocked" = "%d заблокировано";
 "card.pill.blockedOpen" = "%1$d заблокировано · %2$d открыто";

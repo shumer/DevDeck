@@ -99,7 +99,7 @@
 "attention.local.noRemote.subtitle" = "%1$@ · %2$@ · el más antiguo hace %3$@";
 "attention.local.noRemote.title" = "La rama no está en ningún remoto: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · el más antiguo hace %2$@";
-"attention.local.unpushed.title" = "%1$@ solo en este Mac: %2$@";
+"attention.local.unpushed.title" = "%1$@ solo en este ordenador: %2$@";
 "attention.project.cannotStop.noStopCommand" = "Sin comando de parada · añade uno en Ajustes";
 "attention.project.cannotStop.startedElsewhere" = "Iniciado fuera de DevDeck · páralo donde lo iniciaste";
 "attention.project.cannotStop.title" = "DevDeck no puede parar %@";
@@ -238,7 +238,7 @@
 "card.notShown" = " · +%d sin mostrar";
 "card.open" = "abiertas";
 "card.phone.help" = "abrir esto en el móvil";
-"card.phone.note" = "En el mismo wifi que este Mac. Un servidor de desarrollo atado solo a localhost no responderá.";
+"card.phone.note" = "En el mismo wifi que este ordenador. Un servidor de desarrollo atado solo a localhost no responderá.";
 "card.phone.title" = "Abrir en el móvil";
 "card.pill.blocked" = "%d bloqueadas";
 "card.pill.blockedOpen" = "%1$d bloqueadas · %2$d abiertas";
