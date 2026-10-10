@@ -154,9 +154,15 @@ The unpackaged shell uses the classic Windows toast API with the stable AUMID `D
 At startup it creates or updates the current user's
 `%APPDATA%\Microsoft\Windows\Start Menu\Programs\DevDeck.lnk`, points it at the running
 executable and gives it the same AUMID. Windows uses that shortcut to associate notifications
-with DevDeck. This shortcut is the only persistent machine state created for notifications.
-Activation is handled only while the shell is running, so the exact command stays in memory and
-is never written to an activation argument.
+with DevDeck. Activation is handled only while the shell is running, so the exact command stays
+in memory and is never written to an activation argument.
+
+Source marks are rendered as square 256 pixel PNG files in
+`%PROGRAMDATA%\DevDeck\NotificationAssets`. That location lets the Windows notification renderer
+read the image. The XML uses an absolute `file:///C:\...` source. The executable embeds the
+DevDeck app icon, which is also used by the Start Menu shortcut and the toast header.
+The shortcut and notification asset directory are the only persistent machine state created for
+notifications.
 
 The earlier Windows App SDK 1.8 implementation called `AppNotificationManager.Register()` and
 reported notifications as enabled, but Windows Shell did not display or retain them. This matches

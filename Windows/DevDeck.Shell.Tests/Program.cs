@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using DevDeck.Shell;
@@ -91,8 +92,10 @@ public static class Program
         Run("notification transcripts parse into complete models", NotificationTranscriptsParse);
         Run("notification clicks send the exact command", NotificationClicksSendExactCommand);
         Run("quiet notifications silence their toast XML", QuietNotificationsSilenceToastXml);
+        Run("toast XML keeps text before its source mark", ToastXmlKeepsTextBeforeSourceMark);
         Run("notification ids are shown only once", NotificationIdsAreShownOnlyOnce);
         Run("every notification source has a shared mark", EveryNotificationSourceHasSharedMark);
+        Run("notification artwork is an existing square file URI", NotificationArtworkIsExistingSquareFileUri);
         Run("toast registration uses a stable application id", ToastRegistrationUsesStableApplicationId);
         Run("log updates append only their new lines", LogUpdatesAppendOnlyNewLines);
         Run("empty logs show the engine detail", EmptyLogsShowEngineDetail);
@@ -763,6 +766,27 @@ public static class Program
         True(audibleDocument.Root?.Element("audio") is null);
     }
 
+    private static void ToastXmlKeepsTextBeforeSourceMark()
+    {
+        var notification = RuntimeNotifications("runtime-banners-en.expected.jsonl").First();
+        var document = XDocument.Parse(ToastPayload.Build(notification, "file:///mark.png"));
+        var children = document.Root?
+            .Element("visual")?
+            .Element("binding")?
+            .Elements()
+            .Select(element => element.Name.LocalName)
+            .ToArray() ?? [];
+        Equal("text,text,text,image", string.Join(',', children));
+        Equal(
+            "file:///mark.png",
+            document.Root?
+                .Element("visual")?
+                .Element("binding")?
+                .Element("image")?
+                .Attribute("src")?
+                .Value);
+    }
+
     private static void NotificationIdsAreShownOnlyOnce()
     {
         var notification = SessionNotifications("session-settings-en.expected.jsonl").Single();
@@ -781,6 +805,39 @@ public static class Program
         }
     }
 
+    private static void NotificationArtworkIsExistingSquareFileUri()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"devdeck-toast-{Guid.NewGuid():N}");
+        try
+        {
+            var value = NotificationArtwork.FileUri("github", directory);
+            var uri = new Uri(value);
+            True(value.StartsWith("file:///", StringComparison.Ordinal));
+            True(value.Contains('\\'));
+            True(uri.IsAbsoluteUri);
+            True(uri.IsFile);
+            True(File.Exists(uri.LocalPath));
+            using var stream = File.OpenRead(uri.LocalPath);
+            var decoder = BitmapDecoder.Create(
+                stream,
+                BitmapCreateOptions.PreservePixelFormat,
+                BitmapCacheOption.OnLoad);
+            var frame = decoder.Frames.Single();
+            Equal(256, frame.PixelWidth);
+            Equal(frame.PixelWidth, frame.PixelHeight);
+            var chunks = PngChunkTypes(File.ReadAllBytes(uri.LocalPath));
+            True(!chunks.Contains("gAMA", StringComparer.Ordinal));
+            True(!chunks.Contains("pHYs", StringComparer.Ordinal));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+    }
+
     private static void ToastRegistrationUsesStableApplicationId()
     {
         Equal("DevDeck.Shell", ToastShortcutRegistration.AppId);
@@ -793,6 +850,25 @@ public static class Program
                 "Programs",
                 "DevDeck.lnk"),
             ToastShortcutRegistration.ShortcutPath("profile"));
+    }
+
+    private static IReadOnlyList<string> PngChunkTypes(byte[] bytes)
+    {
+        var result = new List<string>();
+        var offset = 8;
+        while (offset + 12 <= bytes.Length)
+        {
+            var length = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(
+                bytes.AsSpan(offset, 4));
+            var type = System.Text.Encoding.ASCII.GetString(bytes, offset + 4, 4);
+            result.Add(type);
+            offset += length + 12;
+            if (type == "IEND")
+            {
+                break;
+            }
+        }
+        return result;
     }
 
     private static Color Pixel(System.Windows.Media.Imaging.BitmapSource image, int x, int y)

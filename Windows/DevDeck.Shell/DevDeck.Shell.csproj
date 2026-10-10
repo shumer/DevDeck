@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\DevDeck.ico</ApplicationIcon>
     <AssemblyName>DevDeck.Shell</AssemblyName>
     <RootNamespace>DevDeck.Shell</RootNamespace>
     <WindowsPackageType>None</WindowsPackageType>

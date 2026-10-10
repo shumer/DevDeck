@@ -6,6 +6,8 @@ namespace DevDeck.Shell;
 public static class ToastShortcutRegistration
 {
     public const string AppId = "DevDeck.Shell";
+    private const uint AssociationChanged = 0x08000000;
+    private const uint ItemIdList = 0x0000;
     private static readonly PropertyKey AppUserModelId = new(
         new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
         5);
@@ -46,6 +48,7 @@ public static class ToastShortcutRegistration
         {
             _ = Marshal.FinalReleaseComObject(instance);
         }
+        SHChangeNotify(AssociationChanged, ItemIdList, 0, 0);
     }
 
     public static string ShortcutPath(string applicationData)
@@ -61,6 +64,9 @@ public static class ToastShortcutRegistration
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
+
+    [DllImport("shell32.dll")]
+    private static extern void SHChangeNotify(uint eventId, uint flags, nint firstItem, nint secondItem);
 
     [ComImport]
     [Guid("00021401-0000-0000-C000-000000000046")]
