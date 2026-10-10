@@ -897,7 +897,12 @@ public sealed class SettingsWindow : Window
         var page = ModelHeader(title, folder, route.Page, record);
         page.Children.Add(GroupTitle("project.section.project"));
         page.Children.Add(Card(
-            FieldRow("account.name", record, "title", false),
+            FieldRow(
+                "account.name",
+                record,
+                "title",
+                false,
+                initialValue: route.Page == "ddev" ? title : null),
             FolderRow(record)));
         if (route.Page == "project")
         {
@@ -1010,44 +1015,99 @@ public sealed class SettingsWindow : Window
     {
         var recordKey = RecordKey(route.Page, route.Item ?? "");
         var browser = SettingsJson.Object(record["browser"]);
-        var picker = new ComboBox
+        var browserPicker = new ComboBox
         {
-            MinWidth = 220,
             Style = WindowsTheme.Style("SettingsComboBox"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         var choices = WindowsBrowserCatalog.Installed().ToList();
         var current = SettingsJson.String(browser, "bundleIdentifier");
         if (current.Length > 0 && !choices.Any(choice => string.Equals(choice.Identifier, current, StringComparison.OrdinalIgnoreCase)))
         {
-            choices.Add(new WindowsBrowserOption(Path.GetFileNameWithoutExtension(current), current));
+            if (WindowsBrowserCatalog.Resolve(current, choices) is { } legacy)
+            {
+                choices.Add(legacy);
+            }
         }
         foreach (var choice in choices)
         {
-            picker.Items.Add(new ComboBoxItem { Content = choice.Name, Tag = choice.Identifier });
+            browserPicker.Items.Add(new ComboBoxItem { Content = choice.Name, Tag = choice });
         }
-        picker.SelectedIndex = Math.Max(0, choices.FindIndex(choice =>
+        browserPicker.SelectedIndex = Math.Max(0, choices.FindIndex(choice =>
             string.Equals(choice.Identifier ?? "", current, StringComparison.OrdinalIgnoreCase)));
-        picker.SelectionChanged += (_, _) =>
+
+        var profilePicker = new ComboBox
         {
-            if (applying || picker.SelectedItem is not ComboBoxItem item)
+            Style = WindowsTheme.Style("SettingsComboBox"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(8, 0, 0, 0),
+        };
+        var profileColumn = new ColumnDefinition { Width = new GridLength(0) };
+        var changingProfile = false;
+        void ReloadProfiles(string? selectedDirectory)
+        {
+            changingProfile = true;
+            profilePicker.Items.Clear();
+            var selectedBrowser = (browserPicker.SelectedItem as ComboBoxItem)?.Tag as WindowsBrowserOption;
+            var profiles = selectedBrowser is null
+                ? []
+                : WindowsBrowserCatalog.Profiles(selectedBrowser).ToArray();
+            foreach (var profile in profiles)
+            {
+                profilePicker.Items.Add(new ComboBoxItem { Content = profile.Name, Tag = profile.Directory });
+            }
+            profileColumn.Width = profiles.Length > 0
+                ? new GridLength(1, GridUnitType.Star)
+                : new GridLength(0);
+            profilePicker.Visibility = profiles.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            profilePicker.SelectedIndex = profiles.Length == 0
+                ? -1
+                : Math.Max(0, Array.FindIndex(profiles, profile =>
+                    string.Equals(profile.Directory, selectedDirectory, StringComparison.OrdinalIgnoreCase)));
+            changingProfile = false;
+        }
+        ReloadProfiles(SettingsJson.String(browser, "profileDirectory"));
+        browserPicker.SelectionChanged += (_, _) =>
+        {
+            if (applying || browserPicker.SelectedItem is not ComboBoxItem item ||
+                item.Tag is not WindowsBrowserOption choice)
             {
                 return;
             }
-            browser["bundleIdentifier"] = item.Tag is string identifier
+            browser["bundleIdentifier"] = choice.Identifier is { } identifier
                 ? JsonValue.Create(identifier)
                 : null;
             browser["profileDirectory"] = null;
+            ReloadProfiles(null);
+            browser["profileDirectory"] = profilePicker.SelectedItem is ComboBoxItem profile &&
+                profile.Tag is string directory
+                ? JsonValue.Create(directory)
+                : null;
+            record["browser"] = browser;
+            SaveRecord(record);
+        };
+        profilePicker.SelectionChanged += (_, _) =>
+        {
+            if (applying || changingProfile || profilePicker.SelectedItem is not ComboBoxItem item)
+            {
+                return;
+            }
+            browser["profileDirectory"] = item.Tag is string directory
+                ? JsonValue.Create(directory)
+                : null;
             record["browser"] = browser;
             SaveRecord(record);
         };
         var controls = new Grid();
         controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        controls.ColumnDefinitions.Add(profileColumn);
         controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        picker.HorizontalAlignment = HorizontalAlignment.Stretch;
-        controls.Children.Add(picker);
+        controls.Children.Add(browserPicker);
+        Grid.SetColumn(profilePicker, 1);
+        controls.Children.Add(profilePicker);
         var test = ActionButton("button.test", () => TestLink(recordKey, record));
         test.Margin = new Thickness(8, 0, 0, 0);
-        Grid.SetColumn(test, 1);
+        Grid.SetColumn(test, 2);
         controls.Children.Add(test);
         return FormRow(
             words.Get("account.openLinksIn"),
@@ -1313,17 +1373,28 @@ public sealed class SettingsWindow : Window
         return grid;
     }
 
-    private FrameworkElement FieldRow(string labelKey, JsonObject record, string property, bool mono, string? placeholderKey = null)
+    private FrameworkElement FieldRow(
+        string labelKey,
+        JsonObject record,
+        string property,
+        bool mono,
+        string? placeholderKey = null,
+        string? initialValue = null)
     {
-        var field = BoundTextBox(record, property, mono, placeholderKey);
+        var field = BoundTextBox(record, property, mono, placeholderKey, initialValue);
         return FormRow(words.Get(labelKey), "", field);
     }
 
-    private TextBox BoundTextBox(JsonObject record, string property, bool mono, string? placeholderKey)
+    private TextBox BoundTextBox(
+        JsonObject record,
+        string property,
+        bool mono,
+        string? placeholderKey,
+        string? initialValue = null)
     {
         var field = new TextBox
         {
-            Text = SettingsJson.String(record, property),
+            Text = initialValue ?? SettingsJson.String(record, property),
             Height = 32,
             FontFamily = mono ? WindowsTheme.Mono : WindowsTheme.Sans,
             Style = WindowsTheme.Style("PromptTextBox"),

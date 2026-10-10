@@ -124,6 +124,11 @@ public static class Program
         Run("settings answers stay with their request", SettingsAnswersStayWithTheirRequest);
         Run("settings cards use the settings protocol", SettingsCardsUseSettingsProtocol);
         Run("token page requests keep their account shape", TokenPageRequestsKeepAccountShape);
+        Run("DDEV name uses its display title", DdevNameUsesDisplayTitle);
+        Run("Chromium Local State yields named profiles", ChromiumLocalStateYieldsNamedProfiles);
+        Run("browser launch plans keep the chosen profile", BrowserLaunchPlansKeepChosenProfile);
+        Run("terminal plans enter Windows and WSL folders", TerminalPlansEnterWindowsAndWslFolders);
+        Run("phone QR bytes are stable", PhoneQrBytesAreStable);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -259,6 +264,7 @@ public static class Program
         Equal(24.0, phone.Height);
         Equal("open this on your phone", phone.ToolTip);
         True(phone.Content is TextBlock phoneText && phoneText.Text == DeckIcons.Text("phone"));
+        True(phone.Tag is System.Windows.Controls.Primitives.Popup);
     }
 
     private static void ProjectHeaderReflectsLogState()
@@ -1033,6 +1039,8 @@ public static class Program
                     logIsOn,
                     phoneURL,
                     phoneHelp = "open this on your phone",
+                    phoneTitle = "Open on your phone",
+                    phoneNote = "Use the same network.",
                 },
                 hero = new { text = "running", tone = "good" },
                 meta = new { place = "Windows" },
@@ -1489,6 +1497,82 @@ public static class Program
         Equal(
             "{\"openGitLabTokenPage\":{\"_0\":{\"id\":\"sample\",\"host\":\"https://example.invalid\"}}}",
             SettingsJson.Value("openGitLabTokenPage", account));
+    }
+
+    private static void DdevNameUsesDisplayTitle()
+    {
+        var client = new SettingsClient();
+        client.Receive("words", Json("{\"words\":{\"_0\":{\"settings.window.title\":\"Settings\",\"account.name\":\"Name\"}}}"));
+        client.Receive("list", Json("{\"list\":{\"_0\":{\"accounts\":[],\"projects\":[]}}}"));
+        client.Receive("preferences", Json("{\"preferences\":{\"_0\":{\"language\":\"system\"}}}"));
+        var window = new SettingsWindow(client);
+        window.Apply(client.Words, client.List, client.Cards, client.Preferences, null);
+        window.Receive(Json("{\"ddevProject\":{\"_0\":{\"id\":\"shop\",\"name\":\"sample-shop\",\"title\":\"\",\"folder\":\"C:/Sample\",\"isEnabled\":true,\"browser\":{}}}}"));
+        window.Navigate(new SettingsRoute("ddev", "shop"));
+        window.Show();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        True(Descendants((DependencyObject)window.Content).OfType<TextBox>()
+            .Any(field => field.Text == "sample-shop"));
+        window.Close();
+    }
+
+    private static void ChromiumLocalStateYieldsNamedProfiles()
+    {
+        var profiles = WindowsBrowserCatalog.ParseProfiles("""
+            {"profile":{"info_cache":{
+              "Profile 10":{"name":"Testing"},
+              "Default":{"name":"Personal"},
+              "Profile 2":{"name":"Work"},
+              "Profile 3":{}
+            }}}
+            """);
+        Equal("Default,Profile 2,Profile 3,Profile 10", string.Join(',', profiles.Select(profile => profile.Directory)));
+        Equal("Personal,Work,Profile 3,Testing", string.Join(',', profiles.Select(profile => profile.Name)));
+        True(WindowsBrowserCatalog.ParseProfiles("not json").Count == 0);
+    }
+
+    private static void BrowserLaunchPlansKeepChosenProfile()
+    {
+        IReadOnlyList<WindowsBrowserOption> browsers =
+        [
+            new WindowsBrowserOption("Edge", "MSEdge", @"C:\Program Files\Edge\msedge.exe", @"C:\Profile\Local State"),
+        ];
+        var profiled = PlatformEffects.BrowserPlan(
+            "https://example.invalid", "MSEdge", "Profile 2", browsers);
+        Equal(@"C:\Program Files\Edge\msedge.exe", profiled.Executable);
+        Equal("--profile-directory=Profile 2,https://example.invalid", string.Join(',', profiled.Arguments));
+        True(!profiled.UseShellExecute);
+
+        var plain = PlatformEffects.BrowserPlan(
+            "https://example.invalid", "MSEdge", null, browsers);
+        Equal("https://example.invalid", string.Join(',', plain.Arguments));
+    }
+
+    private static void TerminalPlansEnterWindowsAndWslFolders()
+    {
+        var windows = PlatformEffects.TerminalPlan(@"C:\Samples\Site", true);
+        Equal("wt.exe", windows.Executable);
+        Equal(@"-d,C:\Samples\Site", string.Join(',', windows.Arguments));
+
+        var wsl = PlatformEffects.TerminalPlan(
+            @"\\wsl.localhost\Ubuntu-24.04\home\sample\site", true);
+        Equal("wt.exe", wsl.Executable);
+        Equal(
+            "wsl.exe,-d,Ubuntu-24.04,--cd,/home/sample/site",
+            string.Join(',', wsl.Arguments));
+
+        var fallback = PlatformEffects.TerminalPlan(@"C:\Samples\Site", false);
+        Equal("cmd.exe", fallback.Executable);
+        Equal(@"/K,cd,/d,C:\Samples\Site", string.Join(',', fallback.Arguments));
+    }
+
+    private static void PhoneQrBytesAreStable()
+    {
+        var first = PhonePopover.QrPng("http://192.168.1.20:3000");
+        var second = PhonePopover.QrPng("http://192.168.1.20:3000");
+        True(first.SequenceEqual(second));
+        True(first.Length > 100);
+        Equal("89504E470D0A1A0A", Convert.ToHexString(first[..8]));
     }
 
     private static JsonElement Json(string text)

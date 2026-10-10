@@ -304,11 +304,46 @@ back. The engine continues to own Credential Manager storage. Project location l
 engine's `project.place.windows` and `project.place.wsl` words. The shell only extracts a WSL
 distribution name from the UNC path.
 
-Start at login stays disabled until W-13. Browser fields list applications registered with
-Windows and preserve the chosen executable. Profile discovery and opening in that choice remain
-W-11. The replay source for settings screenshots
+Start at login stays disabled until W-13. Browser fields list applications registered under
+`SOFTWARE\Clients\StartMenuInternet` and store that registry key as the protocol identifier.
+Edge, Chrome, Brave and Vivaldi get a second profile picker from the browser's `Local State`
+file in Local AppData. Firefox and other browsers have no profile picker. The replay source for
+settings screenshots
 is [`windows-settings-sample.jsonl`](../docs/poc/windows-ui/windows-settings-sample.jsonl). It was
 recorded from a live host in an isolated profile with neutral account and project names.
+
+## Links, folders and the phone
+
+An `openURL` effect with no browser uses the Windows default association. An explicit browser is
+resolved from its Start Menu Internet registry entry. Chromium choices pass
+`--profile-directory=<directory>` before the URL when the engine supplies a profile. The shell
+keeps the Local State path table because Windows does not publish those vendor paths in the
+registry. The table currently covers Edge, Chrome, Brave and Vivaldi.
+
+`openTerminal` uses `wt.exe -d <folder>` for a Windows folder. Without Windows Terminal it opens
+`cmd.exe /K cd /d <folder>`. A `\\wsl.localhost\<distribution>\...` or
+`\\wsl$\<distribution>\...` folder becomes the Linux path seen by that distribution and opens
+through `wt.exe wsl.exe -d <distribution> --cd <path>`, or directly through `wsl.exe` in a new
+window when Windows Terminal is absent. `revealFolder` passes Windows and WSL paths to Explorer
+unchanged.
+
+The phone button creates its QR image locally with QRCoder 1.8.0, an MIT licensed dependency.
+The popup contains only `phoneTitle`, `phoneNote` and `phoneURL` supplied by the engine. On
+Windows, `LocalAddress.current()` reads IPv4 adapters through `GetAdaptersAddresses`, keeps active
+physical adapters, prefers Wi-Fi and ignores loopback, Hyper-V, WSL, VPN and other virtual
+adapters. Nothing is sent to a QR service.
+
+![Browser and profile choice](../docs/poc/windows-ui/w11-browser-profile.png)
+
+![Windows project terminal](../docs/poc/windows-ui/w11-terminal-windows.png)
+
+![WSL project terminal](../docs/poc/windows-ui/w11-terminal-wsl.png)
+
+![Windows project folder](../docs/poc/windows-ui/w11-folder-windows.png)
+
+![WSL project folder](../docs/poc/windows-ui/w11-folder-wsl.png)
+
+![Phone QR popup](../docs/poc/windows-ui/w11-phone-qr.png)
 
 ## Current boundary
 
@@ -340,12 +375,7 @@ All five model kinds and collapsed rows use the Windows visual system in
 and GitLab merge requests. Arc, DDEV, Windows and WSL projects share the project renderer while
 keeping their engine supplied marks, chip kinds and actions. The project log control is a 24 px
 icon button: `header.logHelp` is its tooltip and `header.logIsOn` is its highlighted state. The
-phone icon appears only when the engine supplies `header.phoneURL`; the QR interaction remains
-part of W-11.
+phone icon appears only when the engine supplies `header.phoneURL`; its popup uses the engine
+supplied title, note and address.
 
-The following protocol features are intentionally deferred:
-
-- Browser profiles and the full Windows and WSL terminal and folder behavior are W-11.
-- Installing an update from the `installUpdate` effect remains outside this shell milestone.
-
-`openURL` uses the system browser. `openTerminal` and `revealFolder` use the Windows system tools.
+Installing an update from the `installUpdate` effect remains outside this shell milestone.
