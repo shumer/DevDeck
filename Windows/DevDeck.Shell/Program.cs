@@ -47,7 +47,9 @@ public sealed record ShellOptions(string EnginePath, string? ReplayPath, Develop
 {
     public static ShellOptions Parse(string[] arguments)
     {
-        var enginePath = Path.Combine(AppContext.BaseDirectory, "DevDeckEngineHost.exe");
+        var executableDirectory = Path.GetDirectoryName(Environment.ProcessPath)
+            ?? AppContext.BaseDirectory;
+        var enginePath = Path.Combine(executableDirectory, "DevDeckEngineHost.exe");
         string? replayPath = null;
         DeveloperRequest? developerRequest = null;
         for (var index = 0; index < arguments.Length; index++)

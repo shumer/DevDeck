@@ -22,6 +22,7 @@ public sealed class DeckEvent
     public JsonElement? Status { get; private init; }
     public JsonElement? Effect { get; private init; }
     public JsonElement? Answer { get; private init; }
+    public IReadOnlyList<DeckNotification>? Notifications { get; private init; }
     public string RawLine { get; private init; } = "";
 
     public static DeckEvent Parse(string line)
@@ -48,6 +49,9 @@ public sealed class DeckEvent
             Status = Clone(root, "status"),
             Effect = Clone(root, "effect"),
             Answer = Clone(root, "answer"),
+            Notifications = TryProperty(root, "notifications", out var notifications)
+                ? ParseNotifications(notifications)
+                : null,
             RawLine = line,
         };
     }
@@ -60,6 +64,16 @@ public sealed class DeckEvent
         }
 
         return value.EnumerateArray().Select(PanelChange.Parse).ToArray();
+    }
+
+    private static IReadOnlyList<DeckNotification> ParseNotifications(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            throw new JsonException();
+        }
+
+        return value.EnumerateArray().Select(DeckNotification.Parse).ToArray();
     }
 
     private static JsonElement? Clone(JsonElement root, string name)
@@ -101,6 +115,44 @@ public sealed class DeckEvent
         }
 
         return number;
+    }
+
+    internal static bool RequiredBool(JsonElement root, string name)
+    {
+        if (!TryProperty(root, name, out var value) ||
+            value.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
+        {
+            throw new JsonException();
+        }
+
+        return value.GetBoolean();
+    }
+}
+
+public sealed record DeckNotification(
+    string Id,
+    string Source,
+    string Title,
+    string Subtitle,
+    string Body,
+    bool IsQuiet,
+    DeckCommand Command)
+{
+    public static DeckNotification Parse(JsonElement value)
+    {
+        if (!DeckEvent.TryProperty(value, "command", out var command))
+        {
+            throw new JsonException();
+        }
+
+        return new DeckNotification(
+            DeckEvent.RequiredString(value, "id"),
+            DeckEvent.RequiredString(value, "source"),
+            DeckEvent.RequiredString(value, "title"),
+            DeckEvent.RequiredString(value, "subtitle"),
+            DeckEvent.RequiredString(value, "body"),
+            DeckEvent.RequiredBool(value, "isQuiet"),
+            DeckCommand.From(command));
     }
 }
 

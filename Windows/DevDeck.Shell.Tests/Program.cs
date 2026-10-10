@@ -5,6 +5,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Xml.Linq;
 using DevDeck.Shell;
 
 namespace DevDeck.Shell.Tests;
@@ -21,6 +22,12 @@ public static class Program
         if (arguments.Length == 2 && arguments[0] == "--capture-w5")
         {
             W5Screenshots.Generate(Path.GetFullPath(arguments[1]));
+            Application.Current.Shutdown();
+            return 0;
+        }
+        if (arguments.Length == 2 && arguments[0] == "--capture-w6")
+        {
+            W6Screenshots.Generate(Path.GetFullPath(arguments[1]));
             Application.Current.Shutdown();
             return 0;
         }
@@ -75,6 +82,11 @@ public static class Program
         Run("card windows accept their context menu", CardWindowsAcceptTheirContextMenu);
         Run("tray status creates every icon tier", TrayStatusCreatesEveryIconTier);
         Run("prompt fields show their model placeholder and focus ring", PromptFieldsShowTheirModelPlaceholderAndFocusRing);
+        Run("notification transcripts parse into complete models", NotificationTranscriptsParse);
+        Run("notification clicks send the exact command", NotificationClicksSendExactCommand);
+        Run("quiet notifications silence their toast XML", QuietNotificationsSilenceToastXml);
+        Run("notification ids are shown only once", NotificationIdsAreShownOnlyOnce);
+        Run("every notification source has a shared mark", EveryNotificationSourceHasSharedMark);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -679,6 +691,72 @@ public static class Program
         window.Close();
     }
 
+    private static void NotificationTranscriptsParse()
+    {
+        foreach (var name in new[]
+        {
+            "runtime-banners-en.expected.jsonl",
+            "runtime-banners-ru.expected.jsonl",
+        })
+        {
+            var notifications = RuntimeNotifications(name);
+            Equal(2, notifications.Count);
+            True(notifications.All(notification => notification.Command.Json.Contains("followAlert", StringComparison.Ordinal)));
+        }
+
+        foreach (var name in new[]
+        {
+            "session-settings-en.expected.jsonl",
+            "session-settings-ru.expected.jsonl",
+        })
+        {
+            var notifications = SessionNotifications(name);
+            Equal(1, notifications.Count);
+            Equal("devdeck", notifications[0].Source);
+            Equal("{\"installUpdate\":{}}", notifications[0].Command.Json);
+        }
+    }
+
+    private static void NotificationClicksSendExactCommand()
+    {
+        var notification = SessionNotifications("session-settings-en.expected.jsonl").Single();
+        var platform = new RecordingToastPlatform();
+        DeckCommand? sent = null;
+        using var controller = new NotificationController(platform, _ => "file:///mark.png", command => sent = command);
+        controller.Show([notification]);
+        platform.Activate(notification.Id);
+        Equal(notification.Command.Json, sent?.Json);
+    }
+
+    private static void QuietNotificationsSilenceToastXml()
+    {
+        var quiet = SessionNotifications("session-settings-en.expected.jsonl").Single();
+        var quietDocument = XDocument.Parse(ToastPayload.Build(quiet, "file:///mark.png"));
+        Equal("true", quietDocument.Root?.Element("audio")?.Attribute("silent")?.Value);
+
+        var audible = RuntimeNotifications("runtime-banners-en.expected.jsonl").First();
+        var audibleDocument = XDocument.Parse(ToastPayload.Build(audible, "file:///mark.png"));
+        True(audibleDocument.Root?.Element("audio") is null);
+    }
+
+    private static void NotificationIdsAreShownOnlyOnce()
+    {
+        var notification = SessionNotifications("session-settings-en.expected.jsonl").Single();
+        var platform = new RecordingToastPlatform();
+        using var controller = new NotificationController(platform, _ => "file:///mark.png", _ => { });
+        controller.Show([notification]);
+        controller.Show([notification]);
+        Equal(1, platform.Payloads.Count);
+    }
+
+    private static void EveryNotificationSourceHasSharedMark()
+    {
+        foreach (var source in new[] { "github", "gitlab", "arc", "ddev", "project", "docker", "devdeck" })
+        {
+            True(BrandMarks.Names.Contains(source, StringComparer.Ordinal));
+        }
+    }
+
     private static Color Pixel(System.Windows.Media.Imaging.BitmapSource image, int x, int y)
     {
         var pixel = new byte[4];
@@ -711,6 +789,33 @@ public static class Program
             }
         }
         return last ? values.Last() : values.First();
+    }
+
+    private static IReadOnlyList<DeckNotification> RuntimeNotifications(string fileName)
+    {
+        var notifications = new List<DeckNotification>();
+        var path = Path.Combine(RepositoryRoot(), "Tests", "EngineTests", "Golden", fileName);
+        foreach (var line in File.ReadLines(path))
+        {
+            using var document = JsonDocument.Parse(line);
+            notifications.AddRange(ReplayNotificationAdapter.Parse(document.RootElement.GetProperty("value")));
+        }
+        return notifications;
+    }
+
+    private static IReadOnlyList<DeckNotification> SessionNotifications(string fileName)
+    {
+        var notifications = new List<DeckNotification>();
+        var path = Path.Combine(RepositoryRoot(), "Tests", "EngineTests", "Golden", fileName);
+        foreach (var line in File.ReadLines(path))
+        {
+            var message = DeckEvent.Parse(line);
+            if (message.Notifications is { } eventNotifications)
+            {
+                notifications.AddRange(eventNotifications);
+            }
+        }
+        return notifications;
     }
 
     private static FrameworkElement Render(JsonElement model)
@@ -950,6 +1055,26 @@ public static class Program
         public string? Prompt(DeckMenuPromptModel model)
         {
             return PromptAnswer;
+        }
+    }
+
+    private sealed class RecordingToastPlatform : IToastPlatform
+    {
+        public event Action<string>? Activated;
+        public List<string> Payloads { get; } = [];
+
+        public void Show(string xml)
+        {
+            Payloads.Add(xml);
+        }
+
+        public void Activate(string id)
+        {
+            Activated?.Invoke(id);
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

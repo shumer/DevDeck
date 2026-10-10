@@ -10,9 +10,19 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>DevDeck.Shell</AssemblyName>
     <RootNamespace>DevDeck.Shell</RootNamespace>
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling Condition="'$(PublishSingleFile)' == 'true'">true</EnableMsixTooling>
+    <WindowsAppSDKSelfContained Condition="'$(RuntimeIdentifier)' == ''">false</WindowsAppSDKSelfContained>
+    <WindowsAppSDKSelfContained Condition="'$(RuntimeIdentifier)' != ''">true</WindowsAppSDKSelfContained>
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <WindowsAppSdkDeploymentManagerInitialize>false</WindowsAppSdkDeploymentManagerInitialize>
   </PropertyGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\Resources\BrandMarks.json" LogicalName="DevDeck.BrandMarks.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
   </ItemGroup>
 </Project>

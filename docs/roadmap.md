@@ -190,6 +190,10 @@
 - **The Windows tray and menus follow the engine** - status tiers, tooltips, tray and card menus,
   alternates, checks, prompts and confirmations are rendered from protocol v2 without shell owned
   product decisions. W-5.
+- **Windows notifications follow the engine** - protocol v2 supplies every word, source mark,
+  quiet flag and click command. The unpackaged self-contained shell uses Windows App SDK toast
+  registration, suppresses repeated ids across host restarts and keeps activation in process.
+  W-6.
 
 ## Next
 
@@ -200,7 +204,7 @@
    window's operations (M-6), the update check (M-7), golden transcripts of the runtime
    (M-8), the whole protocol on the runtime with the host running it (C-1, W-1), Windows CI
    (W-2), the WPF shell on protocol v2 with its first styled cards (W-3), and the remaining
-   card styles (W-4).
+   card styles (W-4), tray and menus (W-5), and notifications (W-6).
 2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
