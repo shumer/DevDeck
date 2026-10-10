@@ -237,6 +237,40 @@ covering the cards already on the primary display.
 
 ![Cards parked after the external display is disconnected](../docs/poc/windows-ui/w7-monitor-disconnected.png)
 
+## Summon
+
+The shell asks the engine for deck preferences when a session starts and after every preferences
+answer. `summonEnabled` controls whether Summon can raise the deck, `summonDims` controls the
+veils, and `summonShortcutWindows` supplies the global shortcut. A missing shortcut uses
+`Ctrl+Shift+Space`. Windows reserves `Alt+Space` for the active window's system menu and most
+Windows key combinations for the shell, so the default uses neither.
+
+The shortcut is registered with `RegisterHotKey`. The shell does not install a keyboard hook and
+does not choose another shortcut when registration fails. It writes the Windows error to standard
+error and keeps running. `GetAsyncKeyState` observes release of the shortcut's main key because
+`WM_HOTKEY` reports only the press.
+
+A press raises every card to the topmost layer. Releasing it after 0.25 seconds returns the cards
+to the layer from `deck.displayMode`; a shorter tap keeps them raised until the next press, Escape
+or a click on the dimmed area. The 0.25 second value mirrors
+`DeckRuntime.summonLatchThreshold` until the protocol carries it. The `present` effect uses the
+same latched state.
+
+When dimming is enabled, each raise creates one nonactivating black window at 30 percent opacity
+for every monitor work area. The taskbar remains uncovered so Start and taskbar controls still
+work. The veils are placed below the topmost cards and are discarded when Summon ends, so a new
+raise uses the current monitor list.
+
+The live check used a 250 percent primary display and a 100 percent external display. Both veils
+matched their complete monitor work areas. The cards stayed above them without taking focus, and
+Start and Alt+Tab continued to work. Escape returned all cards to their previous layer.
+
+![Cards on both displays before Summon](../docs/poc/windows-ui/w9-summon-before.png)
+
+![Summon raised across two displays](../docs/poc/windows-ui/w9-summon-raised.png)
+
+![Cards returned after Summon](../docs/poc/windows-ui/w9-summon-released.png)
+
 ## Current boundary
 
 The shell renders the five card model kinds and collapsed rows, applies `deck.changed` and
@@ -257,6 +291,10 @@ banner twice.
 `openLogs` and `closeLogs` manage one resizable log window for each card. The shell returns
 `logWindow.changed` for both engine and user initiated changes. Card highlighting still changes
 only when the next `card.changed` model carries `header.logIsOn`.
+
+Summon reads its enabled state, dimming choice and Windows shortcut from engine preferences.
+The global shortcut and `present` effect raise the existing panels without activating them. A
+hold is spring loaded, while a tap, Escape and a veil click use the shared latched state.
 
 All five model kinds and collapsed rows use the Windows visual system in
 [`docs/windows-style.md`](../docs/windows-style.md). Review lists cover both GitHub pull requests

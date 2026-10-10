@@ -113,7 +113,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
 - **W-8.** The log window with search. Done: one window per card from `openLogs`, lines, source
   and detail from `log.changed`, the tail appended and followed, a local search, and
   `logWindow.changed` both ways; captures in `docs/poc/windows-ui/w8-*.png`.
-- **W-9.** Summon: a global key raises the deck and dims the rest.
+- **W-9.** Summon. Done: `RegisterHotKey` uses the engine supplied Windows shortcut, a hold is
+  spring loaded, a tap or `present` latches the deck, and optional 30 percent veils cover each
+  current monitor work area until the next tap, Escape or a veil click.
 - **W-10.** Settings, starting from a mock that is agreed first: accounts with tokens in
   Credential Manager, projects with Detect and Test, a Windows or WSL folder.
 - **W-11.** Browsers and profiles, the terminal and the folder for both Windows and WSL projects,

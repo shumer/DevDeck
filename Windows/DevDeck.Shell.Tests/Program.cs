@@ -102,6 +102,11 @@ public static class Program
         Run("closing a log reports that it is closed", ClosingLogReportsClosed);
         Run("opening a log twice keeps one window", OpeningLogTwiceKeepsOneWindow);
         Run("log search uses an unclipped Fluent chevron", LogSearchUsesUnclippedFluentChevron);
+        Run("summon shortcuts parse and round trip", SummonShortcutsParseAndRoundTrip);
+        Run("summon taps latch and holds release", SummonTapsLatchAndHoldsRelease);
+        Run("present behaves like a summon tap", PresentBehavesLikeSummonTap);
+        Run("disabled summon stays down", DisabledSummonStaysDown);
+        Run("summon preferences parse from settings answers", SummonPreferencesParseFromSettingsAnswers);
         Run("display coordinates use primary monitor DIPs", DisplayCoordinatesUsePrimaryMonitorDips);
         Run("stable display ids do not use display indexes", StableDisplayIdsDoNotUseDisplayIndexes);
         Run("programmatic panel placement reports no move", ProgrammaticPanelPlacementReportsNoMove);
@@ -1164,6 +1169,88 @@ public static class Program
         Equal(DeckIcons.Text("expand"), glyph.Text);
         Equal(new Thickness(0), window.SearchNextButton.Padding);
         window.Close();
+    }
+
+    private static void SummonShortcutsParseAndRoundTrip()
+    {
+        var shortcut = SummonShortcut.Parse("Shift+Win+Ctrl+F12");
+        Equal(
+            SummonModifiers.Control | SummonModifiers.Shift | SummonModifiers.Windows,
+            shortcut.Modifiers);
+        Equal(0x7Bu, shortcut.VirtualKey);
+        Equal("Ctrl+Shift+Win+F12", shortcut.ToString());
+        Equal(shortcut, SummonShortcut.Parse(shortcut.ToString()));
+        Equal(SummonShortcut.DefaultText, SummonShortcut.Parse(null).ToString());
+    }
+
+    private static void SummonTapsLatchAndHoldsRelease()
+    {
+        var state = new SummonState();
+        var changes = new List<SummonPresentation>();
+        state.Changed += changes.Add;
+        state.ApplyPreferences(new SummonPreferences(true, true, null));
+
+        state.Press(1.0);
+        state.Release(1.0 + SummonState.LatchThresholdSeconds - 0.001);
+        True(state.IsRaised);
+        state.Press(2.0);
+        True(!state.IsRaised);
+
+        state.Press(3.0);
+        state.Release(3.0 + SummonState.LatchThresholdSeconds);
+        True(!state.IsRaised);
+        Equal(4, changes.Count);
+        True(changes[0].IsRaised);
+        True(changes[0].Dims);
+        True(!changes[1].IsRaised);
+        True(changes[2].IsRaised);
+        True(!changes[3].IsRaised);
+    }
+
+    private static void PresentBehavesLikeSummonTap()
+    {
+        var state = new SummonState();
+        state.ApplyPreferences(new SummonPreferences(true, false, null));
+        state.Present();
+        True(state.IsRaised);
+        state.Press(1.0);
+        True(!state.IsRaised);
+
+        state.Press(2.0);
+        state.Release(2.1);
+        True(state.IsRaised);
+        state.Press(3.0);
+        True(!state.IsRaised);
+    }
+
+    private static void DisabledSummonStaysDown()
+    {
+        var state = new SummonState();
+        state.ApplyPreferences(new SummonPreferences(false, true, null));
+        state.Press(1.0);
+        state.Release(1.1);
+        state.Present();
+        True(!state.IsRaised);
+
+        state.ApplyPreferences(new SummonPreferences(true, true, null));
+        state.Present();
+        True(state.IsRaised);
+        state.ApplyPreferences(new SummonPreferences(false, true, null));
+        True(!state.IsRaised);
+    }
+
+    private static void SummonPreferencesParseFromSettingsAnswers()
+    {
+        using var document = JsonDocument.Parse(
+            "{\"preferences\":{\"_0\":{\"summonEnabled\":true,\"summonDims\":false," +
+            "\"summonShortcutWindows\":\"Alt+F12\"}}}");
+        True(SummonPreferences.TryParse(document.RootElement, out var preferences));
+        True(preferences.Enabled);
+        True(!preferences.Dims);
+        Equal("Alt+F12", preferences.ShortcutText);
+
+        using var unrelated = JsonDocument.Parse("{\"done\":{}}");
+        True(!SummonPreferences.TryParse(unrelated.RootElement, out _));
     }
 
     private static void DisplayCoordinatesUsePrimaryMonitorDips()

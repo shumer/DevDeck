@@ -19,6 +19,7 @@ public static class NativeMethods
     public const int DpiChanged = 0x02E0;
     public const int EnterSizeMove = 0x0231;
     public const int WindowPositionChanged = 0x0047;
+    public const int HotKey = 0x0312;
     public const int WindowCornerPreference = 33;
     public const int RoundedWindowCorners = 2;
     public const int ImmersiveDarkMode = 20;
@@ -45,6 +46,14 @@ public static class NativeMethods
             handle, SystemBackdropType, ref backdrop, Marshal.SizeOf<int>());
         var margins = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
         _ = DwmExtendFrameIntoClientArea(handle, ref margins);
+        return updated;
+    }
+
+    public static nint ApplyNonActivatingToolWindow(nint handle)
+    {
+        var styles = GetWindowLongPtr(handle, ExtendedStyleIndex);
+        var updated = styles | ToolWindowStyle | NoActivateStyle;
+        SetWindowLongPtr(handle, ExtendedStyleIndex, updated);
         return updated;
     }
 
@@ -112,6 +121,33 @@ public static class NativeMethods
         _ = SetWindowPos(handle, layer, 0, 0, 0, 0, 0x0001 | 0x0002 | NoActivate | NoOwnerOrder);
     }
 
+    public static void SetWindowTopmost(nint handle)
+    {
+        _ = SetWindowPos(handle, WindowTopmost, 0, 0, 0, 0, 0x0001 | 0x0002 | NoActivate | NoOwnerOrder);
+    }
+
+    public static bool RegisterGlobalHotKey(
+        nint handle,
+        int id,
+        uint modifiers,
+        uint virtualKey,
+        out int error)
+    {
+        var registered = RegisterHotKey(handle, id, modifiers, virtualKey);
+        error = registered ? 0 : Marshal.GetLastPInvokeError();
+        return registered;
+    }
+
+    public static bool UnregisterGlobalHotKey(nint handle, int id)
+    {
+        return UnregisterHotKey(handle, id);
+    }
+
+    public static bool IsKeyDown(uint virtualKey)
+    {
+        return (GetAsyncKeyState((int)virtualKey) & 0x8000) != 0;
+    }
+
     public static void BeginWindowDrag(nint handle)
     {
         _ = ReleaseCapture();
@@ -157,6 +193,17 @@ public static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RegisterHotKey(nint handle, int id, uint modifiers, uint virtualKey);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterHotKey(nint handle, int id);
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int virtualKey);
 
     [DllImport("user32.dll", EntryPoint = "SendMessageW")]
     private static extern nint SendMessage(nint handle, int message, nint word, nint parameter);

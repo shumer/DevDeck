@@ -20,6 +20,8 @@ public interface IShellSurface : IDisposable
     void UpdateLog(string card, DeckLog log);
     void OpenLogs(string card);
     void CloseLogs(string card);
+    void ApplySummonPreferences(SummonPreferences preferences);
+    void PresentDeck();
     void OpenMenu();
     void Quit();
     void ShowStopped();
@@ -32,7 +34,10 @@ public sealed class ShellSurface : IShellSurface
     private readonly TrayController tray;
     private readonly NotificationController notifications;
     private readonly LogWindowRegistry logs;
+    private readonly SummonController summon;
+    private readonly List<SummonVeilWindow> veils = [];
     private bool isLocked;
+    private bool isSummoned;
     private string displayMode = "desktop";
     private JsonElement? stoppedStatus;
 
@@ -51,6 +56,9 @@ public sealed class ShellSurface : IShellSurface
             command => CommandInvoked?.Invoke(command));
         logs = new LogWindowRegistry(card => new LogWindow(card));
         logs.WindowChanged += change => LogWindowChanged?.Invoke(change);
+        summon = new SummonController(
+            Application.Current.Dispatcher,
+            ApplySummonPresentation);
     }
 
     public void BeginSession()
@@ -73,7 +81,7 @@ public sealed class ShellSurface : IShellSurface
         foreach (var window in windows.Values)
         {
             window.SetLocked(isLocked);
-            window.SetDisplayMode(displayMode);
+            window.SetDisplayMode(isSummoned ? "floating" : displayMode);
         }
     }
 
@@ -137,6 +145,16 @@ public sealed class ShellSurface : IShellSurface
         logs.Close(card);
     }
 
+    public void ApplySummonPreferences(SummonPreferences preferences)
+    {
+        summon.ApplyPreferences(preferences);
+    }
+
+    public void PresentDeck()
+    {
+        summon.Present();
+    }
+
     public void OpenMenu()
     {
         tray.OpenMenu();
@@ -160,6 +178,8 @@ public sealed class ShellSurface : IShellSurface
 
     public void Dispose()
     {
+        summon.Dispose();
+        CloseVeils();
         BeginSession();
         notifications.Dispose();
         tray.Dispose();
@@ -181,7 +201,7 @@ public sealed class ShellSurface : IShellSurface
         windows.Add(card, window);
         window.Show();
         window.SetLocked(isLocked);
-        window.SetDisplayMode(displayMode);
+        window.SetDisplayMode(isSummoned ? "floating" : displayMode);
         if (cards.TryGetValue(card, out var state))
         {
             window.Update(state.Model);
@@ -196,6 +216,35 @@ public sealed class ShellSurface : IShellSurface
         {
             window.Close();
         }
+    }
+
+    private void ApplySummonPresentation(SummonPresentation presentation)
+    {
+        isSummoned = presentation.IsRaised;
+        CloseVeils();
+        if (presentation.IsRaised && presentation.Dims)
+        {
+            foreach (var display in DisplayProvider.Current())
+            {
+                var veil = new SummonVeilWindow(display, summon.Dismiss);
+                veils.Add(veil);
+                veil.ShowVeil();
+            }
+        }
+
+        foreach (var window in windows.Values)
+        {
+            window.SetDisplayMode(presentation.IsRaised ? "floating" : displayMode);
+        }
+    }
+
+    private void CloseVeils()
+    {
+        foreach (var veil in veils)
+        {
+            veil.Close();
+        }
+        veils.Clear();
     }
 
     private sealed record CardState(JsonElement Model, JsonElement Menu, JsonElement Stopped);
