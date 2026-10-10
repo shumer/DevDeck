@@ -213,6 +213,10 @@ panel on another monitor still renders with that monitor's scale because the man
 Monitor V2 awareness. The reverse conversion happens once when the shell applies a frame from the
 engine.
 
+After applying a native panel frame and after `WM_DPICHANGED`, the shell recalculates the WPF
+window size from primary monitor DIPs and the window's current DPI. The native frame and WPF
+layout therefore stay at 352 local DIPs when a panel moves between displays with different scales.
+
 Each display id is the monitor device interface path returned by Windows. That path follows the
 physical monitor across disconnects and reconnects, unlike names such as `DISPLAY1`. The reported
 frame excludes the taskbar and other app bars, and exactly one connected display is primary.

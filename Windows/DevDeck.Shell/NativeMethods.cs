@@ -115,6 +115,11 @@ public static class NativeMethods
         return FromDevicePixels(value, PrimaryDesktopScale());
     }
 
+    public static double WindowScale(nint handle)
+    {
+        return GetDpiForWindow(handle) / 96.0;
+    }
+
     public static void SetWindowLayer(nint handle, string displayMode)
     {
         var layer = displayMode == "floating" ? WindowTopmost : WindowBottom;
@@ -171,6 +176,9 @@ public static class NativeMethods
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForSystem();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(nint handle);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     public static extern nint GetWindowLongPtr(nint handle, int index);

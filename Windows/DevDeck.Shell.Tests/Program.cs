@@ -112,6 +112,7 @@ public static class Program
         Run("programmatic panel placement reports no move", ProgrammaticPanelPlacementReportsNoMove);
         Run("a drag reports one final move", DragReportsOneFinalMove);
         Run("a DPI change waits for a cross-display drag", DpiChangeWaitsForCrossDisplayDrag);
+        Run("window size recalculates when DPI changes", WindowSizeRecalculatesWhenDpiChanges);
         Run("a system move reports one final frame", SystemMoveReportsOneFinalFrame);
         Run("display changes contain the full current list", DisplayChangesContainFullCurrentList);
         Console.WriteLine();
@@ -1316,6 +1317,29 @@ public static class Program
         True(tracker.TakeDelayedDpiChange());
         True(!tracker.TakeDelayedDpiChange());
         True(tracker.DpiChanged());
+    }
+
+    private static void WindowSizeRecalculatesWhenDpiChanges()
+    {
+        const double primaryScale = 2.5;
+        const double panelWidth = 352;
+        var externalFrameWidth = DisplayProvider.LocalDipsInPrimaryDisplayDips(
+            panelWidth,
+            1,
+            primaryScale);
+
+        Equal(
+            panelWidth,
+            WindowDpiLayout.LocalDipsForPrimaryDips(
+                panelWidth,
+                primaryScale,
+                primaryScale));
+        Equal(
+            panelWidth,
+            WindowDpiLayout.LocalDipsForPrimaryDips(
+                externalFrameWidth,
+                primaryScale,
+                1));
     }
 
     private static void SystemMoveReportsOneFinalFrame()
