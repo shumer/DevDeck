@@ -100,7 +100,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
 - **W-5.** Tray icon and menu from the engine's menu model. Done: the tray icon by tier with the
   Mac icon's rules, the tray and card menus from `menu.changed` and `card.changed`, confirmation
   and prompt dialogs in the model's words; captures in `docs/poc/windows-ui/w5-*.png`.
-- **W-6.** Toast notifications with the source's logo; a click goes where the engine says.
+- **W-6.** Toast notifications with the source's logo; a click goes where the engine says. Done:
+  one toast per `notify` model through Windows App SDK, registered without a package or a
+  shortcut, the command sent back on a click; captures in `docs/poc/windows-ui/w6-*.png`.
 - **W-7.** Windows and displays: moves reported to the engine, plans applied, parking on unplug,
   two monitors with different scaling, sleep and wake.
 - **W-8.** The log window with search.
