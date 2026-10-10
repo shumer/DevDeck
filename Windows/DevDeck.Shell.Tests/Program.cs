@@ -122,6 +122,8 @@ public static class Program
         Run("settings tokens leave the form once", SettingsTokensLeaveTheFormOnce);
         Run("settings words substitute their named value", SettingsWordsSubstituteNamedValue);
         Run("settings answers stay with their request", SettingsAnswersStayWithTheirRequest);
+        Run("settings cards use the settings protocol", SettingsCardsUseSettingsProtocol);
+        Run("token page requests keep their account shape", TokenPageRequestsKeepAccountShape);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -712,6 +714,9 @@ public static class Program
 
         Equal(WindowsTheme.Brush("ControlFill"), textBox.Background);
         Equal(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush);
+        Equal(32.0, textBox.Height);
+        Equal(VerticalAlignment.Center, textBox.VerticalContentAlignment);
+        Equal(150.0, SettingsWindow.FormLabelWidth);
         var placeholder = (TextBlock)textBox.Template.FindName("Placeholder", textBox);
         Equal(prompt.Placeholder, placeholder.Text);
         Equal(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground);
@@ -1394,9 +1399,10 @@ public static class Program
         var client = new SettingsClient();
         client.Receive("words", Json("{\"words\":{\"_0\":{\"settings.window.title\":\"Settings\",\"settings.general.title\":\"General\",\"settings.deck.title\":\"Deck\",\"settings.cards.title\":\"Cards\",\"settings.notifications.title\":\"Notifications\"}}}"));
         client.Receive("list", Json("{\"list\":{\"_0\":{\"accounts\":[],\"projects\":[]}}}"));
+        client.Receive("cards", Json("{\"cards\":{\"_0\":[{\"id\":\"github.pullRequests\",\"title\":\"Pull requests\",\"detail\":\"Reviews\",\"isEnabled\":true}]}}"));
         client.Receive("preferences", Json("{\"preferences\":{\"_0\":{\"language\":\"system\",\"displayMode\":\"desktop\",\"isLocked\":false,\"packsColumns\":false,\"refreshIntervalSeconds\":120,\"notificationsEnabled\":true,\"notifiesUpdates\":true,\"checksForUpdates\":true,\"summonEnabled\":true,\"summonDims\":true,\"actionsRepositories\":[],\"projectsQuietWhenDown\":[],\"projectsQuietWhenStartFails\":[]}}}"));
         var window = new SettingsWindow(client);
-        window.Apply(client.Words, client.List, client.Preferences, null);
+        window.Apply(client.Words, client.List, client.Cards, client.Preferences, null);
         window.Receive(Json("{\"githubAccount\":{\"_0\":{\"id\":\"account\",\"label\":\"Account\",\"apiBaseURL\":\"https://example.invalid\",\"organizations\":[],\"isEnabled\":true,\"browser\":{}}}}"));
         window.Receive(Json("{\"gitlabAccount\":{\"_0\":{\"id\":\"instance\",\"label\":\"Instance\",\"host\":\"https://example.invalid\",\"isEnabled\":true,\"browser\":{}}}}"));
         window.Receive(Json("{\"localProject\":{\"_0\":{\"id\":\"site\",\"title\":\"Site\",\"folder\":\"C:/Sample\",\"startCommand\":\"run\",\"stopCommand\":\"\",\"holdsProcess\":true,\"requiresDocker\":false,\"healthURL\":\"\",\"localSiteURL\":\"\",\"isEnabled\":true,\"browser\":{}}}}"));
@@ -1458,6 +1464,31 @@ public static class Program
         client.Receive(ids[1], Json("{\"check\":{\"_0\":{\"tone\":\"good\",\"state\":\"ok\",\"detail\":\"\"}}}"));
         Equal(0, first);
         Equal(1, second);
+    }
+
+    private static void SettingsCardsUseSettingsProtocol()
+    {
+        var client = new SettingsClient();
+        var requests = new List<SettingsWireRequest>();
+        client.RequestSent += requests.Add;
+        client.BeginSession();
+        True(requests.Any(request => request.Json == "{\"cards\":{}}"));
+        client.Receive(
+            "settings.cards",
+            Json("{\"cards\":{\"_0\":[{\"id\":\"github.inbox\",\"title\":\"Inbox\",\"detail\":\"Notifications\",\"isEnabled\":true}]}}"));
+        Equal("github.inbox", client.Cards?[0]?["id"]?.GetValue<string>());
+        Equal(
+            "{\"setCard\":{\"id\":\"github.inbox\",\"isEnabled\":false}}",
+            SettingsJson.SetCard("github.inbox", false));
+    }
+
+    private static void TokenPageRequestsKeepAccountShape()
+    {
+        var account = JsonNode.Parse("{\"id\":\"sample\",\"host\":\"https://example.invalid\"}") ?? throw new Exception();
+        Equal("{\"openGitHubTokenPage\":{}}", SettingsJson.Empty("openGitHubTokenPage"));
+        Equal(
+            "{\"openGitLabTokenPage\":{\"_0\":{\"id\":\"sample\",\"host\":\"https://example.invalid\"}}}",
+            SettingsJson.Value("openGitLabTokenPage", account));
     }
 
     private static JsonElement Json(string text)

@@ -288,10 +288,15 @@ Start and Alt+Tab continued to work. Escape returned all cards to their previous
 ## Settings
 
 The `openSettings` effect opens one reusable settings window. Its navigation, forms, status rows,
-dialogs and controls use the `words`, `list`, `preferences` and record answers from the engine.
+dialogs and controls use the `words`, `list`, `cards`, `preferences` and record answers from the engine.
 Requests keep their protocol id until the matching `settings.answered` arrives, so a slow check
 for one record cannot update another form. A preferences answer asks for `words` again because
 the language may have changed.
+
+The Cards page sends `setCard` and replaces its rows with the returned `cards` answer. A missing
+Windows Summon shortcut displays `SummonShortcut.DefaultText`, while Default stores nil. Token
+page links send `openGitHubTokenPage` or `openGitLabTokenPage`; the engine supplies the resulting
+`openURL` effect.
 
 The token field is a `PasswordBox`. Save moves its text into one `checkGitHubToken` or
 `checkGitLabToken` request, clears both the control and its form buffer, and never reads the token

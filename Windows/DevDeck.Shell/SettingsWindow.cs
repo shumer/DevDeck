@@ -35,7 +35,7 @@ public sealed class SettingsWindowRegistry : IDisposable
             window.Closed += (_, _) => window = null;
             window.Show();
         }
-        window.Apply(client.Words, client.List, client.Preferences, update, menu);
+        window.Apply(client.Words, client.List, client.Cards, client.Preferences, update, menu);
         window.Navigate(route);
         window.Activate();
     }
@@ -69,7 +69,7 @@ public sealed class SettingsWindowRegistry : IDisposable
 
     private void Refresh()
     {
-        window?.Apply(client.Words, client.List, client.Preferences, update, menu);
+        window?.Apply(client.Words, client.List, client.Cards, client.Preferences, update, menu);
     }
 
     private void Receive(JsonElement answer)
@@ -105,6 +105,8 @@ public sealed record SettingsRoute(string Page, string? Item)
 
 public sealed class SettingsWindow : Window
 {
+    public const double FormLabelWidth = 150;
+
     private readonly SettingsClient client;
     private readonly StackPanel navigation = new();
     private readonly ContentControl content = new();
@@ -117,8 +119,10 @@ public sealed class SettingsWindow : Window
     private readonly Dictionary<string, (string State, string Detail)> tokenStatuses = [];
     private readonly Dictionary<string, string> folderNotes = [];
     private readonly Dictionary<string, string> linkNotes = [];
+    private readonly HashSet<string> expandedAdvanced = [];
     private SettingsWords words = new();
     private JsonNode? list;
+    private JsonArray? cards;
     private JsonObject? preferences;
     private JsonElement? update;
     private JsonElement? menu;
@@ -147,12 +151,14 @@ public sealed class SettingsWindow : Window
     public void Apply(
         SettingsWords newWords,
         JsonNode? newList,
+        JsonArray? newCards,
         JsonObject? newPreferences,
         JsonElement? newUpdate,
         JsonElement? newMenu = null)
     {
         words = newWords;
         list = newList;
+        cards = newCards;
         preferences = newPreferences;
         update = newUpdate;
         menu = newMenu;
@@ -438,12 +444,18 @@ public sealed class SettingsWindow : Window
         page.Children.Add(GroupTitle("settings.deck.shortcut"));
         var shortcut = new TextBox
         {
-            Text = PreferenceString("summonShortcutWindows"),
+            Text = PreferenceString("summonShortcutWindows") is { Length: > 0 } savedShortcut
+                ? savedShortcut
+                : SummonShortcut.DefaultText,
             Width = 170,
             Style = WindowsTheme.Style("PromptTextBox"),
         };
         shortcut.PreviewKeyDown += (_, eventArgs) => CaptureShortcut(shortcut, eventArgs);
-        var reset = ActionButton("settings.deck.default", () => SetPreference("summonShortcutWindows", null));
+        var reset = ActionButton("settings.deck.default", () =>
+        {
+            shortcut.Text = SummonShortcut.DefaultText;
+            SetPreference("summonShortcutWindows", null);
+        });
         var shortcutControls = new StackPanel { Orientation = Orientation.Horizontal };
         shortcutControls.Children.Add(shortcut);
         reset.Margin = new Thickness(8, 0, 0, 0);
@@ -459,7 +471,16 @@ public sealed class SettingsWindow : Window
     private FrameworkElement CardsPage()
     {
         var page = PageHeader("settings.cards.title", "settings.cards.subtitle", "grid");
-        var cardRows = CardToggleRows().ToArray();
+        var cardRows = cards?
+            .OfType<JsonObject>()
+            .Select(card => ModelRow(
+                SettingsJson.String(card, "title"),
+                SettingsJson.String(card, "detail"),
+                Toggle(
+                    SettingsJson.Bool(card, "isEnabled"),
+                    true,
+                    isEnabled => client.Request(SettingsJson.SetCard(SettingsJson.String(card, "id"), isEnabled)))))
+            .ToArray() ?? [];
         if (cardRows.Length > 0)
         {
             page.Children.Add(GroupTitle("settings.cards.onDeck"));
@@ -509,66 +530,9 @@ public sealed class SettingsWindow : Window
                         .ToArray()));
         page.Children.Add(Card(
             Row("settings.cards.refreshEvery", null, interval),
-            Row("settings.cards.actionsRepositories", null, repositories)));
+            FormRow(words.Get("settings.cards.actionsRepositories"), "", repositories)));
         page.Children.Add(Footnote(words.Get("settings.cards.actions.footnote")));
         return page;
-    }
-
-    private IEnumerable<FrameworkElement> CardToggleRows()
-    {
-        if (menu is not { } root)
-        {
-            yield break;
-        }
-        foreach (var item in MenuItems(root))
-        {
-            if (!JsonModel.Object(item, "command", out var command) ||
-                !command.TryGetProperty("toggleCard", out _))
-            {
-                continue;
-            }
-            var title = JsonModel.String(item, "title") ?? "";
-            var detail = JsonModel.String(item, "subtitle") ?? "";
-            var deckCommand = DeckCommand.From(command);
-            yield return ModelRow(
-                title,
-                detail,
-                Toggle(JsonModel.Bool(item, "isOn"), JsonModel.Bool(item, "isEnabled"), _ => client.SendCommand(deckCommand)));
-        }
-    }
-
-    private static IEnumerable<JsonElement> MenuItems(JsonElement value)
-    {
-        if (value.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in value.EnumerateArray())
-            {
-                foreach (var nested in MenuItems(item))
-                {
-                    yield return nested;
-                }
-            }
-            yield break;
-        }
-        if (value.ValueKind != JsonValueKind.Object)
-        {
-            yield break;
-        }
-        if (value.TryGetProperty("item", out var menuItem))
-        {
-            yield return menuItem;
-        }
-        foreach (var property in value.EnumerateObject())
-        {
-            if (property.Name is "item" or "command")
-            {
-                continue;
-            }
-            foreach (var nested in MenuItems(property.Value))
-            {
-                yield return nested;
-            }
-        }
     }
 
     private FrameworkElement NotificationsPage()
@@ -591,7 +555,7 @@ public sealed class SettingsWindow : Window
 
     private FrameworkElement NotificationRows(string group)
     {
-        var rows = new List<FrameworkElement>();
+        var rows = new List<FrameworkElement> { NotificationHeader(group) };
         var root = SettingsJson.Object(list);
         if (root[group] is JsonArray items)
         {
@@ -605,7 +569,40 @@ public sealed class SettingsWindow : Window
                     : NotificationProjectRow(item, id));
             }
         }
-        return rows.Count == 0 ? Card(ModelRow(words.Get("settings.sidebar.empty"), "", null)) : Card(rows.ToArray());
+        return rows.Count == 1 ? Card(ModelRow(words.Get("settings.sidebar.empty"), "", null)) : Card(rows.ToArray());
+    }
+
+    private FrameworkElement NotificationHeader(string group)
+    {
+        var keys = group == "accounts"
+            ? new[]
+            {
+                "settings.notifications.column.review",
+                "settings.notifications.column.stuck",
+                "settings.notifications.column.runs",
+            }
+            : new[]
+            {
+                "settings.notifications.column.down",
+                "settings.notifications.column.startFailed",
+            };
+        var grid = NotificationGrid(keys.Length, 34);
+        for (var index = 0; index < keys.Length; index++)
+        {
+            var label = new TextBlock
+            {
+                Text = words.Get(keys[index]),
+                FontSize = 11,
+                Foreground = WindowsTheme.Brush("TextTertiary"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+            };
+            Grid.SetColumn(label, index + 1);
+            grid.Children.Add(label);
+        }
+        return grid;
     }
 
     private FrameworkElement NotificationAccountRow(JsonObject item, string page, string id, string key)
@@ -614,52 +611,84 @@ public sealed class SettingsWindow : Window
         {
             return ModelRow(SettingsJson.String(item, "title"), SettingsJson.String(item, "detail"), null);
         }
-        var controls = new StackPanel { Orientation = Orientation.Horizontal };
-        controls.Children.Add(NotificationToggle(
-            "settings.notifications.column.review",
+        var controls = new List<FrameworkElement>
+        {
+            NotificationToggle(
             SettingsJson.Bool(record, "notifiesReviewRequests"),
-            value => SaveNotificationRecord(page, id, record, "notifiesReviewRequests", value)));
-        controls.Children.Add(NotificationToggle(
-            "settings.notifications.column.stuck",
+            value => SaveNotificationRecord(page, id, record, "notifiesReviewRequests", value)),
+            NotificationToggle(
             SettingsJson.Bool(record, "notifiesBlocked"),
-            value => SaveNotificationRecord(page, id, record, "notifiesBlocked", value)));
+            value => SaveNotificationRecord(page, id, record, "notifiesBlocked", value)),
+        };
         if (page == "github")
         {
-            controls.Children.Add(NotificationToggle(
-                "settings.notifications.column.runs",
+            controls.Add(NotificationToggle(
                 SettingsJson.Bool(record, "notifiesFailedRuns"),
                 value => SaveNotificationRecord(page, id, record, "notifiesFailedRuns", value)));
         }
-        return ModelRow(SettingsJson.String(item, "title"), SettingsJson.String(item, "detail"), controls);
+        else
+        {
+            controls.Add(new TextBlock
+            {
+                Text = "-",
+                Foreground = WindowsTheme.Brush("TextTertiary"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+        return NotificationDataRow(item, controls);
     }
 
     private FrameworkElement NotificationProjectRow(JsonObject item, string id)
     {
-        var controls = new StackPanel { Orientation = Orientation.Horizontal };
-        controls.Children.Add(NotificationToggle(
-            "settings.notifications.column.down",
-            !PreferenceArray("projectsQuietWhenDown").Contains(id, StringComparer.Ordinal),
-            value => SetProjectNotification("projectsQuietWhenDown", id, value)));
-        controls.Children.Add(NotificationToggle(
-            "settings.notifications.column.startFailed",
-            !PreferenceArray("projectsQuietWhenStartFails").Contains(id, StringComparer.Ordinal),
-            value => SetProjectNotification("projectsQuietWhenStartFails", id, value)));
-        return ModelRow(SettingsJson.String(item, "title"), SettingsJson.String(item, "detail"), controls);
+        return NotificationDataRow(item,
+        [
+            NotificationToggle(
+                !PreferenceArray("projectsQuietWhenDown").Contains(id, StringComparer.Ordinal),
+                value => SetProjectNotification("projectsQuietWhenDown", id, value)),
+            NotificationToggle(
+                !PreferenceArray("projectsQuietWhenStartFails").Contains(id, StringComparer.Ordinal),
+                value => SetProjectNotification("projectsQuietWhenStartFails", id, value)),
+        ]);
     }
 
-    private FrameworkElement NotificationToggle(string key, bool selected, Action<bool> changed)
+    private FrameworkElement NotificationDataRow(JsonObject item, IReadOnlyList<FrameworkElement> controls)
     {
-        var panel = new StackPanel { Margin = new Thickness(12, 0, 0, 0) };
-        panel.Children.Add(new TextBlock
+        var grid = NotificationGrid(controls.Count, 52);
+        var copy = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        copy.Children.Add(new TextBlock { Text = SettingsJson.String(item, "title") });
+        copy.Children.Add(new TextBlock
         {
-            Text = words.Get(key),
-            FontSize = 11,
+            Text = SettingsJson.String(item, "detail"),
+            FontSize = 12,
             Foreground = WindowsTheme.Brush("TextTertiary"),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 0, 0, 4),
+            TextTrimming = TextTrimming.CharacterEllipsis,
         });
-        panel.Children.Add(Toggle(selected, true, changed));
-        return panel;
+        grid.Children.Add(copy);
+        for (var index = 0; index < controls.Count; index++)
+        {
+            Grid.SetColumn(controls[index], index + 1);
+            grid.Children.Add(controls[index]);
+        }
+        return grid;
+    }
+
+    private static Grid NotificationGrid(int controlCount, double minHeight)
+    {
+        var grid = new Grid { MinHeight = minHeight, Margin = new Thickness(16, 4, 16, 4) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (var index = 0; index < controlCount; index++)
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(94) });
+        }
+        return grid;
+    }
+
+    private static FrameworkElement NotificationToggle(bool selected, Action<bool> changed)
+    {
+        var toggle = Toggle(selected, true, changed);
+        toggle.HorizontalAlignment = HorizontalAlignment.Center;
+        return toggle;
     }
 
     private void EnsureNotificationRecords()
@@ -736,20 +765,85 @@ public sealed class SettingsWindow : Window
         }
         page.Children.Add(GroupTitle("account.section.token"));
         page.Children.Add(TokenCard(record));
+        page.Children.Add(TokenPageLink(record));
         if (route.Page == "github")
         {
             page.Children.Add(GroupTitle("account.section.account"));
             page.Children.Add(Card(
                 FieldRow("account.name", record, "label", false),
                 BrowserRow(record)));
-            page.Children.Add(GroupTitle("account.advanced"));
-            page.Children.Add(Card(ArrayFieldRow(
-                "account.github.organisations",
-                "account.github.organisations.placeholder",
-                record,
-                "organizations")));
+            var recordKey = RecordKey(route.Page, route.Item ?? "");
+            page.Children.Add(AdvancedDisclosure(recordKey));
+            if (expandedAdvanced.Contains(recordKey))
+            {
+                page.Children.Add(Card(ArrayFieldRow(
+                    "account.github.organisations",
+                    "account.github.organisations.placeholder",
+                    record,
+                    "organizations")));
+            }
         }
         return page;
+    }
+
+    private FrameworkElement TokenPageLink(JsonObject record)
+    {
+        var key = route.Page == "github" ? "account.github.create" : "account.gitlab.create";
+        var value = route.Page == "github" ? null : AccountHost(record);
+        var button = new Button
+        {
+            Content = words.Get(key, value),
+            Style = WindowsTheme.Style("LinkButton"),
+            Margin = new Thickness(6, 5, 0, 0),
+        };
+        button.Click += (_, _) =>
+        {
+            var request = route.Page == "github"
+                ? SettingsJson.Empty("openGitHubTokenPage")
+                : SettingsJson.Value("openGitLabTokenPage", record);
+            client.Request(request);
+        };
+        return button;
+    }
+
+    private FrameworkElement AdvancedDisclosure(string recordKey)
+    {
+        var open = expandedAdvanced.Contains(recordKey);
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(DeckIcons.Create(open ? "collapse" : "expand", 10));
+        panel.Children.Add(new TextBlock
+        {
+            Text = words.Get("account.advanced"),
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(7, 0, 10, 0),
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = words.Get("account.github.advanced.summary"),
+            Foreground = WindowsTheme.Brush("TextTertiary"),
+        });
+        var button = new Button
+        {
+            Content = panel,
+            Style = WindowsTheme.Style("RowButton"),
+            Margin = new Thickness(0, 14, 0, 2),
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+        };
+        button.Click += (_, _) =>
+        {
+            if (!expandedAdvanced.Add(recordKey))
+            {
+                expandedAdvanced.Remove(recordKey);
+            }
+            Render();
+        };
+        return button;
+    }
+
+    private static string AccountHost(JsonObject record)
+    {
+        var address = SettingsJson.String(record, "host");
+        return Uri.TryCreate(address, UriKind.Absolute, out var url) ? url.Host : address;
     }
 
     private FrameworkElement TokenCard(JsonObject record)
@@ -758,9 +852,9 @@ public sealed class SettingsWindow : Window
         var submission = new TokenSubmission();
         var password = new PasswordBox
         {
-            MinWidth = 260,
             Height = 32,
             Style = WindowsTheme.Style("SettingsPasswordBox"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         password.PasswordChanged += (_, _) => submission.Typed = password.Password;
         var save = ActionButton("token.save", () =>
@@ -771,9 +865,12 @@ public sealed class SettingsWindow : Window
             SetTokenChecking(recordKey);
             client.Request(SettingsJson.Token(request, record, typed), answer => ApplyTokenAnswer(recordKey, answer));
         });
-        var controls = new StackPanel { Orientation = Orientation.Horizontal };
+        var controls = new Grid();
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         controls.Children.Add(password);
         save.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetColumn(save, 1);
         controls.Children.Add(save);
         var status = tokenStatuses.TryGetValue(recordKey, out var current)
             ? current
@@ -786,7 +883,7 @@ public sealed class SettingsWindow : Window
                     SettingsJson.Token(route.Page == "github" ? "checkGitHubToken" : "checkGitLabToken", record, ""),
                     answer => ApplyTokenAnswer(recordKey, answer));
             })),
-            Row("token.field", null, controls));
+            FormRow(words.Get("token.field"), "", controls));
     }
 
     private FrameworkElement ProjectPage(JsonObject record)
@@ -858,22 +955,32 @@ public sealed class SettingsWindow : Window
                     SettingsJson.Named("ddevFolderNote", "folder", field.Text),
                     answer => ApplyFolderNote(recordKey, answer));
         }
-        var place = new Border
-        {
-            BorderBrush = WindowsTheme.Brush("TextTertiary"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(8, 4, 8, 4),
-            Margin = new Thickness(8, 0, 0, 0),
-            Child = new TextBlock { Text = Place(SettingsJson.String(record, "folder")), FontSize = 12 },
-        };
+        var placeText = Place(SettingsJson.String(record, "folder"));
         var choose = ActionButton("button.choose", () => ChooseFolder(field));
         choose.Margin = new Thickness(8, 0, 0, 0);
-        var controls = new StackPanel { Orientation = Orientation.Horizontal };
+        var controls = new Grid();
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         controls.Children.Add(field);
-        controls.Children.Add(place);
+        var column = 1;
+        if (placeText.Length > 0)
+        {
+            controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var place = new Border
+            {
+                BorderBrush = WindowsTheme.Brush("TextTertiary"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(8, 4, 8, 4),
+                Margin = new Thickness(8, 0, 0, 0),
+                Child = new TextBlock { Text = placeText, FontSize = 12 },
+            };
+            Grid.SetColumn(place, column++);
+            controls.Children.Add(place);
+        }
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(choose, column);
         controls.Children.Add(choose);
-        return ModelRow(
+        return FormRow(
             words.Get("project.folder"),
             folderNotes.TryGetValue(recordKey, out var note) ? note : "",
             controls);
@@ -890,10 +997,13 @@ public sealed class SettingsWindow : Window
                 answer => ApplyDetection(recordKey, record, answer));
         });
         detect.Margin = new Thickness(8, 0, 0, 0);
-        var controls = new StackPanel { Orientation = Orientation.Horizontal };
+        var controls = new Grid();
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         controls.Children.Add(field);
+        Grid.SetColumn(detect, 1);
         controls.Children.Add(detect);
-        return ModelRow(words.Get("project.startCommand"), "", controls);
+        return FormRow(words.Get("project.startCommand"), "", controls);
     }
 
     private FrameworkElement BrowserRow(JsonObject record)
@@ -930,12 +1040,16 @@ public sealed class SettingsWindow : Window
             record["browser"] = browser;
             SaveRecord(record);
         };
-        var controls = new StackPanel { Orientation = Orientation.Horizontal };
+        var controls = new Grid();
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        picker.HorizontalAlignment = HorizontalAlignment.Stretch;
         controls.Children.Add(picker);
         var test = ActionButton("button.test", () => TestLink(recordKey, record));
         test.Margin = new Thickness(8, 0, 0, 0);
+        Grid.SetColumn(test, 1);
         controls.Children.Add(test);
-        return ModelRow(
+        return FormRow(
             words.Get("account.openLinksIn"),
             linkNotes.TryGetValue(recordKey, out var note) ? note : "",
             controls);
@@ -961,14 +1075,17 @@ public sealed class SettingsWindow : Window
         var chip = new Border
         {
             Background = WindowsTheme.Brush("ControlHover"),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(7, 3, 7, 3),
+            Height = 20,
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(6, 0, 6, 0),
             Margin = new Thickness(8, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock
             {
                 Text = SettingsJson.String(link, "label").ToUpperInvariant(),
                 FontSize = 10,
-                FontWeight = FontWeights.SemiBold,
+                FontFamily = WindowsTheme.Mono,
+                VerticalAlignment = VerticalAlignment.Center,
             },
         };
         var field = new TextBox
@@ -1022,7 +1139,7 @@ public sealed class SettingsWindow : Window
                     .ToArray());
             SaveRecord(record);
         };
-        return ModelRow(words.Get(labelKey), "", field);
+        return FormRow(words.Get(labelKey), "", field);
     }
 
     private FrameworkElement CheckRow(JsonObject record)
@@ -1167,10 +1284,39 @@ public sealed class SettingsWindow : Window
         return grid;
     }
 
+    private FrameworkElement FormRow(string label, string detail, FrameworkElement control)
+    {
+        var grid = new Grid { MinHeight = 48, Margin = new Thickness(16, 6, 16, 6) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(FormLabelWidth) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var copy = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 12, 0),
+        };
+        copy.Children.Add(new TextBlock { Text = label });
+        if (detail.Length > 0)
+        {
+            copy.Children.Add(new TextBlock
+            {
+                Text = detail,
+                FontSize = 12,
+                Foreground = WindowsTheme.Brush("TextTertiary"),
+                TextWrapping = TextWrapping.Wrap,
+            });
+        }
+        grid.Children.Add(copy);
+        control.VerticalAlignment = VerticalAlignment.Center;
+        control.HorizontalAlignment = HorizontalAlignment.Stretch;
+        Grid.SetColumn(control, 1);
+        grid.Children.Add(control);
+        return grid;
+    }
+
     private FrameworkElement FieldRow(string labelKey, JsonObject record, string property, bool mono, string? placeholderKey = null)
     {
         var field = BoundTextBox(record, property, mono, placeholderKey);
-        return Row(labelKey, null, field);
+        return FormRow(words.Get(labelKey), "", field);
     }
 
     private TextBox BoundTextBox(JsonObject record, string property, bool mono, string? placeholderKey)
@@ -1178,11 +1324,11 @@ public sealed class SettingsWindow : Window
         var field = new TextBox
         {
             Text = SettingsJson.String(record, property),
-            MinWidth = 300,
             Height = 32,
             FontFamily = mono ? WindowsTheme.Mono : WindowsTheme.Sans,
             Style = WindowsTheme.Style("PromptTextBox"),
             Tag = placeholderKey is null ? null : words.Get(placeholderKey),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
         field.LostKeyboardFocus += (_, _) =>
         {

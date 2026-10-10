@@ -73,6 +73,18 @@ public static class SettingsJson
         }.ToJsonString();
     }
 
+    public static string SetCard(string id, bool isEnabled)
+    {
+        return new JsonObject
+        {
+            ["setCard"] = new JsonObject
+            {
+                ["id"] = id,
+                ["isEnabled"] = isEnabled,
+            },
+        }.ToJsonString();
+    }
+
     public static bool Case(JsonElement answer, string name, out JsonElement payload)
     {
         return DeckEvent.TryProperty(answer, name, out payload) && payload.ValueKind == JsonValueKind.Object;
@@ -123,6 +135,7 @@ public sealed class SettingsClient
 
     public SettingsWords Words { get; } = new();
     public JsonNode? List { get; private set; }
+    public JsonArray? Cards { get; private set; }
     public JsonObject? Preferences { get; private set; }
     public event Action<SettingsWireRequest>? RequestSent;
     public event Action<string>? IntentSent;
@@ -135,6 +148,7 @@ public sealed class SettingsClient
         callbacks.Clear();
         Request(SettingsJson.Empty("words"));
         Request(SettingsJson.Empty("list"));
+        Request(SettingsJson.Empty("cards"));
         Request(SettingsJson.Empty("preferences"));
     }
 
@@ -159,6 +173,10 @@ public sealed class SettingsClient
         else if (SettingsJson.CaseValue(answer, "list") is { } list)
         {
             List = list;
+        }
+        else if (SettingsJson.CaseValue(answer, "cards") is JsonArray cards)
+        {
+            Cards = cards;
         }
         else if (SettingsJson.CaseValue(answer, "preferences") is JsonObject preferences)
         {
