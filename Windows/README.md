@@ -213,6 +213,10 @@ panel on another monitor still renders with that monitor's scale because the man
 Monitor V2 awareness. The reverse conversion happens once when the shell applies a frame from the
 engine.
 
+After applying a native panel frame and after `WM_DPICHANGED`, the shell recalculates the WPF
+window size from primary monitor DIPs and the window's current DPI. The native frame and WPF
+layout therefore stay at 352 local DIPs when a panel moves between displays with different scales.
+
 Each display id is the monitor device interface path returned by Windows. That path follows the
 physical monitor across disconnects and reconnects, unlike names such as `DISPLAY1`. The reported
 frame excludes the taskbar and other app bars, and exactly one connected display is primary.
@@ -236,6 +240,16 @@ covering the cards already on the primary display.
 ![Two displays with different scales](../docs/poc/windows-ui/w7-monitor-connected.png)
 
 ![Cards parked after the external display is disconnected](../docs/poc/windows-ui/w7-monitor-disconnected.png)
+
+The DPI hotfix acceptance uses real full desktop captures from Snipping Tool with the golden
+session models. The first capture shows three cards opened directly on the 100 percent external
+display. The second shows the Work in Flight card after a live drag from the 250 percent primary
+display to the external display. Each card keeps a 352 DIP width and complete content at its local
+scale.
+
+![Cards opened on the external display](../docs/poc/windows-ui/w7-dpi-opened-external.png)
+
+![Card dragged to the external display](../docs/poc/windows-ui/w7-dpi-dragged.png)
 
 ## Summon
 

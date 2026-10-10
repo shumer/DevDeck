@@ -74,6 +74,7 @@ public sealed class CardWindow : Window
 
         moveTracker.BeginProgrammaticMove();
         NativeMethods.SetWindowFrame(handle, frame[0], frame[1], frame[2], frame[3]);
+        ApplyLogicalSize(frame, NativeMethods.WindowScale(handle));
         Dispatcher.BeginInvoke(
             moveTracker.EndProgrammaticMove,
             System.Windows.Threading.DispatcherPriority.ContextIdle);
@@ -134,7 +135,7 @@ public sealed class CardWindow : Window
             {
                 displayChanged();
                 Dispatcher.BeginInvoke(
-                    () => ReportDragMove(window),
+                    () => SynchronizeLogicalSizeAndReportDragMove(window),
                     System.Windows.Threading.DispatcherPriority.Background);
             }
             else
@@ -154,12 +155,44 @@ public sealed class CardWindow : Window
             {
                 displayChanged();
                 Dispatcher.BeginInvoke(
-                    ReportMeasurement,
+                    SynchronizeLogicalSizeAndMeasurement,
                     System.Windows.Threading.DispatcherPriority.Loaded);
             }
         }
 
         return 0;
+    }
+
+    private void SynchronizeLogicalSizeAndMeasurement()
+    {
+        ApplyLogicalSize(CurrentFrame(), NativeMethods.WindowScale(handle));
+        ReportMeasurement();
+    }
+
+    private void SynchronizeLogicalSizeAndReportDragMove(nint window)
+    {
+        ApplyLogicalSize(
+            NativeMethods.GetWindowFrame(window),
+            NativeMethods.WindowScale(window));
+        ReportDragMove(window);
+    }
+
+    private void ApplyLogicalSize(double[] frame, double windowScale)
+    {
+        if (frame.Length != 4)
+        {
+            return;
+        }
+
+        var primaryScale = NativeMethods.PrimaryDesktopScale();
+        Width = WindowDpiLayout.LocalDipsForPrimaryDips(
+            frame[2],
+            primaryScale,
+            windowScale);
+        Height = WindowDpiLayout.LocalDipsForPrimaryDips(
+            frame[3],
+            primaryScale,
+            windowScale);
     }
 
     private void ReportMeasurement()
