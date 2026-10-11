@@ -134,7 +134,8 @@ public final class DeckPlacement {
             guard !runtime.isParked(card) else { continue }
             // A card that has never had data computes the height of an empty card. It opens at
             // the height it last settled at and waits.
-            guard runtime.hasLoaded(card) || preferences.height(for: card) == nil else { continue }
+            let settled = preferences.height(for: card) != nil
+            guard runtime.hasLoaded(card) || !settled else { continue }
 
             let size = measure(card)
             guard abs(old.height - size.height) > 0.5 || abs(old.width - size.width) > 0.5 else { continue }
@@ -142,14 +143,19 @@ public final class DeckPlacement {
             let frame = CGRect(x: old.minX, y: old.maxY - size.height, width: size.width, height: size.height)
             frames[card] = frame
             changes.append(.place(card, frame))
-            preferences.setHeight(size.height, for: card)
+            // Remembered once it is a height with data behind it. A placeholder's height is a
+            // guess, and a guess written down is what a card opens at next time.
+            if runtime.hasLoaded(card) { preferences.setHeight(size.height, for: card) }
             // The position is deliberately not saved here. A resize keeps the top edge, so there
             // is nothing new to record, and the one thing saving here did record was a card that
             // a neighbour's resize had displaced a moment earlier.
 
             if preferences.packsColumns {
                 packColumn(containing: card)
-            } else if userChanged.contains(card) {
+            } else if userChanged.contains(card) || !settled {
+                // Until a card has settled once, its height is a guess, and the first real one
+                // makes room the way a person's resize does: a fresh deck ends up packed instead
+                // of overlapping until somebody tidies it. A settled card's data moves nothing.
                 // Only for a change somebody asked for. Selection uses the old frame: those are
                 // the panels that were below before the resize, and they have to make room.
                 shiftColumn(below: old, by: old.height - size.height)
