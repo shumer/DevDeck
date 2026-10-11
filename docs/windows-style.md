@@ -209,18 +209,21 @@ they change:
 
 - **App mode** (`UISettings.GetColorValue(Background)` dark or light): the dark tokens above, or
   the light ones below.
-- **Transparency effects**: Acrylic when on, the solid colour when off, as section 2 says.
-- **Show accent colour on Start and taskbar**: when on in dark mode, the card's tint is the
-  taskbar's accent tint instead of `#28282C`, so the deck and the taskbar are one material.
+- **The card is the taskbar's material, always.** Whatever the taskbar is drawn with on this
+  machine, the card is drawn with: the same tint, the same opacity, the same blur when
+  transparency effects are on and the same solid colour when they are off, the accent tint when
+  the accent is shown on the taskbar and the plain one when it is not. The deck and the taskbar
+  read as one surface in every setting. Decided 2026-10-11 over a tint of the card's own; the
+  `#28282C` tint in section 2 is superseded by this rule.
 
 Light tokens, darkened until they read on a light veil (contrast checked against `#F3F3F3`
 at 72%):
 
 | Token | Light value |
 | --- | --- |
-| card tint | `#F3F3F3` at 72% over Acrylic; solid `#F3F3F3` |
-| primary / secondary / tertiary text | black at 92% / 62% / 45% |
-| control fill / stroke | black at 4.5% / 9% |
+| card tint | the taskbar's: `#F3F3F3` at 78% over Acrylic; solid `#F3F3F3` |
+| primary / secondary / tertiary text | black at 92% / 72% / 58% (the 66% / 42% of the dark tokens read too faint on a light veil) |
+| control fill / stroke | black at 6% / 13% |
 | `good` | `#0F7B4A` |
 | `attention` | `#8A5A00` |
 | `alert` | `#B3261E` |
