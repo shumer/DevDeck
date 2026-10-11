@@ -157,7 +157,10 @@ public final class DeckPlacement {
 
             if preferences.packsColumns {
                 packColumn(containing: card)
-            } else if userChanged.contains(card) || !settled {
+            } else if userChanged.contains(card) || !settled || overlapsAnother(card) {
+                // A settled card's data moves nothing, with one exception: a card that has grown
+                // onto the one below it. Covering a card is worse than moving it, so the column
+                // makes room, and nothing else changes.
                 // Until a card has settled once, its height is a guess, and the first real one
                 // makes room the way a person's resize does: a fresh deck ends up packed instead
                 // of overlapping until somebody tidies it. A settled card's data moves nothing.
@@ -345,6 +348,12 @@ public final class DeckPlacement {
     }
 
     /// Whether another panel already sits exactly where this one is.
+    /// Whether this card's frame now crosses another panel's.
+    private func overlapsAnother(_ card: CardID) -> Bool {
+        guard let frame = frames[card] else { return false }
+        return frames.contains { other, otherFrame in other != card && otherFrame.intersects(frame) }
+    }
+
     private func isDoubled(_ card: CardID) -> Bool {
         guard let frame = frames[card] else { return false }
         return frames.contains { other, otherFrame in

@@ -216,6 +216,21 @@ func runPlacementTests(_ run: TestRun) async {
         try expectEqual(desk.frames[ordered[0].key]?.maxY, ordered[0].value.maxY, "the top edge stays")
     }
 
+    await run.test("a settled card that grows onto the one below it makes room, and only then") {
+        let all = projects(2)
+        let desk = Desk(projects: all)
+        for project in all { desk.deck.preferences.setHeight(200, for: project.cardID) }
+        _ = desk.placement.sync()
+        let ordered = desk.frames.sorted { $0.value.maxY > $1.value.maxY }
+        // Taller than the gap: the top card would cover the one below.
+        desk.size = CGSize(width: 352, height: 320)
+        _ = desk.placement.syncSizes()
+        let top = try expectNotNil(desk.frames[ordered[0].key], "top")
+        let below = try expectNotNil(desk.frames[ordered[1].key], "below")
+        try expect(!top.intersects(below), "no card covers another")
+        try expectEqual(top.minY - below.maxY, CGFloat(CardMetrics.panelGap))
+    }
+
     await run.test("a card that has never settled makes room below it when its first height arrives") {
         let all = projects(2)
         let desk = Desk(projects: all)
