@@ -304,7 +304,10 @@ public final class DeckSession {
         if runtime.isCollapsed(card) {
             return CGSize(width: CardMetrics.width, height: CollapsedCardMetrics.height)
         }
-        return sizes[card] ?? CGSize(width: CardMetrics.width, height: Self.unmeasuredHeight)
+        // Until the shell has measured it, the height it last settled at: a guess shrinks the
+        // panel the moment its data arrives and grows it back a frame later, which is the card
+        // changing height on every launch.
+        return sizes[card] ?? CGSize(width: CardMetrics.width, height: runtime.preferences.height(for: card) ?? Self.unmeasuredHeight)
     }
 
     private func apply(_ changes: [DeckPanelChange]?) {

@@ -362,8 +362,9 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             },
             // The same four as the Arc and DDEV cards, in the plain card's own order.
             actions: lifecycle + [
-                DeckActionModel(L("card.action.terminal"), glyph: .terminal, command: .openTerminal(card)),
+                // Folder, then terminal, the same order the other two kinds keep.
                 DeckActionModel(L("card.action.folder"), glyph: .folder, isEnabled: project.folderURL != nil, command: .revealFolder(card)),
+                DeckActionModel(L("card.action.terminal"), glyph: .terminal, command: .openTerminal(card)),
             ],
             collapsed: DeckCollapsedModel(
                 mark: brand(of: project.kind),
