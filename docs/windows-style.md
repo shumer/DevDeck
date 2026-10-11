@@ -2,7 +2,7 @@
 
 How DevDeck cards look on Windows. Status: chosen, implemented by W-3 and W-4 of
 [windows-migration.md](windows-migration.md). The reference mock is
-[devdeck-windows-proposal.html](poc/windows-ui/devdeck-windows-proposal.html); open it in a
+[devdeck-windows-proposal.html](windows/ui/devdeck-windows-proposal.html); open it in a
 browser next to this file. What the engine sends for each part is in
 [engine-protocol.md](engine-protocol.md).
 
@@ -249,8 +249,8 @@ at 72%):
 
 Tinted surfaces keep the 12% and 27% rule with the light tones. The reference for all four
 cases (dark, dark with the accent on the taskbar, light, light without transparency) is
-[devdeck-windows-theme.html](poc/windows-ui/devdeck-windows-theme.html) and
-[windows-theme-variants.png](poc/windows-ui/windows-theme-variants.png). The Mac deck stays
+[devdeck-windows-theme.html](windows/ui/devdeck-windows-theme.html) and
+[windows-theme-variants.png](windows/ui/windows-theme-variants.png). The Mac deck stays
 dark; this is the Windows shell's mapping of the same tones.
 
 ## 10. Contract changes this needs

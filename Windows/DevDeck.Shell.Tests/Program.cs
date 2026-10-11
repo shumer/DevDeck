@@ -1302,7 +1302,7 @@ public static class Program
 
     private static JsonElement SampleCard(string cardId)
     {
-        var path = Path.Combine(RepositoryRoot(), "docs", "poc", "windows-ui", "windows-style-sample.jsonl");
+        var path = Path.Combine(RepositoryRoot(), "docs", "windows", "ui", "windows-style-sample.jsonl");
         foreach (var line in File.ReadLines(path))
         {
             var message = DeckEvent.Parse(line);

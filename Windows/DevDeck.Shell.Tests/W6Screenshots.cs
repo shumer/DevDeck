@@ -44,7 +44,7 @@ public static class W6Screenshots
 
     private static DeckNotification ProjectNotification()
     {
-        var path = Path.Combine(RepositoryRoot(), "docs", "poc", "windows-ui", "w6-project-notification.jsonl");
+        var path = Path.Combine(RepositoryRoot(), "docs", "windows", "ui", "w6-project-notification.jsonl");
         return DeckEvent.Parse(File.ReadAllText(path).Trim()).Notifications?.Single() ?? throw new JsonException();
     }
 

@@ -93,17 +93,17 @@ Every task ends with screenshots on neutral data and a check against the shell r
 - **W-3.** A WPF shell on protocol v2, then the first Windows style pass for review lists and
   Windows and WSL project cards: Acrylic, system rounding, fonts, icons and shared brand vectors.
   Done: `Windows/`, drawn from the golden sessions and tested against them, the three reference
-  cards next to the mock at 100%, 150% and 200% in `docs/poc/windows-ui`.
+  cards next to the mock at 100%, 150% and 200% in `docs/windows/windows-ui`.
 - **W-4.** Finish the style for Inbox, Actions, GitLab, Work in flight, Arc, DDEV, the folded row
   and the expanded list. Done: every card of the golden sessions, checked next to the Mac's
-  drawing of the same transcript (`CardPreview`), captures in `docs/poc/windows-ui/w4-*.png`.
+  drawing of the same transcript (`CardPreview`), captures in `docs/windows/ui/w4-*.png`.
 - **W-5.** Tray icon and menu from the engine's menu model. Done: the tray icon by tier with the
   Mac icon's rules, the tray and card menus from `menu.changed` and `card.changed`, confirmation
-  and prompt dialogs in the model's words; captures in `docs/poc/windows-ui/w5-*.png`.
+  and prompt dialogs in the model's words; captures in `docs/windows/ui/w5-*.png`.
 - **W-6.** Toast notifications with the source's logo; a click goes where the engine says. Done:
   one toast per `notify` model through the classic Windows API, associated with the unpackaged
   shell by a stable AUMID and a current-user Start Menu shortcut, the command sent back on a
-  click; captures in `docs/poc/windows-ui/w6-*.png`.
+  click; captures in `docs/windows/ui/w6-*.png`.
 - **W-7.** Windows and displays: moves reported to the engine, plans applied, parking on unplug,
   two monitors with different scaling, sleep and wake. Done in the shell: stable device interface
   ids, full work areas in primary-display DIPs, Per Monitor V2 rendering, one move after a drag,
@@ -112,15 +112,15 @@ Every task ends with screenshots on neutral data and a check against the shell r
   external display: drag, Tidy, restart, disconnect parking, reconnect restore, sleep and resume.
 - **W-8.** The log window with search. Done: one window per card from `openLogs`, lines, source
   and detail from `log.changed`, the tail appended and followed, a local search, and
-  `logWindow.changed` both ways; captures in `docs/poc/windows-ui/w8-*.png`.
+  `logWindow.changed` both ways; captures in `docs/windows/ui/w8-*.png`.
 - **W-9.** Summon. Done: `RegisterHotKey` uses the engine supplied Windows shortcut, a hold is
   spring loaded, a tap or `present` latches the deck, and optional 30 percent veils cover each
   current monitor work area until the next tap, Escape or a veil click.
 - **W-10.** Settings, starting from a mock that is agreed first: accounts with tokens in
   Credential Manager, projects with Detect and Test, a Windows or WSL folder. Done: the mock is
-  `docs/poc/windows-ui/devdeck-windows-settings.html`, the window draws every page from the
+  `docs/windows/ui/devdeck-windows-settings.html`, the window draws every page from the
   engine's `words`, `list`, `cards`, `preferences` and record answers and owns no text of its
-  own (a test sweeps its source for literals); captures in `docs/poc/windows-ui/w10-*.png`.
+  own (a test sweeps its source for literals).
 - **W-11.** Browsers and profiles, the terminal and the folder for both Windows and WSL projects,
   the phone QR code. Done: registered browsers and Chromium profiles follow the engine's choice,
   both folder kinds open in the right terminal and Explorer context, and the phone popup builds
@@ -142,20 +142,23 @@ Every task ends with screenshots on neutral data and a check against the shell r
   Tools/Build-WindowsInstaller.ps1, Windows/Installer/DevDeck.iss, a Start Menu shortcut,
   graceful shell shutdown, silent installation and uninstall cleanup. See
   [the Windows install notes](../Windows/README.md#install) and
-  [the W-15 verification report](poc/W15-windows-installer-report.md)
+  [the W-15 verification report](windows/W15-windows-installer-report.md)
   for the live checks and the missing runtime limitation.
 - **W-16.** Code signing. Deferred past the beta: the beta ships unsigned,
   [0035](adr/0035-windows-delivery.md).
 - **W-17.** Done: the engine offers the Windows installer with its `.sha256`; the shell downloads
   both, checks SHA256, reports progress and launches the quiet installer. The old shell answers
   `--quit` while the installer is running; the installer starts the new copy with its existing
-  card positions. See [the update verification](poc/W17-windows-update-report.md).
+  card positions. See [the update verification](windows/W17-windows-update-report.md).
 - **W-18.** Done: one tag builds the Mac archive and Windows installer with a SHA256 file.
   Dry runs keep Actions artifacts without changing the release. See
-  [the release verification](poc/W18-windows-release-report.md).
+  [the release verification](windows/W18-windows-release-report.md).
 - **W-19.** ARM64.
-- **W-20.** README and install notes for Windows.
-- A beta for colleagues, then a public release.
+- **W-20.** README and install notes for Windows. Done: the root README names Windows and points
+  at [Windows/README.md](../Windows/README.md), whose Install and Updates sections are what a
+  colleague needs; the release notes carry the Windows paragraph.
+- A beta for colleagues, then a public release. The beta is 0.20, the first release that carries
+  the installer.
 
 ## Order
 

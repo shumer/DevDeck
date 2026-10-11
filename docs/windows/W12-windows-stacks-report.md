@@ -70,15 +70,15 @@ These PNGs contain actual screen pixels from the Windows shell. Card captures ar
 the live neutral deck. Log windows replay the unmodified `log.changed` events collected
 from those live projects. No composite or renderer export was used.
 
-- [DDEV Docker gate](windows-ui/w12-ddev-docker-off.png).
-- [Arc Docker gate](windows-ui/w12-arc-docker-off.png).
-- [Native DDEV running](windows-ui/w12-native-ddev-running.png).
-- [WSL DDEV running](windows-ui/w12-wsl-ddev-running.png).
-- [Arc WSL running](windows-ui/w12-wsl-arc-running.png).
-- [Native DDEV log](windows-ui/w12-native-ddev-log.png).
-- [WSL DDEV log](windows-ui/w12-wsl-ddev-log.png).
-- [Arc log](windows-ui/w12-arc-log.png).
-- [Native DDEV unavailable](windows-ui/w12-native-ddev-unavailable.png).
+- [DDEV Docker gate](ui/w12-ddev-docker-off.png).
+- [Arc Docker gate](ui/w12-arc-docker-off.png).
+- [Native DDEV running](ui/w12-native-ddev-running.png).
+- [WSL DDEV running](ui/w12-wsl-ddev-running.png).
+- [Arc WSL running](ui/w12-wsl-arc-running.png).
+- [Native DDEV log](ui/w12-native-ddev-log.png).
+- [WSL DDEV log](ui/w12-wsl-ddev-log.png).
+- [Arc log](ui/w12-arc-log.png).
+- [Native DDEV unavailable](ui/w12-native-ddev-unavailable.png).
 
 ## Cleanup
 

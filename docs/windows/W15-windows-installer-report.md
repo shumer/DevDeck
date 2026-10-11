@@ -92,8 +92,8 @@ issue; it was not emitted in this incremental Windows build.
 
 These are native window captures, not rendered composites. No project or account data is shown.
 
-![Welcome](windows-ui/w15-welcome.png)
-![Ready](windows-ui/w15-ready.png)
-![Installed](windows-ui/w15-installed.png)
-![Removal confirmation](windows-ui/w15-remove-confirmation.png)
-![Removed](windows-ui/w15-removed.png)
+![Welcome](ui/w15-welcome.png)
+![Ready](ui/w15-ready.png)
+![Installed](ui/w15-installed.png)
+![Removal confirmation](ui/w15-remove-confirmation.png)
+![Removed](ui/w15-removed.png)

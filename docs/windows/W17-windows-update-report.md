@@ -74,8 +74,8 @@ sent reports was 102.4 ms. Both live scenarios were repeated with the final shel
 
 Screenshots are actual captures of the live replay window with engine supplied models:
 
-- [Downloading](windows-ui/w17-update-downloading.png).
-- [Checksum failure](windows-ui/w17-update-failed.png).
+- [Downloading](ui/w17-update-downloading.png).
+- [Checksum failure](ui/w17-update-failed.png).
 
 ## Cross-platform fixture
 

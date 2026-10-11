@@ -1,10 +1,11 @@
 # DevDeck
 
 Desktop panels for the things a developer checks twenty times a day: open pull requests,
-review requests, deploys. Frosted cards that sit on the macOS desktop behind your windows,
-plus a menu-bar item with the count.
+review requests, deploys. Frosted cards that sit on the desktop behind your windows, plus a
+menu-bar item with the count.
 
-Native macOS, built from a SwiftPM package with no Xcode required.
+Native macOS, built from a SwiftPM package with no Xcode required. The same engine runs on
+Windows 11 under a WPF shell, in beta: see [Windows](#windows) below.
 
 Pull requests across every account a token can see - yours and the ones waiting on your
 review - worst first:
@@ -170,6 +171,20 @@ only works for the installed copy.
 | `open -a DevDeck --args --menu sample` | opens the menu-bar menu filled with made-up rows of every tier, for judging or screenshotting it; `--menu` alone opens it with the deck's own |
 | `open -a DevDeck --args --logs` | opens a log window; a card id after it picks the project |
 | `pkill -f DevDeck` | quits every running copy |
+
+### Windows
+
+The engine is the same Swift code, built natively on Windows 11 (22H2 or later) and driven by a
+thin WPF shell that decides nothing of its own: every word, order and tone on a Windows card
+comes from the engine over [protocol v2](docs/engine-protocol.md), so the two decks say the same
+things. Install it from the release's `DevDeck-Setup-<version>-<build>.exe`: per user, no
+administrator rights, and if .NET 10 Desktop Runtime is missing the installer fetches it from
+Microsoft and asks for approval once. The Windows build is a beta and is not signed yet, so
+SmartScreen warns on first run: **More info**, then **Run anyway**. Projects in WSL
+distributions and in Windows folders both work, Docker Desktop or Docker inside WSL. Building,
+testing, the installer, updates and what differs from the Mac are in
+[Windows/README.md](Windows/README.md); the port's plan and state in
+[docs/windows-migration.md](docs/windows-migration.md).
 
 **Settings → General shows the running version** under its heading, `DevDeck 0.18 (build 140)`,
 and which bundle it came from in the note at the bottom. The marketing number lives in `VERSION` and is bumped by hand when a release
@@ -851,6 +866,10 @@ command is done. Settings, General has the switch and a **Check Now** button wit
 - [docs/github-api.md](docs/github-api.md) - the GraphQL query, rate limits, token setup
 - [docs/development.md](docs/development.md) - toolchain, scripts, definition of done
 - [docs/roadmap.md](docs/roadmap.md) - what is done and what is next
+- [Windows/README.md](Windows/README.md) - the Windows shell: build, install, updates, what differs
+- [docs/engine-protocol.md](docs/engine-protocol.md) - protocol v2 between the engine and a shell in another process
+- [docs/windows-migration.md](docs/windows-migration.md) - the port's plan, its state and its decisions
+- [docs/windows-style.md](docs/windows-style.md) - how a card is drawn on Windows
 - [docs/adr/](docs/adr/) - twenty-one decisions and what they cost: why native, why SwiftPM only,
   why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
   shares one call, how a plain project is started, why Docker is checked first, how a card is

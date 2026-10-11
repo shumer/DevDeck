@@ -75,7 +75,7 @@ user's `DevDeck` Run value and `%PROGRAMDATA%\DevDeck\NotificationAssets`. It pr
 `%LOCALAPPDATA%\DevDeck`, `%APPDATA%\DevDeck` and Credential Manager secrets. It leaves the
 shared .NET runtime installed. The removal confirmation states that settings and secrets remain.
 
-The [W-15 verification report](../docs/poc/W15-windows-installer-report.md) records sizes,
+The [W-15 verification report](../docs/windows/W15-windows-installer-report.md) records sizes,
 live installation checks, screenshots and the cases not checked on this machine.
 
 ## Updates
@@ -100,7 +100,7 @@ The verified file stays available; the next attempt downloads it again.
 
 The beta verifies the downloaded file against its release checksum and does not verify a
 signature. See [the delivery decision](../docs/adr/0035-windows-delivery.md) and
-[the update verification report](../docs/poc/W17-windows-update-report.md).
+[the update verification report](../docs/windows/W17-windows-update-report.md).
 
 ## Deterministic replay
 
@@ -132,18 +132,18 @@ Screenshots must use these neutral golden sessions.
 
 English replay:
 
-![Protocol v2 English replay](../docs/poc/windows-ui/w3-pr1-session-en.png)
+![Protocol v2 English replay](../docs/windows/ui/w3-pr1-session-en.png)
 
 Russian replay:
 
-![Protocol v2 Russian replay](../docs/poc/windows-ui/w3-pr1-session-ru.png)
+![Protocol v2 Russian replay](../docs/windows/ui/w3-pr1-session-ru.png)
 
 The style reference replay uses the final GitHub review model and the plain project model from
 the English golden session. It adds only the engine-owned `meta.place` values needed to show the
 Windows and WSL variants:
 
 ```powershell
-dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay docs/poc/windows-ui/windows-style-sample.jsonl
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay docs/windows/ui/windows-style-sample.jsonl
 ```
 
 The left side of each comparison is the accepted HTML mock. The right side is the WPF renderer
@@ -151,17 +151,17 @@ at the same scale. Both sides draw cards at 352 device-independent pixels with 1
 padding, 14 pixel top and bottom padding, a 20 pixel header, 30 pixel list rows and the typography
 specified in `docs/windows-style.md`:
 
-![Windows cards compared at 100 percent](../docs/poc/windows-ui/windows-style-comparison-100.png)
+![Windows cards compared at 100 percent](../docs/windows/ui/windows-style-comparison-100.png)
 
-![Windows cards compared at 150 percent](../docs/poc/windows-ui/windows-style-comparison-150.png)
+![Windows cards compared at 150 percent](../docs/windows/ui/windows-style-comparison-150.png)
 
-![Windows cards compared at 200 percent](../docs/poc/windows-ui/windows-style-comparison-200.png)
+![Windows cards compared at 200 percent](../docs/windows/ui/windows-style-comparison-200.png)
 
 Live Acrylic and the solid fallback use the same neutral replay data:
 
-![Windows cards with Acrylic](../docs/poc/windows-ui/windows-style-acrylic.png)
+![Windows cards with Acrylic](../docs/windows/ui/windows-style-acrylic.png)
 
-![Windows cards with transparency effects disabled](../docs/poc/windows-ui/windows-style-solid.png)
+![Windows cards with transparency effects disabled](../docs/windows/ui/windows-style-solid.png)
 
 The W-4 captures contain every distinct state supplied by the English golden session. Each file
 keeps one card kind together so it can be compared with the matching Mac capture on the same
@@ -169,49 +169,49 @@ data:
 
 | Card | Windows capture |
 |---|---|
-| GitHub pull requests | [w4-github-pull-requests.png](../docs/poc/windows-ui/w4-github-pull-requests.png) |
-| GitHub inbox | [w4-github-inbox.png](../docs/poc/windows-ui/w4-github-inbox.png) |
-| GitHub Actions | [w4-github-actions.png](../docs/poc/windows-ui/w4-github-actions.png) |
-| GitLab merge requests | [w4-gitlab-merge-requests.png](../docs/poc/windows-ui/w4-gitlab-merge-requests.png) |
-| Work in flight | [w4-work-in-flight.png](../docs/poc/windows-ui/w4-work-in-flight.png) |
-| Arc project | [w4-arc-project.png](../docs/poc/windows-ui/w4-arc-project.png) |
-| DDEV project | [w4-ddev-project.png](../docs/poc/windows-ui/w4-ddev-project.png) |
-| Plain project | [w4-plain-project.png](../docs/poc/windows-ui/w4-plain-project.png) |
-| Collapsed cards | [w4-collapsed-cards.png](../docs/poc/windows-ui/w4-collapsed-cards.png) |
+| GitHub pull requests | [w4-github-pull-requests.png](../docs/windows/ui/w4-github-pull-requests.png) |
+| GitHub inbox | [w4-github-inbox.png](../docs/windows/ui/w4-github-inbox.png) |
+| GitHub Actions | [w4-github-actions.png](../docs/windows/ui/w4-github-actions.png) |
+| GitLab merge requests | [w4-gitlab-merge-requests.png](../docs/windows/ui/w4-gitlab-merge-requests.png) |
+| Work in flight | [w4-work-in-flight.png](../docs/windows/ui/w4-work-in-flight.png) |
+| Arc project | [w4-arc-project.png](../docs/windows/ui/w4-arc-project.png) |
+| DDEV project | [w4-ddev-project.png](../docs/windows/ui/w4-ddev-project.png) |
+| Plain project | [w4-plain-project.png](../docs/windows/ui/w4-plain-project.png) |
+| Collapsed cards | [w4-collapsed-cards.png](../docs/windows/ui/w4-collapsed-cards.png) |
 
 The shared button template gives every control a two-stroke keyboard focus indicator and distinct
 hover, pressed and disabled states. Each state is captured separately from the neutral golden
 project card.
 
-![Windows button hover state](../docs/poc/windows-ui/windows-style-button-hover.png)
+![Windows button hover state](../docs/windows/ui/windows-style-button-hover.png)
 
-![Windows button pressed state](../docs/poc/windows-ui/windows-style-button-pressed.png)
+![Windows button pressed state](../docs/windows/ui/windows-style-button-pressed.png)
 
-![Windows button disabled state](../docs/poc/windows-ui/windows-style-button-disabled.png)
+![Windows button disabled state](../docs/windows/ui/windows-style-button-disabled.png)
 
-![Windows button keyboard focus](../docs/poc/windows-ui/windows-style-button-focus.png)
+![Windows button keyboard focus](../docs/windows/ui/windows-style-button-focus.png)
 
 The runtime menu replays drive the same tray and menu renderer as the live host. The menu keeps
 the engine supplied order, words, marks, attention tiers, alternates, checks and submenus. Card
 menus use that renderer on right click. Confirmation and prompt dialogs also use only the words
 in the menu model.
 
-![English tray menu](../docs/poc/windows-ui/w5-tray-menu-en.png)
+![English tray menu](../docs/windows/ui/w5-tray-menu-en.png)
 
-![Russian tray menu](../docs/poc/windows-ui/w5-tray-menu-ru.png)
+![Russian tray menu](../docs/windows/ui/w5-tray-menu-ru.png)
 
-![Card context menu](../docs/poc/windows-ui/w5-card-context-menu.png)
+![Card context menu](../docs/windows/ui/w5-card-context-menu.png)
 
-![Confirmation dialog](../docs/poc/windows-ui/w5-confirmation.png)
+![Confirmation dialog](../docs/windows/ui/w5-confirmation.png)
 
-![Prompt dialog](../docs/poc/windows-ui/w5-prompt.png)
+![Prompt dialog](../docs/windows/ui/w5-prompt.png)
 
 The tray mark has 16 and 32 pixel icon frames. It follows the taskbar theme and draws the engine
 supplied tier. Tier 3 uses the calm mark because it does not ask for immediate action.
 
-![Tray icons for a light taskbar](../docs/poc/windows-ui/w5-tray-icons-light.png)
+![Tray icons for a light taskbar](../docs/windows/ui/w5-tray-icons-light.png)
 
-![Tray icons for a dark taskbar](../docs/poc/windows-ui/w5-tray-icons-dark.png)
+![Tray icons for a dark taskbar](../docs/windows/ui/w5-tray-icons-dark.png)
 
 The shell posts every `notify` model as a Windows toast. The title, subtitle, body, quiet flag,
 source mark and command come from the engine. Repeated ids stay quiet for the lifetime of the
@@ -220,28 +220,28 @@ shared vector marks; Windows supplies the final system chrome on the live toast.
 
 This is a real Windows toast from the unpackaged shell, using neutral golden data:
 
-![System toast from the unpackaged shell](../docs/poc/windows-ui/w6-toast-system.png)
+![System toast from the unpackaged shell](../docs/windows/ui/w6-toast-system.png)
 
-![GitHub notification](../docs/poc/windows-ui/w6-toast-github.png)
+![GitHub notification](../docs/windows/ui/w6-toast-github.png)
 
-![GitLab notification](../docs/poc/windows-ui/w6-toast-gitlab.png)
+![GitLab notification](../docs/windows/ui/w6-toast-gitlab.png)
 
-![Project notification from a live stopped project](../docs/poc/windows-ui/w6-toast-project.png)
+![Project notification from a live stopped project](../docs/windows/ui/w6-toast-project.png)
 
-![DevDeck update notification](../docs/poc/windows-ui/w6-toast-devdeck.png)
+![DevDeck update notification](../docs/windows/ui/w6-toast-devdeck.png)
 
-![Grouped notification](../docs/poc/windows-ui/w6-toast-summary.png)
+![Grouped notification](../docs/windows/ui/w6-toast-summary.png)
 
 The project log opens in one normal Windows window per card. Its title, lines, source and empty
 detail come from protocol v2. New tail lines are appended without rebuilding the existing visual
 rows. The view follows the end until it is scrolled up, and Ctrl+F filters and highlights matches.
 Window size and position are kept in `%LOCALAPPDATA%\DevDeck\shell-log-windows.json`.
 
-![Log detail supplied by the engine](../docs/poc/windows-ui/w8-log-detail.png)
+![Log detail supplied by the engine](../docs/windows/ui/w8-log-detail.png)
 
-![Live project log](../docs/poc/windows-ui/w8-log-live.png)
+![Live project log](../docs/windows/ui/w8-log-live.png)
 
-![Log search highlights](../docs/poc/windows-ui/w8-log-search.png)
+![Log search highlights](../docs/windows/ui/w8-log-search.png)
 
 ## Toast registration
 
@@ -341,9 +341,9 @@ These captures use the WPF renderer with neutral golden data. The connected capt
 display scales in one canvas. The disconnected capture shows the same two cards parked without
 covering the cards already on the primary display.
 
-![Two displays with different scales](../docs/poc/windows-ui/w7-monitor-connected.png)
+![Two displays with different scales](../docs/windows/ui/w7-monitor-connected.png)
 
-![Cards parked after the external display is disconnected](../docs/poc/windows-ui/w7-monitor-disconnected.png)
+![Cards parked after the external display is disconnected](../docs/windows/ui/w7-monitor-disconnected.png)
 
 The DPI hotfix acceptance uses real full desktop captures from Snipping Tool with the golden
 session models. The first capture shows three cards opened directly on the 100 percent external
@@ -351,9 +351,9 @@ display. The second shows the Work in Flight card after a live drag from the 250
 display to the external display. Each card keeps a 352 DIP width and complete content at its local
 scale.
 
-![Cards opened on the external display](../docs/poc/windows-ui/w7-dpi-opened-external.png)
+![Cards opened on the external display](../docs/windows/ui/w7-dpi-opened-external.png)
 
-![Card dragged to the external display](../docs/poc/windows-ui/w7-dpi-dragged.png)
+![Card dragged to the external display](../docs/windows/ui/w7-dpi-dragged.png)
 
 ## Summon
 
@@ -383,11 +383,11 @@ The live check used a 250 percent primary display and a 100 percent external dis
 matched their complete monitor work areas. The cards stayed above them without taking focus, and
 Start and Alt+Tab continued to work. Escape returned all cards to their previous layer.
 
-![Cards on both displays before Summon](../docs/poc/windows-ui/w9-summon-before.png)
+![Cards on both displays before Summon](../docs/windows/ui/w9-summon-before.png)
 
-![Summon raised across two displays](../docs/poc/windows-ui/w9-summon-raised.png)
+![Summon raised across two displays](../docs/windows/ui/w9-summon-raised.png)
 
-![Cards returned after Summon](../docs/poc/windows-ui/w9-summon-released.png)
+![Cards returned after Summon](../docs/windows/ui/w9-summon-released.png)
 
 ## Settings
 
@@ -413,7 +413,7 @@ store that registry key as the protocol identifier.
 Edge, Chrome, Brave and Vivaldi get a second profile picker from the browser's `Local State`
 file in Local AppData. Firefox and other browsers have no profile picker. The replay source for
 settings screenshots
-is [`windows-settings-sample.jsonl`](../docs/poc/windows-ui/windows-settings-sample.jsonl). It was
+is [`windows-settings-sample.jsonl`](../docs/windows/ui/windows-settings-sample.jsonl). It was
 recorded from a live host in an isolated profile with neutral account and project names.
 
 ## Links, folders and the phone
@@ -451,21 +451,21 @@ console window. Developer commands attach to their parent console when one exist
 The [installer](#install) removes the `DevDeck` Run value during uninstall. Disabling the switch
 removes it immediately.
 
-![Start at login on the General page](../docs/poc/windows-ui/w13-general.png)
+![Start at login on the General page](../docs/windows/ui/w13-general.png)
 
-![DevDeck enabled in Task Manager Startup apps](../docs/poc/windows-ui/w13-startup-app.png)
+![DevDeck enabled in Task Manager Startup apps](../docs/windows/ui/w13-startup-app.png)
 
-![Browser and profile choice](../docs/poc/windows-ui/w11-browser-profile.png)
+![Browser and profile choice](../docs/windows/ui/w11-browser-profile.png)
 
-![Windows project terminal](../docs/poc/windows-ui/w11-terminal-windows.png)
+![Windows project terminal](../docs/windows/ui/w11-terminal-windows.png)
 
-![WSL project terminal](../docs/poc/windows-ui/w11-terminal-wsl.png)
+![WSL project terminal](../docs/windows/ui/w11-terminal-wsl.png)
 
-![Windows project folder](../docs/poc/windows-ui/w11-folder-windows.png)
+![Windows project folder](../docs/windows/ui/w11-folder-windows.png)
 
-![WSL project folder](../docs/poc/windows-ui/w11-folder-wsl.png)
+![WSL project folder](../docs/windows/ui/w11-folder-wsl.png)
 
-![Phone QR popup](../docs/poc/windows-ui/w11-phone-qr.png)
+![Phone QR popup](../docs/windows/ui/w11-phone-qr.png)
 
 ## Current boundary
 
@@ -560,4 +560,4 @@ poll is a question, not a command.
 The lifecycle tools also accept `ddev-start`, `ddev-status`, `ddev-stop` and `docker-format`.
 See [development.md](../docs/development.md) for separate-process checks.
 
-Live results and real captures are in the [W-12 report](../docs/poc/W12-windows-stacks-report.md).
+Live results and real captures are in the [W-12 report](../docs/windows/W12-windows-stacks-report.md).
