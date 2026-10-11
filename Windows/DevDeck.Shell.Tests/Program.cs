@@ -324,9 +324,10 @@ public static class Program
     {
         var acrylic = DeckPalette.For(ThemeInputs.Default).CardTint;
         var solid = DeckPalette.For(ThemeInputs.Default with { TransparencyEnabled = false }).CardTint;
-        Equal((byte)168, acrylic.A);
+        True(acrylic.A < 255);
         Equal((byte)255, solid.A);
-        Equal(Color.FromRgb(43, 43, 47), solid);
+        // The dark taskbar's solid colour.
+        Equal(Color.FromRgb(0x1C, 0x1C, 0x1C), solid);
     }
 
     private static void PaletteFollowsEverySchemeCombination()
@@ -338,20 +339,23 @@ public static class Program
             {
                 foreach (var accentOnTaskbar in new[] { false, true })
                 {
-                    var palette = DeckPalette.For(ThemeInputs.Default with
+                    var inputs = ThemeInputs.Default with
                     {
-                        AppsUseLightTheme = light,
+                        SystemUsesLightTheme = light,
                         TransparencyEnabled = transparent,
                         AccentOnTaskbar = accentOnTaskbar,
-                    });
-                    Equal(light, palette.IsLight);
-                    // Transparency decides Acrylic or a solid surface.
+                    };
+                    var palette = DeckPalette.For(inputs);
+                    // The card is the taskbar's material, which is light only without the accent.
+                    Equal(light && !accentOnTaskbar, palette.IsLight);
                     Equal(transparent, palette.CardTint.A < 255);
-                    // Only a dark scheme takes the taskbar's accent tint.
-                    var tinted = palette.CardTint.R == accent.R && palette.CardTint.G == accent.G && palette.CardTint.B == accent.B;
-                    Equal(!light && accentOnTaskbar, tinted);
+                    var expected = accentOnTaskbar ? accent
+                        : light ? Color.FromRgb(0xEE, 0xEE, 0xEE) : Color.FromRgb(0x1C, 0x1C, 0x1C);
+                    Equal(expected.R, palette.CardTint.R);
+                    Equal(expected.G, palette.CardTint.G);
+                    Equal(expected.B, palette.CardTint.B);
                     // Text reads on the surface: light text on dark, dark text on light.
-                    Equal(light, palette["TextPrimary"].R < 128);
+                    Equal(palette.IsLight, palette["TextPrimary"].R < 128);
                 }
             }
         }
@@ -361,7 +365,7 @@ public static class Program
     {
         foreach (var light in new[] { false, true })
         {
-            var palette = DeckPalette.For(ThemeInputs.Default with { AppsUseLightTheme = light });
+            var palette = DeckPalette.For(ThemeInputs.Default with { SystemUsesLightTheme = light });
             foreach (var key in DeckPalette.Keys)
             {
                 _ = palette[key];
@@ -386,7 +390,7 @@ public static class Program
         {
             monitor.Refresh();
             Equal(0, changes.Count);
-            inputs = inputs with { AppsUseLightTheme = true };
+            inputs = inputs with { SystemUsesLightTheme = true };
             monitor.Refresh();
             Equal(1, changes.Count);
             True(changes[0].IsLight);

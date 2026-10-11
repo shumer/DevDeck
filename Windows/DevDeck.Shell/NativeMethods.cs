@@ -39,6 +39,8 @@ public static class NativeMethods
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
         SetDarkMode(handle, !WindowsTheme.Current.IsLight);
+        // Acrylic, as the taskbar: Mica and Mica Alt fall back to a solid colour on a window that is
+        // never active, and a card never is.
         var backdrop = TransientWindowBackdrop;
         _ = DwmSetWindowAttribute(
             handle, SystemBackdropType, ref backdrop, Marshal.SizeOf<int>());

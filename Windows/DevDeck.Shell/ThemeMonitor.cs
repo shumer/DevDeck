@@ -67,7 +67,8 @@ public sealed class ThemeMonitor : IDisposable
             Registry.GetValue(PersonalizeKey, "ColorPrevalence", 0) is int prevalence && prevalence != 0,
             Convert(settings.GetColorValue(UIColorType.AccentLight2)),
             Convert(settings.GetColorValue(UIColorType.AccentDark1)),
-            Convert(settings.GetColorValue(UIColorType.AccentDark2)));
+            Convert(settings.GetColorValue(UIColorType.AccentDark2)),
+            Registry.GetValue(PersonalizeKey, "SystemUsesLightTheme", 0) is int system && system != 0);
     }
 
     private static Color Convert(global::Windows.UI.Color colour)

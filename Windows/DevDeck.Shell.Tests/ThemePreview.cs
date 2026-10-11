@@ -18,10 +18,10 @@ public static class ThemePreview
         var system = ThemeMonitor.ReadSystem();
         var variants = new (string Name, ThemeInputs Inputs, Color Backdrop)[]
         {
-            ("dark", system with { AppsUseLightTheme = false, TransparencyEnabled = true, AccentOnTaskbar = false }, Color.FromRgb(58, 62, 74)),
-            ("dark, accent on the taskbar", system with { AppsUseLightTheme = false, TransparencyEnabled = true, AccentOnTaskbar = true }, Color.FromRgb(58, 62, 74)),
-            ("light", system with { AppsUseLightTheme = true, TransparencyEnabled = true, AccentOnTaskbar = false }, Color.FromRgb(196, 204, 214)),
-            ("light, no transparency", system with { AppsUseLightTheme = true, TransparencyEnabled = false, AccentOnTaskbar = false }, Color.FromRgb(196, 204, 214)),
+            ("dark", system with { AppsUseLightTheme = false, SystemUsesLightTheme = false, TransparencyEnabled = true, AccentOnTaskbar = false }, Color.FromRgb(58, 62, 74)),
+            ("dark, accent on the taskbar", system with { AppsUseLightTheme = false, SystemUsesLightTheme = false, TransparencyEnabled = true, AccentOnTaskbar = true }, Color.FromRgb(58, 62, 74)),
+            ("light", system with { AppsUseLightTheme = true, SystemUsesLightTheme = true, TransparencyEnabled = true, AccentOnTaskbar = false }, Color.FromRgb(196, 204, 214)),
+            ("light, no transparency", system with { AppsUseLightTheme = true, SystemUsesLightTheme = true, TransparencyEnabled = false, AccentOnTaskbar = false }, Color.FromRgb(196, 204, 214)),
         };
         var models = ReadModels(fixturePath);
         // Brushes follow the palette live, so each scheme is drawn before the next one applies.
@@ -35,7 +35,7 @@ public static class ThemePreview
                 Text = name,
                 Margin = new Thickness(24, 16, 24, 8),
                 FontSize = 13,
-                Foreground = new SolidColorBrush(inputs.AppsUseLightTheme ? Color.FromRgb(20, 20, 20) : Color.FromRgb(240, 240, 240)),
+                Foreground = new SolidColorBrush(inputs.TaskbarIsLight ? Color.FromRgb(20, 20, 20) : Color.FromRgb(240, 240, 240)),
             });
             foreach (var card in Cards)
             {

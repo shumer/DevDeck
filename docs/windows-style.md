@@ -215,6 +215,13 @@ they change:
   the accent is shown on the taskbar and the plain one when it is not. The deck and the taskbar
   read as one surface in every setting. Decided 2026-10-11 over a tint of the card's own; the
   `#28282C` tint in section 2 is superseded by this rule.
+  Measured on Windows 11 25H2: the solid taskbar is `#1C1C1C` dark, `#EEEEEE` light and the
+  accent's `AccentDark2` with the accent shown; over Acrylic the same colour lies at about 92%
+  dark (with or without the accent) and 80% light, worked out from the wallpaper beneath the
+  taskbar. The card uses the Acrylic backdrop (`DWMSBT_TRANSIENTWINDOW`): Mica and Mica Alt fall
+  back to a solid colour on a window that is never active. With the accent shown Windows draws
+  the taskbar dark with light text in either mode, so the card's text palette follows the
+  taskbar's material, not the app mode.
 
 Light tokens, darkened until they read on a light veil (contrast checked against `#F3F3F3`
 at 72%):

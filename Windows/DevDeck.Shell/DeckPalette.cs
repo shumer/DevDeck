@@ -2,15 +2,16 @@ using System.Windows.Media;
 
 namespace DevDeck.Shell;
 
-// What Windows says about its scheme: the app mode, transparency effects, the accent on Start and
-// the taskbar, and the accent's shades.
+// What Windows says about its scheme: the app mode, the Windows mode the taskbar follows,
+// transparency effects, the accent on Start and the taskbar, and the accent's shades.
 public sealed record ThemeInputs(
     bool AppsUseLightTheme,
     bool TransparencyEnabled,
     bool AccentOnTaskbar,
     Color AccentLight2,
     Color AccentDark1,
-    Color AccentDark2)
+    Color AccentDark2,
+    bool SystemUsesLightTheme = false)
 {
     public static ThemeInputs Default { get; } = new(
         false,
@@ -19,6 +20,10 @@ public sealed record ThemeInputs(
         Color.FromRgb(0x99, 0xEB, 0xFF),
         Color.FromRgb(0x00, 0x5A, 0x9E),
         Color.FromRgb(0x00, 0x42, 0x75));
+
+    // The card is drawn in the taskbar's material, and the taskbar is light only in the light
+    // Windows mode without the accent: with the accent Windows draws it dark, with light text.
+    public bool TaskbarIsLight => SystemUsesLightTheme && !AccentOnTaskbar;
 }
 
 // Every colour the shell draws, for one scheme. The engine sends meanings; this maps them, and
@@ -67,7 +72,7 @@ public sealed class DeckPalette
 
     public static DeckPalette For(ThemeInputs inputs)
     {
-        return inputs.AppsUseLightTheme ? Light(inputs) : Dark(inputs);
+        return inputs.TaskbarIsLight ? Light(inputs) : Dark(inputs);
     }
 
     public Color Tone(string? tone)
@@ -99,13 +104,28 @@ public sealed class DeckPalette
         return lightTaskbar ? Color.FromRgb(34, 34, 34) : Color.FromRgb(246, 246, 246);
     }
 
+    // The taskbar's colour as measured on Windows 11: #1C1C1C dark, #EEEEEE light, the accent's
+    // second dark shade with the accent shown. With transparency the same colour lies over the
+    // blur at the taskbar's opacity.
+    public static Color TaskbarColour(ThemeInputs inputs)
+    {
+        var solid = inputs.AccentOnTaskbar
+            ? inputs.AccentDark2
+            : inputs.TaskbarIsLight ? Color.FromRgb(0xEE, 0xEE, 0xEE) : Color.FromRgb(0x1C, 0x1C, 0x1C);
+        var opacity = !inputs.TransparencyEnabled ? (byte)255 : TaskbarOpacity(inputs);
+        return Color.FromArgb(opacity, solid.R, solid.G, solid.B);
+    }
+
+    // The taskbar's tint over its Acrylic, worked out on this machine from the wallpaper beneath it:
+    // about 92% dark, with or without the accent, and 80% light.
+    private static byte TaskbarOpacity(ThemeInputs inputs)
+    {
+        return inputs.TaskbarIsLight ? (byte)204 : (byte)235;
+    }
+
     private static DeckPalette Dark(ThemeInputs inputs)
     {
-        // With the accent on the taskbar, the card takes the taskbar's tint so both read as one
-        // material; otherwise the deck's own dark grey.
-        var tint = inputs.AccentOnTaskbar
-            ? Color.FromArgb(inputs.TransparencyEnabled ? (byte)178 : (byte)255, inputs.AccentDark2.R, inputs.AccentDark2.G, inputs.AccentDark2.B)
-            : inputs.TransparencyEnabled ? Color.FromArgb(168, 40, 40, 44) : Color.FromRgb(43, 43, 47);
+        var tint = TaskbarColour(inputs);
         return new DeckPalette(false, tint, inputs.AccentLight2, Color.FromArgb(230, 0, 0, 0), new Dictionary<string, Color>
         {
             ["TextPrimary"] = Color.FromArgb(0xF2, 255, 255, 255),
@@ -140,23 +160,22 @@ public sealed class DeckPalette
 
     private static DeckPalette Light(ThemeInputs inputs)
     {
-        // The light veil never takes the accent: Windows tints only a dark taskbar with it.
-        var tint = inputs.TransparencyEnabled ? Color.FromArgb(184, 243, 243, 243) : Color.FromRgb(243, 243, 243);
+        var tint = TaskbarColour(inputs);
         return new DeckPalette(true, tint, inputs.AccentDark1, Color.FromRgb(255, 255, 255), new Dictionary<string, Color>
         {
             ["TextPrimary"] = Color.FromArgb(0xEB, 0, 0, 0),
-            ["TextSecondary"] = Color.FromArgb(0x9E, 0, 0, 0),
-            ["TextTertiary"] = Color.FromArgb(0x73, 0, 0, 0),
+            ["TextSecondary"] = Color.FromArgb(0xB8, 0, 0, 0),
+            ["TextTertiary"] = Color.FromArgb(0x94, 0, 0, 0),
             ["ToneGood"] = Color.FromRgb(0x0F, 0x7B, 0x4A),
             ["ToneAttention"] = Color.FromRgb(0x8A, 0x5A, 0x00),
             ["ToneAlert"] = Color.FromRgb(0xB3, 0x26, 0x1E),
             ["TonePersonal"] = Color.FromRgb(0x5B, 0x3F, 0xAE),
             ["LinkInfo"] = Color.FromRgb(0x0F, 0x5A, 0xA8),
             ["EnvironmentInfo"] = Color.FromRgb(0x5B, 0x3F, 0xAE),
-            ["ControlFill"] = Color.FromArgb(0x0B, 0, 0, 0),
-            ["ControlHover"] = Color.FromArgb(0x12, 0, 0, 0),
-            ["ControlPressed"] = Color.FromArgb(0x08, 0, 0, 0),
-            ["ControlStroke"] = Color.FromArgb(0x17, 0, 0, 0),
+            ["ControlFill"] = Color.FromArgb(0x0F, 0, 0, 0),
+            ["ControlHover"] = Color.FromArgb(0x17, 0, 0, 0),
+            ["ControlPressed"] = Color.FromArgb(0x0A, 0, 0, 0),
+            ["ControlStroke"] = Color.FromArgb(0x21, 0, 0, 0),
             ["SeparatorStroke"] = Color.FromArgb(0x0F, 0, 0, 0),
             ["FocusOuter"] = Color.FromArgb(0xE4, 0, 0, 0),
             ["FocusInner"] = Color.FromRgb(255, 255, 255),
