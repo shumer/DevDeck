@@ -154,6 +154,26 @@ The WSL tool also accepts `timeout` and `cancel`. These are live checks: they ne
 distribution, project folders and start commands. They verify the process lifetime rules in
 [adr/0023-project-process-lifetime.md](adr/0023-project-process-lifetime.md).
 
+DDEV uses the same configuration, with each project's `id` set to its DDEV name and
+`path` set to its project folder. Each tool accepts `ddev-start`, `ddev-status` and
+`ddev-stop`. Run them as three separate processes to verify that the containers survive
+the starter and can be stopped by a new process. `docker-format` prints the Docker
+version and compose working-directory labels using the commands the runtime uses.
+Compare the Windows and WSL outputs against the same daemon.
+
+DDEV status is read from the project's own place. Candidates combine the native and WSL
+lists, prefer a reachable record over an inaccessible duplicate, and spell WSL folders
+as UNC paths. Status records use that same spelling so a renamed project still matches
+by folder. A successful WSL query does not hide a missing native DDEV executable.
+
+On Windows, Arc matches Linux compose working-directory labels against the Linux path
+inside a WSL UNC folder. Native DDEV candidates exclude Linux folders the native client
+cannot reach. These path checks do not change POSIX folder handling on the Mac.
+
+A Windows DDEV card distinguishes an unavailable CLI from a project missing from a
+successful list. The engine supplies the unavailable wording and disables Start in that
+case; the shell does not translate an unknown state into its own message.
+
 Mac changes are checked on the Mac and Windows changes on Windows: a branch that touches both is
 merged when both are green.
 

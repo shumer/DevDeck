@@ -78,6 +78,8 @@ public struct DDEVListEntry: Sendable, Equatable, Codable {
 
 /// Everything a DDEV card draws.
 public struct DDEVStatus: Sendable, Equatable {
+    /// The CLI could not provide a project list.
+    public var listUnavailable: Bool
     public var state: DDEVState
     public var entry: DDEVListEntry?
     public var config: DDEVConfig
@@ -92,6 +94,7 @@ public struct DDEVStatus: Sendable, Equatable {
 
     public init(
         state: DDEVState,
+        listUnavailable: Bool = false,
         entry: DDEVListEntry? = nil,
         config: DDEVConfig = DDEVConfig(),
         branch: String? = nil,
@@ -100,6 +103,7 @@ public struct DDEVStatus: Sendable, Equatable {
         detail: String? = nil,
         checkedAt: Date? = nil
     ) {
+        self.listUnavailable = listUnavailable
         self.state = state
         self.entry = entry
         self.config = config

@@ -214,6 +214,14 @@
   `DevDeck` Run value, verifies that it still points at this executable, and the GUI shell starts
   at sign-in without a console window. W-13.
 
+- **DDEV status stays in the project's place** - native and WSL clients can see the same
+  Docker daemon. The runtime queries each place once, uses only that place for project status
+  and prefers reachable candidate records over inaccessible duplicates.
+
+- **Windows can launch Docker Desktop from an engine effect** - DDEV uses its native or WSL
+  client according to the project folder, Arc runs in WSL, and both lifecycle tools cover
+  separate-process DDEV start, status and stop checks. W-12.
+
 ## Next
 
 1. **Windows** - one engine, two thin shells, Windows 11 only. The core already builds there; the

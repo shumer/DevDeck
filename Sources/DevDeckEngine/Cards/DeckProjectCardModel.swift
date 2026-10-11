@@ -202,6 +202,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             // Docker first: without it `ddev list` cannot answer either, and "unknown to ddev"
             // would be a true sentence that helps nobody.
             hero = Hero(tone: DockerGate.tone(docker), text: DockerGate.text(docker), note: nil, help: status.detail ?? DockerGate.text(docker))
+        } else if ddevUnavailable(status) {
+            hero = Hero(tone: .alert, text: L("ddev.silent.title"), note: L("ddev.silent.detail"), help: L("ddev.silent.detail"))
         } else {
             let tone: DeckTone
             let text: String
@@ -223,7 +225,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
 
         let lifecycle = lifecycle(
             card: card, blocked: blocked, docker: docker, canStartDocker: canStartDocker,
-            isRunning: status.isRunning, canStart: !status.isBusy, canRestart: true
+            isRunning: status.isRunning, canStart: !status.isBusy && !ddevUnavailable(status), canRestart: !ddevUnavailable(status)
         )
         let note = status.isRunning ? (status.mutagenWarning ?? hero.text) : hero.text
         let folder = project.folderURL?.lastPathComponent
@@ -260,6 +262,14 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             ),
             isCollapsed: isCollapsed
         )
+    }
+
+    private static func ddevUnavailable(_ status: DDEVStatus) -> Bool {
+        #if os(Windows)
+        return status.listUnavailable
+        #else
+        return false
+        #endif
     }
 
     public static func local(

@@ -397,3 +397,20 @@ phone icon appears only when the engine supplies `header.phoneURL`; its popup us
 supplied title, note and address.
 
 Installing an update from the `installUpdate` effect remains outside this shell milestone.
+
+## Docker and DDEV on Windows
+
+The `launchDocker` effect starts `%ProgramFiles%\Docker\Docker\Docker Desktop.exe`
+without waiting. The next engine polls supply the progress and card actions.
+The shell does not infer Docker state from the desktop process.
+
+Install the native DDEV executable on the Windows user PATH for Windows project folders.
+For a WSL folder, install DDEV inside that distribution and enable Docker Desktop's
+integration there. The engine selects the runner from the folder, queries each configured
+place and presents WSL candidates with their UNC folders. Arc Fusion is checked in WSL
+only. Native Fusion is not supported.
+
+The lifecycle tools also accept `ddev-start`, `ddev-status`, `ddev-stop` and `docker-format`.
+See [development.md](../docs/development.md) for separate-process checks.
+
+Live results and real captures are in the [W-12 report](../docs/poc/W12-windows-stacks-report.md).

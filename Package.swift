@@ -57,12 +57,12 @@ let package = Package(
 
         .executableTarget(
             name: "DevDeckWindowsLifecycle",
-            dependencies: ["DevDeckCore", "DevDeckEngine", "ProjectKit"],
+            dependencies: ["DevDeckCore", "DevDeckEngine", "ProjectKit", "DDEVKit", "ArcKit"],
             path: "Tools/WindowsLifecycle"
         ),
         .executableTarget(
             name: "DevDeckWSLLifecycleSmoke",
-            dependencies: ["DevDeckCore", "DevDeckEngine", "ProjectKit"],
+            dependencies: ["DevDeckCore", "DevDeckEngine", "ProjectKit", "DDEVKit", "ArcKit"],
             path: "Tools/WSLLifecycleSmoke"
         ),
 

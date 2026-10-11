@@ -125,8 +125,8 @@ Every task ends with screenshots on neutral data and a check against the shell r
   the phone QR code. Done: registered browsers and Chromium profiles follow the engine's choice,
   both folder kinds open in the right terminal and Explorer context, and the phone popup builds
   its QR locally from the engine supplied address.
-- **W-12.** Docker Desktop, DDEV natively and in WSL, Arc in WSL; the 0023 scenarios become
-  standing checks.
+- **W-12.** Docker Desktop, DDEV natively and in WSL, Arc in WSL. Implemented with live checks
+  and path regression tests. ADR 0023 DDEV scenarios are standing separate-process checks.
 - **W-13.** Start at login. Done: the General switch reads and writes the current user's
   `DevDeck` Run value, the installer flag enables the same entry, and the GUI executable starts
   at sign-in without a console window.

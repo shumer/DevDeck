@@ -22,6 +22,7 @@ public static class PlatformEffects
                     TerminalPlan(folder, ExecutableExists("wt.exe")),
                 "revealFolder" when JsonModel.String(effect, "folder") is { } folder =>
                     new PlatformLaunchPlan("explorer.exe", [folder], true),
+                "launchDocker" => DockerPlan(),
                 _ => null,
             };
             if (plan is null)
@@ -35,6 +36,17 @@ public static class PlatformEffects
         {
             Console.Error.WriteLine($"Engine effect failed: {kind ?? "unknown"}.");
         }
+    }
+
+    public static PlatformLaunchPlan DockerPlan(string? programFiles = null)
+    {
+        var directory = programFiles
+            ?? Environment.GetEnvironmentVariable("ProgramFiles")
+            ?? @"C:\Program Files";
+        return new PlatformLaunchPlan(
+            Path.Combine(directory, "Docker", "Docker", "Docker Desktop.exe"),
+            [],
+            true);
     }
 
     public static PlatformLaunchPlan BrowserPlan(

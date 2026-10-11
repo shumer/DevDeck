@@ -128,6 +128,7 @@ public static class Program
         Run("Chromium Local State yields named profiles", ChromiumLocalStateYieldsNamedProfiles);
         Run("browser launch plans keep the chosen profile", BrowserLaunchPlansKeepChosenProfile);
         Run("terminal plans enter Windows and WSL folders", TerminalPlansEnterWindowsAndWslFolders);
+        Run("Docker launches from Program Files without arguments", DockerLaunchesFromProgramFiles);
         Run("phone QR bytes are stable", PhoneQrBytesAreStable);
         Run("login item uses the Run value and quoted executable", LoginItemUsesRunValueAndQuotedExecutable);
         Run("disabling the login item deletes its value", DisablingLoginItemDeletesItsValue);
@@ -1551,6 +1552,14 @@ public static class Program
         var plain = PlatformEffects.BrowserPlan(
             "https://example.invalid", "MSEdge", null, browsers);
         Equal("https://example.invalid", string.Join(',', plain.Arguments));
+    }
+
+    private static void DockerLaunchesFromProgramFiles()
+    {
+        var plan = PlatformEffects.DockerPlan(@"C:\Program Files");
+        Equal(@"C:\Program Files\Docker\Docker\Docker Desktop.exe", plan.Executable);
+        Equal(0, plan.Arguments.Count);
+        True(plan.UseShellExecute);
     }
 
     private static void TerminalPlansEnterWindowsAndWslFolders()

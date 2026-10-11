@@ -97,6 +97,7 @@ public struct DDEVEnvironment: Sendable {
         guard let entries else {
             return DDEVStatus(
                 state: .unknown,
+                listUnavailable: true,
                 config: config,
                 branch: branch,
                 repositoryURL: repositoryURL,

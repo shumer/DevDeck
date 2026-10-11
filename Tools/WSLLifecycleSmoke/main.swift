@@ -1,3 +1,5 @@
+import ArcKit
+import DDEVKit
 import DevDeckCore
 import DevDeckEngine
 import Foundation
@@ -54,6 +56,41 @@ do {
     }
     let runner = WSLCommandRunner(distribution: distribution)
     let folder = URL(fileURLWithPath: path, isDirectory: true)
+    if arguments.action == "docker-format" {
+        for command in [DockerEnvironment.probeCommand, LocalStackService.listCommand] {
+            let result = try await runner.run(command, in: folder, timeout: 30)
+            guard result.succeeded else {
+                throw CommandError.launchFailed(result.standardError)
+            }
+            print(result.standardOutput, terminator: "")
+        }
+        exit(0)
+    }
+    if arguments.action.hasPrefix("ddev-") {
+        guard ["ddev-start", "ddev-status", "ddev-stop"].contains(arguments.action) else {
+            throw CommandError.launchFailed("Unknown DDEV lifecycle action.")
+        }
+        let ddevProject = DDEVProject(id: config.id, name: config.id, title: config.title, folder: path)
+        let environment = DDEVEnvironment(runner: runner, workingDirectory: folder)
+        if arguments.action != "ddev-status" {
+            let action: DDEVAction = arguments.action == "ddev-start" ? .start : .stop
+            guard let result = await environment.perform(action, for: ddevProject) else {
+                throw CommandError.launchFailed("DDEV action returned no result.")
+            }
+            guard result.succeeded else {
+                throw CommandError.launchFailed(result.standardError + result.standardOutput)
+            }
+        }
+        guard let entries = await environment.list() else {
+            throw CommandError.launchFailed("DDEV did not answer the lifecycle check.")
+        }
+        let status = environment.status(for: ddevProject, entries: entries)
+        print(status.state.rawValue)
+        guard status.state == (arguments.action == "ddev-stop" ? .stopped : .running) else {
+            throw CommandError.launchFailed("Unexpected DDEV project state.")
+        }
+        exit(0)
+    }
     let project = LocalProject(
         id: config.id, title: config.title, folder: path,
         startCommand: config.startCommand, holdsProcess: true, healthURL: config.healthURL
