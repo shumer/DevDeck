@@ -28,7 +28,7 @@ public static class ThemePreview
         var columns = new List<BitmapSource>();
         foreach (var (name, inputs, backdrop) in variants)
         {
-            WindowsTheme.Apply(DeckPalette.For(inputs));
+            WindowsTheme.Apply(DeckPalette.ForCards(inputs), DeckPalette.ForWindows(inputs));
             var column = new StackPanel { Background = new SolidColorBrush(backdrop) };
             column.Children.Add(new TextBlock
             {
@@ -46,7 +46,7 @@ public static class ThemePreview
             }
             columns.Add(Draw(column));
         }
-        WindowsTheme.Apply(DeckPalette.For(ThemeInputs.Default));
+        WindowsTheme.Apply(DeckPalette.ForCards(ThemeInputs.Default), DeckPalette.ForWindows(ThemeInputs.Default));
         var row = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var column in columns)
         {

@@ -223,11 +223,11 @@ public sealed class ShellSurface : IShellSurface
     }
 
     // Brushes from the palette follow on their own; a card's surface and every frame are redrawn.
-    private void OnThemeChanged(DeckPalette palette)
+    private void OnThemeChanged(DeckPalette cardPalette, DeckPalette windowPalette)
     {
         foreach (var (card, window) in windows)
         {
-            NativeMethods.SetDarkMode(window.Handle, !palette.IsLight, redrawFrame: false);
+            NativeMethods.SetDarkMode(window.Handle, !cardPalette.IsLight, redrawFrame: false);
             if (cards.TryGetValue(card, out var state))
             {
                 window.Update(state.Model);
@@ -238,7 +238,7 @@ public sealed class ShellSurface : IShellSurface
         {
             if (window is not CardWindow)
             {
-                NativeMethods.SetDarkMode(new System.Windows.Interop.WindowInteropHelper(window).Handle, !palette.IsLight);
+                NativeMethods.SetDarkMode(new System.Windows.Interop.WindowInteropHelper(window).Handle, !windowPalette.IsLight);
             }
         }
     }

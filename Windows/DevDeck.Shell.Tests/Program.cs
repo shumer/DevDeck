@@ -85,6 +85,7 @@ public static class Program
         Run("dialog buttons carry the accent or the alert tone", DialogButtonsCarryTheirTone);
         Run("scroll bars and combo boxes follow the dark surface", ScrollBarsAndComboBoxesFitTheSurface);
         Run("the palette follows every scheme combination", PaletteFollowsEverySchemeCombination);
+        Run("windows follow the app mode", WindowPaletteFollowsTheAppMode);
         Run("every token and tone is in both palettes", EveryTokenAndToneIsInBothPalettes);
         Run("a scheme change redraws without a restart", ThemeChangesRedrawWithoutRestart);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
@@ -322,8 +323,8 @@ public static class Program
 
     private static void CardMaterialsHaveBothVariants()
     {
-        var acrylic = DeckPalette.For(ThemeInputs.Default).CardTint;
-        var solid = DeckPalette.For(ThemeInputs.Default with { TransparencyEnabled = false }).CardTint;
+        var acrylic = DeckPalette.ForCards(ThemeInputs.Default).CardTint;
+        var solid = DeckPalette.ForCards(ThemeInputs.Default with { TransparencyEnabled = false }).CardTint;
         True(acrylic.A < 255);
         Equal((byte)255, solid.A);
         // The dark taskbar's solid colour.
@@ -345,7 +346,7 @@ public static class Program
                         TransparencyEnabled = transparent,
                         AccentOnTaskbar = accentOnTaskbar,
                     };
-                    var palette = DeckPalette.For(inputs);
+                    var palette = DeckPalette.ForCards(inputs);
                     // The card is the taskbar's material, which is light only without the accent.
                     Equal(light && !accentOnTaskbar, palette.IsLight);
                     Equal(transparent, palette.CardTint.A < 255);
@@ -361,11 +362,35 @@ public static class Program
         }
     }
 
+    private static void WindowPaletteFollowsTheAppMode()
+    {
+        foreach (var light in new[] { false, true })
+        {
+            foreach (var transparent in new[] { false, true })
+            {
+                foreach (var accentOnTaskbar in new[] { false, true })
+                {
+                    // Windows follow the app mode whatever the taskbar does.
+                    var palette = DeckPalette.ForWindows(ThemeInputs.Default with
+                    {
+                        AppsUseLightTheme = light,
+                        SystemUsesLightTheme = !light,
+                        TransparencyEnabled = transparent,
+                        AccentOnTaskbar = accentOnTaskbar,
+                    });
+                    Equal(light, palette.IsLight);
+                    Equal(light, palette["TextPrimary"].R < 128);
+                    Equal(light ? Color.FromRgb(243, 243, 243) : Color.FromRgb(32, 32, 32), palette["WindowBackground"]);
+                }
+            }
+        }
+    }
+
     private static void EveryTokenAndToneIsInBothPalettes()
     {
         foreach (var light in new[] { false, true })
         {
-            var palette = DeckPalette.For(ThemeInputs.Default with { SystemUsesLightTheme = light });
+            var palette = DeckPalette.ForCards(ThemeInputs.Default with { SystemUsesLightTheme = light });
             foreach (var key in DeckPalette.Keys)
             {
                 _ = palette[key];
@@ -383,20 +408,32 @@ public static class Program
     {
         var inputs = ThemeInputs.Default;
         var monitor = new ThemeMonitor(Dispatcher.CurrentDispatcher, () => inputs);
-        var brush = (SolidColorBrush)WindowsTheme.Brush("TextPrimary");
-        var changes = new List<DeckPalette>();
-        monitor.Changed += changes.Add;
+        var cardBrush = (SolidColorBrush)WindowsTheme.CardBrush("TextPrimary");
+        var windowBrush = (SolidColorBrush)WindowsTheme.Brush("TextPrimary");
+        var changes = new List<(DeckPalette Cards, DeckPalette Windows)>();
+        monitor.Changed += (cards, windows) => changes.Add((cards, windows));
         try
         {
             monitor.Refresh();
             Equal(0, changes.Count);
+            // A light Windows mode with dark apps: the cards follow the taskbar, windows stay dark.
             inputs = inputs with { SystemUsesLightTheme = true };
             monitor.Refresh();
             Equal(1, changes.Count);
-            True(changes[0].IsLight);
-            // A brush a view already holds now carries the light colour, and so do the styles.
-            Equal(changes[0]["TextPrimary"], brush.Color);
-            Equal(changes[0]["TextPrimary"], ((SolidColorBrush)Application.Current.FindResource("TextPrimary")).Color);
+            True(changes[0].Cards.IsLight);
+            True(!changes[0].Windows.IsLight);
+            Equal(changes[0].Cards["TextPrimary"], cardBrush.Color);
+            Equal(changes[0].Windows["TextPrimary"], windowBrush.Color);
+            True(cardBrush.Color != windowBrush.Color);
+            // Styles inside a card resolve the card's palette from the dictionary on its root.
+            var card = Render(GoldenModels("arc.project.paper").Last());
+            var chip = Descendants(card).OfType<Button>().First(button => Equals(button.Content, "PageBuilder"));
+            Equal(changes[0].Cards["ControlFill"], ((SolidColorBrush)chip.Background).Color);
+            // Light apps: windows follow, and so do the styles' entries.
+            inputs = inputs with { AppsUseLightTheme = true };
+            monitor.Refresh();
+            Equal(changes[1].Windows["TextPrimary"], windowBrush.Color);
+            Equal(changes[1].Windows["TextPrimary"], ((SolidColorBrush)Application.Current.FindResource("TextPrimary")).Color);
         }
         finally
         {

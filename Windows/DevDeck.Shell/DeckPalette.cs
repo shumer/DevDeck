@@ -70,9 +70,16 @@ public sealed class DeckPalette
 
     public Color this[string key] => tokens[key];
 
-    public static DeckPalette For(ThemeInputs inputs)
+    // A card is the taskbar's material, so its text palette follows the taskbar.
+    public static DeckPalette ForCards(ThemeInputs inputs)
     {
         return inputs.TaskbarIsLight ? Light(inputs) : Dark(inputs);
+    }
+
+    // Windows, menus and dialogs follow the app mode, as any Windows application does.
+    public static DeckPalette ForWindows(ThemeInputs inputs)
+    {
+        return inputs.AppsUseLightTheme ? Light(inputs) : Dark(inputs);
     }
 
     public Color Tone(string? tone)

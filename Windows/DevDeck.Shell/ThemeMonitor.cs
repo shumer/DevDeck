@@ -20,7 +20,7 @@ public sealed class ThemeMonitor : IDisposable
         this.dispatcher = dispatcher;
         this.read = read ?? ReadSystem;
         Inputs = this.read();
-        WindowsTheme.Apply(DeckPalette.For(Inputs));
+        WindowsTheme.Apply(DeckPalette.ForCards(Inputs), DeckPalette.ForWindows(Inputs));
         if (read is null)
         {
             // UISettings reports the app mode and the accent; the taskbar accent and transparency
@@ -31,7 +31,8 @@ public sealed class ThemeMonitor : IDisposable
         }
     }
 
-    public event Action<DeckPalette>? Changed;
+    // The cards' palette and the windows' palette.
+    public event Action<DeckPalette, DeckPalette>? Changed;
 
     public ThemeInputs Inputs { get; private set; }
 
@@ -43,9 +44,10 @@ public sealed class ThemeMonitor : IDisposable
             return;
         }
         Inputs = next;
-        var palette = DeckPalette.For(next);
-        WindowsTheme.Apply(palette);
-        Changed?.Invoke(palette);
+        var cards = DeckPalette.ForCards(next);
+        var windows = DeckPalette.ForWindows(next);
+        WindowsTheme.Apply(cards, windows);
+        Changed?.Invoke(cards, windows);
     }
 
     public void Dispose()
