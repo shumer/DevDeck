@@ -448,8 +448,15 @@ The shell does not infer Docker state from the desktop process.
 Install the native DDEV executable on the Windows user PATH for Windows project folders.
 For a WSL folder, install DDEV inside that distribution and enable Docker Desktop's
 integration there. The engine selects the runner from the folder, queries each configured
-place and presents WSL candidates with their UNC folders. Arc Fusion is checked in WSL
-only. Native Fusion is not supported.
+place and presents WSL candidates with their UNC folders. Arc Fusion was checked live
+in both places, natively on Docker Desktop and in WSL.
+
+One Fusion stack runs per Docker daemon. Fusion gives every checkout the same compose
+project, so two Arc checkouts that reach one daemon replace each other. With Docker
+Desktop's WSL integration on, a checkout in WSL and one started from Windows share that
+daemon: starting one stops the other, and its card shows stopped. Checkouts that serve on
+the same port, 80 by default, also answer each other's health checks. The Arc section of
+the [main README](../README.md) has the details.
 
 The lifecycle tools also accept `ddev-start`, `ddev-status`, `ddev-stop` and `docker-format`.
 See [development.md](../docs/development.md) for separate-process checks.
