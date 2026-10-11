@@ -324,6 +324,21 @@ public static class ProtocolWriter
         return Write(id, intent, null);
     }
 
+    public static string Update(string id, string intent, double? fraction = null, string? reason = null)
+    {
+        return Write(id, intent, writer =>
+        {
+            if (fraction is { } value)
+            {
+                writer.WriteNumber("fraction", value);
+            }
+            if (reason is not null)
+            {
+                writer.WriteString("reason", reason);
+            }
+        });
+    }
+
     private static string Write(string id, string intent, Action<Utf8JsonWriter>? fields)
     {
         using var stream = new MemoryStream();

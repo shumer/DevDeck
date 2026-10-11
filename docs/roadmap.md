@@ -2,6 +2,10 @@
 
 ## Done
 
+- Windows updates download the installer and its checksum, verify SHA256, report progress to
+  the engine and let the quiet installer close and restart the shell. See
+  [the update verification](poc/W17-windows-update-report.md).
+
 - Windows release CI builds the installer after the Mac package passes, writes its SHA256 and
   appends installation notes. Dry runs keep both packages as Actions artifacts without changing
   the release. See [the release verification](poc/W18-windows-release-report.md).
