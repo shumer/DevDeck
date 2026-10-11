@@ -329,6 +329,12 @@ func runSessionGoldenTests(_ run: TestRun) async {
         runtime.stop()
         await runtime.refreshLocalOnce()
         try expectEqual(runtime.ddevStatus(for: outside).detail, L("ddev.silent.title"))
+        #if os(Windows)
+        let model = DeckProjectCardModel.ddev(outside, status: runtime.ddevStatus(for: outside), docker: DockerStatus(state: .running), canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectEqual(model.hero.text, L("ddev.silent.title"))
+        try expectEqual(model.hero.note, L("ddev.silent.detail"))
+        try expect(!model.actions[0].isEnabled, "a missing DDEV cannot start a project")
+        #endif
     }
 
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {

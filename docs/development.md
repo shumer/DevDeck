@@ -162,6 +162,10 @@ On Windows, Arc matches Linux compose working-directory labels against the Linux
 inside a WSL UNC folder. Native DDEV candidates exclude Linux folders the native client
 cannot reach. These path checks do not change POSIX folder handling on the Mac.
 
+A Windows DDEV card distinguishes an unavailable CLI from a project missing from a
+successful list. The engine supplies the unavailable wording and disables Start in that
+case; the shell does not translate an unknown state into its own message.
+
 Mac changes are checked on the Mac and Windows changes on Windows: a branch that touches both is
 merged when both are green.
 
