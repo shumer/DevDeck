@@ -66,6 +66,7 @@ public static class Program
         }
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
         Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
+        Run("the protocol trace records both directions without typed tokens", ProtocolTraceLeavesTokensOut);
         Run("a second launch raises the first deck", SecondLaunchSignalsFirst);
         Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
@@ -1712,6 +1713,31 @@ public static class Program
         }
         using var next = new SingleInstance(name);
         True(next.IsFirst);
+    }
+
+    private static void ProtocolTraceLeavesTokensOut()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "devdeck-trace-" + Guid.NewGuid() + ".jsonl");
+        try
+        {
+            var options = ShellOptions.Parse(["--trace", path]);
+            Equal<string?>(Path.GetFullPath(path), options.TracePath);
+            using (var trace = new ProtocolTrace(options.TracePath!))
+            {
+                trace.Sent("{\"intent\":\"session.start\"}");
+                trace.Sent("{\"intent\":\"settings\",\"request\":{\"checkGitHubToken\":{\"typed\":\"secret-value\"}}}");
+                trace.Received("{\"event\":\"panels.changed\"}");
+            }
+            var lines = File.ReadAllLines(path);
+            Equal(3, lines.Length);
+            True(lines[0].Contains(" > {\"intent\":\"session.start\"}", StringComparison.Ordinal));
+            True(!File.ReadAllText(path).Contains("secret-value", StringComparison.Ordinal));
+            True(lines[2].Contains(" < {\"event\":\"panels.changed\"}", StringComparison.Ordinal));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     private static void SecondLaunchSignalsFirst()

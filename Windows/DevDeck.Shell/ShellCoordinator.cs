@@ -35,13 +35,15 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private readonly CancellationTokenSource cancellation = new();
     private readonly object engineLock = new();
     private EngineClient? engine;
+    private readonly ProtocolTrace? trace;
     private Task? hostLoop;
     private long nextId;
     private bool beganSession;
     private readonly AsyncShutdown shutdown;
 
-    public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface)
+    public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface, ProtocolTrace? trace = null)
     {
+        this.trace = trace;
         this.dispatcher = dispatcher;
         this.enginePath = enginePath;
         this.surface = surface;
@@ -122,7 +124,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
         var hadSession = false;
         while (!cancellation.IsCancellationRequested)
         {
-            await using var client = new EngineClient(enginePath);
+            await using var client = new EngineClient(enginePath, trace);
             client.EventReceived += message => dispatcher.BeginInvoke(() => Apply(message));
             lock (engineLock)
             {

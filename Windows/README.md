@@ -199,6 +199,15 @@ dotnet run --project Windows/DevDeck.Shell -- --add-project \\wsl.localhost\Ubun
 dotnet run --project Windows/DevDeck.Shell -- --remove-project project.sample-api
 ```
 
+`--trace <file>` appends every protocol line to a file, each with a timestamp and `<` for the
+host's lines or `>` for the shell's. A settings request that carries a typed token is replaced
+by a note, so no token reaches the file. It is a developer flag for questions about timing,
+such as which `panels.changed` came before a card overlapped another.
+
+```powershell
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --trace C:	emp\devdeck-trace.jsonl
+```
+
 The host stores tokens in Windows Credential Manager. The shell contains no token storage code and
 never reads a token.
 

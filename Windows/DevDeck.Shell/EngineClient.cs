@@ -9,11 +9,13 @@ public sealed class EngineClient : IAsyncDisposable
     private readonly Process process;
     private readonly SemaphoreSlim inputLock = new(1, 1);
     private readonly TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ProtocolTrace? trace;
     private bool started;
     private bool stopping;
 
-    public EngineClient(string executablePath)
+    public EngineClient(string executablePath, ProtocolTrace? trace = null)
     {
+        this.trace = trace;
         process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -64,6 +66,7 @@ public sealed class EngineClient : IAsyncDisposable
                 return;
             }
 
+            trace?.Sent(line);
             await process.StandardInput.WriteLineAsync(line);
             await process.StandardInput.FlushAsync();
         }
@@ -106,6 +109,7 @@ public sealed class EngineClient : IAsyncDisposable
         {
             while (await process.StandardOutput.ReadLineAsync() is { } line)
             {
+                trace?.Received(line);
                 try
                 {
                     EventReceived?.Invoke(DeckEvent.Parse(line));
