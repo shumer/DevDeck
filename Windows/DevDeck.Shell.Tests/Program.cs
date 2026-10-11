@@ -73,6 +73,7 @@ public static class Program
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
         Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);
         Run("the menu's input owner is never seen", MenuInputOwnerIsInvisible);
+        Run("scroll bars and combo boxes follow the dark surface", ScrollBarsAndComboBoxesFitTheSurface);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
         Run("panel frames are applied as received", PanelFramesAreAppliedAsReceived);
@@ -1906,6 +1907,22 @@ public static class Program
         System.Threading.SynchronizationContext.SetSynchronizationContext(previousContext);
         True(completion.IsCompletedSuccessfully);
         Equal(1, exits);
+    }
+
+    private static void ScrollBarsAndComboBoxesFitTheSurface()
+    {
+        WindowsTheme.EnsureLoaded();
+        var bar = new System.Windows.Controls.Primitives.ScrollBar { Orientation = Orientation.Vertical };
+        var host = new Border { Width = 40, Height = 200, Child = bar };
+        host.Measure(new Size(40, 200));
+        host.Arrange(new Rect(0, 0, 40, 200));
+        host.UpdateLayout();
+        Equal(12.0, bar.ActualWidth);
+        var thumb = Descendants(bar).OfType<System.Windows.Controls.Primitives.Thumb>().Single();
+        True(Descendants(thumb).OfType<Border>().Any(border => border.CornerRadius.TopLeft == 3));
+        var combo = new ComboBox { Style = WindowsTheme.Style("SettingsComboBox") };
+        Equal(0.0, combo.Padding.Top);
+        Equal(0.0, combo.Padding.Bottom);
     }
 
     private static void MenuInputOwnerIsInvisible()
