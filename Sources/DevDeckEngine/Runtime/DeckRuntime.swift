@@ -423,11 +423,13 @@ public final class DeckRuntime {
         settler.reset("arc.\(project.id)")
         guard project.supportsLocalStack else { return }
         watch.noteAction(project.id, isStop: action == .stop || action == .teardown, at: clock.now)
+        // The branch row stays through the command: see `carryingCheckout`.
+        let previous = stackStatuses[project.id]
         stackStatuses[project.id] = LocalStackStatus(
             state: .working,
             detail: action.progressText,
             checkedAt: clock.now
-        )
+        ).carryingCheckout(from: previous)
 
         spawn { [weak self] in
             guard let self else { return }
@@ -447,7 +449,7 @@ public final class DeckRuntime {
                     state: .stopped,
                     detail: line,
                     checkedAt: clock.now
-                )
+                ).carryingCheckout(from: previous)
                 if action != .stop, action != .teardown {
                     self.watch.noteStartFailed(project.id, line: line, at: clock.now)
                 }
@@ -464,7 +466,7 @@ public final class DeckRuntime {
                     detail: L("arc.waitingForEngine"),
                     checkedAt: clock.now,
                     progressLine: self.stackStatuses[project.id]?.progressLine
-                )
+                ).carryingCheckout(from: previous)
                 // `fusion daemon` reports "ports are not available … address already in use" and
                 // then exits zero, so the failure is in what it said rather than in how it
                 // ended. Carried here, that line is what the card shows instead of a shrug.
@@ -571,11 +573,14 @@ public final class DeckRuntime {
         settler.reset("ddev.\(project.id)")
         guard project.folderURL != nil else { return }
         watch.noteAction(project.id, isStop: action == .stop, at: clock.now)
+        let previous = ddevStatuses[project.id]
         ddevStatuses[project.id] = DDEVStatus(
             state: .working,
-            entry: ddevStatuses[project.id]?.entry,
-            config: ddevStatuses[project.id]?.config ?? DDEVConfig(),
-            branch: ddevStatuses[project.id]?.branch,
+            entry: previous?.entry,
+            config: previous?.config ?? DDEVConfig(),
+            branch: previous?.branch,
+            repositoryURL: previous?.repositoryURL,
+            framework: previous?.framework,
             detail: action.progressText,
             checkedAt: clock.now
         )
@@ -586,11 +591,16 @@ public final class DeckRuntime {
 
             if let result, !result.succeeded {
                 // A failed start is the moment the card is most worth reading, so the reason
-                // stays on it rather than being replaced by a bare "stopped".
+                // stays on it rather than being replaced by a bare "stopped". The entry stays
+                // too: the links are where the project will be once it starts, and a card that
+                // loses its chip row for the two seconds until the next poll jumps.
                 self.ddevStatuses[project.id] = DDEVStatus(
                     state: .stopped,
+                    entry: previous?.entry,
                     config: DDEVConfig.load(in: project.folderURL),
                     branch: GitCheckout.branch(in: project.folderURL),
+                    repositoryURL: previous?.repositoryURL,
+                    framework: previous?.framework,
                     detail: result.failureLine ?? L("project.command.failed", action.title.lowercased()),
                     checkedAt: clock.now
                 )
@@ -621,7 +631,7 @@ public final class DeckRuntime {
                 entry: ddevStatuses[project.id]?.entry,
                 config: ddevStatuses[project.id]?.config ?? DDEVConfig(),
                 branch: ddevStatuses[project.id]?.branch,
-                detail: "powering off…",
+                detail: L("ddev.poweringOff"),
                 checkedAt: clock.now
             )
         }
@@ -885,7 +895,7 @@ public final class DeckRuntime {
                 // failure a second after a successful start.
                 self.localStatuses[project.id] = LocalProjectStatus(
                     state: .working,
-                    detail: "waiting for the site…",
+                    detail: L("project.waitingForSite"),
                     checkedAt: clock.now,
                     branch: previous?.branch,
                     hasLog: true

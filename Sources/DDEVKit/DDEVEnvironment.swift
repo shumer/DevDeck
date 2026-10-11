@@ -137,7 +137,9 @@ public struct DDEVEnvironment: Sendable {
             branch: branch,
             repositoryURL: repositoryURL,
             framework: framework,
-            detail: entry.state == .running ? nil : entry.statusDescription,
+            // `status_desc` usually repeats the state word, and "stopped" under "stopped" is
+            // not news. It is kept when it says more, which is when DDEV has something to add.
+            detail: entry.state == .running || entry.statusDescription?.lowercased() == entry.state.rawValue ? nil : entry.statusDescription,
             checkedAt: clock.now
         )
     }

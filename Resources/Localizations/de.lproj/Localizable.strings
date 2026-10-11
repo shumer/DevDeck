@@ -402,6 +402,8 @@
 "project.detect.nothing" = "Nichts Erkennbares: keine Compose-Datei, kein package.json-Skript, kein Makefile-Target.";
 "project.didNotStayUp" = "der Prozess ist nicht oben geblieben";
 "arc.waitingForEngine" = "warte auf die Engine…";
+"ddev.poweringOff" = "wird ausgeschaltet…";
+"project.waitingForSite" = "warte auf die Site…";
 "arc.engineNeverAnswered" = "die Engine hat nie geantwortet";
 "project.command.failed" = "%@ fehlgeschlagen";
 "project.siteNeverAnswered" = "die Site hat nie geantwortet";

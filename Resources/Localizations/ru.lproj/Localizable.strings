@@ -402,6 +402,8 @@
 "project.detect.nothing" = "Ничего не узнаётся: нет ни compose-файла, ни скрипта в package.json, ни цели в Makefile.";
 "project.didNotStayUp" = "процесс не удержался";
 "arc.waitingForEngine" = "ждем движок…";
+"ddev.poweringOff" = "выключаем…";
+"project.waitingForSite" = "ждем сайт…";
 "arc.engineNeverAnswered" = "движок так и не ответил";
 "project.command.failed" = "%@: не удалось";
 "project.siteNeverAnswered" = "сайт так и не ответил";

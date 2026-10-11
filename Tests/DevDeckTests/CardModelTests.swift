@@ -386,6 +386,23 @@ func runCardModelTests(_ run: TestRun) async {
         try expectEqual(paused.hero.tone, .attention)
     }
 
+    await run.test("a DDEV start that failed says why on the card and keeps its links") {
+        let project = DDEVProject(id: "d", name: "shop", folder: "/tmp")
+        let entry = DDEVListEntry(name: "shop", approot: "/tmp", type: "drupal11", state: .running, primaryURL: URL(string: "https://shop.ddev.site"), mailpitURL: URL(string: "https://shop.ddev.site:8026"))
+        let failed = DDEVStatus(state: .stopped, entry: entry, detail: "php_version 9.9 is not supported")
+        let model = DeckProjectCardModel.ddev(project, status: failed, docker: upDocker, canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectEqual(model.hero.text, L("card.state.stopped"))
+        try expectEqual(model.hero.note, "php_version 9.9 is not supported", "the reason is on the card, not only in the tooltip")
+        try expectEqual(model.environments.map(\.label), [L("card.localSite")], "the links stay where the project will be")
+        try expectEqual(model.tools.map(\.label), ["Mailpit"])
+        // A plain stop has nothing to add, and says nothing twice.
+        let stopped = DeckProjectCardModel.ddev(project, status: DDEVStatus(state: .stopped, entry: entry), docker: upDocker, canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectNil(stopped.hero.note)
+        let working = DeckProjectCardModel.ddev(project, status: DDEVStatus(state: .working, entry: entry, detail: "starting…"), docker: upDocker, canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectEqual(working.hero.text, "starting…")
+        try expectNil(working.hero.note, "the detail is already the state text")
+    }
+
     await run.test("a project started elsewhere keeps Stop, loses Restart, and says why") {
         let model = localCard(LocalProjectStatus(state: .running, stopBlock: .startedElsewhere))
         try expectEqual(model.hero.note, L("card.project.startedElsewhere"))

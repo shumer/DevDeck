@@ -123,6 +123,15 @@ func runDDEVTests(_ run: TestRun) async {
                         "the folder is what the user actually chose")
     }
 
+    await run.test("a description that only repeats the state is not a detail") {
+        let environment = DDEVEnvironment(runner: StubCommandRunner([]))
+        let paused = environment.status(for: DDEVProject(id: "i", name: "Intranet"), entries: entries)
+        try expectNil(paused.detail, "\"paused\" under \"paused\" is not news")
+        let described = DDEVListEntry(name: "shop", approot: "/tmp", type: "php", state: .stopped, statusDescription: "stopped: web container exited")
+        let told = environment.status(for: DDEVProject(id: "s", name: "shop"), entries: [described])
+        try expectEqual(told.detail, "stopped: web container exited")
+    }
+
     await run.test("a project ddev has never heard of says so") {
         let environment = DDEVEnvironment(runner: StubCommandRunner([]))
         let status = environment.status(for: DDEVProject(id: "x", name: "gone"), entries: entries)

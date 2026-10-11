@@ -60,6 +60,18 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
 
     public static var unavailable: LocalStackStatus { LocalStackStatus(state: .unavailable, detail: L("arc.stack.unavailable")) }
 
+    /// The same status carrying what the checkout said last time, where this one says nothing.
+    ///
+    /// The branch and the origin do not change because a command is running, and a status built
+    /// while one runs has not asked git. Without this the card drops its branch row for the
+    /// length of a start and grows it back after, which is a card that jumps by a row twice.
+    public func carryingCheckout(from previous: LocalStackStatus?) -> LocalStackStatus {
+        var carried = self
+        if carried.branch == nil { carried.branch = previous?.branch }
+        if carried.repositoryURL == nil { carried.repositoryURL = previous?.repositoryURL }
+        return carried
+    }
+
     public var isRunning: Bool { state == .running }
     public var isBusy: Bool { state == .working }
 }

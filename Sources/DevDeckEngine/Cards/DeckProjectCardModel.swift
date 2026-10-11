@@ -218,8 +218,18 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             case .stopped: tone = .neutral; text = L("card.state.stopped")
             case .unknown: tone = .alert; text = L("card.state.unknown")
             }
+            let note: String?
+            switch status.state {
             // "unknown" alone says nothing useful; what makes it useful is who does not know.
-            let note = status.state == .unknown ? L("card.ddev.notListed") : status.mutagenWarning
+            case .unknown: note = L("card.ddev.notListed")
+            case .running: note = status.mutagenWarning
+            // The detail is already the state text.
+            case .working: note = nil
+            // Why it is down, when DDEV or a failed command said: a start that failed is the
+            // moment the card is most worth reading, and the reason used to reach only the
+            // tooltip.
+            case .stopped, .paused: note = status.detail
+            }
             hero = Hero(tone: tone, text: text, note: note, help: status.detail ?? text)
         }
 

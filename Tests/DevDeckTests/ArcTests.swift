@@ -690,6 +690,17 @@ func runArcTests(_ run: TestRun) async {
         )
     }
 
+    await run.test("a status built while a command runs keeps the checkout's branch and origin") {
+        let before = LocalStackStatus(state: .running, branch: "feature/x", repositoryURL: URL(string: "https://example.com/org/repo"))
+        let busy = LocalStackStatus(state: .working, detail: "starting…").carryingCheckout(from: before)
+        try expectEqual(busy.branch, "feature/x", "the branch row does not blink for the length of a start")
+        try expectEqual(busy.repositoryURL?.absoluteString, "https://example.com/org/repo")
+        try expectEqual(busy.state, .working)
+        let fresh = LocalStackStatus(state: .stopped, branch: "main").carryingCheckout(from: before)
+        try expectEqual(fresh.branch, "main", "what git says now wins over what it said before")
+        try expectEqual(LocalStackStatus(state: .working).carryingCheckout(from: nil).branch, nil)
+    }
+
     await run.test("a failure surfaces its last meaningful line") {
         let result = CommandResult(
             exitCode: 1,

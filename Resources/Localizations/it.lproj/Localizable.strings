@@ -402,6 +402,8 @@
 "project.detect.nothing" = "Niente di riconoscibile: nessun file compose, script in package.json o target del Makefile.";
 "project.didNotStayUp" = "il processo non è rimasto su";
 "arc.waitingForEngine" = "in attesa del motore…";
+"ddev.poweringOff" = "spegnimento…";
+"project.waitingForSite" = "in attesa del sito…";
 "arc.engineNeverAnswered" = "il motore non ha mai risposto";
 "project.command.failed" = "%@ non riuscito";
 "project.siteNeverAnswered" = "il sito non ha mai risposto";
