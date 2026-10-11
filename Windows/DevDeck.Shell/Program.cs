@@ -10,6 +10,17 @@ public static class Program
         try
         {
             var options = ShellOptions.Parse(arguments);
+            if (options.Quit)
+            {
+                var user = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value;
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                var liveClosed = SingleInstance.RequestQuit(
+                    SingleInstance.Name(false, user), TimeSpan.FromSeconds(10));
+                var remaining = TimeSpan.FromSeconds(10) - timer.Elapsed;
+                var replayClosed = SingleInstance.RequestQuit(
+                    SingleInstance.Name(true, user), remaining);
+                return liveClosed && replayClosed ? 0 : 1;
+            }
             if (options.EnableLoginItem)
             {
                 NativeMethods.AttachToParentConsole();
@@ -36,6 +47,8 @@ public static class Program
             using var trace = options.TracePath is { } tracePath ? new ProtocolTrace(tracePath) : null;
             var coordinator = new ShellCoordinator(application.Dispatcher, options.EnginePath, surface, trace);
             instance.OnSignal(() => application.Dispatcher.BeginInvoke(surface.PresentDeck));
+            instance.OnQuit(() => application.Dispatcher.BeginInvoke(() =>
+                _ = coordinator.RequestShutdownAsync()));
             application.Startup += async (_, _) =>
             {
                 if (options.ReplayPath is { } replay)
@@ -62,7 +75,8 @@ public sealed record ShellOptions(
     string? ReplayPath,
     DeveloperRequest? DeveloperRequest,
     bool EnableLoginItem,
-    string? TracePath = null)
+    string? TracePath = null,
+    bool Quit = false)
 {
     public static ShellOptions Parse(string[] arguments)
     {
@@ -73,10 +87,14 @@ public sealed record ShellOptions(
         DeveloperRequest? developerRequest = null;
         var enableLoginItem = false;
         string? tracePath = null;
+        var quit = false;
         for (var index = 0; index < arguments.Length; index++)
         {
             switch (arguments[index])
             {
+                case "--quit":
+                    quit = true;
+                    break;
                 case "--engine":
                     enginePath = Path.GetFullPath(Value(arguments, ref index));
                     break;
@@ -105,12 +123,13 @@ public sealed record ShellOptions(
         }
 
         if ((replayPath is not null && developerRequest is not null) ||
-            (enableLoginItem && (replayPath is not null || developerRequest is not null)))
+            (enableLoginItem && (replayPath is not null || developerRequest is not null)) ||
+            (quit && (enableLoginItem || developerRequest is not null)))
         {
             throw new ArgumentException();
         }
 
-        return new ShellOptions(enginePath, replayPath, developerRequest, enableLoginItem, tracePath);
+        return new ShellOptions(enginePath, replayPath, developerRequest, enableLoginItem, tracePath, quit);
     }
 
     private static string Value(string[] arguments, ref int index)

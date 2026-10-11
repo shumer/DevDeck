@@ -138,7 +138,12 @@ Every task ends with screenshots on neutral data and a check against the shell r
   Tools/Measure-WindowsDelivery.ps1; decided framework-dependent,
   [0035](adr/0035-windows-delivery.md).
 - **W-15.** Installer: Inno Setup, per-user, installs .NET 10 Desktop Runtime when missing,
-  [0035](adr/0035-windows-delivery.md).
+  [0035](adr/0035-windows-delivery.md). Done: framework dependent publishing,
+  Tools/Build-WindowsInstaller.ps1, Windows/Installer/DevDeck.iss, a Start Menu shortcut,
+  graceful shell shutdown, silent installation and uninstall cleanup. See
+  [the Windows install notes](../Windows/README.md#install) and
+  [the W-15 verification report](poc/W15-windows-installer-report.md)
+  for the live checks and the missing runtime limitation.
 - **W-16.** Code signing. Deferred past the beta: the beta ships unsigned,
   [0035](adr/0035-windows-delivery.md).
 - **W-17.** Updates on Windows: download, verify the signature, install, restart.

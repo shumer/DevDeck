@@ -81,8 +81,7 @@ try {
     New-Item -ItemType Directory -Path $output | Out-Null
     $env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"
     & $dotnet publish Windows\DevDeck.Shell\DevDeck.Shell.csproj `
-        -c Release -r win-x64 --self-contained true --output $output `
-        -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+        -c Release -r win-x64 --self-contained false --output $output `
         -p:DebugType=None -p:DebugSymbols=false -warnaserror
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
