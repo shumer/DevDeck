@@ -128,7 +128,7 @@ jobs:
         run: |
           VERSION="$(tr -d '[:space:]' < VERSION)"
           BUILD="$(git rev-list --count HEAD)"
-          NAME="DevDeck-${VERSION}-${BUILD}.zip"
+          NAME="DevDeck-${VERSION}-${BUILD}-macos.zip"
           # ditto rather than zip: it keeps the bundle's structure and its extended attributes,
           # which a plain zip flattens into something macOS refuses to launch.
           ditto -c -k --keepParent DevDeck.app "$NAME"
@@ -267,8 +267,8 @@ jobs:
           $Version = (Get-Content VERSION -Raw).Trim()
           $Build = git rev-list --count HEAD
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $Name = "DevDeck-Setup-$Version-$Build.exe"
-          Move-Item -LiteralPath "dist/DevDeck-Setup-$Version.exe" -Destination "dist/$Name"
+          $Name = "DevDeck-$Version-$Build-windows-setup.exe"
+          Move-Item -LiteralPath "dist/DevDeck-$Version-windows-setup.exe" -Destination "dist/$Name"
           $Hash = (Get-FileHash -LiteralPath "dist/$Name" -Algorithm SHA256).Hash.ToLowerInvariant()
           [IO.File]::WriteAllText((Join-Path (Get-Location) "dist/$Name.sha256"), "$Hash  $Name`n", [Text.UTF8Encoding]::new($false))
           "name=$Name" >> $env:GITHUB_OUTPUT

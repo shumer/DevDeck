@@ -75,17 +75,17 @@ func runUpdateTests(_ run: TestRun) async {
     }
 
     await run.test("Windows takes the installer, and only with its checksum beside it") {
-        let both = release(tag: "v0.11", assets: ["DevDeck-0.11-120.zip", "DevDeck-Setup-0.11-120.exe", "DevDeck-Setup-0.11-120.exe.sha256"])
-        try expectEqual(UpdateCheck.asset(in: both, for: .windows)?.name, "DevDeck-Setup-0.11-120.exe")
+        let both = release(tag: "v0.11", assets: ["DevDeck-0.11-120.zip", "DevDeck-0.11-120-windows-setup.exe", "DevDeck-0.11-120-windows-setup.exe.sha256"])
+        try expectEqual(UpdateCheck.asset(in: both, for: .windows)?.name, "DevDeck-0.11-120-windows-setup.exe")
         try expectEqual(UpdateCheck.asset(in: both, for: .mac)?.name, "DevDeck-0.11-120.zip")
         let offered = try expectNotNil(UpdateCheck.available(current: "0.10", release: both, platform: .windows), "offered")
-        try expectEqual(offered.asset.name, "DevDeck-Setup-0.11-120.exe")
-        try expectEqual(offered.checksum?.name, "DevDeck-Setup-0.11-120.exe.sha256")
+        try expectEqual(offered.asset.name, "DevDeck-0.11-120-windows-setup.exe")
+        try expectEqual(offered.checksum?.name, "DevDeck-0.11-120-windows-setup.exe.sha256")
         let mac = try expectNotNil(UpdateCheck.available(current: "0.10", release: both, platform: .mac), "mac")
         try expectNil(mac.checksum, "the Mac's signature decides, not a file")
 
         // The installer carries no signature, so the hash file is the whole of the check.
-        let bare = release(tag: "v0.11", assets: ["DevDeck-0.11-120.zip", "DevDeck-Setup-0.11-120.exe"])
+        let bare = release(tag: "v0.11", assets: ["DevDeck-0.11-120.zip", "DevDeck-0.11-120-windows-setup.exe"])
         try expectNil(UpdateCheck.available(current: "0.10", release: bare, platform: .windows), "an installer nothing vouches for is not offered")
         _ = try expectNotNil(UpdateCheck.available(current: "0.10", release: bare, platform: .mac), "the Mac does not need it")
     }

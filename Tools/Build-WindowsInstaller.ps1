@@ -39,4 +39,4 @@ $entries = @(Get-ChildItem -LiteralPath $delivery -File | Where-Object {
 Set-Content -LiteralPath $fileEntries -Value $entries -Encoding utf8
 & $compiler "/DAppVersion=$version" "/DDeliveryDirectory=$delivery" "/DInstallerOutput=$output" "/DAppIcon=$icon" "/DRuntimeFileEntries=$fileEntries" (Join-Path $repository "Windows\Installer\DevDeck.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed with exit code $LASTEXITCODE." }
-Get-Item -LiteralPath (Join-Path $output "DevDeck-Setup-$version.exe") | Select-Object Name, Length
+Get-Item -LiteralPath (Join-Path $output "DevDeck-$version-windows-setup.exe") | Select-Object Name, Length

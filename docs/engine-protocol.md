@@ -218,7 +218,7 @@ is launched by the shell on the `launchDocker` effect when the host found it ins
 
 Updates: the host reads its version from the `VERSION` file the builder puts beside it, and
 offers a release only when the installer and its `.sha256` are both attached. The shell's
-installer (W-17) downloads both, checks the hash and runs `DevDeck-Setup-<version>-<build>.exe`
+installer (W-17) downloads both, checks the hash and runs `DevDeck-<version>-<build>-windows-setup.exe`
 with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS`; setup asks the running shell
 to quit through `--quit` and starts the new one. A host run from a build folder has no `VERSION`
 and says there is nothing to replace.

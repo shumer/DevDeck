@@ -21,7 +21,7 @@ The shell requires .NET 10 Desktop Runtime, supplied separately by Microsoft.
 
 ## Install
 
-GitHub releases include `DevDeck-Setup-<version>-<build>.exe` and a matching `.exe.sha256`
+GitHub releases include `DevDeck-<version>-<build>-windows-setup.exe` and a matching `.exe.sha256`
 file. The build number is the tagged commit count, shared with the Mac archive. The release
 workflow tests both platforms before publishing the Windows installer. A manual run with
 `attach=false` keeps its packages as Actions artifacts and leaves the release files and notes alone.
@@ -35,7 +35,7 @@ pwsh -NoProfile -File Tools/Build-WindowsInstaller.ps1
 ```
 
 The wrapper reads the same root `VERSION` file as the Mac build and writes
-`dist/DevDeck-Setup-<version>.exe`. `-OutputDirectory` accepts only a directory inside the
+`dist/DevDeck-<version>-windows-setup.exe`. `-OutputDirectory` accepts only a directory inside the
 repository. ISCC is found in the per-user installation, Program Files (x86), or PATH.
 
 Setup installs for the current user under `%LOCALAPPDATA%\Programs\DevDeck`, creates a Start

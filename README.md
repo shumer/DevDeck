@@ -177,7 +177,7 @@ only works for the installed copy.
 The engine is the same Swift code, built natively on Windows 11 (22H2 or later) and driven by a
 thin WPF shell that decides nothing of its own: every word, order and tone on a Windows card
 comes from the engine over [protocol v2](docs/engine-protocol.md), so the two decks say the same
-things. Install it from the release's `DevDeck-Setup-<version>-<build>.exe`: per user, no
+things. Install it from the release's `DevDeck-<version>-<build>-windows-setup.exe`: per user, no
 administrator rights, and if .NET 10 Desktop Runtime is missing the installer fetches it from
 Microsoft and asks for approval once. The Windows build is a beta and is not signed yet, so
 SmartScreen warns on first run: **More info**, then **Run anyway**. Projects in WSL
@@ -801,10 +801,10 @@ Signing) and `CODESIGN_IDENTITY="its name" ./build.sh` binds your own tokens the
 
 ## Releases
 
-Each release also carries the Windows installer `DevDeck-Setup-<version>-<build>.exe` and its SHA256 file.
+Each release carries two builds, named for their platform: `DevDeck-<version>-<build>-macos.zip` and the Windows installer `DevDeck-<version>-<build>-windows-setup.exe` with its SHA256 file.
 
 Publishing a release on GitHub builds the app and attaches it: `.github/workflows/release.yml`
-runs the suite, builds the bundle and uploads `DevDeck-<version>-<build>.zip` to the tag, so the
+runs the suite, builds the bundle and uploads `DevDeck-<version>-<build>-macos.zip` to the tag, so the
 tag and the download cannot disagree about what is in it. Nothing is built on an ordinary push,
 because a build nobody asked for is a build nobody checks. `.github/workflows/tests.yml` runs the
 suite on every push to main and on every pull request and fails on a compiler warning, which is the one place
@@ -824,7 +824,7 @@ right-click and Open, which needs no permissions), and a line for a terminal tha
 Downloads:
 
 ```
-pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-<version>-<build>.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app
+pkill -f "DevDeck.app/Contents/MacOS/DevDeck"; ditto -x -k ~/Downloads/DevDeck-<version>-<build>-macos.zip /Applications && xattr -dr com.apple.quarantine /Applications/DevDeck.app && open /Applications/DevDeck.app
 ```
 
 The workflow writes the install section itself, naming the file it actually built and saying

@@ -133,9 +133,9 @@ public enum UpdateCheck {
 
     /// Which build of a release this machine installs. One tag carries both.
     public enum Platform: Sendable, Equatable {
-        /// `DevDeck-<version>-<build>.zip`, the signed bundle.
+        /// `DevDeck-<version>-<build>-macos.zip`, the signed bundle.
         case mac
-        /// `DevDeck-Setup-<version>-<build>.exe` with its `.sha256` beside it.
+        /// `DevDeck-<version>-<build>-windows-setup.exe` with its `.sha256` beside it.
         case windows
 
         public static var current: Platform {
@@ -148,12 +148,16 @@ public enum UpdateCheck {
     }
 
     /// The build attached to a release: what `build.sh` and the release workflow name it.
+    ///
+    /// The Mac's rule is loose on purpose, prefix and `.zip`: releases before 0.20 named the
+    /// archive without a platform, and a copy of those has to find 0.20 and later by the same
+    /// rule it shipped with.
     public static func asset(in release: Release, for platform: Platform = .current) -> ReleaseAsset? {
         switch platform {
         case .mac:
             return release.assets.first { $0.name.hasPrefix("DevDeck-") && $0.name.hasSuffix(".zip") }
         case .windows:
-            return release.assets.first { $0.name.hasPrefix("DevDeck-Setup-") && $0.name.hasSuffix(".exe") }
+            return release.assets.first { $0.name.hasPrefix("DevDeck-") && $0.name.hasSuffix("-windows-setup.exe") }
         }
     }
 
