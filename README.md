@@ -358,6 +358,15 @@ folder to go hunting for - DDEV already knows every project on the machine.
 - **Only the local link waits on the container.** It is dimmed while the project is down,
   because a link into a stopped project lands on a connection error that reads as a broken
   app; a deployed site is reachable either way.
+- **The phone button needs one line of setup.** A `*.ddev.site` name resolves to 127.0.0.1 on
+  every device, and the router picks the project by name, so this computer's address alone
+  reaches nothing. The card offers the QR code once the checkout says how it can be reached,
+  the two ways DDEV documents: `ddev config --host-webserver-port=8080 --bind-all-interfaces`
+  gives the phone `http://<this computer>:8080`, straight to the web container; or an
+  `additional_fqdns` entry that carries this computer's address, `shop.192.168.1.20.nip.io`,
+  with the router listening on every interface. Plain http, because no phone trusts the
+  development certificate. A name carrying some other address is not offered: the computer has
+  moved networks since.
 - **Start, Stop and Restart** are `ddev start`, `ddev stop` and `ddev restart`; a project
   `ddev list` does not know is `unknown`, in red.
 - **Power off all DDEV** in the menu runs `ddev poweroff` - every project and the router, for
@@ -703,7 +712,8 @@ for this Mac's own on the wifi and drawn as a code to point a camera at. It appe
 the project is actually up, because a code pointing at a port nothing is listening on is a worse
 answer than no button. No account, no tunnel, nothing published to the internet. The phone has to
 be on the same network, and a dev server bound to localhost only will still refuse: that is what
-`--host` is for.
+`--host` is for. A DDEV project is reached by name rather than by address, so its card offers
+the code only once the checkout is set up for a phone; the DDEV section says how.
 
 The small button beside the clock opens the **log in a window of its own**: dark, monospaced,
 as big as you drag it, on any of the three project cards. Arc reads the containers carrying the

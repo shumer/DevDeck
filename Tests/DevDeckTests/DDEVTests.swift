@@ -87,6 +87,24 @@ func runDDEVTests(_ run: TestRun) async {
         try expectEqual(config.type, "drupal9", "the project type, not the database's")
     }
 
+    await run.test("the phone reaches a project only the way its file set up") {
+        let address = "192.168.1.20"
+        try expectNil(DDEVConfig.parse(configYAML).phoneURL(address: address), "a plain project offers nothing: its name means this device")
+        let direct = DDEVConfig.parse("name: shop\nhost_webserver_port: \"8080\"\nbind_all_interfaces: true\n")
+        try expectEqual(direct.phoneURL(address: address)?.absoluteString, "http://192.168.1.20:8080", "a host port bound to every interface, past the router")
+        try expectNil(DDEVConfig.parse("name: shop\nhost_webserver_port: \"8080\"\n").phoneURL(address: address), "a port bound to localhost only is not reachable")
+        try expectNil(direct.phoneURL(address: nil), "no network, no code")
+        let named = DDEVConfig.parse("name: shop\nadditional_fqdns:\n    - shop.192.168.1.20.nip.io\n    - other.test\n")
+        try expectEqual(named.additionalFQDNs, ["shop.192.168.1.20.nip.io", "other.test"])
+        try expectEqual(named.phoneURL(address: address)?.absoluteString, "http://shop.192.168.1.20.nip.io")
+        try expectNil(named.phoneURL(address: "10.0.0.5"), "a name carrying another address points at a stranger")
+        let inline = DDEVConfig.parse("name: shop\nadditional_fqdns: [\"192-168-1-20.nip.io\", other.test]\n")
+        try expectEqual(inline.phoneURL(address: address)?.absoluteString, "http://192-168-1-20.nip.io", "the dashed spelling counts too")
+        // The list does not swallow what follows it.
+        let followed = DDEVConfig.parse("additional_fqdns:\n  - a.test\nphp_version: \"8.3\"\n")
+        try expectEqual(followed.phpVersion, "8.3")
+    }
+
     await run.test("a file without a database says so instead of inventing one") {
         let config = DDEVConfig.parse("name: plain\ntype: php\nphp_version: \"8.2\"\n")
         try expectNil(config.databaseLabel)

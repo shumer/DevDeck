@@ -1859,8 +1859,10 @@ public final class DeckRuntime {
             return .project(.ddev(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                // DDEV knows where it serves; `ddev list` says so.
-                phoneURL: phoneURL(for: status.entry?.primaryURL, isRunning: status.isRunning)
+                // Not from `ddev list`: its name resolves to 127.0.0.1 on every device and the
+                // router picks the project by name, so the phone reaches it only the way the
+                // checkout's own file set up, when it did.
+                phoneURL: status.isRunning ? status.config.phoneURL(address: localAddress) : nil
             ))
         }
         if let project = localProject(forCard: card) {
