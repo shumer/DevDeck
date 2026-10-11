@@ -130,8 +130,10 @@
   .expander svg { width: 12px; height: 12px; }
   .footer { margin-top: 6px; font-size: 12px; color: var(--text-3); }
 
-  .state { display: flex; align-items: center; gap: 9px; margin-top: 10px; }
-  .state .dot { width: 9px; height: 9px; }
+  /* The dot sits on the text's cap centre, not the line box's: a line box is taller than the
+     letters, and a dot centred on it floats above them. */
+  .state { display: flex; align-items: baseline; gap: 9px; margin-top: 10px; }
+  .state .dot { width: 8px; height: 8px; position: relative; top: -1px; align-self: center; margin-top: 2px; }
   .state-text { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
   .state .aside { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
   .branch { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-family: var(--mono); font-size: 12px; color: var(--info); }

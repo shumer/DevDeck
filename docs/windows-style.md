@@ -145,7 +145,7 @@ control is the size the layout gives it and stands on the edge.
 
 **Expander and footer.** Centred `Show N more` with a chevron, then the footer line.
 
-**Project hero.** 9 px dot in the state's tone, state text, and on the right the aside the engine
+**Project hero.** 8 px dot in the state's tone, centred on the cap height of the state text rather than on its line box, state text, and on the right the aside the engine
 sends (pid, container count) in mono.
 
 **Branch row.** Branch icon 13, branch name in mono info, and an open icon 11 in tertiary when
@@ -166,7 +166,7 @@ busy button: a project in the middle of a command says so in its hero, with the 
 just printed in the meta row, and the engine disables the buttons that cannot be pressed, as on
 the Mac.
 
-**Collapsed card.** One 44 px row: mark, dot, name, and the single action the engine offers as a
+**Collapsed card.** One 44 px row: mark, 7 px dot centred on the name's cap height, name, and the single action the engine offers as a
 28 px square icon button.
 
 **Engine stopped.** The engine supplies the failure models; the shell draws them like any other
