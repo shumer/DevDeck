@@ -121,6 +121,10 @@ public final class DeckPlacement {
         // Home or parked, from the placements, so a card whose display is absent opens folded in
         // the parked column with the rest, and hiding a parked card closes the column up.
         placeAll()
+        // A column remembered below its display, which is where a deck written down before the
+        // lift existed sits, would otherwise open under the taskbar and stay there: a settled
+        // card's growth moves nothing, so nothing later would bring it up.
+        for card in Array(frames.keys) { keepColumnOnScreen(containing: card) }
         return take()
     }
 
@@ -161,7 +165,6 @@ public final class DeckPlacement {
                 // A settled card's data moves nothing, with one exception: a card that has grown
                 // onto the one below it. Covering a card is worse than moving it, so the column
                 // makes room, and nothing else changes.
-                defer { keepColumnOnScreen(containing: card) }
                 // Until a card has settled once, its height is a guess, and the first real one
                 // makes room the way a person's resize does: a fresh deck ends up packed instead
                 // of overlapping until somebody tidies it. A settled card's data moves nothing.
@@ -169,6 +172,9 @@ public final class DeckPlacement {
                 // the panels that were below before the resize, and they have to make room.
                 shiftColumn(below: old, by: old.height - size.height)
             }
+            // After any growth, not only one that shifted the column. The lowest card growing by
+            // itself has nothing under it to move and hangs below the display just the same.
+            keepColumnOnScreen(containing: card)
         }
         return take()
     }
@@ -479,8 +485,9 @@ public final class DeckPlacement {
     /// scattered layout is left alone.
     /// A column pushed down past the bottom of its display comes back up as a whole, as far as
     /// the top of the display allows: a card's buttons under the taskbar are not a layout.
+    /// Nothing happens for a column that is on its display, so this is safe to ask often.
     private func keepColumnOnScreen(containing card: CardID) {
-        guard let anchor = frames[card],
+        guard let anchor = frames[card], !runtime.isParked(card),
               let screen = displays().screens.first(where: { $0.visibleFrame.intersects(anchor) })?.visibleFrame
         else { return }
         let members = frames.filter { !runtime.isParked($0.key) && DeckLayout.isSameColumn($0.value, anchor) }

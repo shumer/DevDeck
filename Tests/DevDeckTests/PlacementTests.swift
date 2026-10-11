@@ -18,8 +18,10 @@ private final class Desk {
     var displays: [DisplayFrame]
     var main: DisplayFrame
     var size = CGSize(width: 352, height: 200)
+    /// A size for one card, when it is not to be the same as the rest.
+    var sizes: [CardID: CGSize] = [:]
     lazy var placement = deck.runtime.placePanels(
-        measure: { [unowned self] _ in self.size },
+        measure: { [unowned self] card in self.sizes[card] ?? self.size },
         displays: { [unowned self] in DeckDisplays(screens: self.displays, main: self.main, fallback: self.main) }
     )
 
@@ -271,6 +273,43 @@ func runPlacementTests(_ run: TestRun) async {
         for frame in frames { try expect(laptop.visibleFrame.contains(frame), "on the display: \(frame)") }
         try expectEqual(frames[0].minY - frames[1].maxY, CGFloat(CardMetrics.panelGap))
         try expectEqual(frames[1].minY - frames[2].maxY, CGFloat(CardMetrics.panelGap))
+    }
+
+    await run.test("the lowest card growing by itself brings the column back up") {
+        let all = projects(3)
+        let desk = Desk(projects: all)
+        for project in all { desk.deck.preferences.setHeight(200, for: project.cardID) }
+        _ = desk.placement.sync()
+        let ordered = desk.frames.sorted { $0.value.maxY > $1.value.maxY }
+        // Nothing under it to move out of the way, so the shift that lifts a column never runs.
+        // This is the second project noticing the first one's stack and growing a line.
+        desk.sizes[ordered[2].key] = CGSize(width: 352, height: 440)
+        _ = desk.placement.syncSizes()
+        let frames = ordered.map { try! expectNotNil(desk.frames[$0.key], "frame") }
+        for frame in frames { try expect(laptop.visibleFrame.contains(frame), "on the display: \(frame)") }
+        try expectEqual(frames[0].minY - frames[1].maxY, CGFloat(CardMetrics.panelGap))
+        try expectEqual(frames[1].minY - frames[2].maxY, CGFloat(CardMetrics.panelGap))
+    }
+
+    await run.test("a column remembered below its display opens on it") {
+        let all = projects(3)
+        let desk = Desk(projects: all)
+        // Written down by a deck that had no lift: the lowest card's buttons under the taskbar.
+        for (index, project) in all.enumerated() {
+            desk.deck.preferences.setHeight(200, for: project.cardID)
+            desk.deck.preferences.setPlacement(
+                PanelPlacement(displayID: laptop.id, offset: CGPoint(x: 1148, y: 500 + CGFloat(index) * (200 + CardMetrics.panelGap))),
+                for: project.cardID
+            )
+        }
+        _ = desk.placement.sync()
+        let frames = all.map { try! expectNotNil(desk.frames[$0.cardID], "frame") }
+        for frame in frames { try expect(laptop.visibleFrame.contains(frame), "on the display: \(frame)") }
+        try expectEqual(frames[0].minY - frames[1].maxY, CGFloat(CardMetrics.panelGap))
+        try expectEqual(frames[1].minY - frames[2].maxY, CGFloat(CardMetrics.panelGap))
+        // And written down there, so the next launch does not repeat the lift.
+        let saved = try expectNotNil(desk.deck.preferences.placement(for: all[2].cardID), "saved")
+        try expect(saved.offset.y + 200 <= laptop.visibleFrame.height, "remembered on the display: \(saved.offset)")
     }
 
     run.section("Placement - saved arrangements")

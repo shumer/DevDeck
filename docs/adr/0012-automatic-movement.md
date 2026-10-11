@@ -74,7 +74,13 @@ deliberately the timid version of tidying:
   height is remembered only once the card has data. Restarts are unaffected: by then every
   card has settled. And a settled card that grows onto the one below it makes room for itself:
   covering a card is worse than moving one, so the column shifts, and only when frames would
-  cross.
+  cross. One more exception, same day: a column whose bottom has been pushed below its display
+  comes back up as a whole, as far as the top allows. That is checked after every change of
+  size, whether or not it shifted anything, because the lowest card growing by itself has
+  nothing under it to move and hangs below the taskbar just the same, and once more when the
+  deck opens, because positions written down before this rule existed are below the display
+  already and a settled card's growth would never bring them up. The lift is written down, so
+  it happens once.
 - A deck whose stored positions are already inconsistent stays inconsistent: the fix stops new
   damage rather than repairing old. One Tidy repacks it.
 - `shiftColumn` lost its `persist` parameter. Every move it now makes belongs to the layout, so
