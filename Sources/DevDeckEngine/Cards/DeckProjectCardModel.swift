@@ -264,12 +264,10 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         )
     }
 
+    /// `ddev list` did not answer at all, which is a different card from a project it does not
+    /// know: nothing can be started until ddev is back, on either platform.
     private static func ddevUnavailable(_ status: DDEVStatus) -> Bool {
-        #if os(Windows)
-        return status.listUnavailable
-        #else
-        return false
-        #endif
+        status.listUnavailable
     }
 
     public static func local(
