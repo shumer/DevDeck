@@ -458,6 +458,14 @@ daemon: starting one stops the other, and its card shows stopped. Checkouts that
 the same port, 80 by default, also answer each other's health checks. The Arc section of
 the [main README](../README.md) has the details.
 
+Docker Engine installed inside a distribution, rather than Docker Desktop, has one trap of its
+own: WSL stops a distribution that has no process of yours in it, systemd services do not count,
+and the containers go down with it. A DDEV project that was running a moment ago shows
+`paused` after the next two polls, with the time of the last check on the card in between.
+Keep the distribution up with `vmIdleTimeout` in `.wslconfig`, or run Docker Desktop, which
+keeps its own distribution alive. The engine does not wake a distribution on its own: the
+poll is a question, not a command.
+
 The lifecycle tools also accept `ddev-start`, `ddev-status`, `ddev-stop` and `docker-format`.
 See [development.md](../docs/development.md) for separate-process checks.
 
