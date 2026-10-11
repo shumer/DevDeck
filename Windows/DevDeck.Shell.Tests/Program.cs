@@ -65,6 +65,10 @@ public static class Program
                 arguments.Length == 3 ? arguments[2] : "rest");
         }
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
+        Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
+        Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
+        Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);
+        Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
         Run("panel frames are applied as received", PanelFramesAreAppliedAsReceived);
         Run("windows do not activate or enter task switchers", WindowIsNonactivating);
@@ -1693,6 +1697,113 @@ public static class Program
         }
 
         throw new DirectoryNotFoundException();
+    }
+
+    private static void SingleInstanceExcludesDuplicates()
+    {
+        var name = @"Local\DevDeck.Tests." + Guid.NewGuid();
+        using (var first = new SingleInstance(name))
+        {
+            True(first.IsFirst);
+            using var second = new SingleInstance(name);
+            True(!second.IsFirst);
+        }
+        using var next = new SingleInstance(name);
+        True(next.IsFirst);
+    }
+
+    private static void ShutdownKeepsDispatcherResponsive()
+    {
+        var ready = new System.Threading.Tasks.TaskCompletionSource();
+        var exits = 0;
+        var previousContext = System.Threading.SynchronizationContext.Current;
+        System.Threading.SynchronizationContext.SetSynchronizationContext(
+            new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+        var shutdown = new AsyncShutdown(() => ready.Task, () => exits++);
+        var completion = shutdown.Request();
+        True(ReferenceEquals(completion, shutdown.Request()));
+        Equal(0, exits);
+        var frame = new DispatcherFrame();
+        Dispatcher.CurrentDispatcher.BeginInvoke(() =>
+        {
+            ready.SetResult();
+            Dispatcher.CurrentDispatcher.BeginInvoke(() => frame.Continue = false);
+        });
+        Dispatcher.PushFrame(frame);
+        System.Threading.SynchronizationContext.SetSynchronizationContext(previousContext);
+        True(completion.IsCompletedSuccessfully);
+        Equal(1, exits);
+    }
+
+    private static void MenusDismissOutsideApplication()
+    {
+        var presenter = new MenuPresenter(_ => { });
+        presenter.Update(RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true));
+        presenter.Open();
+        True(!presenter.View.StaysOpen);
+        var source = (System.Windows.Interop.HwndSource)PresentationSource.FromVisual(presenter.View);
+        SendMenuMessage(source.Handle, 0x001C, 0, 0);
+        PumpMenuDispatcher();
+        True(!presenter.View.IsOpen);
+        presenter.Close();
+    }
+
+    private static void MenuRefreshPreservesOpenPopup()
+    {
+        PumpMenuDispatcher();
+        var presenter = new MenuPresenter(_ => { });
+        var first = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: false);
+        var next = RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true);
+        presenter.Update(first);
+        presenter.Open();
+        if (!presenter.View.IsOpen)
+        {
+            throw new Exception("Popup closed while opening.");
+        }
+        var item = presenter.View.Items[0];
+        presenter.Update(next);
+        if (!presenter.View.IsOpen)
+        {
+            throw new Exception("Popup closed while refreshing.");
+        }
+        if (!ReferenceEquals(item, presenter.View.Items[0]))
+        {
+            throw new Exception("Refresh replaced the open menu item.");
+        }
+        presenter.View.IsOpen = false;
+        WaitForMenu(() => presenter.View.Items.Count == DeckMenuEntryModel.ParseList(next).Count);
+        Equal(DeckMenuEntryModel.ParseList(next).Count, presenter.View.Items.Count);
+        presenter.Close();
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SendMessageW")]
+    private static extern nint SendMenuMessage(nint window, int message, nint parameter, nint data);
+
+    private static void PumpMenuDispatcher()
+    {
+        var frame = new DispatcherFrame();
+        Dispatcher.CurrentDispatcher.BeginInvoke(
+            () => frame.Continue = false,
+            DispatcherPriority.ApplicationIdle);
+        Dispatcher.PushFrame(frame);
+    }
+
+    private static void WaitForMenu(Func<bool> completed)
+    {
+        var frame = new DispatcherFrame();
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        timer.Tick += (_, _) =>
+        {
+            if (completed() || elapsed.Elapsed > TimeSpan.FromSeconds(2))
+            {
+                frame.Continue = false;
+            }
+        };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
+        True(completed());
     }
 
     private static void Run(string name, Action test)

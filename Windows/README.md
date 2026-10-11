@@ -400,6 +400,13 @@ Installing an update from the `installUpdate` effect remains outside this shell 
 
 ## Docker and DDEV on Windows
 
+Only one interactive DevDeck shell can run per Windows user session, including replay
+instances. A second launch reports that DevDeck is already running and exits without
+starting another host. Developer commands remain separate short lived requests.
+Quit completes host cleanup asynchronously before shutting down the UI dispatcher.
+Tray and card menus close after a command or a click outside the application. Engine
+menu updates wait until the current popup closes so input capture remains intact.
+
 The `launchDocker` effect starts `%ProgramFiles%\Docker\Docker\Docker Desktop.exe`
 without waiting. The next engine polls supply the progress and card actions.
 The shell does not infer Docker state from the desktop process.

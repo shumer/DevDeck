@@ -45,6 +45,12 @@ public sealed class CardWindow : Window
         SourceInitialized += OnSourceInitialized;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
         ContextMenu = contextMenu.View;
+        ContextMenuOpening += (_, eventArguments) =>
+        {
+            eventArguments.Handled = true;
+            contextMenu.Open();
+        };
+        Closed += (_, _) => contextMenu.Close();
     }
 
     public nint Handle => handle;

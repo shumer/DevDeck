@@ -23,6 +23,13 @@ public static class Program
                     .GetResult();
             }
 
+            using var instance = new SingleInstance();
+            if (!instance.IsFirst)
+            {
+                MessageBox.Show("DevDeck is already running.", "DevDeck", MessageBoxButton.OK, MessageBoxImage.Information);
+                return 0;
+            }
+
             var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var surface = new ShellSurface();
             var coordinator = new ShellCoordinator(application.Dispatcher, options.EnginePath, surface);
@@ -37,7 +44,6 @@ public static class Program
                     await coordinator.StartLiveAsync();
                 }
             };
-            application.Exit += (_, _) => coordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
             return application.Run();
         }
         catch (Exception exception) when (
