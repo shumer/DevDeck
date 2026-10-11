@@ -192,11 +192,38 @@ shared resource and draw them from it on Windows, so both platforms show the sam
 `make` and `project` are drawn as SwiftUI shapes in `CardGlyph.swift`; export them as paths in
 the same step. The engine names the mark; the shell never chooses one.
 
-## 9. Light theme
+## 9. The system's scheme
 
-Not in the first version. The Mac deck is always dark, and the Windows deck starts the same way.
-A light theme is a separate decision with its own tone values checked for contrast, after the
-dark one has shipped.
+Decided 2026-10-11: cards follow Windows rather than carrying a theme of their own, the way the
+taskbar does. The shell reads `UISettings` and the personalisation settings, and redraws when
+they change:
+
+- **App mode** (`UISettings.GetColorValue(Background)` dark or light): the dark tokens above, or
+  the light ones below.
+- **Transparency effects**: Acrylic when on, the solid colour when off, as section 2 says.
+- **Show accent colour on Start and taskbar**: when on in dark mode, the card's tint is the
+  taskbar's accent tint instead of `#28282C`, so the deck and the taskbar are one material.
+
+Light tokens, darkened until they read on a light veil (contrast checked against `#F3F3F3`
+at 72%):
+
+| Token | Light value |
+| --- | --- |
+| card tint | `#F3F3F3` at 72% over Acrylic; solid `#F3F3F3` |
+| primary / secondary / tertiary text | black at 92% / 62% / 45% |
+| control fill / stroke | black at 4.5% / 9% |
+| `good` | `#0F7B4A` |
+| `attention` | `#8A5A00` |
+| `alert` | `#B3261E` |
+| `personal` | `#5B3FAE` |
+| branches and links | `#0F5AA8` |
+| environment chips | `#5B3FAE` |
+
+Tinted surfaces keep the 12% and 27% rule with the light tones. The reference for all four
+cases (dark, dark with the accent on the taskbar, light, light without transparency) is
+[devdeck-windows-theme.html](poc/windows-ui/devdeck-windows-theme.html) and
+[windows-theme-variants.png](poc/windows-ui/windows-theme-variants.png). The Mac deck stays
+dark; this is the Windows shell's mapping of the same tones.
 
 ## 10. Contract changes this needs
 
