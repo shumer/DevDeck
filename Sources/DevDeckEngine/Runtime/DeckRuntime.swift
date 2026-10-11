@@ -152,6 +152,12 @@ public final class DeckRuntime {
     /// Threads being marked read. The poll that lands in the middle of the job is filtered by
     /// them, or it would put back what the job has not reached yet.
     private var pendingRead: Set<String> = []
+    /// Threads marked read from here that GitHub may still list for a moment, with when. A poll
+    /// leaves them off until GitHub stops listing them or two minutes pass, whichever is first:
+    /// a thread that was just dealt with must not flicker back for one poll, and the poll that
+    /// lands right after the job finishes is the one that used to put it back.
+    private var recentlyRead: [String: Date] = [:]
+    private static let recentlyReadFor: TimeInterval = 120
 
     /// Whether the Actions card picks its repositories from the open pull requests, because no
     /// list was given in Settings.
@@ -937,6 +943,7 @@ public final class DeckRuntime {
             guard let self else { return }
             do {
                 try await self.notifications(for: account).markRead(item.id)
+                self.recentlyRead[item.id] = self.clock.now
             } catch {
                 #if os(Windows)
                 Log.refresh.debug("Could not mark read: \(error)")
@@ -1041,20 +1048,32 @@ public final class DeckRuntime {
     private func finishMarking(_ success: InboxProgress, refused: Set<String>, reason: APIError?) async {
         // What GitHub refused is not read, and comes back.
         pendingRead.subtract(refused)
-        if let fresh = try? await workspace.inbox() {
-            // Still filtered once: GitHub can take a moment to reflect a read, and a thread
-            // that was just marked should not flicker back for one poll.
-            inbox.succeed(fresh.removing(pendingRead), at: clock.now)
-        } else if let current = inbox.value {
-            inbox.succeed(current.removing(pendingRead), at: clock.now)
-        }
+        // What it accepted stays off for as long as GitHub keeps listing it. The job is done,
+        // so the set of threads being marked empties; the memory of them does not.
+        for id in pendingRead { recentlyRead[id] = clock.now }
         pendingRead.removeAll()
+        if let fresh = try? await workspace.inbox() {
+            inbox.succeed(filtered(fresh), at: clock.now)
+        } else if let current = inbox.value {
+            inbox.succeed(filtered(current), at: clock.now)
+        }
         effect(.attentionChanged)
 
         let outcome = reason.map { InboxProgress.failed($0.displayMessage) } ?? success
         inboxProgress = outcome
         try? await sleeper.sleep(seconds: outcome.isFailure ? 12 : 5)
         if inboxProgress == outcome { inboxProgress = nil }
+    }
+
+    /// A fresh inbox without the threads being marked, and without the ones marked lately that
+    /// GitHub still lists. A thread it has stopped listing is forgotten, so the memory does not
+    /// grow, and one it keeps listing past two minutes is taken at its word.
+    private func filtered(_ snapshot: InboxSnapshot) -> InboxSnapshot {
+        let listed = Set(snapshot.items.map(\.id))
+        recentlyRead = recentlyRead.filter { id, at in
+            listed.contains(id) && clock.now.timeIntervalSince(at) < Self.recentlyReadFor
+        }
+        return snapshot.removing(pendingRead.union(recentlyRead.keys))
     }
 
     private func notifications(for account: GitHubAccount) -> NotificationsService {
@@ -1583,7 +1602,7 @@ public final class DeckRuntime {
             },
             RefreshSource(card: .githubInbox) { @MainActor [weak self] in
                 guard let self else { return nil }
-                let snapshot = try await self.fetch(into: \.inbox) { try await self.workspace.inbox().removing(self.pendingRead) }
+                let snapshot = try await self.fetch(into: \.inbox) { self.filtered(try await self.workspace.inbox()) }
                 // GitHub states how often it wants to be polled on this endpoint; ignoring it
                 // is the fastest way to get a token throttled.
                 return snapshot.serverPollInterval

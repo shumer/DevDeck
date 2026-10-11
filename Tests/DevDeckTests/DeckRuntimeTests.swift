@@ -193,6 +193,10 @@ func runDeckRuntimeTests(_ run: TestRun) async {
         try expect(await deck.http.request(matching: "/notifications/threads/1") == nil, "a review request was marked")
         try expect(deck.sleeper.requests.contains(5), "the footer's word should stay for five seconds")
         try expectNil(deck.runtime.inboxProgress, "the footer clears itself")
+        // The job is over and GitHub still lists the thread, as it does for a moment after a
+        // read. The poll right after the job is the one that used to put it back.
+        _ = await deck.runtime.refreshOnce()
+        try expect(deck.runtime.inbox.value?.items.contains { $0.id == "2" } == false, "the poll after the job put it back")
     }
 
     await run.test("a refusal is said in the footer, and what was refused comes back") {
