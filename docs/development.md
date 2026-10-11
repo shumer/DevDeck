@@ -154,6 +154,10 @@ The WSL tool also accepts `timeout` and `cancel`. These are live checks: they ne
 distribution, project folders and start commands. They verify the process lifetime rules in
 [adr/0023-project-process-lifetime.md](adr/0023-project-process-lifetime.md).
 
+DDEV status is read from the project's own place. Candidates combine the native and WSL
+lists, prefer a reachable record over an inaccessible duplicate, and spell WSL folders
+as UNC paths. A successful WSL query does not hide a missing native DDEV executable.
+
 Mac changes are checked on the Mac and Windows changes on Windows: a branch that touches both is
 merged when both are green.
 

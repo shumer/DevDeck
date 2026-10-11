@@ -501,12 +501,14 @@ public final class DeckRuntime {
         let projects = activeDDEVProjects
         guard !projects.isEmpty else { return }
 
-        let entries = await ddevList()
+        let lists = await ddevListsByPlace()
         for project in projects {
             // A command from the card owns the status while it runs, or the poll would flip
             // the card back mid-restart. A stale "working" is overruled: a task that died
             // without reporting must not freeze the card for the rest of the session.
             if !finished.contains(project.id), isBusyAndFresh(project.id) { continue }
+            let place = ddevDistribution(for: project)
+            let entries = lists.first { $0.distribution == place }?.entries
             let probed = ddevEnvironment(for: project).status(for: project, entries: entries)
             // `ddev list` answers slowly while a project is starting and occasionally not at
             // all, and the card would say "not in ddev list" about a project that is running.
@@ -667,26 +669,50 @@ public final class DeckRuntime {
         return environments
     }
 
-    /// `ddev list` from every place, as one list. A project inside a distribution is listed
-    /// with its folder spelled the way Windows reaches it, which is the folder the deck stores.
-    /// Nil when no place answered at all.
-    func ddevList() async -> [DDEVListEntry]? {
-        var merged: [DDEVListEntry] = []
-        var answered = false
-        var distributions = ddevProjectsStore.projects().compactMap { project -> String? in
-            guard case .wsl(let distribution, _)? = ProjectLocation(folder: project.folder) else { return nil }
-            return distribution
+    private struct DDEVPlaceList {
+        let distribution: String?
+        let entries: [DDEVListEntry]?
+    }
+
+    private func ddevDistribution(for project: DDEVProject) -> String? {
+        guard case .wsl(let distribution, _)? = ProjectLocation(folder: project.folder) else { return nil }
+        return distribution
+    }
+
+    private func ddevListsByPlace() async -> [DDEVPlaceList] {
+        var distributions: [String] = []
+        for project in ddevProjectsStore.projects() {
+            guard let distribution = ddevDistribution(for: project), !distributions.contains(distribution) else { continue }
+            distributions.append(distribution)
         }
-        distributions = distributions.reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
+        var lists: [DDEVPlaceList] = []
         for (index, environment) in ddevEnvironments().enumerated() {
-            guard let entries = await environment.list() else { continue }
-            answered = true
             let distribution = index == 0 ? nil : distributions[index - 1]
-            for entry in entries where !merged.contains(where: { $0.name == entry.name }) {
-                merged.append(distribution.map { entry.reached(through: $0) } ?? entry)
+            let entries = await environment.list()
+            lists.append(DDEVPlaceList(distribution: distribution, entries: entries))
+        }
+        return lists
+    }
+
+    /// Candidates combine places, but project status only uses the project's own place.
+    /// A shared Docker daemon can expose an inaccessible duplicate to another DDEV client.
+    func ddevList() async -> [DDEVListEntry]? {
+        let lists = await ddevListsByPlace()
+        guard lists.contains(where: { $0.entries != nil }) else { return nil }
+        var merged: [DDEVListEntry] = []
+        for list in lists {
+            for entry in list.entries ?? [] {
+                let reached = list.distribution.map { entry.reached(through: $0) } ?? entry
+                if let index = merged.firstIndex(where: { $0.name == entry.name }) {
+                    if merged[index].state == .unknown, reached.state != .unknown {
+                        merged[index] = reached
+                    }
+                } else {
+                    merged.append(reached)
+                }
             }
         }
-        return answered ? merged : nil
+        return merged
     }
 
     // MARK: Plain projects

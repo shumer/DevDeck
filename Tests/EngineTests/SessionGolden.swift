@@ -270,6 +270,51 @@ func runSessionGoldenTests(_ run: TestRun) async {
         try expectEqual(fresh.map(\.approot), [#"\\wsl.localhost\Ubuntu-24.04\srv\inside"#])
     }
 
+    await run.test("DDEV status uses its own place and candidates prefer a reachable duplicate") {
+        let native = StubCommandRunner([("ddev list", CommandResult(exitCode: 0, standardOutput: #"{"raw":[{"name":"inside","approot":"/srv/inside","status":"unknown"}]}"#, standardError: ""))])
+        let wsl = StubCommandRunner([("ddev list", CommandResult(exitCode: 0, standardOutput: #"{"raw":[{"name":"inside","approot":"/srv/inside","status":"running"}]}"#, standardError: ""))])
+        let (runtime, _) = goldenRuntime(commandRunner: native, folderRunner: { folder in
+            if case .wsl? = ProjectLocation(folder: folder) { return wsl }
+            return native
+        })
+        let inside = DDEVProject(id: "inside", name: "inside", folder: #"\\wsl.localhost\Ubuntu-24.04\srv\inside"#)
+        let outside = DDEVProject(id: "outside", name: "inside", folder: #"C:\demo\outside"#)
+        runtime.saveDDEVProject(inside)
+        runtime.saveDDEVProject(outside)
+        runtime.cards.setEnabled(true, for: inside.cardID)
+        runtime.cards.setEnabled(true, for: outside.cardID)
+        runtime.setActiveCards(Set(runtime.cards.visible))
+        runtime.stop()
+        await runtime.refreshLocalOnce()
+        try expectEqual(runtime.ddevStatus(for: inside).state, .running)
+        try expectEqual(runtime.ddevStatus(for: outside).state, .unknown)
+        runtime.removeDDEVProject(inside.id)
+        runtime.removeDDEVProject(outside.id)
+        runtime.saveDDEVProject(DDEVProject(id: "anchor", name: "anchor", folder: inside.folder))
+        guard case .some(let candidates) = await runtime.ddevCandidates() else {
+            throw TestFailure(message: "DDEV answered", file: #filePath, line: #line)
+        }
+        try expectEqual(candidates.first { $0.name == "inside" }?.approot, inside.folder)
+    }
+
+    await run.test("a working WSL DDEV does not hide a missing native DDEV") {
+        let native = StubCommandRunner([("ddev list", CommandResult(exitCode: 1, standardOutput: "", standardError: "not found"))])
+        let wsl = StubCommandRunner([("ddev list", CommandResult(exitCode: 0, standardOutput: #"{"raw":[{"name":"outside","approot":"/srv/outside","status":"running"}]}"#, standardError: ""))])
+        let (runtime, _) = goldenRuntime(commandRunner: native, folderRunner: { folder in
+            if case .wsl? = ProjectLocation(folder: folder) { return wsl }
+            return native
+        })
+        let inside = DDEVProject(id: "inside", name: "inside", folder: #"\\wsl.localhost\Ubuntu-24.04\srv\inside"#)
+        let outside = DDEVProject(id: "outside", name: "outside", folder: #"C:\demo\outside"#)
+        runtime.saveDDEVProject(inside)
+        runtime.saveDDEVProject(outside)
+        runtime.cards.setEnabled(true, for: outside.cardID)
+        runtime.setActiveCards(Set(runtime.cards.visible))
+        runtime.stop()
+        await runtime.refreshLocalOnce()
+        try expectEqual(runtime.ddevStatus(for: outside).detail, L("ddev.silent.title"))
+    }
+
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {
         #if os(Windows)
         try expectEqual(DeckSession.platformPath(URL(fileURLWithPath: #"C:\Users\demo\site"#)), #"C:\Users\demo\site"#)
