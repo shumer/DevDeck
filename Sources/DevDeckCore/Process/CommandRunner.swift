@@ -19,7 +19,17 @@ public struct CommandResult: Sendable, Equatable {
         "a complete log of this run",
         "for more information",
         "see the full log",
+        "npm notice",
+        "injected env",
+        "tip: ",
     ]
+
+    /// Whether a line is a tool talking about itself rather than about the command: the kind
+    /// that is skipped when choosing a failure line, and not worth a card's progress slot.
+    public static func isNoise(_ line: String) -> Bool {
+        let lowercased = line.lowercased()
+        return noise.contains { lowercased.contains($0) }
+    }
 
     /// The most useful line to show when something failed.
     ///
