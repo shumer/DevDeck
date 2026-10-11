@@ -725,5 +725,14 @@ func runArcTests(_ run: TestRun) async {
         )
         try expectEqual(npm.failureLine, "npm error could not determine executable to run",
                         "the cause, not the path to the log")
+
+        // What `ddev start` really prints for a bad php_version: the reason, painted red.
+        let painted = CommandResult(
+            exitCode: 1,
+            standardOutput: "",
+            standardError: "\u{1B}[31mFailed to start project(s): the demo project has an unsupported PHP version: 9.9\u{1B}[0m\n"
+        )
+        try expectEqual(painted.failureLine, "Failed to start project(s): the demo project has an unsupported PHP version: 9.9",
+                        "the colour stays in the terminal")
     }
 }

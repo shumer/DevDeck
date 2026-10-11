@@ -38,9 +38,10 @@ public struct CommandResult: Sendable, Equatable {
     /// report failures on the wrong stream.
     public var failureLine: String? {
         for stream in [standardError, standardOutput] {
+            // Without the colour: ddev paints its failures red, and the card is not a terminal.
             let lines = stream
                 .split(separator: "\n", omittingEmptySubsequences: true)
-                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .map { LogTail.strippingEscapes(String($0)).trimmingCharacters(in: .whitespaces) }
                 .filter { line in
                     guard !line.isEmpty else { return false }
                     let lowercased = line.lowercased()

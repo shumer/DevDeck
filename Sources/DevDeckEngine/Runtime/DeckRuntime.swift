@@ -507,7 +507,8 @@ public final class DeckRuntime {
 
     /// Puts the newest line from a running command on the card.
     private func noteProgress(_ line: String, for project: ArcProject) {
-        guard var status = stackStatuses[project.id], status.isBusy, !CommandResult.isNoise(line) else { return }
+        let line = LogTail.strippingEscapes(line).trimmingCharacters(in: .whitespaces)
+        guard var status = stackStatuses[project.id], status.isBusy, !line.isEmpty, !CommandResult.isNoise(line) else { return }
         status.progressLine = line
         stackStatuses[project.id] = status
     }
