@@ -492,7 +492,7 @@ public final class DeckSession {
         guard isStarted else { return }
         let visible = runtime.cards.visible
         for card in visible {
-            let current = SentCard(model: runtime.model(for: card), menu: runtime.cardMenu(for: card))
+            let current = SentCard(model: runtime.model(for: card), menu: Self.wired(runtime.cardMenu(for: card)))
             guard current != sentCards[card] else { continue }
             sentCards[card] = current
             stale.insert(card)
@@ -512,7 +512,7 @@ public final class DeckSession {
             sentStatus = status
             emit("status.changed") { $0.status = status }
         }
-        let menu = runtime.menu()
+        let menu = Self.wired(runtime.menu())
         if menu != sentMenu {
             sentMenu = menu
             emit("menu.changed") { $0.menu = menu }
@@ -530,6 +530,23 @@ public final class DeckSession {
         }
 
         apply(placement?.syncSizes())
+    }
+
+    /// A menu as it goes over the wire: without key equivalents, which are Mac keys a shell
+    /// elsewhere would only show as words that do nothing.
+    static func wired(_ entries: [DeckMenuEntry]) -> [DeckMenuEntry] {
+        entries.map { entry in
+            switch entry {
+            case .item(var item):
+                item.keyEquivalent = ""
+                return .item(item)
+            case .submenu(var item, let children):
+                item.keyEquivalent = ""
+                return .submenu(item, wired(children))
+            case .header, .separator:
+                return entry
+            }
+        }
     }
 
     // MARK: Sending

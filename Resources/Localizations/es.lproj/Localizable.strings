@@ -26,7 +26,7 @@
 "arc.answeredElsewhere" = "en el puerto %d responde un stack que este Docker no conoce";
 "arc.stack.unavailable" = "No hay carpeta de proyecto";
 "arrangements.forget" = "Olvidar %@";
-"arrangements.name.placeholder" = "Morning Post day";
+"arrangements.name.placeholder" = "Lunes";
 "arrangements.save" = "Guardar esta…";
 "arrangements.save.detail" = "Qué tarjetas están en el deck, cuáles están contraídas a una fila y dónde está cada una. Guardar sobre un nombre lo reemplaza.";
 "arrangements.save.title" = "Guardar esta disposición";
@@ -189,9 +189,11 @@
 "card.chrome.merges" = "GitLab · merge requests";
 "card.chrome.pulls" = "GitHub · pull requests";
 "card.ddev.notListed" = "no está en ddev list";
-"card.docker.notInstalled.note" = "Docker no está instalado, aquí no puede funcionar nada";
-"card.docker.off.note" = "Docker no está en marcha, arráncalo primero";
-"card.docker.starting.note" = "arrancando Docker…";
+"card.docker.notInstalled.note" = "aquí no puede funcionar nada";
+"card.docker.notInstalled" = "Docker no está instalado";
+"card.docker.off" = "Docker no está en marcha";
+"card.docker.starting" = "arrancando Docker…";
+"card.docker.off.note" = "arráncalo primero";
 "card.duration.minutes" = "%1$dmin %2$ds";
 "card.duration.seconds" = "%ds";
 "card.footer.pair" = "%1$@ · %2$@";
@@ -465,6 +467,7 @@
 "settings.deck.footnote" = "Usa al menos un modificador o la tecla dejará de escribir en las demás apps.";
 "settings.deck.lock" = "Bloquear la posición";
 "settings.deck.lock.detail" = "También en el menú de la barra y en el menú contextual de una tarjeta.";
+"settings.deck.lock.detail.windows" = "También en el menú de la bandeja y en el menú contextual de una tarjeta.";
 "settings.deck.place.desktop" = "Detrás de las ventanas, en el escritorio";
 "settings.deck.place.floating" = "Por encima de las ventanas";
 "settings.deck.placeCards" = "Colocar tarjetas";

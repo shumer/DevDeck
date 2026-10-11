@@ -26,7 +26,7 @@
 "arc.answeredElsewhere" = "sulla porta %d risponde uno stack che questo Docker non conosce";
 "arc.stack.unavailable" = "Nessuna cartella di progetto impostata";
 "arrangements.forget" = "Dimentica %@";
-"arrangements.name.placeholder" = "Morning Post day";
+"arrangements.name.placeholder" = "Lunedì";
 "arrangements.save" = "Salva questa…";
 "arrangements.save.detail" = "Quali schede sono sul deck, quali sono ridotte a una riga e dove sta ciascuna. Salvare su un nome lo sostituisce.";
 "arrangements.save.title" = "Salva questa disposizione";
@@ -189,9 +189,11 @@
 "card.chrome.merges" = "GitLab · merge requests";
 "card.chrome.pulls" = "GitHub · pull requests";
 "card.ddev.notListed" = "non è in ddev list";
-"card.docker.notInstalled.note" = "Docker non è installato, qui non può girare niente";
-"card.docker.off.note" = "Docker non è in esecuzione, avvialo prima";
-"card.docker.starting.note" = "avvio di Docker…";
+"card.docker.notInstalled.note" = "qui non può girare niente";
+"card.docker.notInstalled" = "Docker non è installato";
+"card.docker.off" = "Docker non è in esecuzione";
+"card.docker.starting" = "avvio di Docker…";
+"card.docker.off.note" = "avvialo prima";
 "card.duration.minutes" = "%1$dm %2$ds";
 "card.duration.seconds" = "%ds";
 "card.footer.pair" = "%1$@ · %2$@";
@@ -465,6 +467,7 @@
 "settings.deck.footnote" = "Usa almeno un modificatore, altrimenti il tasto smette di scrivere nelle altre app.";
 "settings.deck.lock" = "Blocca la posizione";
 "settings.deck.lock.detail" = "Anche nel menu della barra e nel menu contestuale di una carta.";
+"settings.deck.lock.detail.windows" = "Anche nel menu dell’area di notifica e nel menu contestuale di una carta.";
 "settings.deck.place.desktop" = "Dietro le finestre, sulla scrivania";
 "settings.deck.place.floating" = "Sopra le finestre";
 "settings.deck.placeCards" = "Disponi le carte";

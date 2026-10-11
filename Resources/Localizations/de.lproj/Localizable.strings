@@ -26,7 +26,7 @@
 "arc.answeredElsewhere" = "Port %d antwortet ein Stack, den dieses Docker nicht kennt";
 "arc.stack.unavailable" = "Kein Projektordner gesetzt";
 "arrangements.forget" = "%@ vergessen";
-"arrangements.name.placeholder" = "Morning Post day";
+"arrangements.name.placeholder" = "Montag";
 "arrangements.save" = "Diese sichern…";
 "arrangements.save.detail" = "Welche Karten auf dem Deck liegen, welche auf eine Zeile eingeklappt sind und wo jede sitzt. Ein bestehender Name wird überschrieben.";
 "arrangements.save.title" = "Diese Anordnung sichern";
@@ -189,9 +189,11 @@
 "card.chrome.merges" = "GitLab · merge requests";
 "card.chrome.pulls" = "GitHub · pull requests";
 "card.ddev.notListed" = "nicht in ddev list";
-"card.docker.notInstalled.note" = "Docker ist nicht installiert, hier kann nichts laufen";
-"card.docker.off.note" = "Docker läuft nicht, starte es zuerst";
-"card.docker.starting.note" = "Docker wird gestartet…";
+"card.docker.notInstalled.note" = "hier kann nichts laufen";
+"card.docker.notInstalled" = "Docker nicht installiert";
+"card.docker.off" = "Docker läuft nicht";
+"card.docker.starting" = "Docker wird gestartet…";
+"card.docker.off.note" = "starte es zuerst";
 "card.duration.minutes" = "%1$dm %2$ds";
 "card.duration.seconds" = "%ds";
 "card.footer.pair" = "%1$@ · %2$@";
@@ -465,6 +467,7 @@
 "settings.deck.footnote" = "Mindestens eine Modifiertaste verwenden, sonst tippt die Taste in keiner anderen App mehr.";
 "settings.deck.lock" = "Position sperren";
 "settings.deck.lock.detail" = "Auch im Menüleistenmenü und im Kontextmenü einer Karte.";
+"settings.deck.lock.detail.windows" = "Auch im Menü des Infobereichs und im Kontextmenü einer Karte.";
 "settings.deck.place.desktop" = "Hinter den Fenstern, auf dem Schreibtisch";
 "settings.deck.place.floating" = "Über den Fenstern";
 "settings.deck.placeCards" = "Karten anordnen";

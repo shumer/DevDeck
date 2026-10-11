@@ -109,7 +109,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         if blocked {
             // Docker first: `fusion daemon` fails at the first container without it, and "local
             // stack not running" would be a true sentence that helps nobody.
-            hero = Hero(tone: DockerGate.tone(docker), text: DockerGate.text(docker), note: nil, help: status.detail ?? DockerGate.text(docker))
+            hero = Hero(tone: DockerGate.tone(docker), text: DockerGate.text(docker), note: DockerGate.note(docker), help: status.detail ?? DockerGate.text(docker))
         } else {
             let tone: DeckTone
             let text: String
@@ -201,7 +201,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         if blocked {
             // Docker first: without it `ddev list` cannot answer either, and "unknown to ddev"
             // would be a true sentence that helps nobody.
-            hero = Hero(tone: DockerGate.tone(docker), text: DockerGate.text(docker), note: nil, help: status.detail ?? DockerGate.text(docker))
+            hero = Hero(tone: DockerGate.tone(docker), text: DockerGate.text(docker), note: DockerGate.note(docker), help: status.detail ?? DockerGate.text(docker))
         } else if ddevUnavailable(status) {
             hero = Hero(tone: .alert, text: L("ddev.silent.title"), note: L("ddev.silent.detail"), help: L("ddev.silent.detail"))
         } else {
@@ -312,7 +312,10 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             }
         }
         let help = stopHelp ?? status.detail ?? text
-        let hero = Hero(tone: tone, text: text, note: stopNote ?? status.pid.map { "pid \($0)" }, help: help)
+        // Behind the Docker gate the note is the gate's; otherwise why Stop cannot reach it, or
+        // the pid.
+        let heroNote = blocked ? DockerGate.note(docker) : (stopNote ?? status.pid.map { "pid \($0)" })
+        let hero = Hero(tone: tone, text: text, note: heroNote, help: help)
 
         let lifecycle: [DeckActionModel]
         if !blocked, status.isRunning || status.state == .starting {
@@ -495,11 +498,21 @@ public enum DockerGate {
         return !status.allowsStart
     }
 
-    /// What goes on the state line.
+    /// What goes on the state line: short, since the line is 22 points tall and a sentence on
+    /// it ends in an ellipsis. The rest of the sentence is the note.
     public static func text(_ status: DockerStatus) -> String {
         switch status.state {
+        case .notInstalled: return L("card.docker.notInstalled")
+        case .starting: return L("card.docker.starting")
+        default: return L("card.docker.off")
+        }
+    }
+
+    /// The rest of the sentence: what the state means for the card.
+    public static func note(_ status: DockerStatus) -> String? {
+        switch status.state {
         case .notInstalled: return L("card.docker.notInstalled.note")
-        case .starting: return L("card.docker.starting.note")
+        case .starting: return nil
         default: return L("card.docker.off.note")
         }
     }

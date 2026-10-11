@@ -26,7 +26,7 @@
 "arc.answeredElsewhere" = "port %d answered by a stack this Docker does not know";
 "arc.stack.unavailable" = "No project folder set";
 "arrangements.forget" = "Forget %@";
-"arrangements.name.placeholder" = "Morning Post day";
+"arrangements.name.placeholder" = "Monday desk";
 "arrangements.save" = "Save this one…";
 "arrangements.save.detail" = "Which cards are on the deck, which are folded to a row, and where each one sits. Saving over a name replaces it.";
 "arrangements.save.title" = "Save this arrangement";
@@ -189,9 +189,11 @@
 "card.chrome.merges" = "GitLab · merge requests";
 "card.chrome.pulls" = "GitHub · pull requests";
 "card.ddev.notListed" = "not in ddev list";
-"card.docker.notInstalled.note" = "Docker is not installed, nothing here can run";
-"card.docker.off.note" = "Docker is not running, start it first";
-"card.docker.starting.note" = "starting Docker…";
+"card.docker.notInstalled.note" = "nothing here can run";
+"card.docker.notInstalled" = "Docker not installed";
+"card.docker.off" = "Docker not running";
+"card.docker.starting" = "starting Docker…";
+"card.docker.off.note" = "start it first";
 "card.duration.minutes" = "%1$dm %2$ds";
 "card.duration.seconds" = "%ds";
 "card.footer.pair" = "%1$@ · %2$@";
@@ -465,6 +467,7 @@
 "settings.deck.footnote" = "Use at least one modifier, or the key stops typing in every other app.";
 "settings.deck.lock" = "Lock position";
 "settings.deck.lock.detail" = "Also in the menu-bar menu and on a card's right-click menu.";
+"settings.deck.lock.detail.windows" = "Also in the tray menu and on a card's right-click menu.";
 "settings.deck.place.desktop" = "Behind windows, on the desktop";
 "settings.deck.place.floating" = "Above windows";
 "settings.deck.placeCards" = "Place cards";

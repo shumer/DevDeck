@@ -26,7 +26,7 @@
 "arc.answeredElsewhere" = "sur le port %d répond une pile que ce Docker ne connaît pas";
 "arc.stack.unavailable" = "Aucun dossier de projet défini";
 "arrangements.forget" = "Oublier %@";
-"arrangements.name.placeholder" = "Morning Post day";
+"arrangements.name.placeholder" = "Lundi";
 "arrangements.save" = "Enregistrer celle-ci…";
 "arrangements.save.detail" = "Quelles cartes sont sur le deck, lesquelles sont réduites à une ligne, et où chacune se trouve. Enregistrer sur un nom le remplace.";
 "arrangements.save.title" = "Enregistrer cette disposition";
@@ -189,9 +189,11 @@
 "card.chrome.merges" = "GitLab · merge requests";
 "card.chrome.pulls" = "GitHub · pull requests";
 "card.ddev.notListed" = "absent de ddev list";
-"card.docker.notInstalled.note" = "Docker n’est pas installé, rien ne peut tourner ici";
-"card.docker.off.note" = "Docker ne tourne pas, démarrez-le d’abord";
-"card.docker.starting.note" = "démarrage de Docker…";
+"card.docker.notInstalled.note" = "rien ne peut tourner ici";
+"card.docker.notInstalled" = "Docker n’est pas installé";
+"card.docker.off" = "Docker ne tourne pas";
+"card.docker.starting" = "démarrage de Docker…";
+"card.docker.off.note" = "démarrez-le d’abord";
 "card.duration.minutes" = "%1$dmin %2$ds";
 "card.duration.seconds" = "%ds";
 "card.footer.pair" = "%1$@ · %2$@";
@@ -465,6 +467,7 @@
 "settings.deck.footnote" = "Utilisez au moins un modificateur, sinon la touche cesse d’écrire dans les autres apps.";
 "settings.deck.lock" = "Verrouiller la position";
 "settings.deck.lock.detail" = "Également dans le menu de la barre et le menu contextuel d’une carte.";
+"settings.deck.lock.detail.windows" = "Également dans le menu de la zone de notification et le menu contextuel d’une carte.";
 "settings.deck.place.desktop" = "Derrière les fenêtres, sur le bureau";
 "settings.deck.place.floating" = "Au-dessus des fenêtres";
 "settings.deck.placeCards" = "Placer les cartes";

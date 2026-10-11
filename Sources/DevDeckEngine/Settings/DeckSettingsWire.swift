@@ -212,6 +212,7 @@ extension DeckRuntime {
             // the same key on both, and the engine says the right thing for the machine it is on.
             #if os(Windows)
             words["settings.notifications.allow.detail"] = L("settings.notifications.allow.detail.windows")
+            words["settings.deck.lock.detail"] = L("settings.deck.lock.detail.windows")
             #endif
             return .words(words)
         case .preferences: return .preferences(preferencesModel)

@@ -126,12 +126,14 @@ full list is `DeckCommand` in `Sources/DevDeckEngine/Cards/DeckCardParts.swift`.
 
 The tray menu and a card's menu are lists of entries: `{"item": {"_0": item}}`,
 `{"header": {"_0": text}}`, `{"separator": {}}` and `{"submenu": {"_0": item, "_1": [entries]}}`.
-An item has `title`, `isEnabled`, `isOn`, `isIndented`, `keyEquivalent`, and optionally
+An item has `title`, `isEnabled`, `isOn`, `isIndented`, `keyEquivalent` (always empty on the
+wire: it is a Mac key), and optionally
 `subtitle`, `badge`, `help` (the tooltip), `image` (`calm`, `more`, or `attention` with the
 source's mark), `command`, and:
 
 - `alternate`: another title and command shown while Alt is held;
 - `confirmation`: ask first, in these words, and send the command only on confirm;
+  `isDestructive` says the confirm button wears the alert tone;
 - `prompt`: ask for a name in these words, then send the command with the typed name as its
   `name`, as in `{"saveArrangement":{"name":"Desk"}}`. This is the one command the shell fills
   in.

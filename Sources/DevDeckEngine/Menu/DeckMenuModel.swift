@@ -64,6 +64,16 @@ public struct DeckConfirmation: Sendable, Equatable, Codable {
     public let detail: String
     public let confirm: String
     public let cancel: String
+    /// Confirming takes something down: the shell paints the button in the alert tone.
+    public let isDestructive: Bool
+
+    public init(title: String, detail: String, confirm: String, cancel: String, isDestructive: Bool = false) {
+        self.title = title
+        self.detail = detail
+        self.confirm = confirm
+        self.cancel = cancel
+        self.isDestructive = isDestructive
+    }
 }
 
 public indirect enum DeckMenuEntry: Sendable, Equatable, Codable {
@@ -146,7 +156,8 @@ extension DeckRuntime {
                 title: L("menu.ddev.confirm.title"),
                 detail: L("menu.ddev.confirm.detail"),
                 confirm: L("button.powerOff"),
-                cancel: L("button.cancel")
+                cancel: L("button.cancel"),
+                isDestructive: true
             )
             entries.append(.item(powerOff))
         }

@@ -26,7 +26,7 @@
 "arc.answeredElsewhere" = "на порту %d отвечает стек, которого этот Docker не знает";
 "arc.stack.unavailable" = "Папка проекта не задана";
 "arrangements.forget" = "Забыть %@";
-"arrangements.name.placeholder" = "Morning Post day";
+"arrangements.name.placeholder" = "Понедельник";
 "arrangements.save" = "Сохранить эту…";
 "arrangements.save.detail" = "Какие карточки на деке, какие свёрнуты в строку и где каждая лежит. Сохранение под тем же именем заменяет прежнее.";
 "arrangements.save.title" = "Сохранить эту раскладку";
@@ -189,9 +189,11 @@
 "card.chrome.merges" = "GitLab · merge requests";
 "card.chrome.pulls" = "GitHub · pull requests";
 "card.ddev.notListed" = "нет в ddev list";
-"card.docker.notInstalled.note" = "Docker не установлен, здесь ничего не запустится";
-"card.docker.off.note" = "Docker не запущен, сначала запустите его";
-"card.docker.starting.note" = "запускаю Docker…";
+"card.docker.notInstalled.note" = "здесь ничего не запустится";
+"card.docker.notInstalled" = "Docker не установлен";
+"card.docker.off" = "Docker не запущен";
+"card.docker.starting" = "запускаю Docker…";
+"card.docker.off.note" = "сначала запустите его";
 "card.duration.minutes" = "%1$dм %2$dс";
 "card.duration.seconds" = "%dс";
 "card.footer.pair" = "%1$@ · %2$@";
@@ -465,6 +467,7 @@
 "settings.deck.footnote" = "Берите хотя бы один модификатор, иначе клавиша перестанет печатать в других приложениях.";
 "settings.deck.lock" = "Закрепить положение";
 "settings.deck.lock.detail" = "Есть и в меню в строке меню, и в меню карточки по правому клику.";
+"settings.deck.lock.detail.windows" = "Есть и в меню трея, и в меню карточки по правому клику.";
 "settings.deck.place.desktop" = "За окнами, на рабочем столе";
 "settings.deck.place.floating" = "Поверх окон";
 "settings.deck.placeCards" = "Размещать карточки";
