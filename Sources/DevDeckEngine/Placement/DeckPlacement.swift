@@ -161,6 +161,7 @@ public final class DeckPlacement {
                 // A settled card's data moves nothing, with one exception: a card that has grown
                 // onto the one below it. Covering a card is worse than moving it, so the column
                 // makes room, and nothing else changes.
+                defer { keepColumnOnScreen(containing: card) }
                 // Until a card has settled once, its height is a guess, and the first real one
                 // makes room the way a person's resize does: a fresh deck ends up packed instead
                 // of overlapping until somebody tidies it. A settled card's data moves nothing.
@@ -476,6 +477,24 @@ public final class DeckPlacement {
     /// This is what stops a hidden card leaving a card-shaped hole, and what makes room when a
     /// card is expanded. Only panels that overlap horizontally are touched, so a deliberately
     /// scattered layout is left alone.
+    /// A column pushed down past the bottom of its display comes back up as a whole, as far as
+    /// the top of the display allows: a card's buttons under the taskbar are not a layout.
+    private func keepColumnOnScreen(containing card: CardID) {
+        guard let anchor = frames[card],
+              let screen = displays().screens.first(where: { $0.visibleFrame.intersects(anchor) })?.visibleFrame
+        else { return }
+        let members = frames.filter { !runtime.isParked($0.key) && DeckLayout.isSameColumn($0.value, anchor) }
+        guard let lowest = members.values.map(\.minY).min(), let highest = members.values.map(\.maxY).max(),
+              lowest < screen.minY
+        else { return }
+        let lift = min(screen.minY - lowest, max(0, screen.maxY - highest))
+        guard lift > 0 else { return }
+        for (member, frame) in members {
+            move(member, to: CGPoint(x: frame.minX, y: frame.minY + lift))
+            persistPosition(of: member)
+        }
+    }
+
     private func shiftColumn(below frame: CGRect, by dy: CGFloat) {
         guard dy != 0 else { return }
         var moved: [CardID] = []

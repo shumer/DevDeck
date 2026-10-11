@@ -257,6 +257,22 @@ func runPlacementTests(_ run: TestRun) async {
         try expectEqual(top.minY - below.maxY, CGFloat(CardMetrics.panelGap))
     }
 
+    await run.test("a column pushed past the bottom of its display comes back up") {
+        let all = projects(3)
+        let desk = Desk(projects: all)
+        for project in all { desk.deck.preferences.setHeight(200, for: project.cardID) }
+        _ = desk.placement.sync()
+        let ordered = desk.frames.sorted { $0.value.maxY > $1.value.maxY }
+        // The top card grows by more than the room under the column: the bottom card would end
+        // below the display.
+        desk.size = CGSize(width: 352, height: 600)
+        _ = desk.placement.syncSizes()
+        let frames = ordered.map { try! expectNotNil(desk.frames[$0.key], "frame") }
+        for frame in frames { try expect(laptop.visibleFrame.contains(frame), "on the display: \(frame)") }
+        try expectEqual(frames[0].minY - frames[1].maxY, CGFloat(CardMetrics.panelGap))
+        try expectEqual(frames[1].minY - frames[2].maxY, CGFloat(CardMetrics.panelGap))
+    }
+
     run.section("Placement - saved arrangements")
 
     await run.test("a saved deck is ticked while it is on screen, and a blank name saves nothing") {
