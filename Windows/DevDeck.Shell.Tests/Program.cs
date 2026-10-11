@@ -90,6 +90,7 @@ public static class Program
         Run("inbox rows and footer use the styled model parts", InboxRowsAndFooterUseStyledModelParts);
         Run("action variants and work rows use styled layouts", ActionVariantsAndWorkRowsUseStyledLayouts);
         Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
+        Run("card parts sit on one content edge", CardPartsShareOneContentEdge);
         Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
         Run("runtime menu builds every entry kind", RuntimeMenuBuildsEveryEntryKind);
         Run("menu clicks send the exact command", MenuClicksSendExactCommand);
@@ -580,7 +581,8 @@ public static class Program
         var pullRequestNote = Descendants(pullRequestCollapsed).OfType<TrackedTextBlock>().Single();
         Equal(DeckTextTrimming.End, pullRequestNote.Trimming);
         Equal(HorizontalAlignment.Right, pullRequestNote.HorizontalAlignment);
-        var pullRequestRow = Descendants(pullRequestCollapsed).OfType<Grid>().Single();
+        // The row is the grid with columns; a card button's template is a grid too.
+        var pullRequestRow = Descendants(pullRequestCollapsed).OfType<Grid>().Single(grid => grid.ColumnDefinitions.Count > 0);
         Equal(GridUnitType.Star, pullRequestRow.ColumnDefinitions[3].Width.GridUnitType);
         Equal(GridLength.Auto, pullRequestRow.ColumnDefinitions[2].Width);
         var collapsedBitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
@@ -597,6 +599,44 @@ public static class Program
         var ddevCollapsed = (Border)Arrange(WindowsCardRenderer.Stopped(ddevCollapsedModel, _ => { }));
         var title = Descendants(ddevCollapsed).OfType<TextBlock>().Single(text => text.Text == "shop");
         True(title.ActualWidth > 0);
+    }
+
+    private static void CardPartsShareOneContentEdge()
+    {
+        // The mock's grid: everything inside the frame's padding starts on its left edge and ends
+        // on its right edge, and a list row bleeds 6 px past both so its contents land on them.
+        var list = (Border)Render(GoldenModels("github.pullRequests").Last());
+        var listContent = (FrameworkElement)list.Child;
+        TextBlock Named(FrameworkElement root, string text) =>
+            Descendants(root).OfType<TextBlock>().First(block => block.Text == text);
+        double Left(FrameworkElement element) => element.TranslatePoint(new Point(0, 0), listContent).X;
+        double Right(FrameworkElement element) => listContent.ActualWidth - element.TranslatePoint(new Point(element.ActualWidth, 0), listContent).X;
+        Near(0, Left(Named(list, "4")));
+        Near(0, Left(Named(list, "2 repos · 1 org")));
+        Near(0, Right(Named(list, "04:00:00")));
+        Near(0, Right(Named(list, "1 blocked")));
+        var row = Descendants(list).OfType<Button>().First(button => button.Content is Grid);
+        Near(-6, Left(row));
+        Near(-6, Right(row));
+        var rowGrid = (Grid)row.Content;
+        Near(0, Left((FrameworkElement)rowGrid.Children[0]));
+        Near(0, Right(Named(list, "CR")));
+
+        var project = (Border)Render(GoldenModels("arc.project.paper").Last());
+        listContent = (FrameworkElement)project.Child;
+        var buttons = Descendants(project).OfType<Button>().ToList();
+        Near(0, Left(buttons.First(button => Equals(button.Content, "PageBuilder"))));
+        var actions = buttons.Where(button => button.ActualHeight == 32).ToList();
+        Near(0, Left(actions.First()));
+        Near(0, Right(actions.Last()));
+    }
+
+    private static void Near(double expected, double actual)
+    {
+        if (Math.Abs(expected - actual) > 0.01)
+        {
+            throw new Exception($"expected {expected}, got {actual}");
+        }
     }
 
     private static void ExpandedListsReportLargerHeight()

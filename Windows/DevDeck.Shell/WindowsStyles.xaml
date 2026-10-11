@@ -264,7 +264,58 @@
     </Setter>
   </Style>
 
-  <Style x:Key="HeaderIconButton" TargetType="Button" BasedOn="{StaticResource FluentButton}">
+  <!-- Cards draw the focus ring outside the button, so the visible control fills its layout box and
+       sits on the card's content edge, as in the reference mock. -->
+  <Style x:Key="CardButton" TargetType="Button" BasedOn="{StaticResource FluentButton}">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid>
+            <Border
+                x:Name="FocusBorder"
+                Margin="-4"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="2"
+                CornerRadius="6"
+                IsHitTestVisible="False" />
+            <Border
+                x:Name="ControlBorder"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="4">
+              <ContentPresenter
+                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                  VerticalAlignment="Center"
+                  Margin="{TemplateBinding Padding}"
+                  RecognizesAccessKey="False" />
+            </Border>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="ControlBorder" Property="Background" Value="{StaticResource ControlHover}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="ControlBorder" Property="Background" Value="{StaticResource ControlPressed}" />
+              <Setter Property="Foreground" Value="#CCFFFFFF" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="ControlBorder" Property="Background" Value="Transparent" />
+              <Setter TargetName="ControlBorder" Property="Opacity" Value="0.42" />
+              <Setter Property="Foreground" Value="{StaticResource TextTertiary}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="FocusBorder" Property="BorderBrush" Value="{StaticResource FocusOuter}" />
+              <Setter TargetName="ControlBorder" Property="BorderBrush" Value="{StaticResource FocusInner}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="HeaderIconButton" TargetType="Button" BasedOn="{StaticResource CardButton}">
     <Setter Property="Width" Value="24" />
     <Setter Property="Height" Value="24" />
     <Setter Property="Padding" Value="0" />
@@ -281,7 +332,15 @@
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
 
-  <Style x:Key="ExpanderButton" TargetType="Button" BasedOn="{StaticResource FluentButton}">
+  <Style x:Key="CardRowButton" TargetType="Button" BasedOn="{StaticResource CardButton}">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+
+  <Style x:Key="ExpanderButton" TargetType="Button" BasedOn="{StaticResource CardButton}">
     <Setter Property="Height" Value="26" />
     <Setter Property="Padding" Value="6,0" />
     <Setter Property="Background" Value="Transparent" />
@@ -290,7 +349,18 @@
     <Setter Property="FontWeight" Value="Normal" />
   </Style>
 
-  <Style x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource ExpanderButton}">
+  <Style x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource FluentButton}">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{StaticResource LinkInfo}" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="3,0" />
+  </Style>
+
+  <Style x:Key="CardLinkButton" TargetType="Button" BasedOn="{StaticResource ExpanderButton}">
     <Setter Property="Foreground" Value="{StaticResource LinkInfo}" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
     <Setter Property="Padding" Value="3,0" />
@@ -514,7 +584,7 @@
     <Setter Property="FontSize" Value="12" />
   </Style>
 
-  <Style x:Key="ChipButton" TargetType="Button" BasedOn="{StaticResource FluentButton}">
+  <Style x:Key="ChipButton" TargetType="Button" BasedOn="{StaticResource CardButton}">
     <Setter Property="Height" Value="24" />
     <Setter Property="Padding" Value="7,0" />
     <Setter Property="FontSize" Value="12" />
