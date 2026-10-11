@@ -39,6 +39,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private Task? hostLoop;
     private long nextId;
     private bool beganSession;
+    private bool isReplay;
     private readonly AsyncShutdown shutdown;
 
     public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface, ProtocolTrace? trace = null)
@@ -67,6 +68,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
 
     public async Task StartReplayAsync(string path)
     {
+        isReplay = true;
         protocol.Reset();
         beganSession = false;
         foreach (var line in File.ReadLines(path))
@@ -257,6 +259,10 @@ public sealed class ShellCoordinator : IAsyncDisposable
         {
             case "openMenu":
                 surface.OpenMenu();
+                break;
+            case "quit" when isReplay:
+                // A replay exists to be looked at, so it stays up until it is closed by hand.
+                Console.Error.WriteLine("Replay ignored the quit effect.");
                 break;
             case "quit":
                 _ = shutdown.Request();

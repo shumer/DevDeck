@@ -66,6 +66,7 @@ public static class Program
         }
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
         Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
+        Run("a replay ignores the quit effect", ReplayIgnoresQuit);
         Run("the protocol trace records both directions without typed tokens", ProtocolTraceLeavesTokensOut);
         Run("a second launch raises the first deck", SecondLaunchSignalsFirst);
         Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
@@ -1713,6 +1714,59 @@ public static class Program
         }
         using var next = new SingleInstance(name);
         True(next.IsFirst);
+    }
+
+    private static void ReplayIgnoresQuit()
+    {
+        var surface = new RecordingSurface();
+        var errors = new StringWriter();
+        var previous = Console.Error;
+        Console.SetError(errors);
+        try
+        {
+            var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", surface);
+            var golden = Path.Combine(RepositoryRoot(), "Tests", "EngineTests", "Golden", "session-en.expected.jsonl");
+            coordinator.StartReplayAsync(golden).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            Console.SetError(previous);
+        }
+        Equal(0, surface.Quits);
+        True(errors.ToString().Contains("Replay ignored the quit effect.", StringComparison.Ordinal));
+    }
+
+    private sealed class RecordingSurface : IShellSurface
+    {
+        public int Quits { get; private set; }
+#pragma warning disable CS0067
+        public event Action<CardMeasurement>? CardMeasured;
+        public event Action<CardMove>? CardMoved;
+        public event Action<DeckCommand>? CommandInvoked;
+        public event Action<LogWindowChange>? LogWindowChanged;
+        public event Action<SettingsWireRequest>? SettingsRequested;
+        public event Action<string>? IntentRequested;
+        public event Action? DisplayConfigurationChanged;
+#pragma warning restore CS0067
+        public void BeginSession() { }
+        public void ApplyDeck(DeckPresentation presentation) { }
+        public void ApplyPanels(IReadOnlyList<PanelChange> panels) { }
+        public void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped) { }
+        public void UpdateStatus(JsonElement status) { }
+        public void UpdateMenu(JsonElement menu) { }
+        public void ShowNotifications(IReadOnlyList<DeckNotification> notifications) { }
+        public void UpdateLog(string card, DeckLog log) { }
+        public void OpenLogs(string card) { }
+        public void CloseLogs(string card) { }
+        public void UpdateSettings(string? id, JsonElement answer) { }
+        public void UpdateSettingsUpdate(JsonElement update) { }
+        public void OpenSettings(JsonElement effect) { }
+        public void ApplySummonPreferences(SummonPreferences preferences) { }
+        public void PresentDeck() { }
+        public void OpenMenu() { }
+        public void Quit() => Quits++;
+        public void ShowStopped() { }
+        public void Dispose() { }
     }
 
     private static void ProtocolTraceLeavesTokensOut()
