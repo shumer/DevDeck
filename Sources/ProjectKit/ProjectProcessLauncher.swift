@@ -28,6 +28,9 @@ struct ShellProjectLauncher: ProjectProcessLauncher {
     let project: LocalProject
     let runner: any CommandRunning
     let files: ProjectRuntimeFiles
+    let sleeper: any Sleeper
+    /// Whether a process id is still somebody's. Injected so the suite can decide.
+    let isAlive: @Sendable (Int32) -> Bool
 
     private var logURL: URL { files.log(project.id) }
     private var pidURL: URL { files.pid(project.id) }
@@ -71,8 +74,39 @@ struct ShellProjectLauncher: ProjectProcessLauncher {
 
         guard let pid = Self.readPID(at: pidURL) else { return nil }
         let result = try? await runner.run(LocalProjectService.killTreeCommand(pid: pid), in: folder, timeout: 30)
-        forgetPID()
+        // The tree as it stood before the signal, from the command's own output: once the
+        // wrapper is gone its children belong to launchd and cannot be found from the record.
+        var tree = Set((result?.standardOutput ?? "").split(whereSeparator: \.isNewline).compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) })
+        tree.insert(pid)
+        // Asked politely, not every tree goes: `dotnet run` sits on TERM, and so does anything
+        // mid-shutdown waiting on a database. Wait a little, then insist, and forget the record
+        // only once nothing is left of the tree. A record forgotten over a living tree is a
+        // project the deck can never stop again: three servers read "started outside DevDeck"
+        // the morning after a Stop that did not take, with Stop pointing at a terminal.
+        if result?.succeeded == true {
+            var survivors = await waitUntilGone(tree, attempts: 20)
+            if !survivors.isEmpty {
+                let list = survivors.sorted().map(String.init).joined(separator: " ")
+                _ = try? await runner.run("kill -KILL \(list) 2>/dev/null", in: folder, timeout: 10)
+                survivors = await waitUntilGone(survivors, attempts: 8)
+            }
+            if survivors.isEmpty { forgetPID() }
+        } else if !isAlive(pid) {
+            forgetPID()
+        }
         return result
+    }
+
+    /// The processes of `pids` still alive after up to `attempts` quarter seconds.
+    private func waitUntilGone(_ pids: Set<Int32>, attempts: Int) async -> Set<Int32> {
+        var left = pids.filter(isAlive)
+        var tries = 0
+        while !left.isEmpty, tries < attempts {
+            try? await sleeper.sleep(seconds: 0.25)
+            left = left.filter(isAlive)
+            tries += 1
+        }
+        return left
     }
 
     static func readPID(at url: URL) -> Int32? {

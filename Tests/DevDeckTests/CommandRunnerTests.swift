@@ -1,5 +1,6 @@
 import DevDeckCore
 import Foundation
+import ProjectKit
 import TestHarness
 
 /// These run real processes, which the rest of the suite never does.
@@ -101,6 +102,31 @@ func runCommandRunnerTests(_ run: TestRun) async {
         try expectNil(ShellPath.parse("\(ShellPath.marker)nonsense"), "a PATH has directories in it")
         try expect(ShellPath.fallback.contains("/opt/homebrew/bin"), "both Homebrew prefixes")
         try expect(ShellPath.fallback.contains("/usr/local/bin"))
+    }
+
+    await run.test("a tree that ignores TERM is killed, and the record goes only once it is gone") {
+        let files = ProjectRuntimeFiles(directory: temporary.appendingPathComponent("devdeck-stubborn-\(UUID().uuidString)", isDirectory: true))
+        try FileManager.default.createDirectory(at: files.directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: files.directory) }
+        // A shell that shrugs at TERM, with a marker in its arguments so it can be found after.
+        let marker = "stubborn-\(UUID().uuidString)"
+        let project = LocalProject(
+            id: "stubborn", title: "Stubborn", folder: temporary.path,
+            startCommand: "sh -c 'trap \"\" TERM; while :; do sleep 1; done' \(marker)",
+            holdsProcess: true
+        )
+        let service = LocalProjectService(project: project, runner: runner, httpClient: FakeHTTPClient([]), files: files)
+        _ = await service.perform(.start)
+        try await Task.sleep(for: .seconds(1))
+        let pid = try expectNotNil(service.storedPID(), "the start was written down")
+        try expect(ProcessLiveness.isAlive(pid), "the wrapper is up")
+
+        _ = await service.perform(.stop)
+
+        // The bracket keeps the search from matching its own command line.
+        let left = try await runner.run("pgrep -f '[s]tubborn-\(marker.dropFirst(9))' || true", in: temporary, timeout: 10)
+        try expectEqual(left.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines), "", "nothing of the tree is left")
+        try expectNil(service.storedPID(), "the record goes once the tree is gone, not before")
     }
 
     await run.test("a command run through the real runner can find a version-managed tool") {

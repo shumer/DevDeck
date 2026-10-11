@@ -390,7 +390,11 @@ but keeps a caption or Check URL you already filled in.
   log.
 - **Stop kills the whole tree** when there is no stop command of your own. `npm run dev` is a
   wrapper, and killing it alone leaves the server it spawned holding the port - which then makes
-  the next start fail for a reason nothing on screen would explain.
+  the next start fail for a reason nothing on screen would explain. It asks with TERM first,
+  waits five seconds, and insists with KILL on whatever is left: `dotnet run` and a server
+  mid-shutdown sit on TERM. The process record is forgotten only once the tree is gone, so a
+  stop that did not take leaves a project DevDeck can still stop, not one that reads as started
+  outside it.
 - **Stop never touches what DevDeck did not start.** A project started in a terminal answers its
   health URL and reads as running, but DevDeck holds no process for it. The card says `started
   outside DevDeck` where the pid would be, Restart is off, and Stop runs nothing: the menu says

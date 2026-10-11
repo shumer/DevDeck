@@ -49,6 +49,11 @@ The same happens to a project whose start command returns on its own, such as `d
 - A pid file lost while the server kept running (the wrapper died, Application Support was
   cleared) reads as started outside DevDeck. That is honest about what the deck holds, and Stop
   in a terminal is the right answer there too.
+  Amended 2026-10-11: the deck itself must not be the one losing the file. Stop used to forget
+  the record as soon as it had sent TERM, and `dotnet run` sits on TERM: three servers the deck
+  had started read "started outside DevDeck" the next morning, with Stop pointing at a terminal
+  they were never started in. Stop now prints the tree before signalling it, waits five seconds,
+  sends KILL to whatever is left, and forgets the record only once nothing of the tree is alive.
 - The engine's protocol front-end does not carry the block yet. It moves onto `DeckRuntime` in
   C-1, and the Windows card model needs the field then.
 

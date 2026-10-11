@@ -65,38 +65,39 @@ public struct LocalProjectService: Sendable {
         self.launcher = Self.launcher(for: project, runner: runner, files: files)
     }
     #else
+    /// `liveness` answers whether a process id is still somebody's; the suite hands in its own
+    /// so a stop can be checked without a process to kill.
     public init(
         project: LocalProject,
         runner: any CommandRunning = ShellCommandRunner(),
         httpClient: any HTTPClient = URLSessionHTTPClient.makeDefault(timeout: 3),
         clock: any DateProvider = SystemDateProvider(),
         sleeper: any Sleeper = TaskSleeper(),
-        files: ProjectRuntimeFiles = .standard()
+        files: ProjectRuntimeFiles = .standard(),
+        liveness: @escaping @Sendable (Int32) -> Bool = ProcessLiveness.isAlive
     ) {
         self.project = project
         self.httpClient = httpClient
         self.clock = clock
         self.sleeper = sleeper
         self.files = files
-        self.launcher = Self.launcher(for: project, runner: runner, files: files)
+        self.launcher = ShellProjectLauncher(project: project, runner: runner, files: files, sleeper: sleeper, isAlive: liveness)
     }
     #endif
 
+    #if os(Windows)
     /// The launcher for where this project runs, picked from the runner the caller supplied.
     private static func launcher(
         for project: LocalProject,
         runner: any CommandRunning,
         files: ProjectRuntimeFiles
     ) -> any ProjectProcessLauncher {
-        #if os(Windows)
         if let native = runner as? NativeWindowsCommandRunner {
             return NativeWindowsProjectLauncher(project: project, runner: native)
         }
         return WSLProjectLauncher(project: project, runner: runner)
-        #else
-        return ShellProjectLauncher(project: project, runner: runner, files: files)
-        #endif
     }
+    #endif
 
     public var logURL: URL { files.log(project.id) }
 
@@ -305,9 +306,11 @@ public struct LocalProjectService: Sendable {
     /// Killing the recorded pid alone is not enough: `npm run dev` is a wrapper, and stopping
     /// it leaves the server it spawned holding the port - which then makes the next start fail
     /// for a reason nobody can see.
+    /// Each id is printed before it is signalled, so the caller knows the tree as it stood and
+    /// can check that it is gone: once the wrapper dies its children cannot be found from it.
     public static func killTreeCommand(pid: Int32) -> String {
         "kt() { local child; for child in $(pgrep -P $1 2>/dev/null); do kt $child; done; "
-            + "kill -TERM $1 2>/dev/null; }; kt \(pid)"
+            + "echo $1; kill -TERM $1 2>/dev/null; }; kt \(pid)"
     }
 
     /// Wraps a string so the shell sees it exactly as written, quotes and all.

@@ -24,6 +24,11 @@ private func makeProject(
     )
 }
 
+/// Returns at once: the suite does not wait a quarter second twenty times.
+private struct NoSleeper: Sleeper {
+    func sleep(seconds: TimeInterval) async throws {}
+}
+
 /// A scratch directory for the log and pid files, cleaned up by the caller.
 private func makeRuntimeFiles() -> ProjectRuntimeFiles {
     let directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -276,12 +281,13 @@ func runProjectTests(_ run: TestRun) async {
     await run.test("stopping without a stop command kills the whole tree") {
         let files = makeRuntimeFiles()
         try "4242".write(to: files.pid("newsroom"), atomically: true, encoding: .utf8)
-        let runner = StubCommandRunner([("kt", CommandResult(exitCode: 0, standardOutput: "", standardError: ""))])
+        let runner = StubCommandRunner([("kt", CommandResult(exitCode: 0, standardOutput: "4243\n4242\n", standardError: ""))])
         let service = LocalProjectService(
             project: makeProject(),
             runner: runner,
             httpClient: FakeHTTPClient([]),
-            files: files
+            files: files,
+            liveness: { _ in false }
         )
         _ = await service.perform(.stop)
 
@@ -289,7 +295,31 @@ func runProjectTests(_ run: TestRun) async {
         // Killing the recorded pid alone leaves the server npm spawned holding the port.
         try expect(command.contains("pgrep -P"), "descendants are killed too")
         try expect(command.hasSuffix("kt 4242"))
+        try expectEqual(await runner.commands.count, 1, "a tree that went needs no second signal")
         try expectNil(service.storedPID(), "the pid file is forgotten once it is stopped")
+    }
+
+    await run.test("a tree that sits on TERM is killed, and the record is kept while it lives") {
+        let files = makeRuntimeFiles()
+        try "4242".write(to: files.pid("newsroom"), atomically: true, encoding: .utf8)
+        let runner = StubCommandRunner([
+            ("kt", CommandResult(exitCode: 0, standardOutput: "4243\n4242\n", standardError: "")),
+            ("kill -KILL", CommandResult(exitCode: 0, standardOutput: "", standardError: "")),
+        ])
+        // The wrapper went, its child did not.
+        let service = LocalProjectService(
+            project: makeProject(),
+            runner: runner,
+            httpClient: FakeHTTPClient([]),
+            sleeper: NoSleeper(),
+            files: files,
+            liveness: { $0 == 4243 }
+        )
+        _ = await service.perform(.stop)
+        let commands = await runner.commands
+        try expectEqual(commands.count, 2)
+        try expect(commands[1].hasPrefix("kill -KILL 4243"), "the survivor is insisted upon by id: \(commands[1])")
+        try expectEqual(service.storedPID(), 4242, "a record forgotten over a living tree is a project nobody can stop")
     }
 
     await run.test("a stop command is preferred over killing anything") {
@@ -311,14 +341,15 @@ func runProjectTests(_ run: TestRun) async {
         let files = makeRuntimeFiles()
         try "4242".write(to: files.pid("newsroom"), atomically: true, encoding: .utf8)
         let runner = StubCommandRunner([
-            ("kt", CommandResult(exitCode: 0, standardOutput: "", standardError: "")),
+            ("kt", CommandResult(exitCode: 0, standardOutput: "4242\n", standardError: "")),
             ("nohup", CommandResult(exitCode: 0, standardOutput: "", standardError: "")),
         ])
         let service = LocalProjectService(
             project: makeProject(),
             runner: runner,
             httpClient: FakeHTTPClient([]),
-            files: files
+            files: files,
+            liveness: { _ in false }
         )
         _ = await service.perform(.restart)
 
