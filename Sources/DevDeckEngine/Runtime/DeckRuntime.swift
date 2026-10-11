@@ -367,6 +367,9 @@ public final class DeckRuntime {
             if stackStatuses[project.id]?.isBusy == true { continue }
             let service = LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts)
             let probed = await service.status()
+            // Asked again after the wait: `docker ps` through WSL can take twenty seconds, and a
+            // button pressed meanwhile owns the card now.
+            if stackStatuses[project.id]?.isBusy == true { continue }
             // One failed probe is a hiccup: the engine drops a request while it reloads and the
             // card would say "stopped" about a stack that is up.
             guard settler.shouldApply(
@@ -496,7 +499,7 @@ public final class DeckRuntime {
 
     /// Puts the newest line from a running command on the card.
     private func noteProgress(_ line: String, for project: ArcProject) {
-        guard var status = stackStatuses[project.id], status.isBusy else { return }
+        guard var status = stackStatuses[project.id], status.isBusy, !CommandResult.isNoise(line) else { return }
         status.progressLine = line
         stackStatuses[project.id] = status
     }
@@ -534,6 +537,7 @@ public final class DeckRuntime {
             let entries = lists.first { $0.distribution == place }?.entries?.map { entry in
                 place.map { entry.reached(through: $0) } ?? entry
             }
+            if !finished.contains(project.id), isBusyAndFresh(project.id) { continue }
             let probed = ddevEnvironment(for: project).status(for: project, entries: entries)
             // `ddev list` answers slowly while a project is starting and occasionally not at
             // all, and the card would say "not in ddev list" about a project that is running.
@@ -800,6 +804,7 @@ public final class DeckRuntime {
             // task that died without reporting must not freeze the card for the session.
             if !finished.contains(project.id), isLocalBusyAndFresh(project.id) { continue }
             let probed = await localService(for: project).status()
+            if !finished.contains(project.id), isLocalBusyAndFresh(project.id) { continue }
             // A dev server rebuilding drops requests for a second or two, and the card would
             // call that stopped.
             guard finished.contains(project.id) || settler.shouldApply(

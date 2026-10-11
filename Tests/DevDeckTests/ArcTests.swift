@@ -397,17 +397,25 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(status.engineVersion, "7.1.1", "read from the image tag, not from the answer")
     }
 
-    await run.test("a stack started by hand, with no containers at all, still counts as running") {
-        // Docker says nothing about it, and nothing else holds the port: whoever answered is the
-        // only thing that could be serving this checkout.
+    await run.test("a port that answers while this Docker has none of the checkout's containers is not this stack") {
+        // Docker answered and has nothing of this checkout's: whatever is on the port is another
+        // Docker's, reached through a forwarded port, and there is nothing here to stop.
         let service = LocalStackService(
             project: makeProject(folder: "/Users/dev/citynews/arcxp.theme"),
             runner: StubCommandRunner([("docker ps", CommandResult(exitCode: 0, standardOutput: "", standardError: ""))]),
             httpClient: FakeHTTPClient([.success(.json("{\"version\":\"2026.7.2\"}"))])
         )
         let status = await service.status()
-        try expectEqual(status.state, .running)
-        try expectNil(status.containers)
+        try expectEqual(status.state, .stopped, "answering is not the same as being this checkout's stack")
+        try expectEqual(status.detail, L("arc.answeredElsewhere", 80))
+    }
+
+    await run.test("a compose label with backslashes and a drive letter is this checkout's folder") {
+        let folder = URL(fileURLWithPath: "/C:/src/arc-starter")
+        let rows = "fusion-engine\twashpost/fusion-engine:7.2.1\tc:\\src\\arc-starter\\.fusion\t0.0.0.0:80->8080/tcp"
+        let mine = LocalStackService.containers(in: rows, folder: folder)
+        try expectEqual(mine.map(\.name), ["fusion-engine"], "Docker Desktop's spelling matches the deck's")
+        try expectNil(LocalStackService.stackHolding(port: 80, in: rows, folder: folder), "and holds nothing against itself")
     }
 
     await run.test("who holds a port is read from the compose working directory") {

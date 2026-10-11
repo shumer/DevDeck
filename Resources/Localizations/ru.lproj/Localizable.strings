@@ -23,6 +23,7 @@
 "alert.summary.named.more" = "%1$@, %2$@ и ещё %3$d";
 "arc.noContainers" = "у этого проекта нет контейнеров";
 "arc.portHeldBy" = "порт %1$d занят: %2$@";
+"arc.answeredElsewhere" = "на порту %d отвечает стек, которого этот Docker не знает";
 "arc.stack.unavailable" = "Папка проекта не задана";
 "arrangements.forget" = "Забыть %@";
 "arrangements.name.placeholder" = "Morning Post day";

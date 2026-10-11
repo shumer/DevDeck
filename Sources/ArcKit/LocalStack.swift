@@ -258,10 +258,24 @@ public struct LocalStackService: Sendable {
                 )
             }
 
+            if running.isEmpty, listed != nil {
+                // Docker answered and has nothing of this checkout's, yet the port answers: a
+                // stack this Docker does not know, on this machine another Docker's, through the
+                // port WSL forwards. Not this project's, and nothing here to stop.
+                return LocalStackStatus(
+                    state: .stopped,
+                    detail: L("arc.answeredElsewhere", port),
+                    checkedAt: clock.now,
+                    siteURL: siteURL,
+                    branch: branch,
+                    repositoryURL: repositoryURL
+                )
+            }
+
             return LocalStackStatus(
                 state: .running,
                 // The image tag when the stack can be asked, and the endpoint's own answer only
-                // as a fallback, for a stack somebody started outside Docker.
+                // as a fallback, when Docker could not be asked at all.
                 engineVersion: Self.engineRelease(in: running) ?? Self.engineVersion(from: response.body),
                 containers: running.isEmpty ? nil : running.count,
                 checkedAt: clock.now,
@@ -344,16 +358,35 @@ public struct LocalStackService: Sendable {
     public static func containers(in output: String, folder: URL) -> [(name: String, image: String)] {
         let root = composeFolder(folder)
         return rows(in: output)
-            .filter { $0.directory == root || $0.directory.hasPrefix(root + "/") }
+            .filter { isInside(normalized($0.directory), root) }
             .map { (name: $0.name, image: $0.image) }
     }
 
     private static func composeFolder(_ folder: URL) -> String {
         #if os(Windows)
         // The WSL daemon reports Linux labels even when the deck stores a UNC folder.
-        if case .wsl(_, let path)? = ProjectLocation(folder: folder.path) { return path }
+        if case .wsl(_, let path)? = ProjectLocation(folder: folder.path) { return normalized(path) }
         #endif
-        return folder.standardizedFileURL.path
+        return normalized(folder.standardizedFileURL.path)
+    }
+
+    /// A folder as one string whichever way it was spelled: Docker Desktop writes the compose
+    /// label with backslashes and whatever case the drive letter had, the deck stores the
+    /// folder with slashes.
+    static func normalized(_ path: String) -> String {
+        var text = path.replacingOccurrences(of: "\\", with: "/")
+        while text.count > 1, text.hasSuffix("/") { text.removeLast() }
+        // `/C:/src` is how a file URL spells a Windows path; the label says `C:\src`.
+        let letters = Array(text.prefix(3))
+        if letters.count == 3, letters[0] == "/", letters[1].isLetter, letters[2] == ":" { text.removeFirst() }
+        if text.count >= 2, text[text.index(after: text.startIndex)] == ":", text.first!.isLetter {
+            text = text.prefix(1).lowercased() + text.dropFirst()
+        }
+        return text
+    }
+
+    private static func isInside(_ directory: String, _ root: String) -> Bool {
+        directory == root || directory.hasPrefix(root + "/")
     }
 
     /// One row of `docker ps`: what it is called, what it runs, whose compose file started it
@@ -391,7 +424,7 @@ public struct LocalStackService: Sendable {
         let root = composeFolder(folder)
         let published = ":\(port)->"
         for row in rows(in: output) where row.ports.contains(published) {
-            if row.directory == root || row.directory.hasPrefix(root + "/") { return nil }
+            if isInside(normalized(row.directory), root) { return nil }
             guard !row.directory.isEmpty else { return (row.name, "") }
             // `.fusion` is where Fusion writes its compose file; the checkout is its parent.
             var directory = URL(fileURLWithPath: row.directory)

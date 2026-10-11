@@ -23,6 +23,7 @@
 "alert.summary.named.more" = "%1$@, %2$@ and %3$d more";
 "arc.noContainers" = "no containers for this project";
 "arc.portHeldBy" = "port %1$d taken by %2$@";
+"arc.answeredElsewhere" = "port %d answered by a stack this Docker does not know";
 "arc.stack.unavailable" = "No project folder set";
 "arrangements.forget" = "Forget %@";
 "arrangements.name.placeholder" = "Morning Post day";
