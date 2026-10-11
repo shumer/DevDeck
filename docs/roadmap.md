@@ -2,6 +2,10 @@
 
 ## Done
 
+- Windows follows the system scheme: dark and light palettes, Acrylic or solid, the taskbar's
+  accent tint in dark mode, redrawn live; one menu column, toned dialog buttons, full height
+  replays.
+
 - Windows UI review: one content edge on every card, the mock's branch icon, card buttons with
   the focus ring outside, whole labels in a crowded button row, an invisible menu owner, a tray
   menu that scrolls, whole combo box text, a dark scroll bar, replays that ignore quit, and a

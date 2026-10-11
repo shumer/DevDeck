@@ -38,9 +38,9 @@ public static class NativeMethods
         var cornerPreference = RoundedWindowCorners;
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
-        var darkMode = 1;
-        _ = DwmSetWindowAttribute(
-            handle, ImmersiveDarkMode, ref darkMode, Marshal.SizeOf<int>());
+        SetDarkMode(handle, !WindowsTheme.Current.IsLight);
+        // Acrylic, as the taskbar: Mica and Mica Alt fall back to a solid colour on a window that is
+        // never active, and a card never is.
         var backdrop = TransientWindowBackdrop;
         _ = DwmSetWindowAttribute(
             handle, SystemBackdropType, ref backdrop, Marshal.SizeOf<int>());
@@ -64,14 +64,29 @@ public static class NativeMethods
         return cornerPreference;
     }
 
+    // A dark or light frame, title bar and Acrylic; a frame change makes an open window redraw it.
+    // A card's frame is extended over its client area, and a frame change there makes DWM rebuild
+    // the client's transparency, which lost dark text on a light card; cards only need the backdrop.
+    public static void SetDarkMode(nint handle, bool dark, bool redrawFrame = true)
+    {
+        if (handle == 0)
+        {
+            return;
+        }
+        var value = dark ? 1 : 0;
+        _ = DwmSetWindowAttribute(handle, ImmersiveDarkMode, ref value, Marshal.SizeOf<int>());
+        if (redrawFrame)
+        {
+            _ = SetWindowPos(handle, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
+        }
+    }
+
     public static void ApplyLogWindowStyles(nint handle)
     {
         var cornerPreference = RoundedWindowCorners;
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
-        var darkMode = 1;
-        _ = DwmSetWindowAttribute(
-            handle, ImmersiveDarkMode, ref darkMode, Marshal.SizeOf<int>());
+        SetDarkMode(handle, !WindowsTheme.Current.IsLight);
     }
 
     public static int GetWindowAttribute(nint handle, int attribute)

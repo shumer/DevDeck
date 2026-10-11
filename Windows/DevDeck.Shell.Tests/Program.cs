@@ -57,6 +57,12 @@ public static class Program
             Application.Current.Shutdown();
             return 0;
         }
+        if (arguments.Length == 3 && arguments[0] == "--capture-theme")
+        {
+            ThemePreview.Generate(Path.GetFullPath(arguments[1]), Path.GetFullPath(arguments[2]));
+            Application.Current.Shutdown();
+            return 0;
+        }
         if (arguments.Length is 2 or 3 && arguments[0] == "--state-preview")
         {
             return StatePreview.Show(
@@ -67,13 +73,20 @@ public static class Program
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
         Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
         Run("a replay ignores the quit effect", ReplayIgnoresQuit);
+        Run("a replay sizes its own panels from measurements", ReplaySizesItsPanels);
+        Run("a card updated before it is shown still reports its height", CardUpdatedBeforeShowReportsHeight);
         Run("the protocol trace records both directions without typed tokens", ProtocolTraceLeavesTokensOut);
         Run("a second launch raises the first deck", SecondLaunchSignalsFirst);
         Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
         Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);
         Run("the menu's input owner is never seen", MenuInputOwnerIsInvisible);
+        Run("menu titles share one line after the check column", MenuTitlesShareOneLine);
+        Run("dialog buttons carry the accent or the alert tone", DialogButtonsCarryTheirTone);
         Run("scroll bars and combo boxes follow the dark surface", ScrollBarsAndComboBoxesFitTheSurface);
+        Run("the palette follows every scheme combination", PaletteFollowsEverySchemeCombination);
+        Run("every token and tone is in both palettes", EveryTokenAndToneIsInBothPalettes);
+        Run("a scheme change redraws without a restart", ThemeChangesRedrawWithoutRestart);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
         Run("panel frames are applied as received", PanelFramesAreAppliedAsReceived);
@@ -93,6 +106,7 @@ public static class Program
         Run("action variants and work rows use styled layouts", ActionVariantsAndWorkRowsUseStyledLayouts);
         Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
         Run("card parts sit on one content edge", CardPartsShareOneContentEdge);
+        Run("state dots sit on the capitals of their text", StateDotsSitOnTheirCapitals);
         Run("a crowded button row gives up whole labels", CrowdedActionsGiveUpWholeLabels);
         Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
         Run("runtime menu builds every entry kind", RuntimeMenuBuildsEveryEntryKind);
@@ -291,7 +305,7 @@ public static class Program
         var on = Button(CardRenderer.Create(ProjectModel(true, null), _ => { }), "project.header.log");
         True(!Equals(off.Foreground, on.Foreground));
         True(!Equals(off.Background, on.Background));
-        True(on.Content is TextBlock onIcon && Equals(onIcon.Foreground, WindowsTheme.Brush("ToneGood")));
+        True(on.Content is TextBlock onIcon && SameColour(WindowsTheme.Brush("ToneGood"), onIcon.Foreground));
     }
 
     private static void ExportedBrandMarksRender()
@@ -308,11 +322,88 @@ public static class Program
 
     private static void CardMaterialsHaveBothVariants()
     {
-        var acrylic = (SolidColorBrush)WindowsTheme.CardBackground(true);
-        var solid = (SolidColorBrush)WindowsTheme.CardBackground(false);
-        Equal((byte)168, acrylic.Color.A);
-        Equal((byte)255, solid.Color.A);
-        Equal(Color.FromRgb(43, 43, 47), solid.Color);
+        var acrylic = DeckPalette.For(ThemeInputs.Default).CardTint;
+        var solid = DeckPalette.For(ThemeInputs.Default with { TransparencyEnabled = false }).CardTint;
+        True(acrylic.A < 255);
+        Equal((byte)255, solid.A);
+        // The dark taskbar's solid colour.
+        Equal(Color.FromRgb(0x1C, 0x1C, 0x1C), solid);
+    }
+
+    private static void PaletteFollowsEverySchemeCombination()
+    {
+        var accent = ThemeInputs.Default.AccentDark2;
+        foreach (var light in new[] { false, true })
+        {
+            foreach (var transparent in new[] { false, true })
+            {
+                foreach (var accentOnTaskbar in new[] { false, true })
+                {
+                    var inputs = ThemeInputs.Default with
+                    {
+                        SystemUsesLightTheme = light,
+                        TransparencyEnabled = transparent,
+                        AccentOnTaskbar = accentOnTaskbar,
+                    };
+                    var palette = DeckPalette.For(inputs);
+                    // The card is the taskbar's material, which is light only without the accent.
+                    Equal(light && !accentOnTaskbar, palette.IsLight);
+                    Equal(transparent, palette.CardTint.A < 255);
+                    var expected = accentOnTaskbar ? accent
+                        : light ? Color.FromRgb(0xEE, 0xEE, 0xEE) : Color.FromRgb(0x1C, 0x1C, 0x1C);
+                    Equal(expected.R, palette.CardTint.R);
+                    Equal(expected.G, palette.CardTint.G);
+                    Equal(expected.B, palette.CardTint.B);
+                    // Text reads on the surface: light text on dark, dark text on light.
+                    Equal(palette.IsLight, palette["TextPrimary"].R < 128);
+                }
+            }
+        }
+    }
+
+    private static void EveryTokenAndToneIsInBothPalettes()
+    {
+        foreach (var light in new[] { false, true })
+        {
+            var palette = DeckPalette.For(ThemeInputs.Default with { SystemUsesLightTheme = light });
+            foreach (var key in DeckPalette.Keys)
+            {
+                _ = palette[key];
+            }
+            foreach (var tone in new[] { "good", "attention", "alert", "personal" })
+            {
+                True(palette.Tone(tone) != palette["TextPrimary"]);
+                True(palette.ToneTint(tone).A > 0 && palette.ToneTint(tone).A < 64);
+            }
+            Equal(palette["TextPrimary"], palette.Tone("neutral"));
+        }
+    }
+
+    private static void ThemeChangesRedrawWithoutRestart()
+    {
+        var inputs = ThemeInputs.Default;
+        var monitor = new ThemeMonitor(Dispatcher.CurrentDispatcher, () => inputs);
+        var brush = (SolidColorBrush)WindowsTheme.Brush("TextPrimary");
+        var changes = new List<DeckPalette>();
+        monitor.Changed += changes.Add;
+        try
+        {
+            monitor.Refresh();
+            Equal(0, changes.Count);
+            inputs = inputs with { SystemUsesLightTheme = true };
+            monitor.Refresh();
+            Equal(1, changes.Count);
+            True(changes[0].IsLight);
+            // A brush a view already holds now carries the light colour, and so do the styles.
+            Equal(changes[0]["TextPrimary"], brush.Color);
+            Equal(changes[0]["TextPrimary"], ((SolidColorBrush)Application.Current.FindResource("TextPrimary")).Color);
+        }
+        finally
+        {
+            inputs = ThemeInputs.Default;
+            monitor.Refresh();
+            monitor.Dispose();
+        }
     }
 
     private static void ButtonStylesExposeKeyboardFocus()
@@ -362,7 +453,7 @@ public static class Program
         True(reviewText.Any(text => text.Text == "open" && text.FontSize == 14));
         var projectText = Descendants(project).OfType<TextBlock>().ToArray();
         True(projectText.Any(text => text.Text == "stopped" && text.FontSize == 22 && text.FontWeight == FontWeights.SemiBold));
-        True(reviewText.Any(text => text.Text == "2 repos · 1 org" && text.FontSize == 12 && Equals(text.Foreground, WindowsTheme.Brush("TextTertiary"))));
+        True(reviewText.Any(text => text.Text == "2 repos · 1 org" && text.FontSize == 12 && SameColour(WindowsTheme.Brush("TextTertiary"), text.Foreground)));
     }
 
     private static void ReviewRowsStretchAndKeepSeparators()
@@ -390,13 +481,13 @@ public static class Program
         var leading = Descendants(project).OfType<TextBlock>().Single(text => text.Text == "bun · next · feed");
         Equal(12.0, leading.FontSize);
         Equal(WindowsTheme.Sans, leading.FontFamily);
-        Equal(WindowsTheme.Brush("TextSecondary"), leading.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextSecondary"), leading.Foreground));
 
         var trailing = Descendants(project).OfType<TrackedTextBlock>().Single(text => text.Text == "bun run dev");
         Equal(11.0, trailing.FontSize);
         Equal(WindowsTheme.Mono, trailing.FontFamily);
         Equal(DeckTextTrimming.Middle, trailing.Trimming);
-        Equal(WindowsTheme.Brush("TextTertiary"), trailing.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextTertiary"), trailing.Foreground));
 
         var place = Descendants(project).OfType<Grid>().Single(grid =>
             grid.Children.OfType<TextBlock>().Any(text => text.Text == "WSL · Ubuntu-24.04"));
@@ -405,7 +496,7 @@ public static class Program
         True(outline.Fill is null);
         Equal("2,2", string.Join(',', outline.StrokeDashArray.Select(value => value.ToString(System.Globalization.CultureInfo.InvariantCulture))));
         var placeText = place.Children.OfType<TextBlock>().Single();
-        Equal(WindowsTheme.Brush("TextPrimary"), placeText.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextPrimary"), placeText.Foreground));
     }
 
     private static void ExpanderUsesFluentChevron()
@@ -482,7 +573,7 @@ public static class Program
         var text = Descendants(inbox).OfType<TextBlock>().ToArray();
         True(text.Any(item => item.Text == "review" && item.FontSize == 11));
         True(text.Any(item => item.Text == "Review the parser" && item.FontWeight == FontWeights.SemiBold));
-        True(text.Any(item => item.Text == "now" && Equals(item.Foreground, WindowsTheme.Brush("TextTertiary"))));
+        True(text.Any(item => item.Text == "now" && SameColour(WindowsTheme.Brush("TextTertiary"), item.Foreground)));
         var links = Descendants(inbox).OfType<Button>()
             .Where(button => button.Content is string)
             .Select(button => (string)button.Content)
@@ -552,7 +643,7 @@ public static class Program
         var workCard = Render(work);
         var branch = Descendants(workCard).OfType<TextBlock>().Single(text => text.Text == "feature/sample");
         Equal(WindowsTheme.Mono, branch.FontFamily);
-        Equal(WindowsTheme.Brush("LinkInfo"), branch.Foreground);
+        True(SameColour(WindowsTheme.Brush("LinkInfo"), branch.Foreground));
         True(Descendants(workCard).OfType<TextBlock>().Any(text => text.Text == "2 changes"));
     }
 
@@ -560,9 +651,9 @@ public static class Program
     {
         var arc = Render(GoldenModels("arc.project.paper").Last());
         var tool = Descendants(arc).OfType<Button>().Single(button => Equals(button.Content, "PageBuilder"));
-        Equal(WindowsTheme.Brush("LinkInfo"), tool.Foreground);
+        True(SameColour(WindowsTheme.Brush("LinkInfo"), tool.Foreground));
         var local = Descendants(arc).OfType<TextBlock>().First(text => text.Text == "Local site");
-        Equal(WindowsTheme.Brush("ToneGood"), local.Foreground);
+        True(SameColour(WindowsTheme.Brush("ToneGood"), local.Foreground));
 
         var ddev = Render(GoldenModels("ddev.project.shop").Last());
         var docker = Descendants(ddev).OfType<Button>().Single(button =>
@@ -659,6 +750,40 @@ public static class Program
         True(start.ActualWidth >= start.DesiredSize.Width - 0.5);
     }
 
+    private static void StateDotsSitOnTheirCapitals()
+    {
+        // The shift is the distance from the line box's middle to the capitals' middle: positive,
+        // because a line box reaches further above the capitals than below the baseline.
+        foreach (var size in new[] { 22.0, 14.0 })
+        {
+            var typeface = new Typeface(WindowsTheme.Sans, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
+            var line = new FormattedText("H", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, size, Brushes.Black, 1.0);
+            var expected = line.Baseline - typeface.CapsHeight * size / 2 - line.Height / 2;
+            Near(Math.Round(expected, 2), WindowsCardRenderer.DotShift(size, FontWeights.SemiBold));
+            True(WindowsCardRenderer.DotShift(size, FontWeights.SemiBold) > 0);
+        }
+
+        void Check(FrameworkElement card, double dotSize, string text, double textSize)
+        {
+            var dot = Descendants(card).OfType<Border>().First(border => border.Width == dotSize && border.Height == dotSize && border.CornerRadius.TopLeft == dotSize / 2);
+            var label = Descendants(card).OfType<TextBlock>().First(block => block.Text == text);
+            var dotMiddle = dot.TranslatePoint(new Point(0, dotSize / 2), card).Y;
+            var typeface = new Typeface(label.FontFamily, label.FontStyle, label.FontWeight, label.FontStretch);
+            var line = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, textSize, Brushes.Black, 1.0);
+            var capitalsMiddle = label.TranslatePoint(new Point(0, line.Baseline - typeface.CapsHeight * textSize / 2), card).Y;
+            True(Math.Abs(dotMiddle - capitalsMiddle) < 0.5);
+        }
+        Check(Render(GoldenModels("arc.project.paper").Last()), 8, "not configured", 22);
+        var collapsed = (FrameworkElement)Render(GoldenModels("project.feed").Last(model =>
+            JsonModel.Bool(model.EnumerateObject().Single().Value, "isCollapsed")));
+        Check(collapsed, 7, "Feed", 14);
+    }
+
+    private static bool SameColour(Brush expected, Brush? actual)
+    {
+        return actual is SolidColorBrush solid && expected is SolidColorBrush wanted && solid.Color == wanted.Color;
+    }
+
     private static void Near(double expected, double actual)
     {
         if (Math.Abs(expected - actual) > 0.01)
@@ -693,6 +818,20 @@ public static class Program
         window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         Equal(2, measurements.Count);
         True(measurements[1].Size[1] > measurements[0].Size[1]);
+        window.Close();
+    }
+
+    private static void CardUpdatedBeforeShowReportsHeight()
+    {
+        var measurements = new List<CardMeasurement>();
+        var window = new CardWindow("github.pullRequests", measurements.Add, _ => { }, _ => { }, () => { });
+        window.Update(GoldenModels("github.pullRequests").Last());
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(0, measurements.Count);
+        window.Show();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(1, measurements.Count);
+        True(measurements[0].Size[1] > 44);
         window.Close();
     }
 
@@ -800,14 +939,14 @@ public static class Program
         textBox.ApplyTemplate();
         window.UpdateLayout();
 
-        Equal(WindowsTheme.Brush("ControlFill"), textBox.Background);
-        Equal(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush);
+        True(SameColour(WindowsTheme.Brush("ControlFill"), textBox.Background));
+        True(SameColour(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush));
         Equal(32.0, textBox.Height);
         Equal(VerticalAlignment.Center, textBox.VerticalContentAlignment);
         Equal(150.0, SettingsWindow.FormLabelWidth);
         var placeholder = (TextBlock)textBox.Template.FindName("Placeholder", textBox);
         Equal(prompt.Placeholder, placeholder.Text);
-        Equal(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground));
         Equal(Visibility.Visible, placeholder.Visibility);
 
         textBox.Text = "Desk";
@@ -819,8 +958,8 @@ public static class Program
         textBox.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         var focusBorder = (Border)textBox.Template.FindName("FocusBorder", textBox);
         var controlBorder = (Border)textBox.Template.FindName("ControlBorder", textBox);
-        Equal(WindowsTheme.Brush("FocusOuter"), focusBorder.BorderBrush);
-        Equal(WindowsTheme.Brush("FocusInner"), controlBorder.BorderBrush);
+        True(SameColour(WindowsTheme.Brush("FocusOuter"), focusBorder.BorderBrush));
+        True(SameColour(WindowsTheme.Brush("FocusInner"), controlBorder.BorderBrush));
         window.Close();
     }
 
@@ -1804,9 +1943,43 @@ public static class Program
         True(errors.ToString().Contains("Replay ignored the quit effect.", StringComparison.Ordinal));
     }
 
+    private static void ReplaySizesItsPanels()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "devdeck-replay-" + Guid.NewGuid() + ".jsonl");
+        File.WriteAllText(path,
+            "{\"event\":\"panels.changed\",\"id\":\"1\",\"panels\":[" +
+            "{\"card\":\"a\",\"change\":\"open\",\"frame\":[10,20,352,182]}," +
+            "{\"card\":\"b\",\"change\":\"open\",\"frame\":[10,214,352,182]}," +
+            "{\"card\":\"c\",\"change\":\"open\",\"frame\":[400,20,352,182]}]," +
+            "\"protocolVersion\":2,\"revision\":1}\n");
+        try
+        {
+            var surface = new RecordingSurface();
+            var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", surface);
+            coordinator.StartReplayAsync(path).GetAwaiter().GetResult();
+            surface.Measure(new CardMeasurement("a", [352, 240]));
+            var placed = surface.Panels.Last().ToDictionary(change => change.Card, change => change.Frame);
+            Equal(240.0, placed["a"][3]);
+            Equal(272.0, placed["b"][1]);
+            True(!placed.ContainsKey("c"));
+
+            // A later transcript frame with the old height does not undo the measured one.
+            coordinator.StartReplayAsync(path).GetAwaiter().GetResult();
+            var again = surface.Panels.Last().ToDictionary(change => change.Card, change => change.Frame);
+            Equal(240.0, again["a"][3]);
+            Equal(272.0, again["b"][1]);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private sealed class RecordingSurface : IShellSurface
     {
         public int Quits { get; private set; }
+        public List<IReadOnlyList<PanelChange>> Panels { get; } = [];
+        public void Measure(CardMeasurement measurement) => CardMeasured?.Invoke(measurement);
 #pragma warning disable CS0067
         public event Action<CardMeasurement>? CardMeasured;
         public event Action<CardMove>? CardMoved;
@@ -1818,7 +1991,7 @@ public static class Program
 #pragma warning restore CS0067
         public void BeginSession() { }
         public void ApplyDeck(DeckPresentation presentation) { }
-        public void ApplyPanels(IReadOnlyList<PanelChange> panels) { }
+        public void ApplyPanels(IReadOnlyList<PanelChange> panels) => Panels.Add(panels);
         public void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped) { }
         public void UpdateStatus(JsonElement status) { }
         public void UpdateMenu(JsonElement menu) { }
@@ -1923,6 +2096,33 @@ public static class Program
         var combo = new ComboBox { Style = WindowsTheme.Style("SettingsComboBox") };
         Equal(0.0, combo.Padding.Top);
         Equal(0.0, combo.Padding.Bottom);
+    }
+
+    private static void MenuTitlesShareOneLine()
+    {
+        var presenter = new MenuPresenter(_ => { });
+        presenter.Update(RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true));
+        var items = presenter.View.Items.OfType<MenuItem>().Where(item => item.Tag is DeckMenuItemModel).ToList();
+        True(items.Any(item => ((DeckMenuItemModel)item.Tag).IsIndented));
+        True(items.All(item => item.Padding.Left == 8));
+    }
+
+    private static void DialogButtonsCarryTheirTone()
+    {
+        Button Confirm(DeckMenuDialogModel model)
+        {
+            var window = MenuDialogs.Build(model, null, out _, out _);
+            var button = Descendants((FrameworkElement)window.Content).OfType<Button>().Single(b => Equals(b.Content, model.Confirm));
+            window.Close();
+            return button;
+        }
+        var destructive = Confirm(new DeckMenuDialogModel("Power off", "Every project stops.", "Power off", "Cancel", true));
+        True(destructive.IsDefault);
+        True(SameColour(WindowsTheme.Tone("alert"), destructive.BorderBrush));
+        var primary = Confirm(new DeckMenuDialogModel("Save", "Saves the arrangement.", "Save", "Cancel"));
+        True(primary.IsDefault);
+        True(!SameColour(WindowsTheme.Brush("ControlFill"), primary.Background));
+        True(!SameColour(WindowsTheme.Brush("TextPrimary"), primary.Foreground));
     }
 
     private static void MenuInputOwnerIsInvisible()

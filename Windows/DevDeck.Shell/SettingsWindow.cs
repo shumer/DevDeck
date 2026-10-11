@@ -140,7 +140,7 @@ public sealed class SettingsWindow : Window
         MinWidth = 860;
         MinHeight = 560;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = new SolidColorBrush(Color.FromRgb(32, 32, 32));
+        Background = WindowsTheme.Brush("WindowBackground");
         Foreground = WindowsTheme.Brush("TextPrimary");
         FontFamily = WindowsTheme.Sans;
         FontSize = 14;
@@ -2009,7 +2009,7 @@ public static class DdevCandidateDialog
             Width = 520,
             Height = 400,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.FromRgb(43, 43, 47)),
+            Background = WindowsTheme.Brush("DialogBackground"),
             Foreground = WindowsTheme.Brush("TextPrimary"),
             FontFamily = WindowsTheme.Sans,
         };
@@ -2079,7 +2079,7 @@ public static class SettingsConfirmation
             Height = 210,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ResizeMode = ResizeMode.NoResize,
-            Background = new SolidColorBrush(Color.FromRgb(43, 43, 47)),
+            Background = WindowsTheme.Brush("DialogBackground"),
             Foreground = WindowsTheme.Brush("TextPrimary"),
             FontFamily = WindowsTheme.Sans,
         };

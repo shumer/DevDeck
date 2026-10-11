@@ -36,15 +36,17 @@ public sealed class MenuDialogs : IMenuDialogs
             SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
             ResizeMode = ResizeMode.NoResize,
-            Background = WindowsTheme.CardBackground(false),
+            Background = WindowsTheme.Brush("DialogBackground"),
             Foreground = WindowsTheme.Brush("TextPrimary"),
             FontFamily = WindowsTheme.Sans,
             ShowInTaskbar = false,
         };
+        window.SourceInitialized += (_, _) =>
+            NativeMethods.ApplyLogWindowStyles(new System.Windows.Interop.WindowInteropHelper(window).Handle);
         var content = new StackPanel
         {
             Margin = new Thickness(24),
-            Background = WindowsTheme.CardBackground(false),
+            Background = WindowsTheme.Brush("DialogBackground"),
         };
         content.Children.Add(new TextBlock
         {
@@ -85,6 +87,21 @@ public sealed class MenuDialogs : IMenuDialogs
         buttons.Children.Add(cancel);
         var confirm = DialogButton(model.Confirm);
         confirm.Margin = new Thickness(8, 0, 0, 0);
+        confirm.IsDefault = true;
+        if (model.IsDestructive)
+        {
+            // Something is about to go away: the button carries the alert tone, as Stop does on a card.
+            confirm.Background = WindowsTheme.ToneFill("alert");
+            confirm.BorderBrush = WindowsTheme.Tone("alert");
+        }
+        else
+        {
+            var (fill, text) = WindowsTheme.AccentButton();
+            confirm.Background = fill;
+            confirm.BorderBrush = fill;
+            confirm.Foreground = text;
+        }
+        cancel.IsCancel = true;
         confirm.Click += (_, _) =>
         {
             result = true;

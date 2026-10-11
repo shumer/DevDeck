@@ -23,7 +23,10 @@ engine host, the process host and Swift runtime libraries. Test assemblies are e
 Replay reads protocol events from a golden transcript instead of starting the engine. It performs
 no network request and reads no token. It carries out every effect except `quit`: a replay exists
 to be looked at, so a `quit` in the transcript is noted on standard error and the windows stay
-until they are closed by hand.
+until they are closed by hand. With no engine to answer, a replay also sizes its own panels: a
+card takes the height the shell measured and the cards below it in its column move with it. The
+banner transcripts raise real Windows notifications, which appear as banners only while Windows'
+Do not disturb is off; with it on they go straight to the notification centre.
 
 ```powershell
 dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl
@@ -408,6 +411,21 @@ phone icon appears only when the engine supplies `header.phoneURL`; its popup us
 supplied title, note and address.
 
 Installing an update from the `installUpdate` effect remains outside this shell milestone.
+
+## The Windows scheme
+
+The shell follows Windows the way the taskbar does: the app mode chooses the dark or the light
+palette, transparency effects choose Acrylic or a solid surface, and with the accent shown on
+Start and the taskbar in dark mode the cards take the taskbar's accent tint. Cards, menus,
+dialogs, the log and the settings window redraw when any of these change, without a restart;
+the tray icon follows the taskbar's own mode. Every colour lives in `DeckPalette`, one table per
+scheme; views built in code get brushes that keep following it.
+
+To compare the four schemes of the reference mock off screen:
+
+```powershell
+dotnet run --project Windows/DevDeck.Shell.Tests -- --capture-theme Tests/EngineTests/Golden/session-en.expected.jsonl C:	emp	heme.png
+```
 
 ## Docker and DDEV on Windows
 

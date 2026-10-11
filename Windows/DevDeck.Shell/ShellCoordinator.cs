@@ -40,6 +40,8 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private long nextId;
     private bool beganSession;
     private bool isReplay;
+    private readonly Dictionary<string, double[]> replayFrames = [];
+    private readonly Dictionary<string, double> replayHeights = [];
     private readonly AsyncShutdown shutdown;
 
     public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface, ProtocolTrace? trace = null)
@@ -192,7 +194,19 @@ public sealed class ShellCoordinator : IAsyncDisposable
                 surface.ApplyDeck(deck);
                 break;
             case "panels.changed" when message.Panels is { } panels:
+                if (isReplay)
+                {
+                    RememberReplayFrames(panels);
+                }
                 surface.ApplyPanels(panels);
+                if (isReplay)
+                {
+                    // A later frame in the transcript must not undo a height already measured.
+                    foreach (var (card, height) in replayHeights.ToList())
+                    {
+                        ApplyReplayMeasurement(new CardMeasurement(card, [352, height]));
+                    }
+                }
                 break;
             case "card.changed" when
                 message.Card is { } card &&
@@ -292,7 +306,63 @@ public sealed class ShellCoordinator : IAsyncDisposable
 
     private void OnCardMeasured(CardMeasurement measurement)
     {
+        if (isReplay)
+        {
+            ApplyReplayMeasurement(measurement);
+            return;
+        }
         _ = SendAsync(ProtocolWriter.CardMeasured(NextId(), measurement));
+    }
+
+    private void RememberReplayFrames(IReadOnlyList<PanelChange> panels)
+    {
+        foreach (var panel in panels)
+        {
+            if (panel.Change == "close")
+            {
+                replayFrames.Remove(panel.Card);
+            }
+            else if (panel.Frame.Length == 4)
+            {
+                replayFrames[panel.Card] = panel.Frame;
+            }
+        }
+    }
+
+    // A replay has no engine to answer a measurement, so it sizes its own panels: a card takes its
+    // measured height and the cards below it in the same column move by the difference.
+    private void ApplyReplayMeasurement(CardMeasurement measurement)
+    {
+        if (measurement.Size.Length == 2)
+        {
+            replayHeights[measurement.Card] = measurement.Size[1];
+        }
+        if (measurement.Size.Length != 2 ||
+            !replayFrames.TryGetValue(measurement.Card, out var frame) ||
+            Math.Abs(frame[3] - measurement.Size[1]) < 0.5)
+        {
+            return;
+        }
+        var delta = measurement.Size[1] - frame[3];
+        var changes = new List<PanelChange>();
+        foreach (var (card, other) in replayFrames.ToList())
+        {
+            double[]? moved = null;
+            if (card == measurement.Card)
+            {
+                moved = [other[0], other[1], other[2], measurement.Size[1]];
+            }
+            else if (Math.Abs(other[0] - frame[0]) < 0.5 && other[1] > frame[1])
+            {
+                moved = [other[0], other[1] + delta, other[2], other[3]];
+            }
+            if (moved is not null)
+            {
+                replayFrames[card] = moved;
+                changes.Add(new PanelChange(card, "place", moved));
+            }
+        }
+        surface.ApplyPanels(changes);
     }
 
     private void OnCardMoved(CardMove move)

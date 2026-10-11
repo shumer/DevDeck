@@ -160,7 +160,7 @@ public static class TrayIconFactory
             Height = size,
             Background = Brushes.Transparent,
         };
-        var foreground = new SolidColorBrush(lightTaskbar ? Color.FromRgb(34, 34, 34) : Color.FromRgb(246, 246, 246));
+        var foreground = new SolidColorBrush(DeckPalette.TaskbarGlyph(lightTaskbar));
         var mark = BrandMarks.Create("project", size * 0.72, foreground);
         mark.HorizontalAlignment = HorizontalAlignment.Left;
         mark.VerticalAlignment = VerticalAlignment.Top;

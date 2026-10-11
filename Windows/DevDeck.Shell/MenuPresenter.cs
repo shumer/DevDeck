@@ -217,7 +217,8 @@ public sealed class MenuPresenter
             InputGestureText = model.KeyEquivalent,
             ToolTip = model.Help,
             Foreground = WindowsTheme.Brush("TextPrimary"),
-            Padding = new Thickness(model.IsIndented ? 22 : 8, 4, 8, 4),
+            // The check column already sets every title on one line; a Mac indent would break it.
+            Padding = new Thickness(8, 4, 8, 4),
             Tag = model,
             Style = WindowsTheme.Style("DeckMenuItem"),
         };

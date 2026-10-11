@@ -43,6 +43,7 @@ public sealed class ShellSurface : IShellSurface
     private readonly SettingsClient settings;
     private readonly SettingsWindowRegistry settingsWindows;
     private readonly List<SummonVeilWindow> veils = [];
+    private readonly ThemeMonitor theme;
     private bool isLocked;
     private bool isSummoned;
     private string displayMode = "desktop";
@@ -58,6 +59,8 @@ public sealed class ShellSurface : IShellSurface
 
     public ShellSurface()
     {
+        theme = new ThemeMonitor(Application.Current.Dispatcher);
+        theme.Changed += OnThemeChanged;
         tray = new TrayController(command => CommandInvoked?.Invoke(command));
         notifications = new NotificationController(
             new WindowsToastPlatform(),
@@ -210,12 +213,34 @@ public sealed class ShellSurface : IShellSurface
 
     public void Dispose()
     {
+        theme.Dispose();
         summon.Dispose();
         settingsWindows.Dispose();
         CloseVeils();
         BeginSession();
         notifications.Dispose();
         tray.Dispose();
+    }
+
+    // Brushes from the palette follow on their own; a card's surface and every frame are redrawn.
+    private void OnThemeChanged(DeckPalette palette)
+    {
+        foreach (var (card, window) in windows)
+        {
+            NativeMethods.SetDarkMode(window.Handle, !palette.IsLight, redrawFrame: false);
+            if (cards.TryGetValue(card, out var state))
+            {
+                window.Update(state.Model);
+            }
+            window.InvalidateVisual();
+        }
+        foreach (Window window in Application.Current.Windows)
+        {
+            if (window is not CardWindow)
+            {
+                NativeMethods.SetDarkMode(new System.Windows.Interop.WindowInteropHelper(window).Handle, !palette.IsLight);
+            }
+        }
     }
 
     private CardWindow Open(string card)
