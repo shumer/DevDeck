@@ -10,14 +10,19 @@ public static class Program
         try
         {
             var options = ShellOptions.Parse(arguments);
+            if (options.EnableLoginItem)
+            {
+                NativeMethods.AttachToParentConsole();
+                return WindowsLoginItem.Current().SetEnabled(true) ? 0 : 1;
+            }
             if (options.DeveloperRequest is not null)
             {
+                NativeMethods.AttachToParentConsole();
                 return DeveloperCommands.RunAsync(options.EnginePath, options.DeveloperRequest)
                     .GetAwaiter()
                     .GetResult();
             }
 
-            _ = NativeMethods.FreeConsole();
             var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var surface = new ShellSurface();
             var coordinator = new ShellCoordinator(application.Dispatcher, options.EnginePath, surface);
@@ -43,7 +48,11 @@ public static class Program
     }
 }
 
-public sealed record ShellOptions(string EnginePath, string? ReplayPath, DeveloperRequest? DeveloperRequest)
+public sealed record ShellOptions(
+    string EnginePath,
+    string? ReplayPath,
+    DeveloperRequest? DeveloperRequest,
+    bool EnableLoginItem)
 {
     public static ShellOptions Parse(string[] arguments)
     {
@@ -52,6 +61,7 @@ public sealed record ShellOptions(string EnginePath, string? ReplayPath, Develop
         var enginePath = Path.Combine(executableDirectory, "DevDeckEngineHost.exe");
         string? replayPath = null;
         DeveloperRequest? developerRequest = null;
+        var enableLoginItem = false;
         for (var index = 0; index < arguments.Length; index++)
         {
             switch (arguments[index])
@@ -72,17 +82,21 @@ public sealed record ShellOptions(string EnginePath, string? ReplayPath, Develop
                         DeveloperRequestKind.RemoveProject,
                         Value(arguments, ref index));
                     break;
+                case "--enable-login-item":
+                    enableLoginItem = true;
+                    break;
                 default:
                     throw new ArgumentException();
             }
         }
 
-        if (replayPath is not null && developerRequest is not null)
+        if ((replayPath is not null && developerRequest is not null) ||
+            (enableLoginItem && (replayPath is not null || developerRequest is not null)))
         {
             throw new ArgumentException();
         }
 
-        return new ShellOptions(enginePath, replayPath, developerRequest);
+        return new ShellOptions(enginePath, replayPath, developerRequest, enableLoginItem);
     }
 
     private static string Value(string[] arguments, ref int index)

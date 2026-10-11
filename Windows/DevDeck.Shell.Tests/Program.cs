@@ -129,6 +129,11 @@ public static class Program
         Run("browser launch plans keep the chosen profile", BrowserLaunchPlansKeepChosenProfile);
         Run("terminal plans enter Windows and WSL folders", TerminalPlansEnterWindowsAndWslFolders);
         Run("phone QR bytes are stable", PhoneQrBytesAreStable);
+        Run("login item uses the Run value and quoted executable", LoginItemUsesRunValueAndQuotedExecutable);
+        Run("disabling the login item deletes its value", DisablingLoginItemDeletesItsValue);
+        Run("a login item for another executable is off", ForeignLoginItemIsOff);
+        Run("a failed login item write restores the switch", FailedLoginItemWriteRestoresSwitch);
+        Run("the login item installer flag is parsed", LoginItemInstallerFlagIsParsed);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -1409,7 +1414,7 @@ public static class Program
         client.Receive("list", Json("{\"list\":{\"_0\":{\"accounts\":[],\"projects\":[]}}}"));
         client.Receive("cards", Json("{\"cards\":{\"_0\":[{\"id\":\"github.pullRequests\",\"title\":\"Pull requests\",\"detail\":\"Reviews\",\"isEnabled\":true}]}}"));
         client.Receive("preferences", Json("{\"preferences\":{\"_0\":{\"language\":\"system\",\"displayMode\":\"desktop\",\"isLocked\":false,\"packsColumns\":false,\"refreshIntervalSeconds\":120,\"notificationsEnabled\":true,\"notifiesUpdates\":true,\"checksForUpdates\":true,\"summonEnabled\":true,\"summonDims\":true,\"actionsRepositories\":[],\"projectsQuietWhenDown\":[],\"projectsQuietWhenStartFails\":[]}}}"));
-        var window = new SettingsWindow(client);
+        var window = TestSettingsWindow(client);
         window.Apply(client.Words, client.List, client.Cards, client.Preferences, null);
         window.Receive(Json("{\"githubAccount\":{\"_0\":{\"id\":\"account\",\"label\":\"Account\",\"apiBaseURL\":\"https://example.invalid\",\"organizations\":[],\"isEnabled\":true,\"browser\":{}}}}"));
         window.Receive(Json("{\"gitlabAccount\":{\"_0\":{\"id\":\"instance\",\"label\":\"Instance\",\"host\":\"https://example.invalid\",\"isEnabled\":true,\"browser\":{}}}}"));
@@ -1505,7 +1510,7 @@ public static class Program
         client.Receive("words", Json("{\"words\":{\"_0\":{\"settings.window.title\":\"Settings\",\"account.name\":\"Name\"}}}"));
         client.Receive("list", Json("{\"list\":{\"_0\":{\"accounts\":[],\"projects\":[]}}}"));
         client.Receive("preferences", Json("{\"preferences\":{\"_0\":{\"language\":\"system\"}}}"));
-        var window = new SettingsWindow(client);
+        var window = TestSettingsWindow(client);
         window.Apply(client.Words, client.List, client.Cards, client.Preferences, null);
         window.Receive(Json("{\"ddevProject\":{\"_0\":{\"id\":\"shop\",\"name\":\"sample-shop\",\"title\":\"\",\"folder\":\"C:/Sample\",\"isEnabled\":true,\"browser\":{}}}}"));
         window.Navigate(new SettingsRoute("ddev", "shop"));
@@ -1573,6 +1578,77 @@ public static class Program
         True(first.SequenceEqual(second));
         True(first.Length > 100);
         Equal("89504E470D0A1A0A", Convert.ToHexString(first[..8]));
+    }
+
+    private static void LoginItemUsesRunValueAndQuotedExecutable()
+    {
+        var registry = new RecordingLoginItemRegistry();
+        var loginItem = new WindowsLoginItem(registry, @"C:\Tools\DevDeck\DevDeck.Shell.exe");
+        Equal("DevDeck", WindowsLoginItem.ValueName);
+        Equal(
+            @"Software\Microsoft\Windows\CurrentVersion\Run",
+            WindowsLoginItem.RegistryPath);
+        True(loginItem.SetEnabled(true));
+        Equal("\"C:\\Tools\\DevDeck\\DevDeck.Shell.exe\"", registry.Value);
+        True(loginItem.IsEnabled());
+    }
+
+    private static void DisablingLoginItemDeletesItsValue()
+    {
+        var registry = new RecordingLoginItemRegistry
+        {
+            Value = "\"C:\\Tools\\DevDeck\\DevDeck.Shell.exe\"",
+        };
+        var loginItem = new WindowsLoginItem(registry, @"C:\Tools\DevDeck\DevDeck.Shell.exe");
+        True(loginItem.SetEnabled(false));
+        True(registry.Deleted);
+        Equal<string?>(null, registry.Value);
+    }
+
+    private static void ForeignLoginItemIsOff()
+    {
+        var registry = new RecordingLoginItemRegistry
+        {
+            Value = "\"C:\\Old\\DevDeck.Shell.exe\"",
+        };
+        var loginItem = new WindowsLoginItem(registry, @"C:\Tools\DevDeck\DevDeck.Shell.exe");
+        True(!loginItem.IsEnabled());
+    }
+
+    private static void FailedLoginItemWriteRestoresSwitch()
+    {
+        var client = new SettingsClient();
+        client.Receive("words", Json("{\"words\":{\"_0\":{\"settings.window.title\":\"Settings\",\"settings.general.title\":\"General\",\"settings.general.startAtLogin\":\"Start at login\"}}}"));
+        client.Receive("list", Json("{\"list\":{\"_0\":{\"accounts\":[],\"projects\":[]}}}"));
+        client.Receive("preferences", Json("{\"preferences\":{\"_0\":{\"language\":\"system\"}}}"));
+        var registry = new RecordingLoginItemRegistry { WriteFails = true };
+        var loginItem = new WindowsLoginItem(registry, @"C:\Tools\DevDeck\DevDeck.Shell.exe");
+        var window = new SettingsWindow(client, loginItem);
+        window.Apply(client.Words, client.List, client.Cards, client.Preferences, null);
+        window.Show();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        var toggle = Descendants((DependencyObject)window.Content)
+            .OfType<CheckBox>()
+            .Single(control => AutomationProperties.GetAutomationId(control) == "StartAtLogin");
+        toggle.IsChecked = true;
+        True(toggle.IsChecked == false);
+        window.Close();
+    }
+
+    private static void LoginItemInstallerFlagIsParsed()
+    {
+        var options = ShellOptions.Parse(["--enable-login-item"]);
+        True(options.EnableLoginItem);
+        Equal<string?>(null, options.ReplayPath);
+        Equal<DeveloperRequest?>(null, options.DeveloperRequest);
+    }
+
+    private static SettingsWindow TestSettingsWindow(SettingsClient client)
+    {
+        var loginItem = new WindowsLoginItem(
+            new RecordingLoginItemRegistry(),
+            @"C:\Tools\DevDeck\DevDeck.Shell.exe");
+        return new SettingsWindow(client, loginItem);
     }
 
     private static JsonElement Json(string text)
@@ -1654,6 +1730,33 @@ public static class Program
         public string? Prompt(DeckMenuPromptModel model)
         {
             return PromptAnswer;
+        }
+    }
+
+    private sealed class RecordingLoginItemRegistry : ILoginItemRegistry
+    {
+        public string? Value { get; set; }
+        public bool Deleted { get; private set; }
+        public bool WriteFails { get; init; }
+
+        public string? Read()
+        {
+            return Value;
+        }
+
+        public void Write(string value)
+        {
+            if (WriteFails)
+            {
+                throw new UnauthorizedAccessException("denied");
+            }
+            Value = value;
+        }
+
+        public void Delete()
+        {
+            Deleted = true;
+            Value = null;
         }
     }
 

@@ -210,6 +210,9 @@
   Chromium profiles follow the engine's choice, Windows and WSL folders open in the right
   terminal and Explorer context, and a project phone link becomes a local QR code using the
   machine's reachable physical network address. W-11.
+- **Windows starts with the user when asked** - the General switch owns the current user's
+  `DevDeck` Run value, verifies that it still points at this executable, and the GUI shell starts
+  at sign-in without a console window. W-13.
 
 ## Next
 
@@ -222,7 +225,7 @@
    (W-2), the WPF shell on protocol v2 with its first styled cards (W-3), and the remaining
    card styles (W-4), tray and menus (W-5), notifications (W-6), display-aware placement
    (W-7), the log window (W-8), Summon (W-9), settings (W-10), and links, folders and the
-   phone QR code (W-11).
+   phone QR code (W-11), and start at login (W-13).
 2. **Bundle versions on the project card** - live version per environment, which needs an org
    token and the Developer Center endpoints pinned down against a real organisation.
 3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row

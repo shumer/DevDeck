@@ -108,6 +108,7 @@ public sealed class SettingsWindow : Window
     public const double FormLabelWidth = 150;
 
     private readonly SettingsClient client;
+    private readonly WindowsLoginItem loginItem;
     private readonly StackPanel navigation = new();
     private readonly ContentControl content = new();
     private readonly TextBox search = new();
@@ -130,9 +131,10 @@ public sealed class SettingsWindow : Window
     private SettingsRoute route = new("general", null);
     private bool applying;
 
-    public SettingsWindow(SettingsClient client)
+    public SettingsWindow(SettingsClient client, WindowsLoginItem? loginItem = null)
     {
         this.client = client;
+        this.loginItem = loginItem ?? WindowsLoginItem.Current();
         Width = 1080;
         Height = 680;
         MinWidth = 860;
@@ -392,7 +394,7 @@ public sealed class SettingsWindow : Window
     private FrameworkElement GeneralPage()
     {
         var page = PageHeader("settings.general.title", null, "settings");
-        var start = Toggle(false, false, _ => { });
+        var start = LoginItemToggle();
 
         var language = new ComboBox { Width = 150 };
         language.Style = WindowsTheme.Style("SettingsComboBox");
@@ -418,6 +420,30 @@ public sealed class SettingsWindow : Window
             UpdateRow()));
         page.Children.Add(Footnote(words.Get("settings.general.runningFrom", AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar))));
         return page;
+    }
+
+    private CheckBox LoginItemToggle()
+    {
+        var lastValue = loginItem.IsEnabled();
+        var restoring = false;
+        CheckBox? toggle = null;
+        toggle = Toggle(lastValue, true, selected =>
+        {
+            if (restoring)
+            {
+                return;
+            }
+            if (loginItem.SetEnabled(selected))
+            {
+                lastValue = selected;
+                return;
+            }
+            restoring = true;
+            toggle!.IsChecked = lastValue;
+            restoring = false;
+        });
+        AutomationProperties.SetAutomationId(toggle, "StartAtLogin");
+        return toggle;
     }
 
     private FrameworkElement DeckPage()
