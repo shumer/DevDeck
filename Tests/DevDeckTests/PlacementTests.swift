@@ -197,9 +197,10 @@ func runPlacementTests(_ run: TestRun) async {
 
     run.section("Placement - sizes")
 
-    await run.test("a card growing because its data arrived moves nothing under it") {
+    await run.test("a settled card growing because its data arrived moves nothing under it") {
         let all = projects(2)
         let desk = Desk(projects: all)
+        for project in all { desk.deck.preferences.setHeight(200, for: project.cardID) }
         _ = desk.placement.sync()
         let ordered = desk.frames.sorted { $0.value.maxY > $1.value.maxY }
         let below = ordered[1].value
@@ -207,6 +208,19 @@ func runPlacementTests(_ run: TestRun) async {
         _ = desk.placement.syncSizes()
         try expectEqual(desk.frames[ordered[1].key]?.maxY, below.maxY, "the deck settling is not a layout event")
         try expectEqual(desk.frames[ordered[0].key]?.maxY, ordered[0].value.maxY, "the top edge stays")
+    }
+
+    await run.test("a card that has never settled makes room below it when its first height arrives") {
+        let all = projects(2)
+        let desk = Desk(projects: all)
+        _ = desk.placement.sync()
+        let ordered = desk.frames.sorted { $0.value.maxY > $1.value.maxY }
+        desk.size = CGSize(width: 352, height: 260)
+        _ = desk.placement.syncSizes()
+        let top = try expectNotNil(desk.frames[ordered[0].key], "top")
+        let below = try expectNotNil(desk.frames[ordered[1].key], "below")
+        try expectEqual(top.minY - below.maxY, CGFloat(CardMetrics.panelGap), "a guess is not a height: the column packs")
+        try expectNil(desk.deck.preferences.height(for: ordered[0].key), "a height with no data behind it is not remembered")
     }
 
     await run.test("a card somebody expanded makes room below it") {
