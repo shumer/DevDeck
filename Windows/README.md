@@ -448,8 +448,8 @@ The shell does not infer Docker state from the desktop process.
 Install the native DDEV executable on the Windows user PATH for Windows project folders.
 For a WSL folder, install DDEV inside that distribution and enable Docker Desktop's
 integration there. The engine selects the runner from the folder, queries each configured
-place and presents WSL candidates with their UNC folders. Arc Fusion is checked in WSL
-only. Native Fusion is not supported.
+place and presents WSL candidates with their UNC folders. Arc Fusion was checked live
+in both places, natively on Docker Desktop and in WSL.
 
 One Fusion stack runs per Docker daemon. Fusion gives every checkout the same compose
 project, so two Arc checkouts that reach one daemon replace each other. With Docker
