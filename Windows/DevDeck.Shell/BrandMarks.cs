@@ -16,7 +16,7 @@ public static class BrandMarks
     // White parts of a mark are its one-colour foreground: on the deck they take the scheme's text
     // colour, so the GitHub or Next mark stays visible on a light card. Artwork drawn on its own dark
     // tile keeps them white.
-    public static FrameworkElement Create(string? name, double size = 16, Brush? tint = null, bool followsScheme = true)
+    public static FrameworkElement Create(string? name, double size = 16, Brush? tint = null, bool followsScheme = true, bool onCard = false)
     {
         if (name is null || !Marks.Value.TryGetValue(name, out var mark))
         {
@@ -39,7 +39,7 @@ public static class BrandMarks
             {
                 Data = geometry,
                 Fill = tint ?? (followsScheme && IsForeground(path.Color)
-                    ? WindowsTheme.Brush("TextPrimary")
+                    ? (onCard ? WindowsTheme.CardBrush("TextPrimary") : WindowsTheme.Brush("TextPrimary"))
                     : (Brush)new BrushConverter().ConvertFromString(path.Color)!),
             });
         }

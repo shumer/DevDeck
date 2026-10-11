@@ -418,7 +418,10 @@ The shell follows Windows the way the taskbar does: the app mode chooses the dar
 palette, transparency effects choose Acrylic or a solid surface, and with the accent shown on
 Start and the taskbar in dark mode the cards take the taskbar's accent tint. Cards, menus,
 dialogs, the log and the settings window redraw when any of these change, without a restart;
-the tray icon follows the taskbar's own mode. Every colour lives in `DeckPalette`, one table per
+the tray icon follows the taskbar's own mode. Cards are drawn in the taskbar's material and take
+their text palette from it; windows, menus and dialogs follow the app mode, as any Windows
+application does, so with a dark Windows mode and light apps the cards are dark and the settings
+window light. Every colour lives in `DeckPalette`, one table per
 scheme; views built in code get brushes that keep following it.
 
 To compare the four schemes of the reference mock off screen:

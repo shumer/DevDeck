@@ -10,11 +10,15 @@ public static class WindowsTheme
     private const string PersonalizeKey = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private static bool isLoaded;
     private static ResourceDictionary? styles;
-    private static ResourceDictionary? paletteResources;
-    private static readonly List<(string Key, WeakReference<SolidColorBrush> Brush)> liveBrushes = [];
+    private static ResourceDictionary? windowResources;
+    private static readonly ResourceDictionary cardResources = [];
+    private static readonly List<(string Key, bool ForCard, WeakReference<SolidColorBrush> Brush)> liveBrushes = [];
 
-    // The scheme the shell draws in now. Dark until a ThemeMonitor reads Windows.
-    public static DeckPalette Current { get; private set; } = DeckPalette.For(ThemeInputs.Default);
+    // Cards are drawn in the taskbar's material; windows, menus and dialogs follow the app mode, as
+    // any Windows application does. Both are dark until a ThemeMonitor reads Windows.
+    public static DeckPalette CardPalette { get; private set; } = DeckPalette.ForCards(ThemeInputs.Default);
+
+    public static DeckPalette WindowPalette { get; private set; } = DeckPalette.ForWindows(ThemeInputs.Default);
 
     public static void EnsureLoaded()
     {
@@ -25,13 +29,12 @@ public static class WindowsTheme
 
         // The styles reach the palette by DynamicResource, so a scheme change replaces these entries.
         // Anything in the application's resources is frozen, which is why views built in code get
-        // brushes of their own from Brush.
-        paletteResources = [];
-        foreach (var key in DeckPalette.Keys)
-        {
-            paletteResources[key] = new SolidColorBrush(Current[key]);
-        }
-        Application.Current.Resources.MergedDictionaries.Add(paletteResources);
+        // brushes of their own from Brush and CardBrush. Inside a card, its own dictionary answers
+        // first.
+        windowResources = [];
+        Fill(windowResources, WindowPalette);
+        Fill(cardResources, CardPalette);
+        Application.Current.Resources.MergedDictionaries.Add(windowResources);
         styles = new ResourceDictionary
         {
             Source = new Uri("/DevDeck.Shell;component/WindowsStyles.xaml", UriKind.Relative),
@@ -40,33 +43,32 @@ public static class WindowsTheme
         isLoaded = true;
     }
 
-    public static void Apply(DeckPalette palette)
+    public static void Apply(DeckPalette cards, DeckPalette windows)
     {
-        Current = palette;
-        if (!isLoaded || styles is null)
+        CardPalette = cards;
+        WindowPalette = windows;
+        if (!isLoaded || windowResources is null)
         {
             EnsureLoaded();
             return;
         }
-        foreach (var key in DeckPalette.Keys)
-        {
-            paletteResources![key] = new SolidColorBrush(palette[key]);
-        }
+        Fill(windowResources, windows);
+        Fill(cardResources, cards);
         // Brushes handed to views built in code follow in place.
         liveBrushes.RemoveAll(entry => !entry.Brush.TryGetTarget(out _));
-        foreach (var (key, reference) in liveBrushes)
+        foreach (var (key, forCard, reference) in liveBrushes)
         {
             if (reference.TryGetTarget(out var brush))
             {
-                brush.Color = palette[key];
+                brush.Color = (forCard ? cards : windows)[key];
             }
         }
     }
 
-    // A window's frame and backdrop in the scheme: dark or light title bar and Acrylic.
+    // A window's frame in the app mode: a dark or light title bar.
     public static void ApplyWindowChrome(nint handle)
     {
-        NativeMethods.SetDarkMode(handle, !Current.IsLight);
+        NativeMethods.SetDarkMode(handle, !WindowPalette.IsLight);
     }
 
     public static Style Style(string key)
@@ -75,17 +77,67 @@ public static class WindowsTheme
         return (Style)Application.Current.FindResource(key);
     }
 
-    // A palette brush of the view's own that keeps following the scheme; anything else from the
+    // A palette brush of the view's own that keeps following the app mode; anything else from the
     // resources as it is.
     public static Brush Brush(string key)
+    {
+        return Live(key, false);
+    }
+
+    // The same for a view on a card, which follows the taskbar's material.
+    public static Brush CardBrush(string key)
+    {
+        return Live(key, true);
+    }
+
+    public static Brush Tone(string? tone)
+    {
+        return Brush(ToneKey(tone));
+    }
+
+    public static Brush CardTone(string? tone)
+    {
+        return CardBrush(ToneKey(tone));
+    }
+
+    public static Brush ToneFill(string? tone)
+    {
+        return new SolidColorBrush(WindowPalette.ToneTint(tone));
+    }
+
+    public static Brush CardToneFill(string? tone)
+    {
+        return new SolidColorBrush(CardPalette.ToneTint(tone));
+    }
+
+    // A Windows 11 primary button in a window: the accent shade the app mode uses, with text that
+    // reads on it.
+    public static (Brush Fill, Brush Text) AccentButton()
+    {
+        return (new SolidColorBrush(WindowPalette.AccentFill), new SolidColorBrush(WindowPalette.AccentText));
+    }
+
+    private static string ToneKey(string? tone)
+    {
+        return tone switch
+        {
+            "good" => "ToneGood",
+            "attention" => "ToneAttention",
+            "alert" => "ToneAlert",
+            "personal" => "TonePersonal",
+            _ => "TextPrimary",
+        };
+    }
+
+    private static Brush Live(string key, bool forCard)
     {
         EnsureLoaded();
         if (!DeckPalette.Keys.Contains(key))
         {
             return (Brush)Application.Current.FindResource(key);
         }
-        var brush = new SolidColorBrush(Current[key]);
-        liveBrushes.Add((key, new WeakReference<SolidColorBrush>(brush)));
+        var brush = new SolidColorBrush((forCard ? CardPalette : WindowPalette)[key]);
+        liveBrushes.Add((key, forCard, new WeakReference<SolidColorBrush>(brush)));
         if (liveBrushes.Count % 512 == 0)
         {
             liveBrushes.RemoveAll(entry => !entry.Brush.TryGetTarget(out _));
@@ -93,33 +145,18 @@ public static class WindowsTheme
         return brush;
     }
 
-    public static Brush Tone(string? tone)
+    private static void Fill(ResourceDictionary target, DeckPalette palette)
     {
-        return tone switch
+        foreach (var key in DeckPalette.Keys)
         {
-            "good" => Brush("ToneGood"),
-            "attention" => Brush("ToneAttention"),
-            "alert" => Brush("ToneAlert"),
-            "personal" => Brush("TonePersonal"),
-            _ => Brush("TextPrimary"),
-        };
-    }
-
-    public static Brush ToneFill(string? tone)
-    {
-        return new SolidColorBrush(Current.ToneTint(tone));
-    }
-
-    // A Windows 11 primary button: the accent shade the scheme uses, with text that reads on it.
-    public static (Brush Fill, Brush Text) AccentButton()
-    {
-        return (new SolidColorBrush(Current.AccentFill), new SolidColorBrush(Current.AccentText));
+            target[key] = new SolidColorBrush(palette[key]);
+        }
     }
 
     // The card's surface in the current scheme: a tint over Acrylic, or solid without transparency.
     public static Brush CardSurface()
     {
-        return new SolidColorBrush(Current.CardTint);
+        return new SolidColorBrush(CardPalette.CardTint);
     }
 
     public static Border CardFrame(FrameworkElement content)
@@ -127,12 +164,14 @@ public static class WindowsTheme
         var frame = new Border
         {
             Background = CardSurface(),
-            BorderBrush = Brush("ControlStroke"),
+            BorderBrush = CardBrush("ControlStroke"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(16, 14, 16, 14),
             Child = content,
         };
+        // Styles inside the card find the card's palette before the windows' one.
+        frame.Resources.MergedDictionaries.Add(cardResources);
         RenderOptions.SetClearTypeHint(frame, ClearTypeHint.Enabled);
         return frame;
     }

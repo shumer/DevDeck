@@ -38,7 +38,7 @@ public static class NativeMethods
         var cornerPreference = RoundedWindowCorners;
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
-        SetDarkMode(handle, !WindowsTheme.Current.IsLight);
+        SetDarkMode(handle, !WindowsTheme.CardPalette.IsLight);
         // Acrylic, as the taskbar: Mica and Mica Alt fall back to a solid colour on a window that is
         // never active, and a card never is.
         var backdrop = TransientWindowBackdrop;
@@ -86,7 +86,7 @@ public static class NativeMethods
         var cornerPreference = RoundedWindowCorners;
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
-        SetDarkMode(handle, !WindowsTheme.Current.IsLight);
+        SetDarkMode(handle, !WindowsTheme.WindowPalette.IsLight);
     }
 
     public static int GetWindowAttribute(nint handle, int attribute)
