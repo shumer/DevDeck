@@ -66,10 +66,14 @@ public static class Program
         }
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
         Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
+        Run("a replay ignores the quit effect", ReplayIgnoresQuit);
+        Run("the protocol trace records both directions without typed tokens", ProtocolTraceLeavesTokensOut);
         Run("a second launch raises the first deck", SecondLaunchSignalsFirst);
         Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
         Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);
+        Run("the menu's input owner is never seen", MenuInputOwnerIsInvisible);
+        Run("scroll bars and combo boxes follow the dark surface", ScrollBarsAndComboBoxesFitTheSurface);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
         Run("panel frames are applied as received", PanelFramesAreAppliedAsReceived);
@@ -88,6 +92,8 @@ public static class Program
         Run("inbox rows and footer use the styled model parts", InboxRowsAndFooterUseStyledModelParts);
         Run("action variants and work rows use styled layouts", ActionVariantsAndWorkRowsUseStyledLayouts);
         Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
+        Run("card parts sit on one content edge", CardPartsShareOneContentEdge);
+        Run("a crowded button row gives up whole labels", CrowdedActionsGiveUpWholeLabels);
         Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
         Run("runtime menu builds every entry kind", RuntimeMenuBuildsEveryEntryKind);
         Run("menu clicks send the exact command", MenuClicksSendExactCommand);
@@ -578,7 +584,8 @@ public static class Program
         var pullRequestNote = Descendants(pullRequestCollapsed).OfType<TrackedTextBlock>().Single();
         Equal(DeckTextTrimming.End, pullRequestNote.Trimming);
         Equal(HorizontalAlignment.Right, pullRequestNote.HorizontalAlignment);
-        var pullRequestRow = Descendants(pullRequestCollapsed).OfType<Grid>().Single();
+        // The row is the grid with columns; a card button's template is a grid too.
+        var pullRequestRow = Descendants(pullRequestCollapsed).OfType<Grid>().Single(grid => grid.ColumnDefinitions.Count > 0);
         Equal(GridUnitType.Star, pullRequestRow.ColumnDefinitions[3].Width.GridUnitType);
         Equal(GridLength.Auto, pullRequestRow.ColumnDefinitions[2].Width);
         var collapsedBitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
@@ -595,6 +602,69 @@ public static class Program
         var ddevCollapsed = (Border)Arrange(WindowsCardRenderer.Stopped(ddevCollapsedModel, _ => { }));
         var title = Descendants(ddevCollapsed).OfType<TextBlock>().Single(text => text.Text == "shop");
         True(title.ActualWidth > 0);
+    }
+
+    private static void CardPartsShareOneContentEdge()
+    {
+        // The mock's grid: everything inside the frame's padding starts on its left edge and ends
+        // on its right edge, and a list row bleeds 6 px past both so its contents land on them.
+        var list = (Border)Render(GoldenModels("github.pullRequests").Last());
+        var listContent = (FrameworkElement)list.Child;
+        TextBlock Named(FrameworkElement root, string text) =>
+            Descendants(root).OfType<TextBlock>().First(block => block.Text == text);
+        double Left(FrameworkElement element) => element.TranslatePoint(new Point(0, 0), listContent).X;
+        double Right(FrameworkElement element) => listContent.ActualWidth - element.TranslatePoint(new Point(element.ActualWidth, 0), listContent).X;
+        Near(0, Left(Named(list, "4")));
+        Near(0, Left(Named(list, "2 repos · 1 org")));
+        Near(0, Right(Named(list, "04:00:00")));
+        Near(0, Right(Named(list, "1 blocked")));
+        var row = Descendants(list).OfType<Button>().First(button => button.Content is Grid);
+        Near(-6, Left(row));
+        Near(-6, Right(row));
+        var rowGrid = (Grid)row.Content;
+        Near(0, Left((FrameworkElement)rowGrid.Children[0]));
+        Near(0, Right(Named(list, "CR")));
+
+        var project = (Border)Render(GoldenModels("arc.project.paper").Last());
+        listContent = (FrameworkElement)project.Child;
+        var buttons = Descendants(project).OfType<Button>().ToList();
+        Near(0, Left(buttons.First(button => Equals(button.Content, "PageBuilder"))));
+        var actions = buttons.Where(button => button.ActualHeight == 32).ToList();
+        Near(0, Left(actions.First()));
+        Near(0, Right(actions.Last()));
+    }
+
+    private static void CrowdedActionsGiveUpWholeLabels()
+    {
+        static string Card(string start, string restart) => $$$"""
+            {"project":{"title":"Shop","actions":[
+            {"command":{"startDocker":{}},"glyph":"docker","isEnabled":true,"isProminent":true,"title":"{{{start}}}","tone":"alert"},
+            {"command":{"project":{"_0":"ddev.project.shop","_1":"restart"}},"glyph":"restart","isEnabled":false,"isProminent":false,"title":"{{{restart}}}"},
+            {"command":{"revealFolder":{"_0":"ddev.project.shop"}},"glyph":"folder","isEnabled":true,"isProminent":false,"title":"Folder"},
+            {"command":{"openTerminal":{"_0":"ddev.project.shop"}},"glyph":"terminal","isEnabled":true,"isProminent":false,"title":"Terminal"}]}}
+            """;
+        TextBlock Label(FrameworkElement card, string text) =>
+            Descendants(card).OfType<TextBlock>().First(block => block.Text == text);
+
+        using var roomy = JsonDocument.Parse(Card("Start", "Restart"));
+        var english = Render(roomy.RootElement);
+        Equal(Visibility.Visible, Label(english, "Restart").Visibility);
+
+        using var crowded = JsonDocument.Parse(Card("Запустить Docker", "Перезапустить"));
+        var russian = Render(crowded.RootElement);
+        Equal(Visibility.Collapsed, Label(russian, "Перезапустить").Visibility);
+        var start = Label(russian, "Запустить Docker");
+        Equal(Visibility.Visible, start.Visibility);
+        start.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        True(start.ActualWidth >= start.DesiredSize.Width - 0.5);
+    }
+
+    private static void Near(double expected, double actual)
+    {
+        if (Math.Abs(expected - actual) > 0.01)
+        {
+            throw new Exception($"expected {expected}, got {actual}");
+        }
     }
 
     private static void ExpandedListsReportLargerHeight()
@@ -1714,6 +1784,84 @@ public static class Program
         True(next.IsFirst);
     }
 
+    private static void ReplayIgnoresQuit()
+    {
+        var surface = new RecordingSurface();
+        var errors = new StringWriter();
+        var previous = Console.Error;
+        Console.SetError(errors);
+        try
+        {
+            var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", surface);
+            var golden = Path.Combine(RepositoryRoot(), "Tests", "EngineTests", "Golden", "session-en.expected.jsonl");
+            coordinator.StartReplayAsync(golden).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            Console.SetError(previous);
+        }
+        Equal(0, surface.Quits);
+        True(errors.ToString().Contains("Replay ignored the quit effect.", StringComparison.Ordinal));
+    }
+
+    private sealed class RecordingSurface : IShellSurface
+    {
+        public int Quits { get; private set; }
+#pragma warning disable CS0067
+        public event Action<CardMeasurement>? CardMeasured;
+        public event Action<CardMove>? CardMoved;
+        public event Action<DeckCommand>? CommandInvoked;
+        public event Action<LogWindowChange>? LogWindowChanged;
+        public event Action<SettingsWireRequest>? SettingsRequested;
+        public event Action<string>? IntentRequested;
+        public event Action? DisplayConfigurationChanged;
+#pragma warning restore CS0067
+        public void BeginSession() { }
+        public void ApplyDeck(DeckPresentation presentation) { }
+        public void ApplyPanels(IReadOnlyList<PanelChange> panels) { }
+        public void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped) { }
+        public void UpdateStatus(JsonElement status) { }
+        public void UpdateMenu(JsonElement menu) { }
+        public void ShowNotifications(IReadOnlyList<DeckNotification> notifications) { }
+        public void UpdateLog(string card, DeckLog log) { }
+        public void OpenLogs(string card) { }
+        public void CloseLogs(string card) { }
+        public void UpdateSettings(string? id, JsonElement answer) { }
+        public void UpdateSettingsUpdate(JsonElement update) { }
+        public void OpenSettings(JsonElement effect) { }
+        public void ApplySummonPreferences(SummonPreferences preferences) { }
+        public void PresentDeck() { }
+        public void OpenMenu() { }
+        public void Quit() => Quits++;
+        public void ShowStopped() { }
+        public void Dispose() { }
+    }
+
+    private static void ProtocolTraceLeavesTokensOut()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "devdeck-trace-" + Guid.NewGuid() + ".jsonl");
+        try
+        {
+            var options = ShellOptions.Parse(["--trace", path]);
+            Equal<string?>(Path.GetFullPath(path), options.TracePath);
+            using (var trace = new ProtocolTrace(options.TracePath!))
+            {
+                trace.Sent("{\"intent\":\"session.start\"}");
+                trace.Sent("{\"intent\":\"settings\",\"request\":{\"checkGitHubToken\":{\"typed\":\"secret-value\"}}}");
+                trace.Received("{\"event\":\"panels.changed\"}");
+            }
+            var lines = File.ReadAllLines(path);
+            Equal(3, lines.Length);
+            True(lines[0].Contains(" > {\"intent\":\"session.start\"}", StringComparison.Ordinal));
+            True(!File.ReadAllText(path).Contains("secret-value", StringComparison.Ordinal));
+            True(lines[2].Contains(" < {\"event\":\"panels.changed\"}", StringComparison.Ordinal));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static void SecondLaunchSignalsFirst()
     {
         var name = @"Local\DevDeck.Tests." + Guid.NewGuid();
@@ -1761,12 +1909,41 @@ public static class Program
         Equal(1, exits);
     }
 
+    private static void ScrollBarsAndComboBoxesFitTheSurface()
+    {
+        WindowsTheme.EnsureLoaded();
+        var bar = new System.Windows.Controls.Primitives.ScrollBar { Orientation = Orientation.Vertical };
+        var host = new Border { Width = 40, Height = 200, Child = bar };
+        host.Measure(new Size(40, 200));
+        host.Arrange(new Rect(0, 0, 40, 200));
+        host.UpdateLayout();
+        Equal(12.0, bar.ActualWidth);
+        var thumb = Descendants(bar).OfType<System.Windows.Controls.Primitives.Thumb>().Single();
+        True(Descendants(thumb).OfType<Border>().Any(border => border.CornerRadius.TopLeft == 3));
+        var combo = new ComboBox { Style = WindowsTheme.Style("SettingsComboBox") };
+        Equal(0.0, combo.Padding.Top);
+        Equal(0.0, combo.Padding.Bottom);
+    }
+
+    private static void MenuInputOwnerIsInvisible()
+    {
+        var owner = MenuPresenter.CreateInputOwner();
+        True(owner.AllowsTransparency);
+        Equal(WindowStyle.None, owner.WindowStyle);
+        Equal(0.0, owner.Opacity);
+        True(!owner.ShowInTaskbar);
+        owner.Close();
+    }
+
     private static void MenusDismissOutsideApplication()
     {
         var presenter = new MenuPresenter(_ => { });
         presenter.Update(RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true));
         presenter.Open();
         True(!presenter.View.StaysOpen);
+        // A menu taller than the screen scrolls instead of running off its bottom.
+        Equal(SystemParameters.WorkArea.Height, presenter.View.MaxHeight);
+        True(Descendants(presenter.View).OfType<ScrollViewer>().Any());
         var source = (System.Windows.Interop.HwndSource)PresentationSource.FromVisual(presenter.View);
         SendMenuMessage(source.Handle, 0x001C, 0, 0);
         PumpMenuDispatcher();

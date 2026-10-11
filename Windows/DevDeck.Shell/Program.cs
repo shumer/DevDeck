@@ -33,7 +33,8 @@ public static class Program
 
             var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var surface = new ShellSurface();
-            var coordinator = new ShellCoordinator(application.Dispatcher, options.EnginePath, surface);
+            using var trace = options.TracePath is { } tracePath ? new ProtocolTrace(tracePath) : null;
+            var coordinator = new ShellCoordinator(application.Dispatcher, options.EnginePath, surface, trace);
             instance.OnSignal(() => application.Dispatcher.BeginInvoke(surface.PresentDeck));
             application.Startup += async (_, _) =>
             {
@@ -60,7 +61,8 @@ public sealed record ShellOptions(
     string EnginePath,
     string? ReplayPath,
     DeveloperRequest? DeveloperRequest,
-    bool EnableLoginItem)
+    bool EnableLoginItem,
+    string? TracePath = null)
 {
     public static ShellOptions Parse(string[] arguments)
     {
@@ -70,6 +72,7 @@ public sealed record ShellOptions(
         string? replayPath = null;
         DeveloperRequest? developerRequest = null;
         var enableLoginItem = false;
+        string? tracePath = null;
         for (var index = 0; index < arguments.Length; index++)
         {
             switch (arguments[index])
@@ -90,6 +93,9 @@ public sealed record ShellOptions(
                         DeveloperRequestKind.RemoveProject,
                         Value(arguments, ref index));
                     break;
+                case "--trace":
+                    tracePath = Path.GetFullPath(Value(arguments, ref index));
+                    break;
                 case "--enable-login-item":
                     enableLoginItem = true;
                     break;
@@ -104,7 +110,7 @@ public sealed record ShellOptions(
             throw new ArgumentException();
         }
 
-        return new ShellOptions(enginePath, replayPath, developerRequest, enableLoginItem);
+        return new ShellOptions(enginePath, replayPath, developerRequest, enableLoginItem, tracePath);
     }
 
     private static string Value(string[] arguments, ref int index)

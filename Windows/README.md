@@ -21,7 +21,9 @@ engine host, the process host and Swift runtime libraries. Test assemblies are e
 ## Deterministic replay
 
 Replay reads protocol events from a golden transcript instead of starting the engine. It performs
-no network request and reads no token.
+no network request and reads no token. It carries out every effect except `quit`: a replay exists
+to be looked at, so a `quit` in the transcript is noted on standard error and the windows stay
+until they are closed by hand.
 
 ```powershell
 dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl
@@ -197,6 +199,15 @@ print the matching protocol answer:
 dotnet run --project Windows/DevDeck.Shell -- --add-project C:\projects\sample-api
 dotnet run --project Windows/DevDeck.Shell -- --add-project \\wsl.localhost\Ubuntu-24.04\home\developer\sample-web
 dotnet run --project Windows/DevDeck.Shell -- --remove-project project.sample-api
+```
+
+`--trace <file>` appends every protocol line to a file, each with a timestamp and `<` for the
+host's lines or `>` for the shell's. A settings request that carries a typed token is replaced
+by a note, so no token reaches the file. It is a developer flag for questions about timing,
+such as which `panels.changed` came before a card overlapped another.
+
+```powershell
+dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --trace C:	emp\devdeck-trace.jsonl
 ```
 
 The host stores tokens in Windows Credential Manager. The shell contains no token storage code and

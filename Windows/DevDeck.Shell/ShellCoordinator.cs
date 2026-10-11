@@ -35,13 +35,16 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private readonly CancellationTokenSource cancellation = new();
     private readonly object engineLock = new();
     private EngineClient? engine;
+    private readonly ProtocolTrace? trace;
     private Task? hostLoop;
     private long nextId;
     private bool beganSession;
+    private bool isReplay;
     private readonly AsyncShutdown shutdown;
 
-    public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface)
+    public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface, ProtocolTrace? trace = null)
     {
+        this.trace = trace;
         this.dispatcher = dispatcher;
         this.enginePath = enginePath;
         this.surface = surface;
@@ -65,6 +68,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
 
     public async Task StartReplayAsync(string path)
     {
+        isReplay = true;
         protocol.Reset();
         beganSession = false;
         foreach (var line in File.ReadLines(path))
@@ -122,7 +126,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
         var hadSession = false;
         while (!cancellation.IsCancellationRequested)
         {
-            await using var client = new EngineClient(enginePath);
+            await using var client = new EngineClient(enginePath, trace);
             client.EventReceived += message => dispatcher.BeginInvoke(() => Apply(message));
             lock (engineLock)
             {
@@ -255,6 +259,10 @@ public sealed class ShellCoordinator : IAsyncDisposable
         {
             case "openMenu":
                 surface.OpenMenu();
+                break;
+            case "quit" when isReplay:
+                // A replay exists to be looked at, so it stays up until it is closed by hand.
+                Console.Error.WriteLine("Replay ignored the quit effect.");
                 break;
             case "quit":
                 _ = shutdown.Request();
