@@ -1,3 +1,5 @@
+import ArcKit
+import DDEVKit
 import DevDeckCore
 import DevDeckEngine
 import Foundation
@@ -84,7 +86,10 @@ func runProjectAction(
 
 do {
     let arguments = try Arguments(Array(CommandLine.arguments.dropFirst()))
-    let supportedActions = ["start", "status", "stop", "timeout", "cancel", "path"]
+    let supportedActions = [
+        "start", "status", "stop", "timeout", "cancel", "path",
+        "ddev-start", "ddev-status", "ddev-stop", "docker-format"
+    ]
     guard supportedActions.contains(arguments.action) else {
         throw CommandError.launchFailed("Unknown lifecycle action.")
     }
@@ -98,6 +103,41 @@ do {
         throw CommandError.launchFailed("A Windows project is required.")
     }
     let runner = NativeWindowsCommandRunner()
+    if arguments.action == "docker-format" {
+        for command in [DockerEnvironment.probeCommand, LocalStackService.listCommand] {
+            let result = try await runner.run(command, in: URL(fileURLWithPath: project.path), timeout: 30)
+            guard result.succeeded else {
+                throw CommandError.launchFailed(result.standardError)
+            }
+            print(result.standardOutput, terminator: "")
+        }
+        exit(0)
+    }
+    if arguments.action.hasPrefix("ddev-") {
+        guard ["ddev-start", "ddev-status", "ddev-stop"].contains(arguments.action) else {
+            throw CommandError.launchFailed("Unknown DDEV lifecycle action.")
+        }
+        let ddevProject = DDEVProject(id: project.id, name: project.id, title: project.title, folder: project.path)
+        let environment = DDEVEnvironment(runner: runner)
+        if arguments.action != "ddev-status" {
+            let action: DDEVAction = arguments.action == "ddev-start" ? .start : .stop
+            guard let result = await environment.perform(action, for: ddevProject) else {
+                throw CommandError.launchFailed("DDEV action returned no result.")
+            }
+            guard result.succeeded else {
+                throw CommandError.launchFailed(result.standardError + result.standardOutput)
+            }
+        }
+        guard let entries = await environment.list() else {
+            throw CommandError.launchFailed("DDEV did not answer the lifecycle check.")
+        }
+        let status = environment.status(for: ddevProject, entries: entries)
+        print(status.state.rawValue)
+        guard status.state == (arguments.action == "ddev-stop" ? .stopped : .running) else {
+            throw CommandError.launchFailed("Unexpected DDEV project state.")
+        }
+        exit(0)
+    }
     let service = try lifecycleService(configuration: configuration, runner: runner)
     switch arguments.action {
     case "start":
