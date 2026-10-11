@@ -171,8 +171,10 @@ public final class DeckSession {
 
     /// Watches for a newer build, for a host that has one to replace. The shell installs it when
     /// asked and reports how that goes.
-    public func watchForUpdates(currentVersion: String?, canInstall: Bool, http: any HTTPClient) {
-        let updates = runtime.watchForUpdates(currentVersion: currentVersion, canInstall: canInstall, http: http)
+    public func watchForUpdates(
+        currentVersion: String?, canInstall: Bool, http: any HTTPClient, platform: UpdateCheck.Platform = .current
+    ) {
+        let updates = runtime.watchForUpdates(currentVersion: currentVersion, canInstall: canInstall, http: http, platform: platform)
         updates.onChange = { [weak self] in
             self?.sendUpdate()
             self?.scheduleFlush()

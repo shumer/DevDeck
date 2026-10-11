@@ -106,7 +106,9 @@ private func settingsScenario(_ name: String) async throws -> Data {
         runsLoops: false
     ) { bytes.append($0) }
     session.handle(line: intent(1, "session.start", #""systemLanguage":"\#(russian ? "ru" : "en")",\#(displays)"#))
-    session.watchForUpdates(currentVersion: "0.19.2", canInstall: true, http: FakeHTTPClient([.success(.json(release))]))
+    // The Mac's build on every platform: a transcript is the same bytes wherever it is replayed,
+    // and the release above carries the one asset that build is named by.
+    session.watchForUpdates(currentVersion: "0.19.2", canInstall: true, http: FakeHTTPClient([.success(.json(release))]), platform: .mac)
     session.flush()
     // What starting looks like is the other scenario's; this one starts from here.
     bytes.removeAll()

@@ -50,6 +50,9 @@ public final class DeckUpdates {
     private let http: any HTTPClient
     private let clock: any DateProvider
     private let sleeper: any Sleeper
+    /// Which of a release's builds this copy installs. The running platform's, except in the
+    /// suite, where a transcript has to be the same bytes on every platform.
+    private let platform: UpdateCheck.Platform
     private var loop: Task<Void, Never>?
     private var waitTask: Task<Void, Never>?
 
@@ -60,7 +63,8 @@ public final class DeckUpdates {
         clock: any DateProvider,
         sleeper: any Sleeper,
         currentVersion: String?,
-        canInstall: Bool
+        canInstall: Bool,
+        platform: UpdateCheck.Platform
     ) {
         self.runtime = runtime
         self.preferences = preferences
@@ -69,6 +73,7 @@ public final class DeckUpdates {
         self.sleeper = sleeper
         self.currentVersion = currentVersion
         self.canInstall = canInstall
+        self.platform = platform
     }
 
     public var isSupported: Bool { currentVersion != nil && canInstall }
@@ -158,7 +163,7 @@ public final class DeckUpdates {
             let release = try UpdateCheck.decode(response.body)
             lastCheckedAt = clock.now
             lastCheckFailure = nil
-            if let update = UpdateCheck.available(current: current, release: release) {
+            if let update = UpdateCheck.available(current: current, release: release, platform: platform) {
                 let wasKnown = available?.version == update.version
                 state = .available(update)
                 // One banner per version, ever: a restart is not news.

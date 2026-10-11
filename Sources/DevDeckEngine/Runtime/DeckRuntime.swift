@@ -1847,7 +1847,9 @@ public final class DeckRuntime {
 
     /// Starts watching for updates for the copy that is running: its version, nil where there is
     /// none, and whether this shell can put a new copy in place.
-    public func watchForUpdates(currentVersion: String?, canInstall: Bool, http: any HTTPClient) -> DeckUpdates {
+    public func watchForUpdates(
+        currentVersion: String?, canInstall: Bool, http: any HTTPClient, platform: UpdateCheck.Platform = .current
+    ) -> DeckUpdates {
         let made = DeckUpdates(
             runtime: self,
             preferences: preferences,
@@ -1855,7 +1857,8 @@ public final class DeckRuntime {
             clock: clock,
             sleeper: sleeper,
             currentVersion: currentVersion,
-            canInstall: canInstall
+            canInstall: canInstall,
+            platform: platform
         )
         updates = made
         return made
