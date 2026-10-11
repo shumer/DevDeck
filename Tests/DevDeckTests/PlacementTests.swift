@@ -50,6 +50,12 @@ func runPlacementTests(_ run: TestRun) async {
         let desk = Desk(projects: projects(3))
         let changes = desk.placement.sync()
         try expectEqual(changes.filter { if case .open = $0 { return true }; return false }.count, 3)
+        // A fresh deck is one column from the top, in deck order: nothing is moved after it
+        // opened, so the first card is not sent under the others.
+        try expect(!changes.contains { if case .place = $0 { return true }; return false }, "nothing opened at a free spot is moved: \(changes)")
+        let ordered = desk.frames.values.sorted { $0.maxY > $1.maxY }
+        try expectEqual(Set(ordered.map(\.minX)).count, 1, "one column")
+        try expectEqual(ordered[0].minY - ordered[1].maxY, CGFloat(CardMetrics.panelGap))
         let frames = Array(desk.frames.values)
         try expectEqual(frames.count, 3)
         for (index, frame) in frames.enumerated() {

@@ -189,6 +189,11 @@ public struct ProjectWatch: Sendable, Equatable {
         records = records.filter { ids.contains($0.key) }
     }
 
+    /// Why the last start failed, while nothing has happened to the project since.
+    public func startFailureLine(for id: String) -> String? {
+        records[id]?.startFailure?.line
+    }
+
     public func problems(for id: String, now: Date) -> [Problem] {
         guard let record = records[id] else { return [] }
         var problems: [Problem] = []

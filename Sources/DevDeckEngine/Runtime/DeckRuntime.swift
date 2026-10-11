@@ -374,9 +374,32 @@ public final class DeckRuntime {
                 wasGood: stackStatuses[project.id]?.isRunning ?? false,
                 for: "arc.\(project.id)"
             ) else { continue }
-            stackStatuses[project.id] = probed
+            stackStatuses[project.id] = keepingStartFailure(probed, for: project.id)
             observe(project, probed)
         }
+    }
+
+    /// A poll that finds a project stopped after a failed start keeps the reason on the card:
+    /// the probe knows the project is down, the watch knows why, and the why is the news.
+    private func keepingStartFailure(_ probed: LocalStackStatus, for projectID: String) -> LocalStackStatus {
+        guard !probed.isRunning, !probed.isBusy, let line = watch.startFailureLine(for: projectID) else { return probed }
+        var kept = probed
+        kept.detail = line
+        return kept
+    }
+
+    private func keepingStartFailure(_ probed: LocalProjectStatus, for projectID: String) -> LocalProjectStatus {
+        guard !probed.isRunning, !probed.isBusy, probed.state != .starting, let line = watch.startFailureLine(for: projectID) else { return probed }
+        var kept = probed
+        kept.detail = line
+        return kept
+    }
+
+    private func keepingStartFailure(_ probed: DDEVStatus, for projectID: String) -> DDEVStatus {
+        guard !probed.isRunning, !probed.isBusy, let line = watch.startFailureLine(for: projectID) else { return probed }
+        var kept = probed
+        kept.detail = line
+        return kept
     }
 
     /// An engine that answers its health URL with an error is up and unwell, not stopped.
@@ -520,7 +543,7 @@ public final class DeckRuntime {
                 wasGood: ddevStatuses[project.id]?.isRunning ?? false,
                 for: "ddev.\(project.id)"
             ) else { continue }
-            ddevStatuses[project.id] = probed
+            ddevStatuses[project.id] = keepingStartFailure(probed, for: project.id)
             watch.observe(
                 project.id,
                 running: probed.isRunning,
@@ -784,7 +807,7 @@ public final class DeckRuntime {
                 wasGood: localStatuses[project.id]?.isRunning ?? false,
                 for: "project.\(project.id)"
             ) else { continue }
-            localStatuses[project.id] = probed
+            localStatuses[project.id] = keepingStartFailure(probed, for: project.id)
             observe(project, probed)
         }
     }

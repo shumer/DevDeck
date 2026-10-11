@@ -108,7 +108,12 @@ public final class DeckPlacement {
             changes.append(.open(card, frame))
             opened.append(card)
         }
-        for card in unplaced { settle(card) }
+        // A card that opened at a free spot stays there and is written down; one that landed
+        // on another moves beside the deck. Moving every new card, as this once did, sent the
+        // first of a fresh deck under the others and the rest into a second column.
+        for card in unplaced {
+            if isDoubled(card) { settle(card) } else { persistPosition(of: card) }
+        }
         // Two cards remembered at the same spot, which happens when both were hidden and the deck
         // was tidied over the place one of them had, would open on top of each other. The one
         // that opened second joins the deck instead.
