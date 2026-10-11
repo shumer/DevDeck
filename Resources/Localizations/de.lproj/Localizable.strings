@@ -398,6 +398,12 @@
 "project.detect.noFolder" = "Erst einen Ordner setzen.";
 "project.detect.nothing" = "Nichts Erkennbares: keine Compose-Datei, kein package.json-Skript, kein Makefile-Target.";
 "project.didNotStayUp" = "der Prozess ist nicht oben geblieben";
+"arc.waitingForEngine" = "warte auf die Engine…";
+"arc.engineNeverAnswered" = "die Engine hat nie geantwortet";
+"project.command.failed" = "%@ fehlgeschlagen";
+"project.siteNeverAnswered" = "die Site hat nie geantwortet";
+"ddev.command.failed" = "ddev %@ fehlgeschlagen";
+"ddev.command.finishedNotRunning" = "ddev %@ beendet, aber das Projekt läuft nicht";
 "project.folder" = "Ordner";
 "project.health.answered" = "Statusprüfung hat %d geantwortet";
 "project.health.help" = "Läuft heißt: die Adresse hat mit 2xx, 3xx, 401 oder 403 geantwortet. 404 oder 500 zählen nicht: ein lokaler Port wird geteilt, und der Server von jemand anderem darauf ist der Grund, warum ein Projekt, das niemand gestartet hat, als laufend gilt. Leer wird nur verfolgt, was DevDeck selbst gestartet hat.";

@@ -398,6 +398,12 @@
 "project.detect.noFolder" = "Сначала укажите папку.";
 "project.detect.nothing" = "Ничего не узнаётся: нет ни compose-файла, ни скрипта в package.json, ни цели в Makefile.";
 "project.didNotStayUp" = "процесс не удержался";
+"arc.waitingForEngine" = "ждем движок…";
+"arc.engineNeverAnswered" = "движок так и не ответил";
+"project.command.failed" = "%@: не удалось";
+"project.siteNeverAnswered" = "сайт так и не ответил";
+"ddev.command.failed" = "ddev %@ не удалось";
+"ddev.command.finishedNotRunning" = "ddev %@ завершился, но проект не запущен";
 "project.folder" = "Папка";
 "project.health.answered" = "проверка состояния ответила %d";
 "project.health.help" = "Работает значит, что адрес ответил 2xx, 3xx, 401 или 403. 404 и 500 не считаются: локальный порт общий, и чужой сервер на нём - как раз то, из-за чего незапущенный проект выглядит работающим. Пусто - следим только за тем, что запустил сам DevDeck.";

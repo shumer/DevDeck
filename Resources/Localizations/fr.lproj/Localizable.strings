@@ -398,6 +398,12 @@
 "project.detect.noFolder" = "Indiquez d’abord un dossier.";
 "project.detect.nothing" = "Rien de reconnaissable : pas de fichier compose, de script package.json ni de cible Makefile.";
 "project.didNotStayUp" = "le processus n’est pas resté en vie";
+"arc.waitingForEngine" = "en attente du moteur…";
+"arc.engineNeverAnswered" = "le moteur n'a jamais répondu";
+"project.command.failed" = "%@ a échoué";
+"project.siteNeverAnswered" = "le site n'a jamais répondu";
+"ddev.command.failed" = "ddev %@ a échoué";
+"ddev.command.finishedNotRunning" = "ddev %@ terminé, mais le projet ne tourne pas";
 "project.folder" = "Dossier";
 "project.health.answered" = "la vérification d’état a répondu %d";
 "project.health.help" = "En marche veut dire que l’adresse a répondu 2xx, 3xx, 401 ou 403. Un 404 ou un 500 ne comptent pas : un port local est partagé, et le serveur de quelqu’un d’autre qui répond dessus fait passer pour lancé un projet que personne n’a démarré. Vide, seul ce que DevDeck a lancé est suivi.";

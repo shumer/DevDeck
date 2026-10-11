@@ -398,6 +398,12 @@
 "project.detect.noFolder" = "Set a folder first.";
 "project.detect.nothing" = "Nothing recognisable: no compose file, package.json script or Makefile target.";
 "project.didNotStayUp" = "the process did not stay up";
+"arc.waitingForEngine" = "waiting for the engine…";
+"arc.engineNeverAnswered" = "the engine never answered";
+"project.command.failed" = "%@ failed";
+"project.siteNeverAnswered" = "the site never answered";
+"ddev.command.failed" = "ddev %@ failed";
+"ddev.command.finishedNotRunning" = "ddev %@ finished, but the project is not running";
 "project.folder" = "Folder";
 "project.health.answered" = "health check answered %d";
 "project.health.help" = "Up means the address answered 2xx, 3xx, 401 or 403. A 404 or a 500 does not count: a local port is shared, and somebody else's server answering on it is how a project nobody started reads as running. Empty, only a command started from DevDeck is tracked.";

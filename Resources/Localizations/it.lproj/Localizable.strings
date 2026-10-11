@@ -398,6 +398,12 @@
 "project.detect.noFolder" = "Prima imposta una cartella.";
 "project.detect.nothing" = "Niente di riconoscibile: nessun file compose, script in package.json o target del Makefile.";
 "project.didNotStayUp" = "il processo non è rimasto su";
+"arc.waitingForEngine" = "in attesa del motore…";
+"arc.engineNeverAnswered" = "il motore non ha mai risposto";
+"project.command.failed" = "%@ non riuscito";
+"project.siteNeverAnswered" = "il sito non ha mai risposto";
+"ddev.command.failed" = "ddev %@ non riuscito";
+"ddev.command.finishedNotRunning" = "ddev %@ terminato, ma il progetto non è in esecuzione";
 "project.folder" = "Cartella";
 "project.health.answered" = "il controllo di stato ha risposto %d";
 "project.health.help" = "In esecuzione significa che l’indirizzo ha risposto 2xx, 3xx, 401 o 403. Un 404 o un 500 non contano: una porta locale è condivisa, e il server di qualcun altro che risponde lì è il motivo per cui un progetto che nessuno ha avviato sembra in esecuzione. Vuoto, viene seguito solo ciò che DevDeck ha avviato.";

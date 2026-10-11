@@ -416,7 +416,7 @@ public final class DeckRuntime {
             if let result, !result.succeeded {
                 // Show why rather than silently flipping back to "stopped": a failed start is
                 // the moment the card is most worth reading.
-                let line = result.failureLine ?? "\(action.title.lowercased()) failed"
+                let line = result.failureLine ?? L("project.command.failed", action.title.lowercased())
                 self.stackStatuses[project.id] = LocalStackStatus(
                     state: .stopped,
                     detail: line,
@@ -435,7 +435,7 @@ public final class DeckRuntime {
                 // failure a second after a successful start.
                 self.stackStatuses[project.id] = LocalStackStatus(
                     state: .working,
-                    detail: "waiting for the engine…",
+                    detail: L("arc.waitingForEngine"),
                     checkedAt: clock.now,
                     progressLine: self.stackStatuses[project.id]?.progressLine
                 )
@@ -447,7 +447,7 @@ public final class DeckRuntime {
                 if started.isRunning {
                     self.observe(project, started)
                 } else {
-                    self.watch.noteStartFailed(project.id, line: started.detail ?? "the engine never answered", at: clock.now)
+                    self.watch.noteStartFailed(project.id, line: started.detail ?? L("arc.engineNeverAnswered"), at: clock.now)
                 }
             case .stop, .teardown:
                 // Verified rather than assumed. `fusion stop` returns before the containers are
@@ -564,11 +564,11 @@ public final class DeckRuntime {
                     state: .stopped,
                     config: DDEVConfig.load(in: project.folderURL),
                     branch: GitCheckout.branch(in: project.folderURL),
-                    detail: result.failureLine ?? "\(action.title.lowercased()) failed",
+                    detail: result.failureLine ?? L("project.command.failed", action.title.lowercased()),
                     checkedAt: clock.now
                 )
                 if action != .stop {
-                    self.watch.noteStartFailed(project.id, line: result.failureLine ?? "ddev \(action.rawValue) failed", at: clock.now)
+                    self.watch.noteStartFailed(project.id, line: result.failureLine ?? L("ddev.command.failed", action.rawValue), at: clock.now)
                 }
                 await self.refreshLogsIfOpen(project.cardID)
                 return
@@ -579,7 +579,7 @@ public final class DeckRuntime {
             if action == .stop, isRunning {
                 self.watch.noteStopDidNotTakeEffect(project.id, at: clock.now)
             } else if action != .stop, !isRunning {
-                self.watch.noteStartFailed(project.id, line: "ddev \(action.rawValue) finished, but the project is not running", at: clock.now)
+                self.watch.noteStartFailed(project.id, line: L("ddev.command.finishedNotRunning", action.rawValue), at: clock.now)
             }
             await self.refreshLogsIfOpen(project.cardID)
         }
@@ -836,7 +836,7 @@ public final class DeckRuntime {
             if let result, !result.succeeded {
                 // A failed start is the moment the card is most worth reading, so the reason
                 // stays on it rather than being replaced by a bare "stopped".
-                let line = result.failureLine ?? "\(action.title.lowercased()) failed"
+                let line = result.failureLine ?? L("project.command.failed", action.title.lowercased())
                 self.localStatuses[project.id] = LocalProjectStatus(
                     state: .stopped,
                     detail: line,
@@ -867,7 +867,7 @@ public final class DeckRuntime {
                 if started.isRunning {
                     self.observe(project, started)
                 } else {
-                    self.watch.noteStartFailed(project.id, line: started.detail ?? "the site never answered", at: clock.now)
+                    self.watch.noteStartFailed(project.id, line: started.detail ?? L("project.siteNeverAnswered"), at: clock.now)
                 }
             case .stop:
                 let stopped = await service.status()

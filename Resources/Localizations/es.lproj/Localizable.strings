@@ -398,6 +398,12 @@
 "project.detect.noFolder" = "Pon primero una carpeta.";
 "project.detect.nothing" = "Nada reconocible: ni archivo compose, ni script en package.json, ni objetivo de Makefile.";
 "project.didNotStayUp" = "el proceso no se mantuvo en marcha";
+"arc.waitingForEngine" = "esperando al motor…";
+"arc.engineNeverAnswered" = "el motor nunca respondió";
+"project.command.failed" = "%@ falló";
+"project.siteNeverAnswered" = "el sitio nunca respondió";
+"ddev.command.failed" = "ddev %@ falló";
+"ddev.command.finishedNotRunning" = "ddev %@ terminó, pero el proyecto no está en marcha";
 "project.folder" = "Carpeta";
 "project.health.answered" = "la comprobación de estado respondió %d";
 "project.health.help" = "En marcha significa que la dirección respondió 2xx, 3xx, 401 o 403. Un 404 o un 500 no cuentan: un puerto local se comparte, y el servidor de otra persona respondiendo ahí es lo que hace que un proyecto que nadie arrancó parezca en marcha. Vacío, solo se sigue lo que DevDeck arrancó.";
