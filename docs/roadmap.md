@@ -2,6 +2,10 @@
 
 ## Done
 
+- Windows release CI builds the installer after the Mac package passes, writes its SHA256 and
+  appends installation notes. Dry runs keep both packages as Actions artifacts without changing
+  the release. See [the release verification](poc/W18-windows-release-report.md).
+
 - Windows per-user installation uses Inno Setup and a framework dependent .NET delivery.
   It supports graceful shell shutdown, silent installation and uninstall cleanup while keeping
   settings and credentials. See [the installer verification](poc/W15-windows-installer-report.md).
