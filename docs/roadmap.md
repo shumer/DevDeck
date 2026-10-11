@@ -2,6 +2,10 @@
 
 ## Done
 
+- Windows per-user installation uses Inno Setup and a framework dependent .NET delivery.
+  It supports graceful shell shutdown, silent installation and uninstall cleanup while keeping
+  settings and credentials. See [the installer verification](poc/W15-windows-installer-report.md).
+
 - Windows follows the system scheme: dark and light palettes, Acrylic or solid, the taskbar's
   accent tint in dark mode, redrawn live; one menu column, toned dialog buttons, full height
   replays.

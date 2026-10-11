@@ -28,6 +28,16 @@ public static class ToastShortcutRegistration
             Marshal.ThrowExceptionForHR(result);
         }
 
+        EnsureShortcut(shortcutPath, executable);
+    }
+
+    public static void EnsureShortcut(string shortcutPath, string executable)
+    {
+        if (IsCurrentShortcut(shortcutPath, executable))
+        {
+            return;
+        }
+
         object instance = new ShellLink();
         try
         {
@@ -62,6 +72,39 @@ public static class ToastShortcutRegistration
             "DevDeck.lnk");
     }
 
+    public static bool MatchesIdentity(string target, string appId, string executable)
+    {
+        return string.Equals(target, executable, StringComparison.OrdinalIgnoreCase)
+            && appId == AppId;
+    }
+
+    public static bool IsCurrentShortcut(string path, string executable)
+    {
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+        object instance = new ShellLink();
+        try
+        {
+            ((IPersistFile)instance).Load(path, 0);
+            var target = new System.Text.StringBuilder(32768);
+            ((IShellLinkW)instance).GetPath(target, target.Capacity, 0, 0);
+            var key = AppUserModelId;
+            using var appId = new PropertyVariant();
+            ((IPropertyStore)instance).GetValue(ref key, appId);
+            return MatchesIdentity(target.ToString(), appId.StringValue ?? "", executable);
+        }
+        catch (COMException)
+        {
+            return false;
+        }
+        finally
+        {
+            _ = Marshal.FinalReleaseComObject(instance);
+        }
+    }
+
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
 
@@ -77,7 +120,7 @@ public static class ToastShortcutRegistration
     [Guid("000214F9-0000-0000-C000-000000000046")]
     private interface IShellLinkW
     {
-        void GetPath(nint file, int maximum, nint data, uint flags);
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder file, int maximum, nint data, uint flags);
         void GetIdList(out nint itemIdList);
         void SetIdList(nint itemIdList);
         void GetDescription(nint name, int maximum);
@@ -104,7 +147,7 @@ public static class ToastShortcutRegistration
     {
         void GetCount(out uint count);
         void GetAt(uint index, out PropertyKey key);
-        void GetValue(ref PropertyKey key, out PropertyVariant value);
+        void GetValue(ref PropertyKey key, [Out] PropertyVariant value);
         void SetValue(ref PropertyKey key, [In] PropertyVariant value);
         void Commit();
     }
@@ -116,7 +159,8 @@ public static class ToastShortcutRegistration
         public uint PropertyId = propertyId;
     }
 
-    [StructLayout(LayoutKind.Explicit)]
+    // PROPVARIANT includes a two word union member and occupies 24 bytes on x64.
+    [StructLayout(LayoutKind.Explicit, Size = 24)]
     private sealed class PropertyVariant : IDisposable
     {
         [FieldOffset(0)]
@@ -124,6 +168,13 @@ public static class ToastShortcutRegistration
 
         [FieldOffset(8)]
         private nint pointerValue;
+
+        public string? StringValue => valueType switch
+        {
+            31 => Marshal.PtrToStringUni(pointerValue),
+            8 => Marshal.PtrToStringBSTR(pointerValue),
+            _ => null,
+        };
 
         public static PropertyVariant FromString(string value)
         {
@@ -136,11 +187,10 @@ public static class ToastShortcutRegistration
 
         public void Dispose()
         {
-            if (pointerValue != 0)
-            {
-                Marshal.FreeCoTaskMem(pointerValue);
-                pointerValue = 0;
-            }
+            _ = PropVariantClear(this);
         }
     }
+
+    [DllImport("ole32.dll")]
+    private static extern int PropVariantClear([In, Out] PropertyVariant value);
 }

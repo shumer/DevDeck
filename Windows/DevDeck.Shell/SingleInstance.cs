@@ -8,12 +8,15 @@ public sealed class SingleInstance : IDisposable
     private readonly Mutex mutex;
     private readonly EventWaitHandle present;
     private RegisteredWaitHandle? registration;
+    private readonly EventWaitHandle quit;
+    private RegisteredWaitHandle? quitRegistration;
 
     public SingleInstance(string name)
     {
         // The handle keeps the instance alive without thread ownership.
         mutex = new Mutex(false, name, out var created);
         present = new EventWaitHandle(false, EventResetMode.AutoReset, name + ".Present");
+        quit = new EventWaitHandle(false, EventResetMode.AutoReset, name + ".Quit");
         IsFirst = created;
     }
 
@@ -49,8 +52,49 @@ public sealed class SingleInstance : IDisposable
 
     public void Dispose()
     {
+        quitRegistration?.Unregister(null);
+        quit.Dispose();
         registration?.Unregister(null);
         present.Dispose();
         mutex.Dispose();
+    }
+
+    public void OnQuit(Action received)
+    {
+        quitRegistration?.Unregister(null);
+        quitRegistration = ThreadPool.RegisterWaitForSingleObject(
+            quit,
+            (_, _) => received(),
+            null,
+            Timeout.Infinite,
+            executeOnlyOnce: true);
+    }
+
+    public static bool RequestQuit(string name, TimeSpan timeout)
+    {
+        if (!Mutex.TryOpenExisting(name, out var existing))
+        {
+            return true;
+        }
+        existing.Dispose();
+        if (!EventWaitHandle.TryOpenExisting(name + ".Quit", out var signal))
+        {
+            return false;
+        }
+        using (signal)
+        {
+            signal.Set();
+        }
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        while (timer.Elapsed < timeout)
+        {
+            if (!Mutex.TryOpenExisting(name, out existing))
+            {
+                return true;
+            }
+            existing.Dispose();
+            Thread.Sleep(25);
+        }
+        return false;
     }
 }

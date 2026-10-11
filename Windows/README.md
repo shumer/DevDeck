@@ -15,8 +15,61 @@ dotnet run --project Windows/DevDeck.Shell.Tests --configuration Release --no-bu
 Tools/Build-WindowsShell.ps1
 ```
 
-The build script writes a self-contained package to `dist/windows-x64`. It contains the shell, the
+The build script writes a framework dependent package to `dist/windows-x64`. It contains the shell, the
 engine host, the process host and Swift runtime libraries. Test assemblies are excluded.
+The shell requires .NET 10 Desktop Runtime, supplied separately by Microsoft.
+
+## Install
+
+Install Inno Setup 6 with `winget install JRSoftware.InnoSetup`, then build:
+
+```powershell
+pwsh -NoProfile -File Tools/Build-WindowsInstaller.ps1
+```
+
+The wrapper reads the same root `VERSION` file as the Mac build and writes
+`dist/DevDeck-Setup-<version>.exe`. `-OutputDirectory` accepts only a directory inside the
+repository. ISCC is found in the per-user installation, Program Files (x86), or PATH.
+
+Setup installs for the current user under `%LOCALAPPDATA%\Programs\DevDeck`, creates a Start
+Menu shortcut with AUMID `DevDeck.Shell`, and registers uninstall in HKCU. It creates no desktop
+shortcut and does not enable Start at login. A matching installer shortcut is kept by the shell.
+
+If .NET 10 Desktop Runtime is missing, setup downloads its x64 installer from Microsoft's
+permanent link and runs `/install /quiet /norestart`. Only this runtime step needs UAC approval;
+DevDeck itself needs no administrator rights. Download failures show the download link and stop
+installation with an explanation. The permanent link changes with servicing releases, so a
+fixed checksum is not pinned.
+
+The beta is unsigned, as recorded in [ADR 0035](../docs/adr/0035-windows-delivery.md).
+SmartScreen can warn because the publisher has no signing identity or established reputation.
+For a copy you downloaded from this repository and intended to install, choose **More info**,
+then **Run anyway**.
+
+Setup asks a running shell to quit through `DevDeck.Shell.exe --quit` and waits up to ten
+seconds. The shell stops its host through the usual asynchronous cleanup; detached project
+processes keep running. Older builds without this argument must first be closed using Quit
+in the tray. Setup explains this instead of forcefully terminating them.
+
+Restart Manager only targets the shell and engine host. Detached project hosts are excluded.
+Setup compares the packaged DLLs and process host with installed SHA256 digests and keeps
+identical files, so running projects can keep using them during a shell update. An update
+that replaces a loaded project host or runtime can still encounter locked files. Stop those
+projects before installing a delivery with changed runtime binaries.
+
+Silent installation uses `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS` and
+starts DevDeck after completion. `/NORESTARTAPP` prevents that launch. Interactive installation
+has a checked Start DevDeck option on the final page. Updating installs in the same directory,
+leaves preferences and credentials intact and preserves an existing Start at login entry
+pointing to that directory.
+
+Uninstall closes the shell and removes installed files, the Start Menu shortcut, the current
+user's `DevDeck` Run value and `%PROGRAMDATA%\DevDeck\NotificationAssets`. It preserves
+`%LOCALAPPDATA%\DevDeck`, `%APPDATA%\DevDeck` and Credential Manager secrets. It leaves the
+shared .NET runtime installed. The removal confirmation states that settings and secrets remain.
+
+The [W-15 verification report](../docs/poc/W15-windows-installer-report.md) records sizes,
+live installation checks, screenshots and the cases not checked on this machine.
 
 ## Deterministic replay
 
@@ -156,7 +209,7 @@ Window size and position are kept in `%LOCALAPPDATA%\DevDeck\shell-log-windows.j
 ## Toast registration
 
 The unpackaged shell uses the classic Windows toast API with the stable AUMID `DevDeck.Shell`.
-At startup it creates or updates the current user's
+At startup it keeps a matching installer shortcut, or creates or updates the current user's
 `%APPDATA%\Microsoft\Windows\Start Menu\Programs\DevDeck.lnk`, points it at the running
 executable and gives it the same AUMID. Windows uses that shortcut to associate notifications
 with DevDeck. Activation is handled only while the shell is running, so the exact command stays
@@ -172,7 +225,7 @@ notifications.
 The earlier Windows App SDK 1.8 implementation called `AppNotificationManager.Register()` and
 reported notifications as enabled, but Windows Shell did not display or retain them. This matches
 [Windows App SDK issue 6821](https://github.com/microsoft/WindowsAppSDK/issues/6821). The classic
-API and Start Menu shortcut work for both `dotnet run` and the self-contained output of
+API and Start Menu shortcut work for both `dotnet run` and the framework dependent output of
 `Tools/Build-WindowsShell.ps1`.
 
 ## Backdrop behavior
@@ -354,12 +407,12 @@ The General page controls the current user's `DevDeck` string value under
 path in quotes. The switch is on only when the stored command matches the running executable, so
 moving or reinstalling the shell leaves the old entry visibly off until it is enabled again.
 
-`DevDeck.Shell.exe --enable-login-item` writes the same value for setup scripts and the W-17
-installer. The shell is a Windows GUI executable, so starting it at sign-in does not create a
+`DevDeck.Shell.exe --enable-login-item` writes the same value for setup scripts. The shell is a
+Windows GUI executable, so starting it at sign-in does not create a
 console window. Developer commands attach to their parent console when one exists.
 
-W-17 and W-18 installers must remove the `DevDeck` Run value during uninstall. Disabling the
-switch removes it immediately.
+The [installer](#install) removes the `DevDeck` Run value during uninstall. Disabling the switch
+removes it immediately.
 
 ![Start at login on the General page](../docs/poc/windows-ui/w13-general.png)
 

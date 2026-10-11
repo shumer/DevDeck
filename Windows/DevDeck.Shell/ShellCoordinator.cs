@@ -68,6 +68,11 @@ public sealed class ShellCoordinator : IAsyncDisposable
         return Task.CompletedTask;
     }
 
+    public Task RequestShutdownAsync()
+    {
+        return shutdown.Request();
+    }
+
     public async Task StartReplayAsync(string path)
     {
         isReplay = true;

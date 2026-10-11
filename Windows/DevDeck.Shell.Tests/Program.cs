@@ -163,6 +163,11 @@ public static class Program
         Run("a login item for another executable is off", ForeignLoginItemIsOff);
         Run("a failed login item write restores the switch", FailedLoginItemWriteRestoresSwitch);
         Run("the login item installer flag is parsed", LoginItemInstallerFlagIsParsed);
+        Run("the installer quit flag is parsed", InstallerQuitFlagIsParsed);
+        Run("installer quit signals the shell and waits for release", InstallerQuitWaitsForRelease);
+        Run("installer quit reports a shell that did not exit", InstallerQuitTimesOut);
+        Run("the installer shortcut is kept only for the same target and AUMID", InstallerShortcutIdentity);
+        Run("a matching native shortcut is read and kept without rewriting", InstallerShortcutRoundTrip);
         Console.WriteLine();
         Console.WriteLine($"{passed} passed, {failed} failed");
         Application.Current.Shutdown();
@@ -1997,6 +2002,63 @@ public static class Program
         }
         using var next = new SingleInstance(name);
         True(next.IsFirst);
+    }
+
+    private static void InstallerQuitFlagIsParsed()
+    {
+        True(ShellOptions.Parse(["--quit"]).Quit);
+        True(!ShellOptions.Parse([]).Quit);
+    }
+
+    private static void InstallerQuitWaitsForRelease()
+    {
+        var name = @"Local\DevDeck.Tests." + Guid.NewGuid();
+        using var requested = new System.Threading.ManualResetEventSlim();
+        var instance = new SingleInstance(name);
+        instance.OnQuit(requested.Set);
+        var completion = System.Threading.Tasks.Task.Run(() =>
+            SingleInstance.RequestQuit(name, TimeSpan.FromSeconds(5)));
+        True(requested.Wait(TimeSpan.FromSeconds(5)));
+        True(!completion.IsCompleted);
+        instance.Dispose();
+        True(completion.GetAwaiter().GetResult());
+        True(SingleInstance.RequestQuit(name, TimeSpan.Zero));
+    }
+
+    private static void InstallerQuitTimesOut()
+    {
+        var name = @"Local\DevDeck.Tests." + Guid.NewGuid();
+        using var instance = new SingleInstance(name);
+        True(!SingleInstance.RequestQuit(name, TimeSpan.Zero));
+    }
+
+    private static void InstallerShortcutIdentity()
+    {
+        const string executable = @"C:\Sample\DevDeck.Shell.exe";
+        True(ToastShortcutRegistration.MatchesIdentity(executable, "DevDeck.Shell", executable));
+        True(!ToastShortcutRegistration.MatchesIdentity(executable, "Other.App", executable));
+        True(!ToastShortcutRegistration.MatchesIdentity(@"C:\Other\DevDeck.Shell.exe", "DevDeck.Shell", executable));
+    }
+
+    private static void InstallerShortcutRoundTrip()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "DevDeck-shortcut-" + Guid.NewGuid() + ".lnk");
+        var executable = Environment.ProcessPath!;
+        try
+        {
+            ToastShortcutRegistration.EnsureShortcut(path, executable);
+            True(ToastShortcutRegistration.IsCurrentShortcut(path, executable));
+            True(!ToastShortcutRegistration.IsCurrentShortcut(path, executable + ".other"));
+            var bytes = File.ReadAllBytes(path);
+            var written = File.GetLastWriteTimeUtc(path);
+            ToastShortcutRegistration.EnsureShortcut(path, executable);
+            True(bytes.SequenceEqual(File.ReadAllBytes(path)));
+            Equal(written, File.GetLastWriteTimeUtc(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     private static void ReplayIgnoresQuit()
