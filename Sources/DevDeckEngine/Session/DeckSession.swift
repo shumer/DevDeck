@@ -181,7 +181,8 @@ public final class DeckSession {
             self?.send(effect: "installUpdate") {
                 $0.update = DeckWireUpdate(
                     version: update.version.description, asset: update.asset.browserDownloadUrl.absoluteString,
-                    size: update.asset.size, page: update.pageURL.absoluteString
+                    size: update.asset.size, page: update.pageURL.absoluteString,
+                    checksum: update.checksum?.browserDownloadUrl.absoluteString
                 )
             }
         }

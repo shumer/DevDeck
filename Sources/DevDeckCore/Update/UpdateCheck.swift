@@ -77,12 +77,16 @@ public struct AvailableUpdate: Sendable, Equatable {
     /// The release page, for "what's new".
     public let pageURL: URL
     public let asset: ReleaseAsset
+    /// The file beside the build that states its SHA256, where the build carries no signature
+    /// of its own: the Windows installer. Nil on the Mac, where the signature decides.
+    public let checksum: ReleaseAsset?
     public let publishedAt: Date?
 
-    public init(version: SemanticVersion, pageURL: URL, asset: ReleaseAsset, publishedAt: Date?) {
+    public init(version: SemanticVersion, pageURL: URL, asset: ReleaseAsset, checksum: ReleaseAsset? = nil, publishedAt: Date?) {
         self.version = version
         self.pageURL = pageURL
         self.asset = asset
+        self.checksum = checksum
         self.publishedAt = publishedAt
     }
 }
@@ -127,9 +131,35 @@ public enum UpdateCheck {
         return try decoder.decode(Release.self, from: data)
     }
 
+    /// Which build of a release this machine installs. One tag carries both.
+    public enum Platform: Sendable, Equatable {
+        /// `DevDeck-<version>-<build>.zip`, the signed bundle.
+        case mac
+        /// `DevDeck-Setup-<version>-<build>.exe` with its `.sha256` beside it.
+        case windows
+
+        public static var current: Platform {
+            #if os(Windows)
+            return .windows
+            #else
+            return .mac
+            #endif
+        }
+    }
+
     /// The build attached to a release: what `build.sh` and the release workflow name it.
-    public static func asset(in release: Release) -> ReleaseAsset? {
-        release.assets.first { $0.name.hasPrefix("DevDeck-") && $0.name.hasSuffix(".zip") }
+    public static func asset(in release: Release, for platform: Platform = .current) -> ReleaseAsset? {
+        switch platform {
+        case .mac:
+            return release.assets.first { $0.name.hasPrefix("DevDeck-") && $0.name.hasSuffix(".zip") }
+        case .windows:
+            return release.assets.first { $0.name.hasPrefix("DevDeck-Setup-") && $0.name.hasSuffix(".exe") }
+        }
+    }
+
+    /// The SHA256 file the release workflow puts beside a build: `<name>.sha256`.
+    public static func checksum(for asset: ReleaseAsset, in release: Release) -> ReleaseAsset? {
+        release.assets.first { $0.name == asset.name + ".sha256" }
     }
 
     /// Nil when there is nothing to do: the release is a draft or a prerelease, it carries no
@@ -137,19 +167,37 @@ public enum UpdateCheck {
     ///
     /// Not newer, rather than not equal: a deck built from a commit past the last tag runs a
     /// version the tag also names, and must not be offered itself.
-    public static func available(current: String, release: Release) -> AvailableUpdate? {
+    ///
+    /// On Windows the installer is unsigned, so the SHA256 file beside it is the whole of the
+    /// check, and an installer without one is not offered: a download nothing can vouch for is
+    /// not an update, it is a file.
+    public static func available(current: String, release: Release, platform: Platform = .current) -> AvailableUpdate? {
         guard !release.draft, !release.prerelease,
               let latest = SemanticVersion(release.tagName),
               let running = SemanticVersion(current),
               latest > running,
-              let asset = asset(in: release)
+              let asset = asset(in: release, for: platform)
         else { return nil }
+        let checksum = platform == .windows ? checksum(for: asset, in: release) : nil
+        if platform == .windows, checksum == nil { return nil }
         return AvailableUpdate(
             version: latest,
             pageURL: release.htmlUrl,
             asset: asset,
+            checksum: checksum,
             publishedAt: release.publishedAt
         )
+    }
+
+    /// The hash a `.sha256` file states: the first word of its first line, `<hash>  <name>`,
+    /// lowercased. Nil when the file does not read as one.
+    public static func statedChecksum(in text: String) -> String? {
+        guard let line = text.split(whereSeparator: \.isNewline).first,
+              let word = line.split(separator: " ").first
+        else { return nil }
+        let hash = word.lowercased()
+        guard hash.count == 64, hash.allSatisfy({ $0.isHexDigit }) else { return nil }
+        return hash
     }
 
     /// Whether what was unpacked is this app at the version the release promised.

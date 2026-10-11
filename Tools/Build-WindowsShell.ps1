@@ -109,6 +109,8 @@ try {
     $engineHost = Join-Path $product.FullName "DevDeckEngineHost.exe"
     $processHost = Join-Path $product.FullName "DevDeckProcessHost.exe"
     Copy-Item -LiteralPath $engineHost, $processHost -Destination $output
+    # The engine host reads the delivery's version from this file to know what an update replaces.
+    Copy-Item -LiteralPath (Join-Path $repository "VERSION") -Destination $output
 
     Get-ChildItem -LiteralPath $product.FullName -Directory -Filter "*.bundle" | ForEach-Object {
         Copy-Item -LiteralPath $_.FullName -Destination $output -Recurse

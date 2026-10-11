@@ -145,6 +145,9 @@ public struct DeckWireUpdate: Encodable, Sendable, Equatable {
     public let asset: String
     public let size: Int
     public let page: String
+    /// The `.sha256` file beside the asset, where the asset carries no signature: the shell
+    /// downloads both and installs only when the hashes agree. Absent on the Mac.
+    public var checksum: String?
 }
 
 /// A banner. Clicking it sends `command` back.

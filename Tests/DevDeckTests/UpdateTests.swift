@@ -74,6 +74,29 @@ func runUpdateTests(_ run: TestRun) async {
         try expectEqual(UpdateCheck.asset(in: mixed)?.name, "DevDeck-0.11-120.zip")
     }
 
+    await run.test("Windows takes the installer, and only with its checksum beside it") {
+        let both = release(tag: "v0.11", assets: ["DevDeck-0.11-120.zip", "DevDeck-Setup-0.11-120.exe", "DevDeck-Setup-0.11-120.exe.sha256"])
+        try expectEqual(UpdateCheck.asset(in: both, for: .windows)?.name, "DevDeck-Setup-0.11-120.exe")
+        try expectEqual(UpdateCheck.asset(in: both, for: .mac)?.name, "DevDeck-0.11-120.zip")
+        let offered = try expectNotNil(UpdateCheck.available(current: "0.10", release: both, platform: .windows), "offered")
+        try expectEqual(offered.asset.name, "DevDeck-Setup-0.11-120.exe")
+        try expectEqual(offered.checksum?.name, "DevDeck-Setup-0.11-120.exe.sha256")
+        let mac = try expectNotNil(UpdateCheck.available(current: "0.10", release: both, platform: .mac), "mac")
+        try expectNil(mac.checksum, "the Mac's signature decides, not a file")
+
+        // The installer carries no signature, so the hash file is the whole of the check.
+        let bare = release(tag: "v0.11", assets: ["DevDeck-0.11-120.zip", "DevDeck-Setup-0.11-120.exe"])
+        try expectNil(UpdateCheck.available(current: "0.10", release: bare, platform: .windows), "an installer nothing vouches for is not offered")
+        _ = try expectNotNil(UpdateCheck.available(current: "0.10", release: bare, platform: .mac), "the Mac does not need it")
+    }
+
+    await run.test("the checksum file is read as the hash it states") {
+        try expectEqual(UpdateCheck.statedChecksum(in: "109736DAF8B5299FD82EF9923B15A9DFC68C4389D4D62C132449EE8F4DBE28D3  DevDeck-Setup-0.19.2-328.exe\n"),
+                        "109736daf8b5299fd82ef9923b15a9dfc68c4389d4d62c132449ee8f4dbe28d3")
+        try expectNil(UpdateCheck.statedChecksum(in: "not a hash  file.exe"))
+        try expectNil(UpdateCheck.statedChecksum(in: ""))
+    }
+
     await run.test("GitHub's answer decodes, dates and all") {
         let json = """
         {"tag_name":"v0.11","html_url":"https://github.com/shumer/DevDeck/releases/tag/v0.11",

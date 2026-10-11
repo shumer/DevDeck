@@ -33,6 +33,11 @@ it hands the shell the update; the shell reports the download, the install and a
 - A Windows shell writes only its installer (W-17), with its own archive and signature check.
 - The asset `UpdateCheck` picks is still the Mac's zip. Choosing a platform's asset comes with
   the Windows release (W-18).
+  Amended 2026-10-11: `UpdateCheck.asset(in:for:)` picks by platform, the Mac's zip or
+  `DevDeck-Setup-<version>-<build>.exe`. The installer is unsigned, so on Windows a release is
+  offered only when the `.sha256` file is beside it, and the `installUpdate` effect carries that
+  file's URL for the shell to check against. The host learns its own version from the
+  `VERSION` file the builder puts in the delivery.
 
 ## Alternatives
 

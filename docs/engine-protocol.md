@@ -99,7 +99,7 @@ has both.
 | `openSettings` | `page`, `item`, `card` | Open settings, on a page and item when given, or on a card's page. |
 | `present` | `card` | Bring the deck up: the card is already on it with its log open. |
 | `openMenu` | | Open the tray menu. |
-| `installUpdate` | `update` | Download `update.asset` (`size` bytes), check it and install it, reporting with the `update.*` intents. |
+| `installUpdate` | `update` | Download `update.asset` (`size` bytes), check it and install it, reporting with the `update.*` intents. On Windows `update.checksum` is the URL of the `.sha256` file beside the installer: download both, compare the hash, and run the installer silently only when they agree. |
 | `quit` | | Stop drawing and exit. The engine has stopped its loops. |
 
 ### Notifications
@@ -216,8 +216,12 @@ is. `ddev list` is asked in every such place and the answers are one list, a pro
 distribution listed by the `\\wsl.localhost\...` folder Windows reaches it at. Docker Desktop
 is launched by the shell on the `launchDocker` effect when the host found it installed.
 
-Not wired yet: an installer to hand updates to (W-17), so the update row says there is nothing
-to replace.
+Updates: the host reads its version from the `VERSION` file the builder puts beside it, and
+offers a release only when the installer and its `.sha256` are both attached. The shell's
+installer (W-17) downloads both, checks the hash and runs `DevDeck-Setup-<version>-<build>.exe`
+with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS`; setup asks the running shell
+to quit through `--quit` and starts the new one. A host run from a build folder has no `VERSION`
+and says there is nothing to replace.
 
 ## Testing
 

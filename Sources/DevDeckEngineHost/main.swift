@@ -60,8 +60,17 @@ let runtime = DeckRuntime(
 let session = DeckSession(runtime: runtime, localizationRoot: LocalizationResources.root) { data in
     FileHandle.standardOutput.write(data)
 }
-// Nothing to replace yet: the Windows installer is W-17. The row says so.
-session.watchForUpdates(currentVersion: nil, canInstall: false, http: URLSessionHTTPClient.makeDefault())
+// The delivery states its version in a VERSION file beside this executable, put there by the
+// Windows builder and installed with the rest. A host run from a build folder has none, and
+// then there is nothing to replace, which is what the row says.
+let deliveryVersion: String? = {
+    guard let executable = Bundle.main.executableURL else { return nil }
+    let file = executable.deletingLastPathComponent().appendingPathComponent("VERSION")
+    guard let text = try? String(contentsOf: file, encoding: .utf8) else { return nil }
+    let version = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    return version.isEmpty ? nil : version
+}()
+session.watchForUpdates(currentVersion: deliveryVersion, canInstall: deliveryVersion != nil, http: URLSessionHTTPClient.makeDefault())
 
 let input = AsyncStream<Data>(bufferingPolicy: .bufferingOldest(32)) { continuation in
     DispatchQueue.global().async {
