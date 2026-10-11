@@ -400,9 +400,11 @@ Installing an update from the `installUpdate` effect remains outside this shell 
 
 ## Docker and DDEV on Windows
 
-Only one interactive DevDeck shell can run per Windows user session, including replay
-instances. A second launch reports that DevDeck is already running and exits without
-starting another host. Developer commands remain separate short lived requests.
+Only one live DevDeck shell runs per Windows user session. A second launch starts no host
+and shows no window: it signals the running shell, which raises the deck the way the summon
+shortcut does, and exits. A replay holds its own instance, so one replay runs at a time next
+to the live shell without blocking it or being blocked by it. Developer commands such as
+`--add-project` and `--remove-project` remain separate short lived requests outside both.
 Quit completes host cleanup asynchronously before shutting down the UI dispatcher.
 Tray and card menus close after a command or a click outside the application. Engine
 menu updates wait until the current popup closes so input capture remains intact.

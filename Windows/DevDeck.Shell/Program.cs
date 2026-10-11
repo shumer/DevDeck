@@ -23,16 +23,18 @@ public static class Program
                     .GetResult();
             }
 
-            using var instance = new SingleInstance();
+            using var instance = SingleInstance.For(options.ReplayPath is not null);
             if (!instance.IsFirst)
             {
-                MessageBox.Show("DevDeck is already running.", "DevDeck", MessageBoxButton.OK, MessageBoxImage.Information);
+                // A second launch raises the running deck, the way the summon shortcut does.
+                instance.SignalFirst();
                 return 0;
             }
 
             var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var surface = new ShellSurface();
             var coordinator = new ShellCoordinator(application.Dispatcher, options.EnginePath, surface);
+            instance.OnSignal(() => application.Dispatcher.BeginInvoke(surface.PresentDeck));
             application.Startup += async (_, _) =>
             {
                 if (options.ReplayPath is { } replay)

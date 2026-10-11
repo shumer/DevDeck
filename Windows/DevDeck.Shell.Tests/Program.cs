@@ -66,6 +66,8 @@ public static class Program
         }
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
         Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
+        Run("a second launch raises the first deck", SecondLaunchSignalsFirst);
+        Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
         Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
@@ -1712,6 +1714,30 @@ public static class Program
         True(next.IsFirst);
     }
 
+    private static void SecondLaunchSignalsFirst()
+    {
+        var name = @"Local\DevDeck.Tests." + Guid.NewGuid();
+        using var first = new SingleInstance(name);
+        using var received = new System.Threading.ManualResetEventSlim();
+        first.OnSignal(received.Set);
+        using (var second = new SingleInstance(name))
+        {
+            True(!second.IsFirst);
+            second.SignalFirst();
+        }
+        True(received.Wait(TimeSpan.FromSeconds(5)));
+    }
+
+    private static void ReplayInstanceIsSeparate()
+    {
+        const string user = "S-1-5-21-0";
+        True(SingleInstance.Name(true, user) != SingleInstance.Name(false, user));
+        var name = @"Local\DevDeck.Tests." + Guid.NewGuid();
+        using var live = new SingleInstance(name + ".Live");
+        using var replay = new SingleInstance(name + ".Replay");
+        True(live.IsFirst && replay.IsFirst);
+    }
+
     private static void ShutdownKeepsDispatcherResponsive()
     {
         var ready = new System.Threading.Tasks.TaskCompletionSource();
@@ -1770,8 +1796,12 @@ public static class Program
         {
             throw new Exception("Refresh replaced the open menu item.");
         }
+        // The deferred refresh runs in the Closed handler, so the test waits for that event
+        // rather than for a deadline.
+        var closed = new DispatcherFrame();
+        presenter.View.Closed += (_, _) => closed.Continue = false;
         presenter.View.IsOpen = false;
-        WaitForMenu(() => presenter.View.Items.Count == DeckMenuEntryModel.ParseList(next).Count);
+        Dispatcher.PushFrame(closed);
         Equal(DeckMenuEntryModel.ParseList(next).Count, presenter.View.Items.Count);
         presenter.Close();
     }
@@ -1788,24 +1818,6 @@ public static class Program
         Dispatcher.PushFrame(frame);
     }
 
-    private static void WaitForMenu(Func<bool> completed)
-    {
-        var frame = new DispatcherFrame();
-        var elapsed = System.Diagnostics.Stopwatch.StartNew();
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
-        timer.Tick += (_, _) =>
-        {
-            if (completed() || elapsed.Elapsed > TimeSpan.FromSeconds(2))
-            {
-                frame.Continue = false;
-            }
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-        timer.Stop();
-        True(completed());
-    }
-
     private static void Run(string name, Action test)
     {
         try
@@ -1817,7 +1829,9 @@ public static class Program
         catch (Exception exception)
         {
             failed++;
-            Console.WriteLine($"  fail {name}: {exception.Message}");
+            // The first frame names the assertion, since most of them carry no message.
+            var frame = exception.StackTrace?.Split('\n')[0].Trim();
+            Console.WriteLine($"  fail {name}: {exception.Message} {frame}");
         }
     }
 
