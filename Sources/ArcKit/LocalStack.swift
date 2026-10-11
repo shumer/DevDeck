@@ -276,9 +276,9 @@ public struct LocalStackService: Sendable {
             // when the tag is `latest`, as a starter's compose file pulls; and the endpoint's
             // answer only when Docker could not be asked, since what answers on the port is
             // `fusion-cli-api` reporting its own version.
-            let version = Self.engineRelease(in: running)
-                ?? (await releaseFile(in: running))
-                ?? Self.engineVersion(from: response.body)
+            var version = Self.engineRelease(in: running)
+            if version == nil { version = await releaseFile(in: running) }
+            if version == nil { version = Self.engineVersion(from: response.body) }
             return LocalStackStatus(
                 state: .running,
                 engineVersion: version,
