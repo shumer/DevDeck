@@ -37,12 +37,16 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private EngineClient? engine;
     private readonly ProtocolTrace? trace;
     private Task? hostLoop;
+    private Task? replayTask;
     private long nextId;
     private bool beganSession;
     private bool isReplay;
     private readonly Dictionary<string, double[]> replayFrames = [];
     private readonly Dictionary<string, double> replayHeights = [];
     private readonly AsyncShutdown shutdown;
+    private readonly HttpUpdateDownloader updateDownloader = new();
+    private readonly WindowsUpdater updater;
+    private Task? updateTask;
 
     public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface, ProtocolTrace? trace = null)
     {
@@ -50,6 +54,8 @@ public sealed class ShellCoordinator : IAsyncDisposable
         this.dispatcher = dispatcher;
         this.enginePath = enginePath;
         this.surface = surface;
+        updater = new WindowsUpdater(updateDownloader, (intent, fraction, reason) =>
+            SendAsync(ProtocolWriter.Update(NextId(), intent, fraction, reason)));
         shutdown = new AsyncShutdown(() => DisposeAsync().AsTask(), surface.Quit);
         displayWatcher = new DisplayWatcher(dispatcher, () => DisplayProvider.Current());
         displayWatcher.Changed += OnDisplaysChanged;
@@ -73,28 +79,47 @@ public sealed class ShellCoordinator : IAsyncDisposable
         return shutdown.Request();
     }
 
-    public async Task StartReplayAsync(string path)
+    public Task StartReplayAsync(string path)
     {
         isReplay = true;
         protocol.Reset();
         beganSession = false;
-        foreach (var line in File.ReadLines(path))
+        replayTask = ReadReplayAsync(path, cancellation.Token);
+        return replayTask;
+    }
+
+    private async Task ReadReplayAsync(string path, CancellationToken token)
+    {
+        using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
+            4096, FileOptions.Asynchronous);
+        using var reader = new StreamReader(input);
+        try
         {
-            if (line.Length == 0)
+            // Streaming a replay also lets a local harness answer intents with real engine events.
+            while (await reader.ReadLineAsync(token).ConfigureAwait(false) is { } line)
             {
-                continue;
-            }
-            using var document = JsonDocument.Parse(line);
-            if (document.RootElement.TryGetProperty("protocolVersion", out _))
-            {
-                Apply(DeckEvent.Parse(line));
-            }
-            else
-            {
-                ApplyReplayStep(document.RootElement);
+                if (line.Length == 0)
+                {
+                    continue;
+                }
+                trace?.Received(line);
+                await dispatcher.InvokeAsync(() =>
+                {
+                    using var document = JsonDocument.Parse(line);
+                    if (document.RootElement.TryGetProperty("protocolVersion", out _))
+                    {
+                        Apply(DeckEvent.Parse(line));
+                    }
+                    else
+                    {
+                        ApplyReplayStep(document.RootElement);
+                    }
+                });
             }
         }
-        await Task.CompletedTask;
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -113,6 +138,15 @@ public sealed class ShellCoordinator : IAsyncDisposable
             }
         }
         cancellation.Cancel();
+        if (replayTask is not null)
+        {
+            await replayTask;
+        }
+        if (updateTask is not null)
+        {
+            await updateTask;
+        }
+        updateDownloader.Dispose();
         if (hostLoop is not null)
         {
             try
@@ -123,9 +157,21 @@ public sealed class ShellCoordinator : IAsyncDisposable
             {
             }
         }
+        if (dispatcher.CheckAccess())
+        {
+            DisposeSurface();
+        }
+        else
+        {
+            await dispatcher.InvokeAsync(DisposeSurface);
+        }
+        cancellation.Dispose();
+    }
+
+    private void DisposeSurface()
+    {
         displayWatcher.Dispose();
         surface.Dispose();
-        cancellation.Dispose();
     }
 
     private async Task RunHostLoopAsync()
@@ -298,6 +344,12 @@ public sealed class ShellCoordinator : IAsyncDisposable
             case "present":
                 surface.PresentDeck();
                 break;
+            case "installUpdate":
+                if (updateTask is null || updateTask.IsCompleted)
+                {
+                    updateTask = updater.InstallAsync(WindowsUpdate.Parse(effect), cancellation.Token);
+                }
+                break;
             default:
                 PlatformEffects.Apply(effect);
                 break;
@@ -397,6 +449,11 @@ public sealed class ShellCoordinator : IAsyncDisposable
 
     private Task SendAsync(string line)
     {
+        if (isReplay)
+        {
+            trace?.Sent(line);
+            return Task.CompletedTask;
+        }
         return CurrentEngine()?.SendAsync(line) ?? Task.CompletedTask;
     }
 

@@ -71,8 +71,11 @@ public static class Program
                 arguments.Length == 3 ? arguments[2] : "rest");
         }
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
+        WindowsUpdaterTests.Run(Run);
         Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
         Run("a replay ignores the quit effect", ReplayIgnoresQuit);
+        Run("a replay traces updater intents and stays responsive", ReplayTracesUpdaterIntents);
+        Run("a streaming replay leaves the dispatcher responsive", StreamingReplayIsResponsive);
         Run("a replay sizes its own panels from measurements", ReplaySizesItsPanels);
         Run("a card updated before it is shown still reports its height", CardUpdatedBeforeShowReportsHeight);
         Run("the protocol trace records both directions without typed tokens", ProtocolTraceLeavesTokensOut);
@@ -2071,7 +2074,7 @@ public static class Program
         {
             var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", surface);
             var golden = Path.Combine(RepositoryRoot(), "Tests", "EngineTests", "Golden", "session-en.expected.jsonl");
-            coordinator.StartReplayAsync(golden).GetAwaiter().GetResult();
+            FinishReplay(coordinator.StartReplayAsync(golden));
         }
         finally
         {
@@ -2094,7 +2097,7 @@ public static class Program
         {
             var surface = new RecordingSurface();
             var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", surface);
-            coordinator.StartReplayAsync(path).GetAwaiter().GetResult();
+            FinishReplay(coordinator.StartReplayAsync(path));
             surface.Measure(new CardMeasurement("a", [352, 240]));
             var placed = surface.Panels.Last().ToDictionary(change => change.Card, change => change.Frame);
             Equal(240.0, placed["a"][3]);
@@ -2102,7 +2105,7 @@ public static class Program
             True(!placed.ContainsKey("c"));
 
             // A later transcript frame with the old height does not undo the measured one.
-            coordinator.StartReplayAsync(path).GetAwaiter().GetResult();
+            FinishReplay(coordinator.StartReplayAsync(path));
             var again = surface.Panels.Last().ToDictionary(change => change.Card, change => change.Frame);
             Equal(240.0, again["a"][3]);
             Equal(272.0, again["b"][1]);
@@ -2111,6 +2114,60 @@ public static class Program
         {
             File.Delete(path);
         }
+    }
+
+    private static void ReplayTracesUpdaterIntents()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "devdeck-update-replay-" + Guid.NewGuid() + ".jsonl");
+        var tracePath = path + ".trace";
+        File.WriteAllText(path, """
+            {"protocolVersion":2,"revision":1,"event":"effect","effect":{"kind":"installUpdate","update":{"version":"9.0","asset":"https://example.invalid/setup.exe","size":1,"page":"https://example.invalid/release"}}}
+            """);
+        try
+        {
+            using (var trace = new ProtocolTrace(tracePath))
+            {
+                var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", new RecordingSurface(), trace);
+                FinishReplay(coordinator.StartReplayAsync(path));
+                coordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            var sent = File.ReadAllLines(tracePath).Single(line => line.Contains(" > ", StringComparison.Ordinal));
+            using var intent = JsonDocument.Parse(sent[(sent.IndexOf(" > ", StringComparison.Ordinal) + 3)..]);
+            Equal("update.failed", intent.RootElement.GetProperty("intent").GetString());
+            Equal("installer is not verified", intent.RootElement.GetProperty("reason").GetString());
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(tracePath);
+        }
+    }
+
+    private static void StreamingReplayIsResponsive()
+    {
+        var name = "DevDeck.Tests.Replay." + Guid.NewGuid().ToString("N");
+        using var pipe = new System.IO.Pipes.NamedPipeServerStream(name, System.IO.Pipes.PipeDirection.Out);
+        var connected = pipe.WaitForConnectionAsync();
+        var surface = new RecordingSurface();
+        var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", surface);
+        var replay = coordinator.StartReplayAsync(@"\\.\pipe\" + name);
+        connected.GetAwaiter().GetResult();
+        True(!replay.IsCompleted);
+        using (var writer = new StreamWriter(pipe) { AutoFlush = true })
+        {
+            writer.WriteLine("""
+                {"protocolVersion":2,"revision":1,"event":"panels.changed","panels":[{"card":"sample","change":"open","frame":[10,20,352,182]}]}
+                """);
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            while (surface.Panels.Count == 0 && timer.Elapsed < TimeSpan.FromSeconds(3))
+            {
+                PumpMenuDispatcher();
+            }
+            Equal(1, surface.Panels.Count);
+            True(!replay.IsCompleted);
+            FinishReplay(coordinator.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(1)));
+        }
+        FinishReplay(replay);
     }
 
     private sealed class RecordingSurface : IShellSurface
@@ -2331,6 +2388,15 @@ public static class Program
             () => frame.Continue = false,
             DispatcherPriority.ApplicationIdle);
         Dispatcher.PushFrame(frame);
+    }
+
+    private static void FinishReplay(Task replay)
+    {
+        while (!replay.IsCompleted)
+        {
+            PumpMenuDispatcher();
+        }
+        replay.GetAwaiter().GetResult();
     }
 
     private static void Run(string name, Action test)

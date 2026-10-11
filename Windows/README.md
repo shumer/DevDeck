@@ -78,15 +78,45 @@ shared .NET runtime installed. The removal confirmation states that settings and
 The [W-15 verification report](../docs/poc/W15-windows-installer-report.md) records sizes,
 live installation checks, screenshots and the cases not checked on this machine.
 
+## Updates
+
+The engine offers a Windows installer only when its release also contains a `.sha256` file.
+Clicking Update Now makes the shell download both files to
+`%LOCALAPPDATA%\DevDeck\Updates\<version>`. Downloads follow HTTP redirects and overwrite the
+previous attempt. The shell reports received bytes relative to the asset size, at most once
+every 100 ms. The engine supplies the update row, its words and whether its button is enabled.
+
+The first word of the checksum file's first nonempty line must be a 64 character SHA256 hash.
+The comparison ignores letter case. A missing checksum stops the attempt; a mismatched hash
+removes the downloaded installer and reports `checksum mismatch`. Nothing is launched in either
+case. Download and launch failures return `update.failed`, which the engine puts in its row.
+
+After verification the shell reports `update.installing` and launches the installer with
+`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS`. It does not wait for the process.
+The installer uses `--quit` to close the old shell, updates the per-user installation and starts
+the new copy. Preferences and card positions stay in place. If the old shell is still alive
+after 60 seconds, it reports that the installer did not finish, with the release page address.
+The verified file stays available; the next attempt downloads it again.
+
+The beta verifies the downloaded file against its release checksum and does not verify a
+signature. See [the delivery decision](../docs/adr/0035-windows-delivery.md) and
+[the update verification report](../docs/poc/W17-windows-update-report.md).
+
 ## Deterministic replay
 
-Replay reads protocol events from a golden transcript instead of starting the engine. It performs
-no network request and reads no token. It carries out every effect except `quit`: a replay exists
+Replay reads protocol events from a golden transcript instead of starting the engine and reads
+no token. It carries out every effect except `quit`: a replay exists
 to be looked at, so a `quit` in the transcript is noted on standard error and the windows stay
 until they are closed by hand. With no engine to answer, a replay also sizes its own panels: a
 card takes the height the shell measured and the cards below it in its column move with it. The
 banner transcripts raise real Windows notifications, which appear as banners only while Windows'
 Do not disturb is off; with it on they go straight to the notification centre.
+
+An `installUpdate` fixture with a checksum URL downloads and runs that installer, so use a
+local test server for update checks. `--trace` records incoming replay events and outgoing
+intents. Replay also accepts a streaming named pipe: a local harness can forward those intents
+to the engine and return its events while the shell stays responsive. This keeps progress and
+failure words in the engine during live update checks.
 
 ```powershell
 dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl
@@ -470,7 +500,8 @@ icon button: `header.logHelp` is its tooltip and `header.logIsOn` is its highlig
 phone icon appears only when the engine supplies `header.phoneURL`; its popup uses the engine
 supplied title, note and address.
 
-Installing an update from the `installUpdate` effect remains outside this shell milestone.
+`installUpdate` downloads and verifies the Windows installer, reports progress and failures to
+the engine and launches the quiet per-user update. See [Updates](#updates).
 
 ## The Windows scheme
 

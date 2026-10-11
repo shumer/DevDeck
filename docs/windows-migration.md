@@ -146,10 +146,10 @@ Every task ends with screenshots on neutral data and a check against the shell r
   for the live checks and the missing runtime limitation.
 - **W-16.** Code signing. Deferred past the beta: the beta ships unsigned,
   [0035](adr/0035-windows-delivery.md).
-- **W-17.** Updates on Windows: download, verify the signature, install, restart. Engine part
-  done: the check picks the installer by platform and offers it only with its `.sha256`, the
-  `installUpdate` effect carries the checksum URL, the host reads its version from the
-  delivery's `VERSION` file. The shell's installer is the remaining part.
+- **W-17.** Done: the engine offers the Windows installer with its `.sha256`; the shell downloads
+  both, checks SHA256, reports progress and launches the quiet installer. The old shell answers
+  `--quit` while the installer is running; the installer starts the new copy with its existing
+  card positions. See [the update verification](poc/W17-windows-update-report.md).
 - **W-18.** Done: one tag builds the Mac archive and Windows installer with a SHA256 file.
   Dry runs keep Actions artifacts without changing the release. See
   [the release verification](poc/W18-windows-release-report.md).
