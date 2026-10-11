@@ -147,7 +147,9 @@ Every task ends with screenshots on neutral data and a check against the shell r
 - **W-16.** Code signing. Deferred past the beta: the beta ships unsigned,
   [0035](adr/0035-windows-delivery.md).
 - **W-17.** Updates on Windows: download, verify the signature, install, restart.
-- **W-18.** Release builds in CI next to the Mac release: one tag, two archives.
+- **W-18.** Done: one tag builds the Mac archive and Windows installer with a SHA256 file.
+  Dry runs keep Actions artifacts without changing the release. See
+  [the release verification](poc/W18-windows-release-report.md).
 - **W-19.** ARM64.
 - **W-20.** README and install notes for Windows.
 - A beta for colleagues, then a public release.
