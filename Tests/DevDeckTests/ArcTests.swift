@@ -410,6 +410,21 @@ func runArcTests(_ run: TestRun) async {
         try expectEqual(status.detail, L("arc.answeredElsewhere", 80))
     }
 
+    await run.test("an engine pulled as latest says its release from its own release file") {
+        let rows = "fusion-engine\twashpost/fusion-engine:latest\t/Users/dev/citynews/arcxp.theme/.fusion\t0.0.0.0:80->8080/tcp"
+        let service = LocalStackService(
+            project: makeProject(folder: "/Users/dev/citynews/arcxp.theme"),
+            runner: StubCommandRunner([
+                ("docker ps", CommandResult(exitCode: 0, standardOutput: rows, standardError: "")),
+                ("docker exec fusion-engine cat release.txt", CommandResult(exitCode: 0, standardOutput: "7.2.1\n", standardError: "")),
+            ]),
+            httpClient: FakeHTTPClient([.success(.json("{\"version\":\"6.3.0\"}"))])
+        )
+        let status = await service.status()
+        try expectEqual(status.state, .running)
+        try expectEqual(status.engineVersion, "7.2.1", "the engine's own file, not what the port answers")
+    }
+
     await run.test("a compose label with backslashes and a drive letter is this checkout's folder") {
         let folder = URL(fileURLWithPath: "/C:/src/arc-starter")
         let rows = "fusion-engine\twashpost/fusion-engine:7.2.1\tc:\\src\\arc-starter\\.fusion\t0.0.0.0:80->8080/tcp"

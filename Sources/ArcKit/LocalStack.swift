@@ -272,11 +272,16 @@ public struct LocalStackService: Sendable {
                 )
             }
 
+            // The image tag when it says which release this is; the engine's own release file
+            // when the tag is `latest`, as a starter's compose file pulls; and the endpoint's
+            // answer only when Docker could not be asked, since what answers on the port is
+            // `fusion-cli-api` reporting its own version.
+            let version = Self.engineRelease(in: running)
+                ?? (await releaseFile(in: running))
+                ?? Self.engineVersion(from: response.body)
             return LocalStackStatus(
                 state: .running,
-                // The image tag when the stack can be asked, and the endpoint's own answer only
-                // as a fallback, when Docker could not be asked at all.
-                engineVersion: Self.engineRelease(in: running) ?? Self.engineVersion(from: response.body),
+                engineVersion: version,
                 containers: running.isEmpty ? nil : running.count,
                 checkedAt: clock.now,
                 siteURL: siteURL,
@@ -440,6 +445,19 @@ public struct LocalStackService: Sendable {
     }
 
     /// What Docker is running, as one block of text, asked once per status.
+    /// `release.txt` inside the engine container, which is what the engine itself reads to say
+    /// `fusion release: 7.2.1` at startup.
+    private func releaseFile(in containers: [(name: String, image: String)]) async -> String? {
+        guard let engine = containers.first(where: { $0.image.contains("fusion-engine") }),
+              let folder = project.folderURL,
+              let result = try? await runner.run("docker exec \(engine.name) cat release.txt", in: folder, timeout: 10),
+              result.succeeded
+        else { return nil }
+        let text = result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, text.count <= 40, !text.contains(" ") else { return nil }
+        return text
+    }
+
     private func list() async -> String? {
         guard let folder = project.folderURL,
               let result = try? await runner.run(Self.listCommand, in: folder, timeout: 10),
