@@ -242,7 +242,7 @@ public static class NotificationArtwork
 
     private static void Render(string source, string path)
     {
-        var mark = BrandMarks.Create(source, 153.6);
+        var mark = BrandMarks.Create(source, 153.6, followsScheme: false);
         mark.HorizontalAlignment = HorizontalAlignment.Center;
         mark.VerticalAlignment = VerticalAlignment.Center;
         var tile = new Border

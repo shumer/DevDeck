@@ -38,9 +38,7 @@ public static class NativeMethods
         var cornerPreference = RoundedWindowCorners;
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
-        var darkMode = 1;
-        _ = DwmSetWindowAttribute(
-            handle, ImmersiveDarkMode, ref darkMode, Marshal.SizeOf<int>());
+        SetDarkMode(handle, !WindowsTheme.Current.IsLight);
         var backdrop = TransientWindowBackdrop;
         _ = DwmSetWindowAttribute(
             handle, SystemBackdropType, ref backdrop, Marshal.SizeOf<int>());
@@ -64,14 +62,24 @@ public static class NativeMethods
         return cornerPreference;
     }
 
+    // A dark or light frame, title bar and Acrylic; a frame change makes an open window redraw it.
+    public static void SetDarkMode(nint handle, bool dark)
+    {
+        if (handle == 0)
+        {
+            return;
+        }
+        var value = dark ? 1 : 0;
+        _ = DwmSetWindowAttribute(handle, ImmersiveDarkMode, ref value, Marshal.SizeOf<int>());
+        _ = SetWindowPos(handle, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
+    }
+
     public static void ApplyLogWindowStyles(nint handle)
     {
         var cornerPreference = RoundedWindowCorners;
         _ = DwmSetWindowAttribute(
             handle, WindowCornerPreference, ref cornerPreference, Marshal.SizeOf<int>());
-        var darkMode = 1;
-        _ = DwmSetWindowAttribute(
-            handle, ImmersiveDarkMode, ref darkMode, Marshal.SizeOf<int>());
+        SetDarkMode(handle, !WindowsTheme.Current.IsLight);
     }
 
     public static int GetWindowAttribute(nint handle, int attribute)

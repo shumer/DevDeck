@@ -13,7 +13,10 @@ public static class BrandMarks
 
     public static IReadOnlyCollection<string> Names => Marks.Value.Keys.ToArray();
 
-    public static FrameworkElement Create(string? name, double size = 16, Brush? tint = null)
+    // White parts of a mark are its one-colour foreground: on the deck they take the scheme's text
+    // colour, so the GitHub or Next mark stays visible on a light card. Artwork drawn on its own dark
+    // tile keeps them white.
+    public static FrameworkElement Create(string? name, double size = 16, Brush? tint = null, bool followsScheme = true)
     {
         if (name is null || !Marks.Value.TryGetValue(name, out var mark))
         {
@@ -35,7 +38,9 @@ public static class BrandMarks
             canvas.Children.Add(new System.Windows.Shapes.Path
             {
                 Data = geometry,
-                Fill = tint ?? (Brush)new BrushConverter().ConvertFromString(path.Color)!,
+                Fill = tint ?? (followsScheme && IsForeground(path.Color)
+                    ? WindowsTheme.Brush("TextPrimary")
+                    : (Brush)new BrushConverter().ConvertFromString(path.Color)!),
             });
         }
 
@@ -63,4 +68,10 @@ public static class BrandMarks
     private sealed record Root(Dictionary<string, Mark> Marks);
     private sealed record Mark(double[] ViewBox, bool IsEvenOdd, MarkPath[] Paths);
     private sealed record MarkPath(string Data, string Color);
+
+    private static bool IsForeground(string colour)
+    {
+        return colour.Equals("#FFFFFF", StringComparison.OrdinalIgnoreCase) ||
+            colour.Equals("#F2FFFFFF", StringComparison.OrdinalIgnoreCase);
+    }
 }

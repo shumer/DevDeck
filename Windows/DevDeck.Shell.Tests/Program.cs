@@ -57,6 +57,12 @@ public static class Program
             Application.Current.Shutdown();
             return 0;
         }
+        if (arguments.Length == 3 && arguments[0] == "--capture-theme")
+        {
+            ThemePreview.Generate(Path.GetFullPath(arguments[1]), Path.GetFullPath(arguments[2]));
+            Application.Current.Shutdown();
+            return 0;
+        }
         if (arguments.Length is 2 or 3 && arguments[0] == "--state-preview")
         {
             return StatePreview.Show(
@@ -78,6 +84,9 @@ public static class Program
         Run("menu titles share one line after the check column", MenuTitlesShareOneLine);
         Run("dialog buttons carry the accent or the alert tone", DialogButtonsCarryTheirTone);
         Run("scroll bars and combo boxes follow the dark surface", ScrollBarsAndComboBoxesFitTheSurface);
+        Run("the palette follows every scheme combination", PaletteFollowsEverySchemeCombination);
+        Run("every token and tone is in both palettes", EveryTokenAndToneIsInBothPalettes);
+        Run("a scheme change redraws without a restart", ThemeChangesRedrawWithoutRestart);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
         Run("panel frames are applied as received", PanelFramesAreAppliedAsReceived);
@@ -295,7 +304,7 @@ public static class Program
         var on = Button(CardRenderer.Create(ProjectModel(true, null), _ => { }), "project.header.log");
         True(!Equals(off.Foreground, on.Foreground));
         True(!Equals(off.Background, on.Background));
-        True(on.Content is TextBlock onIcon && Equals(onIcon.Foreground, WindowsTheme.Brush("ToneGood")));
+        True(on.Content is TextBlock onIcon && SameColour(WindowsTheme.Brush("ToneGood"), onIcon.Foreground));
     }
 
     private static void ExportedBrandMarksRender()
@@ -312,11 +321,84 @@ public static class Program
 
     private static void CardMaterialsHaveBothVariants()
     {
-        var acrylic = (SolidColorBrush)WindowsTheme.CardBackground(true);
-        var solid = (SolidColorBrush)WindowsTheme.CardBackground(false);
-        Equal((byte)168, acrylic.Color.A);
-        Equal((byte)255, solid.Color.A);
-        Equal(Color.FromRgb(43, 43, 47), solid.Color);
+        var acrylic = DeckPalette.For(ThemeInputs.Default).CardTint;
+        var solid = DeckPalette.For(ThemeInputs.Default with { TransparencyEnabled = false }).CardTint;
+        Equal((byte)168, acrylic.A);
+        Equal((byte)255, solid.A);
+        Equal(Color.FromRgb(43, 43, 47), solid);
+    }
+
+    private static void PaletteFollowsEverySchemeCombination()
+    {
+        var accent = ThemeInputs.Default.AccentDark2;
+        foreach (var light in new[] { false, true })
+        {
+            foreach (var transparent in new[] { false, true })
+            {
+                foreach (var accentOnTaskbar in new[] { false, true })
+                {
+                    var palette = DeckPalette.For(ThemeInputs.Default with
+                    {
+                        AppsUseLightTheme = light,
+                        TransparencyEnabled = transparent,
+                        AccentOnTaskbar = accentOnTaskbar,
+                    });
+                    Equal(light, palette.IsLight);
+                    // Transparency decides Acrylic or a solid surface.
+                    Equal(transparent, palette.CardTint.A < 255);
+                    // Only a dark scheme takes the taskbar's accent tint.
+                    var tinted = palette.CardTint.R == accent.R && palette.CardTint.G == accent.G && palette.CardTint.B == accent.B;
+                    Equal(!light && accentOnTaskbar, tinted);
+                    // Text reads on the surface: light text on dark, dark text on light.
+                    Equal(light, palette["TextPrimary"].R < 128);
+                }
+            }
+        }
+    }
+
+    private static void EveryTokenAndToneIsInBothPalettes()
+    {
+        foreach (var light in new[] { false, true })
+        {
+            var palette = DeckPalette.For(ThemeInputs.Default with { AppsUseLightTheme = light });
+            foreach (var key in DeckPalette.Keys)
+            {
+                _ = palette[key];
+            }
+            foreach (var tone in new[] { "good", "attention", "alert", "personal" })
+            {
+                True(palette.Tone(tone) != palette["TextPrimary"]);
+                True(palette.ToneTint(tone).A > 0 && palette.ToneTint(tone).A < 64);
+            }
+            Equal(palette["TextPrimary"], palette.Tone("neutral"));
+        }
+    }
+
+    private static void ThemeChangesRedrawWithoutRestart()
+    {
+        var inputs = ThemeInputs.Default;
+        var monitor = new ThemeMonitor(Dispatcher.CurrentDispatcher, () => inputs);
+        var brush = (SolidColorBrush)WindowsTheme.Brush("TextPrimary");
+        var changes = new List<DeckPalette>();
+        monitor.Changed += changes.Add;
+        try
+        {
+            monitor.Refresh();
+            Equal(0, changes.Count);
+            inputs = inputs with { AppsUseLightTheme = true };
+            monitor.Refresh();
+            Equal(1, changes.Count);
+            True(changes[0].IsLight);
+            // A brush a view already holds now carries the light colour, and so do the styles.
+            Equal(changes[0]["TextPrimary"], brush.Color);
+            Equal(changes[0]["TextPrimary"], ((SolidColorBrush)Application.Current.FindResource("TextPrimary")).Color);
+        }
+        finally
+        {
+            inputs = ThemeInputs.Default;
+            monitor.Refresh();
+            monitor.Dispose();
+        }
     }
 
     private static void ButtonStylesExposeKeyboardFocus()
@@ -366,7 +448,7 @@ public static class Program
         True(reviewText.Any(text => text.Text == "open" && text.FontSize == 14));
         var projectText = Descendants(project).OfType<TextBlock>().ToArray();
         True(projectText.Any(text => text.Text == "stopped" && text.FontSize == 22 && text.FontWeight == FontWeights.SemiBold));
-        True(reviewText.Any(text => text.Text == "2 repos · 1 org" && text.FontSize == 12 && Equals(text.Foreground, WindowsTheme.Brush("TextTertiary"))));
+        True(reviewText.Any(text => text.Text == "2 repos · 1 org" && text.FontSize == 12 && SameColour(WindowsTheme.Brush("TextTertiary"), text.Foreground)));
     }
 
     private static void ReviewRowsStretchAndKeepSeparators()
@@ -394,13 +476,13 @@ public static class Program
         var leading = Descendants(project).OfType<TextBlock>().Single(text => text.Text == "bun · next · feed");
         Equal(12.0, leading.FontSize);
         Equal(WindowsTheme.Sans, leading.FontFamily);
-        Equal(WindowsTheme.Brush("TextSecondary"), leading.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextSecondary"), leading.Foreground));
 
         var trailing = Descendants(project).OfType<TrackedTextBlock>().Single(text => text.Text == "bun run dev");
         Equal(11.0, trailing.FontSize);
         Equal(WindowsTheme.Mono, trailing.FontFamily);
         Equal(DeckTextTrimming.Middle, trailing.Trimming);
-        Equal(WindowsTheme.Brush("TextTertiary"), trailing.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextTertiary"), trailing.Foreground));
 
         var place = Descendants(project).OfType<Grid>().Single(grid =>
             grid.Children.OfType<TextBlock>().Any(text => text.Text == "WSL · Ubuntu-24.04"));
@@ -409,7 +491,7 @@ public static class Program
         True(outline.Fill is null);
         Equal("2,2", string.Join(',', outline.StrokeDashArray.Select(value => value.ToString(System.Globalization.CultureInfo.InvariantCulture))));
         var placeText = place.Children.OfType<TextBlock>().Single();
-        Equal(WindowsTheme.Brush("TextPrimary"), placeText.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextPrimary"), placeText.Foreground));
     }
 
     private static void ExpanderUsesFluentChevron()
@@ -486,7 +568,7 @@ public static class Program
         var text = Descendants(inbox).OfType<TextBlock>().ToArray();
         True(text.Any(item => item.Text == "review" && item.FontSize == 11));
         True(text.Any(item => item.Text == "Review the parser" && item.FontWeight == FontWeights.SemiBold));
-        True(text.Any(item => item.Text == "now" && Equals(item.Foreground, WindowsTheme.Brush("TextTertiary"))));
+        True(text.Any(item => item.Text == "now" && SameColour(WindowsTheme.Brush("TextTertiary"), item.Foreground)));
         var links = Descendants(inbox).OfType<Button>()
             .Where(button => button.Content is string)
             .Select(button => (string)button.Content)
@@ -556,7 +638,7 @@ public static class Program
         var workCard = Render(work);
         var branch = Descendants(workCard).OfType<TextBlock>().Single(text => text.Text == "feature/sample");
         Equal(WindowsTheme.Mono, branch.FontFamily);
-        Equal(WindowsTheme.Brush("LinkInfo"), branch.Foreground);
+        True(SameColour(WindowsTheme.Brush("LinkInfo"), branch.Foreground));
         True(Descendants(workCard).OfType<TextBlock>().Any(text => text.Text == "2 changes"));
     }
 
@@ -564,9 +646,9 @@ public static class Program
     {
         var arc = Render(GoldenModels("arc.project.paper").Last());
         var tool = Descendants(arc).OfType<Button>().Single(button => Equals(button.Content, "PageBuilder"));
-        Equal(WindowsTheme.Brush("LinkInfo"), tool.Foreground);
+        True(SameColour(WindowsTheme.Brush("LinkInfo"), tool.Foreground));
         var local = Descendants(arc).OfType<TextBlock>().First(text => text.Text == "Local site");
-        Equal(WindowsTheme.Brush("ToneGood"), local.Foreground);
+        True(SameColour(WindowsTheme.Brush("ToneGood"), local.Foreground));
 
         var ddev = Render(GoldenModels("ddev.project.shop").Last());
         var docker = Descendants(ddev).OfType<Button>().Single(button =>
@@ -661,6 +743,11 @@ public static class Program
         Equal(Visibility.Visible, start.Visibility);
         start.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         True(start.ActualWidth >= start.DesiredSize.Width - 0.5);
+    }
+
+    private static bool SameColour(Brush expected, Brush? actual)
+    {
+        return actual is SolidColorBrush solid && expected is SolidColorBrush wanted && solid.Color == wanted.Color;
     }
 
     private static void Near(double expected, double actual)
@@ -818,14 +905,14 @@ public static class Program
         textBox.ApplyTemplate();
         window.UpdateLayout();
 
-        Equal(WindowsTheme.Brush("ControlFill"), textBox.Background);
-        Equal(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush);
+        True(SameColour(WindowsTheme.Brush("ControlFill"), textBox.Background));
+        True(SameColour(WindowsTheme.Brush("ControlStroke"), textBox.BorderBrush));
         Equal(32.0, textBox.Height);
         Equal(VerticalAlignment.Center, textBox.VerticalContentAlignment);
         Equal(150.0, SettingsWindow.FormLabelWidth);
         var placeholder = (TextBlock)textBox.Template.FindName("Placeholder", textBox);
         Equal(prompt.Placeholder, placeholder.Text);
-        Equal(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground);
+        True(SameColour(WindowsTheme.Brush("TextTertiary"), placeholder.Foreground));
         Equal(Visibility.Visible, placeholder.Visibility);
 
         textBox.Text = "Desk";
@@ -837,8 +924,8 @@ public static class Program
         textBox.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         var focusBorder = (Border)textBox.Template.FindName("FocusBorder", textBox);
         var controlBorder = (Border)textBox.Template.FindName("ControlBorder", textBox);
-        Equal(WindowsTheme.Brush("FocusOuter"), focusBorder.BorderBrush);
-        Equal(WindowsTheme.Brush("FocusInner"), controlBorder.BorderBrush);
+        True(SameColour(WindowsTheme.Brush("FocusOuter"), focusBorder.BorderBrush));
+        True(SameColour(WindowsTheme.Brush("FocusInner"), controlBorder.BorderBrush));
         window.Close();
     }
 
@@ -1997,11 +2084,11 @@ public static class Program
         }
         var destructive = Confirm(new DeckMenuDialogModel("Power off", "Every project stops.", "Power off", "Cancel", true));
         True(destructive.IsDefault);
-        Equal(WindowsTheme.Tone("alert"), destructive.BorderBrush);
+        True(SameColour(WindowsTheme.Tone("alert"), destructive.BorderBrush));
         var primary = Confirm(new DeckMenuDialogModel("Save", "Saves the arrangement.", "Save", "Cancel"));
         True(primary.IsDefault);
-        True(!Equals(primary.Background, WindowsTheme.Brush("ControlFill")));
-        True(!Equals(primary.Foreground, WindowsTheme.Brush("TextPrimary")));
+        True(!SameColour(WindowsTheme.Brush("ControlFill"), primary.Background));
+        True(!SameColour(WindowsTheme.Brush("TextPrimary"), primary.Foreground));
     }
 
     private static void MenuInputOwnerIsInvisible()

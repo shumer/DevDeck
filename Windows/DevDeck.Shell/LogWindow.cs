@@ -35,7 +35,7 @@ public sealed class LogWindow : Window, ILogWindow
         WindowStyle = WindowStyle.SingleBorderWindow;
         ResizeMode = ResizeMode.CanResize;
         ShowInTaskbar = true;
-        Background = WindowsTheme.CardBackground(false);
+        Background = WindowsTheme.Brush("SolidCardBackground");
         Foreground = WindowsTheme.Brush("TextPrimary");
         FontFamily = WindowsTheme.Sans;
         Content = BuildContent();
@@ -105,7 +105,7 @@ public sealed class LogWindow : Window, ILogWindow
         var root = new DockPanel
         {
             LastChildFill = true,
-            Background = WindowsTheme.CardBackground(false),
+            Background = WindowsTheme.Brush("SolidCardBackground"),
         };
         var searchBar = new Grid { Margin = new Thickness(12, 10, 12, 8) };
         searchBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -211,7 +211,7 @@ public sealed class LogWindow : Window, ILogWindow
                 view.Inlines.Add(new Run(value.Substring(index, query.Length))
                 {
                     Background = WindowsTheme.Brush(isCurrent ? "TonePersonal" : "ToneAttention"),
-                    Foreground = Brushes.Black,
+                    Foreground = WindowsTheme.Brush("HighlightText"),
                 });
                 if (isCurrent)
                 {

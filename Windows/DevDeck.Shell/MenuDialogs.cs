@@ -36,15 +36,17 @@ public sealed class MenuDialogs : IMenuDialogs
             SizeToContent = SizeToContent.Height,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
             ResizeMode = ResizeMode.NoResize,
-            Background = WindowsTheme.CardBackground(false),
+            Background = WindowsTheme.Brush("DialogBackground"),
             Foreground = WindowsTheme.Brush("TextPrimary"),
             FontFamily = WindowsTheme.Sans,
             ShowInTaskbar = false,
         };
+        window.SourceInitialized += (_, _) =>
+            NativeMethods.ApplyLogWindowStyles(new System.Windows.Interop.WindowInteropHelper(window).Handle);
         var content = new StackPanel
         {
             Margin = new Thickness(24),
-            Background = WindowsTheme.CardBackground(false),
+            Background = WindowsTheme.Brush("DialogBackground"),
         };
         content.Children.Add(new TextBlock
         {

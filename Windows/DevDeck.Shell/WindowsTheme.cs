@@ -9,6 +9,12 @@ public static class WindowsTheme
 {
     private const string PersonalizeKey = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private static bool isLoaded;
+    private static ResourceDictionary? styles;
+    private static ResourceDictionary? paletteResources;
+    private static readonly List<(string Key, WeakReference<SolidColorBrush> Brush)> liveBrushes = [];
+
+    // The scheme the shell draws in now. Dark until a ThemeMonitor reads Windows.
+    public static DeckPalette Current { get; private set; } = DeckPalette.For(ThemeInputs.Default);
 
     public static void EnsureLoaded()
     {
@@ -17,11 +23,50 @@ public static class WindowsTheme
             return;
         }
 
-        Application.Current.Resources.MergedDictionaries.Add(new ResourceDictionary
+        // The styles reach the palette by DynamicResource, so a scheme change replaces these entries.
+        // Anything in the application's resources is frozen, which is why views built in code get
+        // brushes of their own from Brush.
+        paletteResources = [];
+        foreach (var key in DeckPalette.Keys)
+        {
+            paletteResources[key] = new SolidColorBrush(Current[key]);
+        }
+        Application.Current.Resources.MergedDictionaries.Add(paletteResources);
+        styles = new ResourceDictionary
         {
             Source = new Uri("/DevDeck.Shell;component/WindowsStyles.xaml", UriKind.Relative),
-        });
+        };
+        Application.Current.Resources.MergedDictionaries.Add(styles);
         isLoaded = true;
+    }
+
+    public static void Apply(DeckPalette palette)
+    {
+        Current = palette;
+        if (!isLoaded || styles is null)
+        {
+            EnsureLoaded();
+            return;
+        }
+        foreach (var key in DeckPalette.Keys)
+        {
+            paletteResources![key] = new SolidColorBrush(palette[key]);
+        }
+        // Brushes handed to views built in code follow in place.
+        liveBrushes.RemoveAll(entry => !entry.Brush.TryGetTarget(out _));
+        foreach (var (key, reference) in liveBrushes)
+        {
+            if (reference.TryGetTarget(out var brush))
+            {
+                brush.Color = palette[key];
+            }
+        }
+    }
+
+    // A window's frame and backdrop in the scheme: dark or light title bar and Acrylic.
+    public static void ApplyWindowChrome(nint handle)
+    {
+        NativeMethods.SetDarkMode(handle, !Current.IsLight);
     }
 
     public static Style Style(string key)
@@ -30,10 +75,22 @@ public static class WindowsTheme
         return (Style)Application.Current.FindResource(key);
     }
 
+    // A palette brush of the view's own that keeps following the scheme; anything else from the
+    // resources as it is.
     public static Brush Brush(string key)
     {
         EnsureLoaded();
-        return (Brush)Application.Current.FindResource(key);
+        if (!DeckPalette.Keys.Contains(key))
+        {
+            return (Brush)Application.Current.FindResource(key);
+        }
+        var brush = new SolidColorBrush(Current[key]);
+        liveBrushes.Add((key, new WeakReference<SolidColorBrush>(brush)));
+        if (liveBrushes.Count % 512 == 0)
+        {
+            liveBrushes.RemoveAll(entry => !entry.Brush.TryGetTarget(out _));
+        }
+        return brush;
     }
 
     public static Brush Tone(string? tone)
@@ -50,45 +107,26 @@ public static class WindowsTheme
 
     public static Brush ToneFill(string? tone)
     {
-        var color = tone switch
-        {
-            "good" => Color.FromArgb(35, 112, 199, 153),
-            "attention" => Color.FromArgb(35, 240, 194, 107),
-            "alert" => Color.FromArgb(35, 232, 132, 132),
-            "personal" => Color.FromArgb(35, 169, 155, 224),
-            _ => Color.FromArgb(15, 255, 255, 255),
-        };
-        return new SolidColorBrush(color);
+        return new SolidColorBrush(Current.ToneTint(tone));
     }
 
-    // A Windows 11 primary button on a dark surface: the system accent's light shade with dark text.
+    // A Windows 11 primary button: the accent shade the scheme uses, with text that reads on it.
     public static (Brush Fill, Brush Text) AccentButton()
     {
-        var accent = new global::Windows.UI.ViewManagement.UISettings()
-            .GetColorValue(global::Windows.UI.ViewManagement.UIColorType.AccentLight2);
-        return (
-            new SolidColorBrush(Color.FromArgb(accent.A, accent.R, accent.G, accent.B)),
-            new SolidColorBrush(Color.FromArgb(230, 0, 0, 0)));
+        return (new SolidColorBrush(Current.AccentFill), new SolidColorBrush(Current.AccentText));
     }
 
-    public static Brush CardBackground(bool transparencyEnabled)
+    // The card's surface in the current scheme: a tint over Acrylic, or solid without transparency.
+    public static Brush CardSurface()
     {
-        return new SolidColorBrush(
-            transparencyEnabled
-                ? Color.FromArgb(168, 40, 40, 44)
-                : Color.FromRgb(43, 43, 47));
-    }
-
-    public static bool IsTransparencyEnabled()
-    {
-        return Registry.GetValue(PersonalizeKey, "EnableTransparency", 1) is not int value || value != 0;
+        return new SolidColorBrush(Current.CardTint);
     }
 
     public static Border CardFrame(FrameworkElement content)
     {
         var frame = new Border
         {
-            Background = CardBackground(IsTransparencyEnabled()),
+            Background = CardSurface(),
             BorderBrush = Brush("ControlStroke"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),

@@ -412,6 +412,21 @@ supplied title, note and address.
 
 Installing an update from the `installUpdate` effect remains outside this shell milestone.
 
+## The Windows scheme
+
+The shell follows Windows the way the taskbar does: the app mode chooses the dark or the light
+palette, transparency effects choose Acrylic or a solid surface, and with the accent shown on
+Start and the taskbar in dark mode the cards take the taskbar's accent tint. Cards, menus,
+dialogs, the log and the settings window redraw when any of these change, without a restart;
+the tray icon follows the taskbar's own mode. Every colour lives in `DeckPalette`, one table per
+scheme; views built in code get brushes that keep following it.
+
+To compare the four schemes of the reference mock off screen:
+
+```powershell
+dotnet run --project Windows/DevDeck.Shell.Tests -- --capture-theme Tests/EngineTests/Golden/session-en.expected.jsonl C:	emp	heme.png
+```
+
 ## Docker and DDEV on Windows
 
 Only one live DevDeck shell runs per Windows user session. A second launch starts no host

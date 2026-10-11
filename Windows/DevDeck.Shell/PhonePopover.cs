@@ -66,7 +66,7 @@ public static class PhonePopover
             Child = content,
             Padding = new Thickness(16),
             CornerRadius = new CornerRadius(8),
-            Background = WindowsTheme.CardBackground(false),
+            Background = WindowsTheme.Brush("SolidCardBackground"),
             BorderBrush = WindowsTheme.Brush("ControlStroke"),
             BorderThickness = new Thickness(1),
             Effect = new System.Windows.Media.Effects.DropShadowEffect

@@ -303,7 +303,7 @@ public static class WindowsCardRenderer
                 if (JsonModel.Bool(header, "logIsOn"))
                 {
                     logButton.Foreground = WindowsTheme.Brush("ToneGood");
-                    logButton.Background = ColorBrush(Color.FromArgb(34, 112, 199, 153));
+                    logButton.Background = WindowsTheme.ToneFill("good");
                     if (logButton.Content is TextBlock icon)
                     {
                         icon.Foreground = WindowsTheme.Brush("ToneGood");
@@ -398,7 +398,7 @@ public static class WindowsCardRenderer
         {
             var keyBorder = new Border
             {
-                Background = ColorBrush(Color.FromArgb(18, 255, 255, 255)),
+                Background = WindowsTheme.Brush("ControlFill"),
                 CornerRadius = new CornerRadius(3),
                 Margin = new Thickness(0, 5, 8, 5),
                 Padding = new Thickness(5, 0, 5, 0),
