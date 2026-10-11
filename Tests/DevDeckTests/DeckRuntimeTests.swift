@@ -81,7 +81,8 @@ final class Deck {
         projectFiles: ProjectRuntimeFiles = .standard(),
         gitlabAccounts: [GitLabAccount] = [],
         canStartDocker: Bool = false,
-        notifications: Bool = false
+        notifications: Bool = false,
+        localAddress: String? = nil
     ) {
         self.http = http
         let accounts = GitHubAccountsStore(backend: InMemoryPreferences())
@@ -101,7 +102,7 @@ final class Deck {
             localProjectsStore: local,
             commandRunner: runner,
             canStartDocker: canStartDocker,
-            localAddress: { nil },
+            localAddress: { localAddress },
             http: http,
             projectHTTP: projectHTTP,
             projectFiles: projectFiles,
@@ -275,6 +276,44 @@ func runDeckRuntimeTests(_ run: TestRun) async {
         // The next poll finds it stopped, as it is, and keeps the reason: that is the news.
         await deck.runtime.refreshLocalOnce()
         try expectEqual(deck.runtime.localStatus(for: project).detail, "command not found", "a poll does not wipe the reason off the card")
+    }
+
+    await run.test("the phone button is offered only for an address this machine answers on") {
+        let site = try plainSite(holdsProcess: true)
+        let runner = StubCommandRunner([(DockerEnvironment.probeCommand, dockerUp)])
+        let answering = Deck(
+            cards: [site.project.cardID],
+            runner: runner,
+            localProjects: [site.project],
+            projectHTTP: FakeHTTPClient(routes: [
+                ("localhost", .success(HTTPResponse(statusCode: 200))),
+                ("192.168.1.20", .success(HTTPResponse(statusCode: 404))),
+            ]),
+            projectFiles: site.files,
+            localAddress: "192.168.1.20"
+        )
+        await answering.runtime.refreshLocalOnce()
+        guard case .project(let offered)? = answering.runtime.model(for: site.project.cardID) else {
+            throw TestFailure(message: "a project card", file: #filePath, line: #line)
+        }
+        try expectEqual(offered.header.phoneURL?.absoluteString, "http://192.168.1.20:5173", "an error page is still something listening")
+
+        // localhost answers and the network name does not: a dev server bound to localhost, or
+        // a port kept inside a WSL. The code would send the phone to a port nothing listens on.
+        let deaf = Deck(
+            cards: [site.project.cardID],
+            runner: runner,
+            localProjects: [site.project],
+            projectHTTP: FakeHTTPClient(routes: [("localhost", .success(HTTPResponse(statusCode: 200)))]),
+            projectFiles: site.files,
+            localAddress: "192.168.1.20"
+        )
+        await deaf.runtime.refreshLocalOnce()
+        try expect(deaf.runtime.localStatus(for: site.project).isRunning, "the project itself is up")
+        guard case .project(let quiet)? = deaf.runtime.model(for: site.project.cardID) else {
+            throw TestFailure(message: "a project card", file: #filePath, line: #line)
+        }
+        try expectNil(quiet.header.phoneURL, "no button for an address that does not answer")
     }
 
     await run.test("a project started outside DevDeck is never stopped from here") {

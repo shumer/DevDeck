@@ -712,8 +712,12 @@ for this Mac's own on the wifi and drawn as a code to point a camera at. It appe
 the project is actually up, because a code pointing at a port nothing is listening on is a worse
 answer than no button. No account, no tunnel, nothing published to the internet. The phone has to
 be on the same network, and a dev server bound to localhost only will still refuse: that is what
-`--host` is for. A DDEV project is reached by name rather than by address, so its card offers
-the code only once the checkout is set up for a phone; the DDEV section says how.
+`--host` is for. The card checks before it promises: it asks the address itself, from this
+computer, and offers the code only when something answers there. A server bound to localhost,
+or a container inside a WSL that keeps its ports to itself, answers on `localhost` and on nothing
+else, and then there is no button rather than a code to nowhere. A DDEV project is reached by
+name rather than by address, so its card offers the code only once the checkout is set up for a
+phone; the DDEV section says how.
 
 The small button beside the clock opens the **log in a window of its own**: dark, monospaced,
 as big as you drag it, on any of the three project cards. Arc reads the containers carrying the

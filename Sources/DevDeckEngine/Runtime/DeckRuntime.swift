@@ -10,7 +10,7 @@ import ProjectKit
 public enum DeckField: String, CaseIterable, Sendable {
     case pullRequests, inbox, actions, mergeRequests, checkouts, checkoutsCheckedAt
     case expandedCards, logTails, logWindowCards, inboxProgress, collapsedCards, parkedCards
-    case stackStatuses, ddevStatuses, localStatuses, docker, watch, localAddress
+    case stackStatuses, ddevStatuses, localStatuses, docker, watch, localAddress, phoneReach
 }
 
 /// Something only the platform can do, decided here and carried out by the shell.
@@ -363,6 +363,8 @@ public final class DeckRuntime {
         await refreshStacks()
         await refreshDDEV()
         await refreshLocalProjects()
+        // After the projects: whether an address answers is only worth asking of one that is up.
+        await refreshPhoneReach()
         announceProjects()
     }
 
@@ -478,6 +480,7 @@ public final class DeckRuntime {
                 // ended. Carried here, that line is what the card shows instead of a shrug.
                 let started = await service.waitUntilRunning(hint: result?.failureLine)
                 self.stackStatuses[project.id] = started
+                await self.refreshPhoneReach()
                 if started.isRunning {
                     self.observe(project, started)
                 } else {
@@ -619,6 +622,7 @@ public final class DeckRuntime {
             }
 
             await self.refreshDDEV(finished: [project.id])
+            await self.refreshPhoneReach()
             let isRunning = self.ddevStatuses[project.id]?.isRunning == true
             if action == .stop, isRunning {
                 self.watch.noteStopDidNotTakeEffect(project.id, at: clock.now)
@@ -909,6 +913,7 @@ public final class DeckRuntime {
                 )
                 let started = await service.waitUntilRunning()
                 self.localStatuses[project.id] = started
+                await self.refreshPhoneReach()
                 if started.isRunning {
                     self.observe(project, started)
                 } else {
@@ -1164,9 +1169,71 @@ public final class DeckRuntime {
     ///
     /// Nil unless the project is up, which is the rule the button hangs on: a QR code pointing
     /// at a port nothing is listening on is a worse answer than no button at all.
-    public func phoneURL(for site: URL?, isRunning: Bool) -> URL? {
+    private func phoneURL(for site: URL?, isRunning: Bool) -> URL? {
         guard isRunning, let site, let localAddress else { return nil }
         return LocalAddress.rewrite(site, to: localAddress)
+    }
+
+    /// The address a phone would be sent to for this card, before anyone has checked that it
+    /// answers.
+    private func phoneCandidate(for card: CardID) -> URL? {
+        if let project = project(forCard: card) {
+            let status = stackStatus(for: project)
+            // Where the site is served is read from the checkout's `.env`, and the stack says
+            // whether it is up.
+            return phoneURL(for: status.siteURL ?? project.localSiteURL, isRunning: status.isRunning)
+        }
+        if let project = ddevProject(forCard: card) {
+            let status = ddevStatus(for: project)
+            // Not from `ddev list`: its name resolves to 127.0.0.1 on every device and the
+            // router picks the project by name, so the phone reaches it only the way the
+            // checkout's own file set up, when it did.
+            return status.isRunning ? status.config.phoneURL(address: localAddress) : nil
+        }
+        if let project = localProject(forCard: card) {
+            let status = localStatus(for: project)
+            // A plain project was told where it serves; nothing can find out for it.
+            return phoneURL(for: project.siteURL ?? project.healthCheckURL, isRunning: status.isRunning)
+        }
+        return nil
+    }
+
+    /// The phone address each project card was last found to answer on, asked from this machine.
+    ///
+    /// The address is a promise, and the card checks it before making it. A dev server bound to
+    /// localhost, or a container inside a WSL that keeps its ports to itself, answers on
+    /// `localhost` and on nothing else, and a code pointing at the machine's network name would
+    /// send the phone to a port nothing is listening on. This machine asking itself by that name
+    /// is the one check it can make without the phone. See docs/adr/0034-the-phone-button-asks-first.md.
+    public private(set) var phoneReach: [CardID: URL] = [:] {
+        didSet { if phoneReach != oldValue { changed(.phoneReach) } }
+    }
+
+    /// The phone address for a card: the candidate, when it is the one that answered.
+    private func reachablePhoneURL(for card: CardID) -> URL? {
+        guard let candidate = phoneCandidate(for: card), phoneReach[card] == candidate else { return nil }
+        return candidate
+    }
+
+    /// What the probe talks to. The project's own client where the suite provides one, so the
+    /// check is as fake as the health check; otherwise a short-fused real one, because a port
+    /// nobody listens on is answered by a timeout.
+    private lazy var phoneHTTP: any HTTPClient = projectHTTP ?? URLSessionHTTPClient.makeDefault(timeout: 2)
+
+    /// Asks every project card's phone address from here, all at once, and keeps the ones that
+    /// answered. Any answer counts, an error page included: what matters is that something is
+    /// listening there.
+    private func refreshPhoneReach() async {
+        let candidates = activeCards.compactMap { card in phoneCandidate(for: card).map { (card, $0) } }
+        let client = phoneHTTP
+        var reached: [CardID: URL] = [:]
+        await withTaskGroup(of: (CardID, URL, Bool).self) { group in
+            for (card, url) in candidates {
+                group.addTask { (card, url, (try? await client.send(HTTPRequest(url: url))) != nil) }
+            }
+            for await (card, url, answered) in group where answered { reached[card] = url }
+        }
+        phoneReach = reached
     }
 
     // MARK: Being told
@@ -1879,9 +1946,7 @@ public final class DeckRuntime {
             return .project(.arc(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                // Where the site is served is read from the checkout's `.env`, and the stack says
-                // whether it is up.
-                phoneURL: phoneURL(for: status.siteURL ?? project.localSiteURL, isRunning: status.isRunning)
+                phoneURL: reachablePhoneURL(for: card)
             ))
         }
         if let project = ddevProject(forCard: card) {
@@ -1889,10 +1954,7 @@ public final class DeckRuntime {
             return .project(.ddev(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                // Not from `ddev list`: its name resolves to 127.0.0.1 on every device and the
-                // router picks the project by name, so the phone reaches it only the way the
-                // checkout's own file set up, when it did.
-                phoneURL: status.isRunning ? status.config.phoneURL(address: localAddress) : nil
+                phoneURL: reachablePhoneURL(for: card)
             ))
         }
         if let project = localProject(forCard: card) {
@@ -1900,8 +1962,7 @@ public final class DeckRuntime {
             return .project(.local(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                // A plain project was told where it serves; nothing can find out for it.
-                phoneURL: phoneURL(for: project.siteURL ?? project.healthCheckURL, isRunning: status.isRunning)
+                phoneURL: reachablePhoneURL(for: card)
             ))
         }
         return nil

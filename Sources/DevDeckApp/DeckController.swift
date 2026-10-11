@@ -37,6 +37,7 @@ final class DeckController: ObservableObject {
     @Published private(set) var docker: DockerStatus
     @Published private(set) var watch: ProjectWatch
     @Published private(set) var localAddress: String?
+    @Published private(set) var phoneReach: [CardID: URL] = [:]
 
     /// Opening and closing a window is the application layer's business; keeping its lines
     /// fresh is the runtime's.
@@ -121,6 +122,7 @@ final class DeckController: ObservableObject {
         case .docker: docker = runtime.docker
         case .watch: watch = runtime.watch
         case .localAddress: localAddress = runtime.localAddress
+        case .phoneReach: phoneReach = runtime.phoneReach
         }
     }
 
@@ -181,7 +183,6 @@ final class DeckController: ObservableObject {
     func markAllRead() { runtime.markAllRead() }
 
     func folder(forCheckout state: CheckoutState) -> URL? { runtime.folder(forCheckout: state) }
-    func phoneURL(for site: URL?, isRunning: Bool) -> URL? { runtime.phoneURL(for: site, isRunning: isRunning) }
 
     func isExpanded(_ card: CardID) -> Bool { runtime.isExpanded(card) }
     func logs(for card: CardID) -> LogLines? { runtime.logs(for: card) }
