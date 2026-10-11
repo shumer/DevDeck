@@ -159,7 +159,8 @@ The **place chip** says where the project runs (`WSL · Ubuntu-24.04`, `Windows`
 stroke and no fill, because it is information and not a link. Its text comes from the engine.
 
 **Actions.** One primary action that takes the remaining width and carries its tone (Start is
-good, Stop is alert), Restart with text, then square icon buttons for folder and terminal, 6 px
+good, Stop is alert), Restart with text, then square icon buttons for terminal and
+folder, 6 px
 apart. When the labels do not fit the 318 px content width, a secondary button gives up its whole
 label and keeps its icon and tooltip; no button cuts a word. There is no
 busy button: a project in the middle of a command says so in its hero, with the line the command

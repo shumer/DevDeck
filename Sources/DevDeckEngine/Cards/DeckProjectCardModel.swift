@@ -171,8 +171,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             tools: project.adminLinks.map { chip($0.label, url: $0.url, isSite: false, card: card, isRunning: status.isRunning) },
             environments: environments,
             actions: lifecycle + [
-                DeckActionModel(L("card.action.folder"), glyph: .folder, isEnabled: project.supportsLocalStack, command: .revealFolder(card)),
                 DeckActionModel(L("card.action.terminal"), glyph: .terminal, isEnabled: project.supportsLocalStack, command: .openTerminal(card)),
+                DeckActionModel(L("card.action.folder"), glyph: .folder, isEnabled: project.supportsLocalStack, command: .revealFolder(card)),
             ],
             collapsed: DeckCollapsedModel(
                 mark: .arc,
@@ -249,8 +249,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
                 chip($0.label, url: $0.url, isSite: $0.kind == .site, card: card, isRunning: status.isRunning)
             },
             actions: lifecycle + [
-                DeckActionModel(L("card.action.folder"), glyph: .folder, isEnabled: project.folderURL != nil, command: .revealFolder(card)),
                 DeckActionModel(L("card.action.terminal"), glyph: .terminal, isEnabled: project.folderURL != nil, command: .openTerminal(card)),
+                DeckActionModel(L("card.action.folder"), glyph: .folder, isEnabled: project.folderURL != nil, command: .revealFolder(card)),
             ],
             collapsed: DeckCollapsedModel(
                 mark: .ddev,
@@ -365,9 +365,9 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             },
             // The same four as the Arc and DDEV cards, in the plain card's own order.
             actions: lifecycle + [
-                // Folder, then terminal, the same order the other two kinds keep.
-                DeckActionModel(L("card.action.folder"), glyph: .folder, isEnabled: project.folderURL != nil, command: .revealFolder(card)),
+                // Terminal, then folder, the same order on every kind of project card.
                 DeckActionModel(L("card.action.terminal"), glyph: .terminal, command: .openTerminal(card)),
+                DeckActionModel(L("card.action.folder"), glyph: .folder, isEnabled: project.folderURL != nil, command: .revealFolder(card)),
             ],
             collapsed: DeckCollapsedModel(
                 mark: brand(of: project.kind),

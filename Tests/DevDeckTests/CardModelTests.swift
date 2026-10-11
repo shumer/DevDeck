@@ -348,7 +348,7 @@ func runCardModelTests(_ run: TestRun) async {
         try expectEqual(model.hero.tone, .good)
         try expectEqual(model.hero.note, LN("card.containers", 10))
         let card = ArcProject(id: "arc", title: "Libero", organization: "acme", folder: "/tmp").cardID
-        try expectEqual(model.actions.map(\.command), [.project(card, .stop), .project(card, .restart), .revealFolder(card), .openTerminal(card)])
+        try expectEqual(model.actions.map(\.command), [.project(card, .stop), .project(card, .restart), .openTerminal(card), .revealFolder(card)])
         try expectEqual(model.actions.first?.tone, .alert)
         try expect(model.actions.first?.isProminent == true)
         try expectNil(model.collapsed.note, "running, the row carries Stop and the log: no room for a note")
