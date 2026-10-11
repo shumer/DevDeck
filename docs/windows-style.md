@@ -134,7 +134,14 @@ tone.
 **List rows.** 7 px dot in the row's tone, optional key chip (mono, 3 px radius, control fill),
 optional glyph (review eye in attention), title with an ellipsis, status code on the right. Rows are
 separated by a 1 px line of white at 5%. The whole row is the click target, with the control
-hover fill.
+hover fill. As in the mock, a row bleeds 6 px past the content edge on both sides with 6 px of
+padding, so its fill and separator reach out while its dot and code sit on the edge; items in a
+row are 8 px apart.
+
+**One content edge.** Everything inside the card's 16 px padding starts on the same left edge and
+ends on the same right edge: header, hero, health bar, meta, chips, actions and footer add no side
+margin of their own. Card buttons draw their keyboard focus ring outside their box, so the visible
+control is the size the layout gives it and stands on the edge.
 
 **Expander and footer.** Centred `Show N more` with a chevron, then the footer line.
 
@@ -152,7 +159,9 @@ The **place chip** says where the project runs (`WSL · Ubuntu-24.04`, `Windows`
 stroke and no fill, because it is information and not a link. Its text comes from the engine.
 
 **Actions.** One primary action that takes the remaining width and carries its tone (Start is
-good, Stop is alert), Restart with text, then square icon buttons for folder and terminal. There is no
+good, Stop is alert), Restart with text, then square icon buttons for folder and terminal, 6 px
+apart. When the labels do not fit the 318 px content width, a secondary button gives up its whole
+label and keeps its icon and tooltip; no button cuts a word. There is no
 busy button: a project in the middle of a command says so in its hero, with the line the command
 just printed in the meta row, and the engine disables the buttons that cannot be pressed, as on
 the Mac.

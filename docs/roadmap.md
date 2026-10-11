@@ -2,6 +2,11 @@
 
 ## Done
 
+- Windows UI review: one content edge on every card, the mock's branch icon, card buttons with
+  the focus ring outside, whole labels in a crowded button row, an invisible menu owner, a tray
+  menu that scrolls, whole combo box text, a dark scroll bar, replays that ignore quit, and a
+  `--trace` flag for protocol timing.
+
 - Windows shell lifecycle fixes: one interactive instance per user, asynchronous Quit,
   and dismissible tray and card menus with deferred menu refreshes.
 
