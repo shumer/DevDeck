@@ -540,12 +540,15 @@ public static class WindowsCardRenderer
         if (JsonModel.String(meta, "branch") is { } branch)
         {
             var branchRow = new DockPanel { Height = 24 };
-            var branchIcon = BranchIcon();
+            // The mock's branch row: a 13 px icon on the card's edge, 6 px, then the name.
+            var branchIcon = DeckIcons.Branch(WindowsTheme.Brush("LinkInfo"));
+            branchIcon.Margin = new Thickness(0, 0, 6, 0);
             branchRow.Children.Add(branchIcon);
             FrameworkElement branchText = Text(branch, 12, WindowsTheme.Brush("LinkInfo"), true);
             if (JsonModel.Command(meta, "repository") is { } repository)
             {
                 var button = CommandButton(branchText, repository, true, command, "RowButton");
+                button.Padding = new Thickness(0);
                 button.ToolTip = JsonModel.String(meta, "branchHelp");
                 branchText = button;
             }
@@ -1025,23 +1028,6 @@ public static class WindowsCardRenderer
         {
             stack.Children.Add(Text(hint, 12, WindowsTheme.Brush("TextSecondary")));
         }
-    }
-
-    private static FrameworkElement BranchIcon()
-    {
-        var path = new System.Windows.Shapes.Path
-        {
-            Data = Geometry.Parse("M3,2 L3,9 C3,12 11,9 11,14 M3,2 L1,4 M3,2 L5,4"),
-            Stroke = WindowsTheme.Brush("LinkInfo"),
-            StrokeThickness = 1.2,
-        };
-        return new Viewbox
-        {
-            Width = 14,
-            Height = 14,
-            Margin = new Thickness(1, 0, 7, 0),
-            Child = path,
-        };
     }
 
     private static bool Enabled(JsonElement model)

@@ -50,4 +50,31 @@ public static class DeckIcons
     {
         return Glyphs[name];
     }
+
+    // Segoe Fluent Icons has no branch glyph that reads as one, so this is the reference mock's
+    // vector on its 16 unit grid, drawn at the size the branch row asks for.
+    public static FrameworkElement Branch(Brush stroke, double size = 13)
+    {
+        var geometry = new GeometryGroup();
+        geometry.Children.Add(new EllipseGeometry(new Point(4.5, 3.5), 1.6, 1.6));
+        geometry.Children.Add(new EllipseGeometry(new Point(4.5, 12.5), 1.6, 1.6));
+        geometry.Children.Add(new EllipseGeometry(new Point(11.5, 5.5), 1.6, 1.6));
+        geometry.Children.Add(Geometry.Parse("M4.5,5.1 v5.8 M11.5,7.1 c0,2.4 -2.2,3.2 -5.6,3.9"));
+        var canvas = new Canvas { Width = 16, Height = 16 };
+        canvas.Children.Add(new System.Windows.Shapes.Path
+        {
+            Data = geometry,
+            Stroke = stroke,
+            StrokeThickness = 1.3,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+        });
+        return new Viewbox
+        {
+            Width = size,
+            Height = size,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = canvas,
+        };
+    }
 }
