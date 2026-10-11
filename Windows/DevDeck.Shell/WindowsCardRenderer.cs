@@ -212,25 +212,30 @@ public static class WindowsCardRenderer
         stack.Children.Add(ProjectHeader(model, command));
         if (JsonModel.Object(model, "hero", out var hero))
         {
-            var heroRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
+            // One line of one height in every state, as on the Mac: the state keeps its width and
+            // the note beside it gives way, so a card does not grow when a stack starts or fails.
+            var heroRow = new DockPanel
+            {
+                Height = LineHeight(22, FontWeights.SemiBold),
+                Margin = new Thickness(0, 2, 0, 4),
+                ClipToBounds = true,
+            };
             var heroText = Text(JsonModel.String(hero, "text"), 22, WindowsTheme.CardTone(JsonModel.String(hero, "tone")));
             heroText.FontWeight = FontWeights.SemiBold;
             var heroDot = StatusDot(JsonModel.String(hero, "tone"), 8, 22, FontWeights.SemiBold);
             heroDot.Margin = new Thickness(0, 0, 9, 0);
             heroRow.Children.Add(heroDot);
             heroRow.Children.Add(heroText);
-            if (JsonModel.String(hero, "aside") is { } aside)
-            {
-                var asideText = Text(aside, 11, WindowsTheme.CardBrush("TextTertiary"), true);
-                DockPanel.SetDock(asideText, Dock.Right);
-                heroRow.Children.Add(asideText);
-            }
+            // The trailing words: containers, a pid, why a start failed. The last child takes
+            // what the state leaves and ends in an ellipsis; the whole text is in the tooltip.
+            var noteText = Text(JsonModel.String(hero, "note"), 11, WindowsTheme.CardBrush("TextSecondary"), true);
+            noteText.TextAlignment = TextAlignment.Right;
+            noteText.Margin = new Thickness(6, 0, 0, 0);
+            noteText.ToolTip = JsonModel.String(hero, "note");
+            AutomationProperties.SetAutomationId(noteText, "project.hero.note");
+            heroRow.Children.Add(noteText);
             heroRow.ToolTip = JsonModel.String(hero, "help");
             stack.Children.Add(heroRow);
-            if (JsonModel.String(hero, "note") is { } note)
-            {
-                stack.Children.Add(Text(note, 12, WindowsTheme.CardBrush("TextSecondary")));
-            }
         }
         if (JsonModel.Object(model, "meta", out var meta))
         {
@@ -556,7 +561,14 @@ public static class WindowsCardRenderer
             branchRow.Children.Add(branchText);
             stack.Children.Add(branchRow);
         }
-        var details = new Grid { Margin = new Thickness(0, 3, 0, 4) };
+        // One line of one height whether or not either side has text: a command's progress line
+        // replaces the leading text and the version comes and goes, and neither moves the card.
+        var details = new Grid
+        {
+            Height = LineHeight(12, FontWeights.Normal),
+            Margin = new Thickness(0, 3, 0, 4),
+            ClipToBounds = true,
+        };
         details.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         details.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var leading = Text(JsonModel.String(meta, "leading"), 12, WindowsTheme.CardBrush("TextSecondary"));
@@ -841,6 +853,22 @@ public static class WindowsCardRenderer
             VerticalAlignment = VerticalAlignment.Center,
             RenderTransform = new TranslateTransform(0, DotShift(textSize, textWeight)),
         };
+    }
+
+    // The height of one line of sans text, rounded up, for rows that must not change height.
+    public static double LineHeight(double textSize, FontWeight textWeight)
+    {
+        WindowsTheme.EnsureLoaded();
+        var typeface = new Typeface(WindowsTheme.Sans, FontStyles.Normal, textWeight, FontStretches.Normal);
+        var line = new FormattedText(
+            "Hg",
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            textSize,
+            Brushes.Black,
+            1.0);
+        return Math.Ceiling(line.Height);
     }
 
     public static double DotShift(double textSize, FontWeight textWeight)

@@ -108,6 +108,7 @@ public static class Program
         Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
         Run("card parts sit on one content edge", CardPartsShareOneContentEdge);
         Run("state dots sit on the capitals of their text", StateDotsSitOnTheirCapitals);
+        Run("a project card keeps one height in every state", ProjectCardKeepsOneHeightInEveryState);
         Run("a crowded button row gives up whole labels", CrowdedActionsGiveUpWholeLabels);
         Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
         Run("runtime menu builds every entry kind", RuntimeMenuBuildsEveryEntryKind);
@@ -785,6 +786,44 @@ public static class Program
         Equal(Visibility.Visible, start.Visibility);
         start.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         True(start.ActualWidth >= start.DesiredSize.Width - 0.5);
+    }
+
+    private static void ProjectCardKeepsOneHeightInEveryState()
+    {
+        // Stopped, starting with a long progress line, running with containers and a version,
+        // failed with a long reason, and a meta row with nothing on either side.
+        var long_ = "the stack did not answer /release on http://localhost:80 within three minutes, see the log";
+        var states = new (string Text, string Tone, string? Note, string? Leading, string? Trailing)[]
+        {
+            ("stopped", "neutral", null, "sandbox.demo", null),
+            ("starting", "attention", null, "Pulling fusion-engine, layer 3 of 12, 412 MB of 1.2 GB downloaded", null),
+            ("running", "good", "9 containers", "sandbox.demo", "7.2.1"),
+            ("failed", "alert", long_, "sandbox.demo", null),
+            ("stopped", "neutral", "pid 4242", null, null),
+        };
+        var heights = new List<double>();
+        foreach (var state in states)
+        {
+            var model = JsonNode.Parse(SampleCard("project.windows").GetRawText())!;
+            var project = model["project"]!;
+            project["hero"] = new JsonObject
+            {
+                ["text"] = state.Text,
+                ["tone"] = state.Tone,
+                ["note"] = state.Note,
+                ["help"] = state.Text,
+            };
+            var meta = project["meta"]!;
+            meta["branch"] = "main";
+            meta["leading"] = state.Leading;
+            meta["trailing"] = state.Trailing;
+            var view = Render(JsonSerializer.SerializeToElement(model));
+            heights.Add(view.ActualHeight);
+        }
+        foreach (var height in heights)
+        {
+            Equal(heights[0], height);
+        }
     }
 
     private static void StateDotsSitOnTheirCapitals()
