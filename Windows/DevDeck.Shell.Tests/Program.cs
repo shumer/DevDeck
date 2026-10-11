@@ -91,6 +91,7 @@ public static class Program
         Run("action variants and work rows use styled layouts", ActionVariantsAndWorkRowsUseStyledLayouts);
         Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
         Run("card parts sit on one content edge", CardPartsShareOneContentEdge);
+        Run("a crowded button row gives up whole labels", CrowdedActionsGiveUpWholeLabels);
         Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
         Run("runtime menu builds every entry kind", RuntimeMenuBuildsEveryEntryKind);
         Run("menu clicks send the exact command", MenuClicksSendExactCommand);
@@ -629,6 +630,31 @@ public static class Program
         var actions = buttons.Where(button => button.ActualHeight == 32).ToList();
         Near(0, Left(actions.First()));
         Near(0, Right(actions.Last()));
+    }
+
+    private static void CrowdedActionsGiveUpWholeLabels()
+    {
+        static string Card(string start, string restart) => $$$"""
+            {"project":{"title":"Shop","actions":[
+            {"command":{"startDocker":{}},"glyph":"docker","isEnabled":true,"isProminent":true,"title":"{{{start}}}","tone":"alert"},
+            {"command":{"project":{"_0":"ddev.project.shop","_1":"restart"}},"glyph":"restart","isEnabled":false,"isProminent":false,"title":"{{{restart}}}"},
+            {"command":{"revealFolder":{"_0":"ddev.project.shop"}},"glyph":"folder","isEnabled":true,"isProminent":false,"title":"Folder"},
+            {"command":{"openTerminal":{"_0":"ddev.project.shop"}},"glyph":"terminal","isEnabled":true,"isProminent":false,"title":"Terminal"}]}}
+            """;
+        TextBlock Label(FrameworkElement card, string text) =>
+            Descendants(card).OfType<TextBlock>().First(block => block.Text == text);
+
+        using var roomy = JsonDocument.Parse(Card("Start", "Restart"));
+        var english = Render(roomy.RootElement);
+        Equal(Visibility.Visible, Label(english, "Restart").Visibility);
+
+        using var crowded = JsonDocument.Parse(Card("Запустить Docker", "Перезапустить"));
+        var russian = Render(crowded.RootElement);
+        Equal(Visibility.Collapsed, Label(russian, "Перезапустить").Visibility);
+        var start = Label(russian, "Запустить Docker");
+        Equal(Visibility.Visible, start.Visibility);
+        start.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        True(start.ActualWidth >= start.DesiredSize.Width - 0.5);
     }
 
     private static void Near(double expected, double actual)

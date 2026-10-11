@@ -655,6 +655,7 @@ public static class WindowsCardRenderer
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
         var index = 0;
+        var labelled = new List<(Button Button, StackPanel Content, string Title, bool Prominent)>();
         foreach (var action in actions.EnumerateArray())
         {
             var prominent = JsonModel.Bool(action, "isProminent");
@@ -699,9 +700,59 @@ public static class WindowsCardRenderer
             }
             Grid.SetColumn(button, index);
             grid.Children.Add(button);
+            if (!iconOnly && content is StackPanel labelledContent)
+            {
+                labelled.Add((button, labelledContent, JsonModel.String(action, "title") ?? "", prominent));
+            }
             index++;
         }
+        GiveUpWholeLabels(labelled, index);
         return grid;
+    }
+
+    // A card's content is 318 DIP wide. When the labels do not fit, a secondary button gives up its
+    // whole label and keeps its icon and tooltip, rather than any button cutting a word.
+    private const double ContentWidth = 352 - 2 - 32;
+    private const double ButtonGap = 6;
+    private const double IconButtonWidth = 36;
+
+    private static void GiveUpWholeLabels(
+        List<(Button Button, StackPanel Content, string Title, bool Prominent)> labelled,
+        int buttonCount)
+    {
+        var iconOnlyCount = buttonCount - labelled.Count;
+        double Needed() =>
+            iconOnlyCount * IconButtonWidth
+            + labelled.Sum(item => item.Content.Children[1].Visibility == Visibility.Visible
+                ? LabelledWidth(item.Title)
+                : IconButtonWidth)
+            + ButtonGap * Math.Max(0, buttonCount - 1);
+        foreach (var item in labelled.Where(item => !item.Prominent))
+        {
+            if (Needed() <= ContentWidth)
+            {
+                return;
+            }
+            item.Content.Children[1].Visibility = Visibility.Collapsed;
+            ((FrameworkElement)item.Content.Children[0]).Margin = new Thickness(0);
+            item.Button.Width = IconButtonWidth;
+            item.Button.Padding = new Thickness(0);
+        }
+    }
+
+    // Border, the button's 10 px padding on each side, the 14 px icon, its 7 px gap and the label.
+    private static double LabelledWidth(string title)
+    {
+        WindowsTheme.EnsureLoaded();
+        var label = new FormattedText(
+            title,
+            CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight,
+            new Typeface(WindowsTheme.Sans, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal),
+            13,
+            Brushes.Black,
+            1.0);
+        return 2 + 20 + 14 + 7 + Math.Ceiling(label.WidthIncludingTrailingWhitespace);
     }
 
     private static FrameworkElement Collapsed(JsonElement model, Action<DeckCommand> command)
@@ -713,16 +764,19 @@ public static class WindowsCardRenderer
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+        // The mock's collapsed row: mark, dot and name, 8 px apart.
         if (JsonModel.String(model, "mark") is { } mark)
         {
-            row.Children.Add(Mark(mark));
+            var markView = Mark(mark);
+            markView.Margin = new Thickness(0, 2, 8, 2);
+            row.Children.Add(markView);
         }
         var status = StatusDot(JsonModel.String(model, "tone"), 9);
         Grid.SetColumn(status, 1);
         row.Children.Add(status);
         var title = Text(JsonModel.String(model, "title"), 14, WindowsTheme.Brush("TextPrimary"));
         title.FontWeight = FontWeights.SemiBold;
-        title.Margin = new Thickness(6, 0, 4, 0);
+        title.Margin = new Thickness(0, 0, 4, 0);
         Grid.SetColumn(title, 2);
         row.Children.Add(title);
         if (JsonModel.String(model, "note") is { } note)
