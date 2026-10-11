@@ -113,6 +113,8 @@ public sealed class CardWindow : Window
         }
         NativeMethods.ApplyCardWindowStyles(handle);
         HwndSource.FromHwnd(handle)?.AddHook(WindowProcedure);
+        // A model that arrived before the window had a handle was never measured; measure it now.
+        Dispatcher.BeginInvoke(ReportMeasurement, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArguments)

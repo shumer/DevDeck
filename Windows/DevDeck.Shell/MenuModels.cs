@@ -124,7 +124,7 @@ public sealed record DeckMenuAlternateModel(string Title, bool IsEnabled, DeckCo
     }
 }
 
-public record DeckMenuDialogModel(string Title, string Detail, string Confirm, string Cancel)
+public record DeckMenuDialogModel(string Title, string Detail, string Confirm, string Cancel, bool IsDestructive = false)
 {
     public static DeckMenuDialogModel Parse(JsonElement value)
     {
@@ -132,7 +132,8 @@ public record DeckMenuDialogModel(string Title, string Detail, string Confirm, s
             DeckEvent.RequiredString(value, "title"),
             DeckEvent.RequiredString(value, "detail"),
             DeckEvent.RequiredString(value, "confirm"),
-            DeckEvent.RequiredString(value, "cancel"));
+            DeckEvent.RequiredString(value, "cancel"),
+            JsonModel.Bool(value, "isDestructive"));
     }
 }
 

@@ -23,7 +23,10 @@ engine host, the process host and Swift runtime libraries. Test assemblies are e
 Replay reads protocol events from a golden transcript instead of starting the engine. It performs
 no network request and reads no token. It carries out every effect except `quit`: a replay exists
 to be looked at, so a `quit` in the transcript is noted on standard error and the windows stay
-until they are closed by hand.
+until they are closed by hand. With no engine to answer, a replay also sizes its own panels: a
+card takes the height the shell measured and the cards below it in its column move with it. The
+banner transcripts raise real Windows notifications, which appear as banners only while Windows'
+Do not disturb is off; with it on they go straight to the notification centre.
 
 ```powershell
 dotnet run --project Windows/DevDeck.Shell -r win-x64 -- --replay Tests/EngineTests/Golden/session-en.expected.jsonl

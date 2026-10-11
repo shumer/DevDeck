@@ -85,6 +85,21 @@ public sealed class MenuDialogs : IMenuDialogs
         buttons.Children.Add(cancel);
         var confirm = DialogButton(model.Confirm);
         confirm.Margin = new Thickness(8, 0, 0, 0);
+        confirm.IsDefault = true;
+        if (model.IsDestructive)
+        {
+            // Something is about to go away: the button carries the alert tone, as Stop does on a card.
+            confirm.Background = WindowsTheme.ToneFill("alert");
+            confirm.BorderBrush = WindowsTheme.Tone("alert");
+        }
+        else
+        {
+            var (fill, text) = WindowsTheme.AccentButton();
+            confirm.Background = fill;
+            confirm.BorderBrush = fill;
+            confirm.Foreground = text;
+        }
+        cancel.IsCancel = true;
         confirm.Click += (_, _) =>
         {
             result = true;

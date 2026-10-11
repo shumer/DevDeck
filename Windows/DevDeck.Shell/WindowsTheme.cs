@@ -48,6 +48,29 @@ public static class WindowsTheme
         };
     }
 
+    public static Brush ToneFill(string? tone)
+    {
+        var color = tone switch
+        {
+            "good" => Color.FromArgb(35, 112, 199, 153),
+            "attention" => Color.FromArgb(35, 240, 194, 107),
+            "alert" => Color.FromArgb(35, 232, 132, 132),
+            "personal" => Color.FromArgb(35, 169, 155, 224),
+            _ => Color.FromArgb(15, 255, 255, 255),
+        };
+        return new SolidColorBrush(color);
+    }
+
+    // A Windows 11 primary button on a dark surface: the system accent's light shade with dark text.
+    public static (Brush Fill, Brush Text) AccentButton()
+    {
+        var accent = new global::Windows.UI.ViewManagement.UISettings()
+            .GetColorValue(global::Windows.UI.ViewManagement.UIColorType.AccentLight2);
+        return (
+            new SolidColorBrush(Color.FromArgb(accent.A, accent.R, accent.G, accent.B)),
+            new SolidColorBrush(Color.FromArgb(230, 0, 0, 0)));
+    }
+
     public static Brush CardBackground(bool transparencyEnabled)
     {
         return new SolidColorBrush(

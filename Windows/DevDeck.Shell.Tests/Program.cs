@@ -67,12 +67,16 @@ public static class Program
         Run("all golden sessions parse and render", GoldenSessionsParseAndRender);
         Run("only one shell instance holds the user session", SingleInstanceExcludesDuplicates);
         Run("a replay ignores the quit effect", ReplayIgnoresQuit);
+        Run("a replay sizes its own panels from measurements", ReplaySizesItsPanels);
+        Run("a card updated before it is shown still reports its height", CardUpdatedBeforeShowReportsHeight);
         Run("the protocol trace records both directions without typed tokens", ProtocolTraceLeavesTokensOut);
         Run("a second launch raises the first deck", SecondLaunchSignalsFirst);
         Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
         Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);
         Run("the menu's input owner is never seen", MenuInputOwnerIsInvisible);
+        Run("menu titles share one line after the check column", MenuTitlesShareOneLine);
+        Run("dialog buttons carry the accent or the alert tone", DialogButtonsCarryTheirTone);
         Run("scroll bars and combo boxes follow the dark surface", ScrollBarsAndComboBoxesFitTheSurface);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
@@ -693,6 +697,20 @@ public static class Program
         window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         Equal(2, measurements.Count);
         True(measurements[1].Size[1] > measurements[0].Size[1]);
+        window.Close();
+    }
+
+    private static void CardUpdatedBeforeShowReportsHeight()
+    {
+        var measurements = new List<CardMeasurement>();
+        var window = new CardWindow("github.pullRequests", measurements.Add, _ => { }, _ => { }, () => { });
+        window.Update(GoldenModels("github.pullRequests").Last());
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(0, measurements.Count);
+        window.Show();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Equal(1, measurements.Count);
+        True(measurements[0].Size[1] > 44);
         window.Close();
     }
 
@@ -1804,9 +1822,43 @@ public static class Program
         True(errors.ToString().Contains("Replay ignored the quit effect.", StringComparison.Ordinal));
     }
 
+    private static void ReplaySizesItsPanels()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "devdeck-replay-" + Guid.NewGuid() + ".jsonl");
+        File.WriteAllText(path,
+            "{\"event\":\"panels.changed\",\"id\":\"1\",\"panels\":[" +
+            "{\"card\":\"a\",\"change\":\"open\",\"frame\":[10,20,352,182]}," +
+            "{\"card\":\"b\",\"change\":\"open\",\"frame\":[10,214,352,182]}," +
+            "{\"card\":\"c\",\"change\":\"open\",\"frame\":[400,20,352,182]}]," +
+            "\"protocolVersion\":2,\"revision\":1}\n");
+        try
+        {
+            var surface = new RecordingSurface();
+            var coordinator = new ShellCoordinator(Dispatcher.CurrentDispatcher, "unused", surface);
+            coordinator.StartReplayAsync(path).GetAwaiter().GetResult();
+            surface.Measure(new CardMeasurement("a", [352, 240]));
+            var placed = surface.Panels.Last().ToDictionary(change => change.Card, change => change.Frame);
+            Equal(240.0, placed["a"][3]);
+            Equal(272.0, placed["b"][1]);
+            True(!placed.ContainsKey("c"));
+
+            // A later transcript frame with the old height does not undo the measured one.
+            coordinator.StartReplayAsync(path).GetAwaiter().GetResult();
+            var again = surface.Panels.Last().ToDictionary(change => change.Card, change => change.Frame);
+            Equal(240.0, again["a"][3]);
+            Equal(272.0, again["b"][1]);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private sealed class RecordingSurface : IShellSurface
     {
         public int Quits { get; private set; }
+        public List<IReadOnlyList<PanelChange>> Panels { get; } = [];
+        public void Measure(CardMeasurement measurement) => CardMeasured?.Invoke(measurement);
 #pragma warning disable CS0067
         public event Action<CardMeasurement>? CardMeasured;
         public event Action<CardMove>? CardMoved;
@@ -1818,7 +1870,7 @@ public static class Program
 #pragma warning restore CS0067
         public void BeginSession() { }
         public void ApplyDeck(DeckPresentation presentation) { }
-        public void ApplyPanels(IReadOnlyList<PanelChange> panels) { }
+        public void ApplyPanels(IReadOnlyList<PanelChange> panels) => Panels.Add(panels);
         public void UpdateCard(string card, JsonElement model, JsonElement menu, JsonElement stopped) { }
         public void UpdateStatus(JsonElement status) { }
         public void UpdateMenu(JsonElement menu) { }
@@ -1923,6 +1975,33 @@ public static class Program
         var combo = new ComboBox { Style = WindowsTheme.Style("SettingsComboBox") };
         Equal(0.0, combo.Padding.Top);
         Equal(0.0, combo.Padding.Bottom);
+    }
+
+    private static void MenuTitlesShareOneLine()
+    {
+        var presenter = new MenuPresenter(_ => { });
+        presenter.Update(RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true));
+        var items = presenter.View.Items.OfType<MenuItem>().Where(item => item.Tag is DeckMenuItemModel).ToList();
+        True(items.Any(item => ((DeckMenuItemModel)item.Tag).IsIndented));
+        True(items.All(item => item.Padding.Left == 8));
+    }
+
+    private static void DialogButtonsCarryTheirTone()
+    {
+        Button Confirm(DeckMenuDialogModel model)
+        {
+            var window = MenuDialogs.Build(model, null, out _, out _);
+            var button = Descendants((FrameworkElement)window.Content).OfType<Button>().Single(b => Equals(b.Content, model.Confirm));
+            window.Close();
+            return button;
+        }
+        var destructive = Confirm(new DeckMenuDialogModel("Power off", "Every project stops.", "Power off", "Cancel", true));
+        True(destructive.IsDefault);
+        Equal(WindowsTheme.Tone("alert"), destructive.BorderBrush);
+        var primary = Confirm(new DeckMenuDialogModel("Save", "Saves the arrangement.", "Save", "Cancel"));
+        True(primary.IsDefault);
+        True(!Equals(primary.Background, WindowsTheme.Brush("ControlFill")));
+        True(!Equals(primary.Foreground, WindowsTheme.Brush("TextPrimary")));
     }
 
     private static void MenuInputOwnerIsInvisible()

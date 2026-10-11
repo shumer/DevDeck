@@ -695,7 +695,7 @@ public static class WindowsCardRenderer
             }
             if (prominent)
             {
-                button.Background = ToneFill(JsonModel.String(action, "tone"));
+                button.Background = WindowsTheme.ToneFill(JsonModel.String(action, "tone"));
                 button.BorderBrush = WindowsTheme.Tone(JsonModel.String(action, "tone"));
             }
             Grid.SetColumn(button, index);
@@ -1111,18 +1111,6 @@ public static class WindowsCardRenderer
         return DeckEvent.TryProperty(model, name, out var number) && number.TryGetDouble(out var value) ? value : 1;
     }
 
-    private static Brush ToneFill(string? tone)
-    {
-        var color = tone switch
-        {
-            "good" => Color.FromArgb(35, 112, 199, 153),
-            "attention" => Color.FromArgb(35, 240, 194, 107),
-            "alert" => Color.FromArgb(35, 232, 132, 132),
-            "personal" => Color.FromArgb(35, 169, 155, 224),
-            _ => Color.FromArgb(15, 255, 255, 255),
-        };
-        return ColorBrush(color);
-    }
 
     private static SolidColorBrush ColorBrush(Color color)
     {
