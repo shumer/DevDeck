@@ -126,20 +126,30 @@ public sealed class MenuPresenter
     public void Open()
     {
         // Nonactivating panels and the tray need a foreground popup owner.
-        inputOwner ??= new Window
-        {
-            Width = 1,
-            Height = 1,
-            Opacity = 0,
-            ShowInTaskbar = false,
-            WindowStyle = WindowStyle.ToolWindow,
-            ResizeMode = ResizeMode.NoResize,
-        };
+        inputOwner ??= CreateInputOwner();
         inputOwner.Show();
         inputOwner.Activate();
         SetForegroundWindow(new WindowInteropHelper(inputOwner).Handle);
         menu.PlacementTarget = inputOwner;
+        menu.MaxHeight = SystemParameters.WorkArea.Height;
         menu.IsOpen = true;
+    }
+
+    // Opacity hides a WPF window only when it allows transparency; without it the owner showed as
+    // a small captioned window in the corner of the screen while a menu was open.
+    public static Window CreateInputOwner()
+    {
+        return new Window
+        {
+            Width = 1,
+            Height = 1,
+            WindowStyle = WindowStyle.None,
+            AllowsTransparency = true,
+            Background = Brushes.Transparent,
+            Opacity = 0,
+            ShowInTaskbar = false,
+            ResizeMode = ResizeMode.NoResize,
+        };
     }
 
     public void Close()

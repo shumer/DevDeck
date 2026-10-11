@@ -136,7 +136,15 @@
               BorderThickness="{TemplateBinding BorderThickness}"
               CornerRadius="6"
               Padding="{TemplateBinding Padding}">
-            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+            <!-- A menu taller than the screen scrolls by wheel and keyboard rather than running off
+                 its bottom; the bar stays hidden like the scroll of a Windows menu. -->
+            <ScrollViewer
+                x:Name="MenuScroll"
+                VerticalScrollBarVisibility="Hidden"
+                HorizontalScrollBarVisibility="Disabled"
+                CanContentScroll="False">
+              <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+            </ScrollViewer>
           </Border>
         </ControlTemplate>
       </Setter.Value>

@@ -72,6 +72,7 @@ public static class Program
         Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
         Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);
+        Run("the menu's input owner is never seen", MenuInputOwnerIsInvisible);
         Run("menu refresh preserves the open popup and capture", MenuRefreshPreservesOpenPopup);
         Run("commands return without changing their bytes", CommandsKeepTheirBytes);
         Run("panel frames are applied as received", PanelFramesAreAppliedAsReceived);
@@ -1907,12 +1908,25 @@ public static class Program
         Equal(1, exits);
     }
 
+    private static void MenuInputOwnerIsInvisible()
+    {
+        var owner = MenuPresenter.CreateInputOwner();
+        True(owner.AllowsTransparency);
+        Equal(WindowStyle.None, owner.WindowStyle);
+        Equal(0.0, owner.Opacity);
+        True(!owner.ShowInTaskbar);
+        owner.Close();
+    }
+
     private static void MenusDismissOutsideApplication()
     {
         var presenter = new MenuPresenter(_ => { });
         presenter.Update(RuntimeMenuValue("runtime-menu-en.expected.jsonl", "menu", last: true));
         presenter.Open();
         True(!presenter.View.StaysOpen);
+        // A menu taller than the screen scrolls instead of running off its bottom.
+        Equal(SystemParameters.WorkArea.Height, presenter.View.MaxHeight);
+        True(Descendants(presenter.View).OfType<ScrollViewer>().Any());
         var source = (System.Windows.Interop.HwndSource)PresentationSource.FromVisual(presenter.View);
         SendMenuMessage(source.Handle, 0x001C, 0, 0);
         PumpMenuDispatcher();
