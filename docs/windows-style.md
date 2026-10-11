@@ -145,14 +145,22 @@ control is the size the layout gives it and stands on the edge.
 
 **Expander and footer.** Centred `Show N more` with a chevron, then the footer line.
 
-**Project hero.** 8 px dot in the state's tone, centred on the cap height of the state text rather than on its line box, state text, and on the right the aside the engine
-sends (pid, container count) in mono.
+**Project hero.** 8 px dot in the state's tone, centred on the cap height of the state text rather than on its line box, state text, and on the right the note the engine
+sends (pid, container count, why a start failed) in mono secondary. The row is one line of one
+height in every state: the state keeps its width, and the note takes what is left and ends in an
+ellipsis, with the whole note in its tooltip. It never wraps or moves to a line of its own.
 
 **Branch row.** Branch icon 13, branch name in mono info, and an open icon 11 in tertiary when
 the engine marks the branch as a link.
 
-**Meta row.** Leading text in secondary, trailing command summary in mono tertiary, truncated in
-the middle.
+**Meta row.** Leading text in secondary, truncated at the end, and the trailing command summary or
+version in mono tertiary, truncated in the middle. The row is one line of one height and is kept
+even when both sides are empty, so a command's progress line or a version that comes and goes does
+not move the card.
+
+**Card height.** A project card's height follows only its chips, which wrap, and whether it has a
+branch. Stopped, starting, running and failed are the same height, so a column does not shift when
+a stack starts or stops.
 
 **Chips.** Link chips with an optional 12 px icon; a disabled chip has no fill and tertiary text.
 The **place chip** says where the project runs (`WSL · Ubuntu-24.04`, `Windows`), with a dashed
