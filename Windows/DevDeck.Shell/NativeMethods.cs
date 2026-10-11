@@ -63,7 +63,9 @@ public static class NativeMethods
     }
 
     // A dark or light frame, title bar and Acrylic; a frame change makes an open window redraw it.
-    public static void SetDarkMode(nint handle, bool dark)
+    // A card's frame is extended over its client area, and a frame change there makes DWM rebuild
+    // the client's transparency, which lost dark text on a light card; cards only need the backdrop.
+    public static void SetDarkMode(nint handle, bool dark, bool redrawFrame = true)
     {
         if (handle == 0)
         {
@@ -71,7 +73,10 @@ public static class NativeMethods
         }
         var value = dark ? 1 : 0;
         _ = DwmSetWindowAttribute(handle, ImmersiveDarkMode, ref value, Marshal.SizeOf<int>());
-        _ = SetWindowPos(handle, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
+        if (redrawFrame)
+        {
+            _ = SetWindowPos(handle, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
+        }
     }
 
     public static void ApplyLogWindowStyles(nint handle)

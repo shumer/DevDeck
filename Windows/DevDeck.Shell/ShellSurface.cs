@@ -227,11 +227,12 @@ public sealed class ShellSurface : IShellSurface
     {
         foreach (var (card, window) in windows)
         {
-            NativeMethods.SetDarkMode(window.Handle, !palette.IsLight);
+            NativeMethods.SetDarkMode(window.Handle, !palette.IsLight, redrawFrame: false);
             if (cards.TryGetValue(card, out var state))
             {
                 window.Update(state.Model);
             }
+            window.InvalidateVisual();
         }
         foreach (Window window in Application.Current.Windows)
         {
