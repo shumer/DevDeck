@@ -21,6 +21,13 @@ The shell requires .NET 10 Desktop Runtime, supplied separately by Microsoft.
 
 ## Install
 
+GitHub releases include `DevDeck-Setup-<version>-<build>.exe` and a matching `.exe.sha256`
+file. The build number is the tagged commit count, shared with the Mac archive. The release
+workflow tests both platforms before publishing the Windows installer. A manual run with
+`attach=false` keeps its packages as Actions artifacts and leaves the release files and notes alone.
+It builds the dispatched branch commit so an older tag can label the check without supplying old
+source. Published releases and manual runs with `attach=true` build the tag itself.
+
 Install Inno Setup 6 with `winget install JRSoftware.InnoSetup`, then build:
 
 ```powershell

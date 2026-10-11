@@ -17,6 +17,10 @@ on:
       tag:
         description: Existing release tag to attach the build to
         required: true
+      attach:
+        description: Attach files and installation notes to the release
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -35,10 +39,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The tag's commit, on a manual run as well as on a publish. A dispatch would
-          # otherwise build whatever main is at, and attach to an old tag a build that the tag
-          # does not name.
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          # Publishing uses the tag. A dry run tests the dispatched commit without changing that release.
+          ref: ${{ github.event_name == 'workflow_dispatch' && !inputs.attach && github.sha || github.event.release.tag_name || inputs.tag }}
           # build.sh takes the build number from the commit count, so a shallow clone would
           # produce a build number of one.
           fetch-depth: 0
@@ -134,6 +136,7 @@ jobs:
           shasum -a 256 "$NAME"
 
       - name: Attach to the release
+        if: github.event_name != 'workflow_dispatch' || inputs.attach
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$TAG" "${{ steps.package.outputs.name }}" --clobber
@@ -143,6 +146,7 @@ jobs:
       # away from being wrong, and wrong here means somebody's download will not open and they
       # will not know why.
       - name: Say how to install it
+        if: github.event_name != 'workflow_dispatch' || inputs.attach
         env:
           GH_TOKEN: ${{ github.token }}
           ASSET: ${{ steps.package.outputs.name }}
@@ -193,3 +197,113 @@ jobs:
           } >> notes.md
 
           gh release edit "$TAG" --notes-file notes.md
+
+      - name: Keep the Mac package for a dry run
+        if: github.event_name == 'workflow_dispatch' && !inputs.attach
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-app
+          path: ${{ steps.package.outputs.name }}
+          if-no-files-found: error
+
+  windows-installer:
+    needs: build
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Match the Mac source commit so the two packages share their build number.
+          ref: ${{ github.event_name == 'workflow_dispatch' && !inputs.attach && github.sha || github.event.release.tag_name || inputs.tag }}
+          fetch-depth: 0
+      - name: Install Swift
+        uses: compnerd/gha-setup-swift@bbae8ce86bac5a3449f3992b3d88bc4ca25f2057 # main.
+        with:
+          swift-version: swift-6.4.0-release
+          swift-build: 6.4.0-RELEASE
+          cache: true
+      - name: Swift version
+        run: swift --version
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+      - name: Build without project warnings
+        shell: pwsh
+        run: |
+          # SwiftPM 6.4 can race while touching resource bundles on Windows, so serialize build jobs.
+          swift build --jobs 1 2>&1 | Tee-Object -FilePath build.log
+          $BuildExit = $LASTEXITCODE
+          if ($BuildExit -ne 0) { exit $BuildExit }
+
+          # Swift 6.4 emits swiftlang/swift#91000 from WinSDK. Remove this exception when the pinned toolchain includes the fix.
+          $AllowedWarning = "warning: reference to type 'wchar_t' broken by a context change; 'wchar_t' was expected to be in '_Builtin_stddef', but now a candidate is found only in 'SwiftShims'"
+          $UnexpectedWarnings = Select-String -Path build.log -SimpleMatch "warning:" |
+            Where-Object { -not $_.Line.Contains($AllowedWarning) }
+          if ($UnexpectedWarnings) {
+            $UnexpectedWarnings | ForEach-Object { Write-Host "::error::$($_.Line)" }
+            exit 1
+          }
+      - name: Windows core tests
+        run: swift run DevDeckWindowsCoreTests
+      - name: Engine tests
+        run: swift run DevDeckEngineTests
+      - name: Build Windows shell
+        run: dotnet build Windows/DevDeck.Windows.slnx --configuration Release -warnaserror
+      - name: Windows shell tests
+        run: dotnet run --project Windows/DevDeck.Shell.Tests --configuration Release --no-build
+      - name: Build the installer
+        run: pwsh -NoProfile -File Tools/Build-WindowsInstaller.ps1
+      - name: Name and hash the installer
+        id: package
+        shell: pwsh
+        run: |
+          $Version = (Get-Content VERSION -Raw).Trim()
+          $Build = git rev-list --count HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $Name = "DevDeck-Setup-$Version-$Build.exe"
+          Move-Item -LiteralPath "dist/DevDeck-Setup-$Version.exe" -Destination "dist/$Name"
+          $Hash = (Get-FileHash -LiteralPath "dist/$Name" -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path (Get-Location) "dist/$Name.sha256"), "$Hash  $Name`n", [Text.UTF8Encoding]::new($false))
+          "name=$Name" >> $env:GITHUB_OUTPUT
+      - name: Attach to the release
+        if: github.event_name != 'workflow_dispatch' || inputs.attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSET: ${{ steps.package.outputs.name }}
+        run: gh release upload "$env:TAG" "dist/$env:ASSET" "dist/$env:ASSET.sha256" --clobber
+      - name: Say how to install Windows
+        if: github.event_name != 'workflow_dispatch' || inputs.attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSET: ${{ steps.package.outputs.name }}
+        shell: pwsh
+        run: |
+          $Body = gh release view "$env:TAG" --json body -q .body
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Replace only the Windows paragraph after the Mac job has written its installation notes.
+          $Notes = (($Body -join "`n") -split '<!-- devdeck-windows-install -->', 2)[0].TrimEnd()
+          $Windows = @(
+            '<!-- devdeck-windows-install -->'
+            ''
+            '## Windows'
+            ''
+            "Download ``$env:ASSET`` and open it on Windows 11 22H2 or newer. DevDeck installs for your user without administrator rights. If .NET 10 Desktop Runtime is missing, setup downloads it from Microsoft and asks for UAC approval once for the runtime. The beta is unsigned, so SmartScreen shows a warning. Choose **More info**, then **Run anyway**."
+          ) -join "`n"
+          [IO.File]::WriteAllText((Join-Path (Get-Location) 'notes.md'), "$Notes`n`n$Windows`n", [Text.UTF8Encoding]::new($false))
+          gh release edit "$env:TAG" --notes-file notes.md
+      - name: Keep the Windows installer for a dry run
+        if: github.event_name == 'workflow_dispatch' && !inputs.attach
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            dist/${{ steps.package.outputs.name }}
+            dist/${{ steps.package.outputs.name }}.sha256
+          if-no-files-found: error

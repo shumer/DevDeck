@@ -786,6 +786,8 @@ Signing) and `CODESIGN_IDENTITY="its name" ./build.sh` binds your own tokens the
 
 ## Releases
 
+Each release also carries the Windows installer `DevDeck-Setup-<version>-<build>.exe` and its SHA256 file.
+
 Publishing a release on GitHub builds the app and attaches it: `.github/workflows/release.yml`
 runs the suite, builds the bundle and uploads `DevDeck-<version>-<build>.zip` to the tag, so the
 tag and the download cannot disagree about what is in it. Nothing is built on an ordinary push,

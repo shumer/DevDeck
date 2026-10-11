@@ -9,9 +9,11 @@ if (-not $output.StartsWith($repository + [System.IO.Path]::DirectorySeparatorCh
     throw "Output directory must stay inside the repository."
 }
 
-$env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" `
+$env:Path = $env:Path + ";" + [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" `
     + [Environment]::GetEnvironmentVariable("Path", "User")
 foreach ($name in @("SDKROOT", "SWIFT_DEVELOPER_DIR")) {
+    # Hosted setup actions provide the toolchain through the process environment.
+    if ([Environment]::GetEnvironmentVariable($name, "Process")) { continue }
     $value = [Environment]::GetEnvironmentVariable($name, "Machine")
     if (-not $value) {
         $value = [Environment]::GetEnvironmentVariable($name, "User")
@@ -20,9 +22,21 @@ foreach ($name in @("SDKROOT", "SWIFT_DEVELOPER_DIR")) {
         [Environment]::SetEnvironmentVariable($name, $value, "Process")
     }
 }
-$visualStudio = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
-if (-not (Test-Path -LiteralPath $visualStudio)) {
-    $visualStudio = "C:\Program Files\Microsoft Visual Studio\2022\BuildTools"
+$visualStudio = $null
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+if (Test-Path -LiteralPath $vswhere) {
+    $visualStudio = & $vswhere -latest -products '*' `
+        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    if ($LASTEXITCODE -ne 0) { $visualStudio = $null }
+}
+if (-not $visualStudio) {
+    $visualStudio = @(
+        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
+        "C:\Program Files\Microsoft Visual Studio\2022\BuildTools"
+    ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+}
+if (-not $visualStudio) {
+    throw "Visual Studio with C++ build tools is not installed."
 }
 Import-Module (Join-Path $visualStudio "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
 Enter-VsDevShell `
