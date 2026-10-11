@@ -342,10 +342,18 @@ public struct LocalStackService: Sendable {
     /// A prefix rather than an equality, because the directory is the checkout for some stacks
     /// and a folder inside it for others, and both are this project's containers.
     public static func containers(in output: String, folder: URL) -> [(name: String, image: String)] {
-        let root = folder.standardizedFileURL.path
+        let root = composeFolder(folder)
         return rows(in: output)
             .filter { $0.directory == root || $0.directory.hasPrefix(root + "/") }
             .map { (name: $0.name, image: $0.image) }
+    }
+
+    private static func composeFolder(_ folder: URL) -> String {
+        #if os(Windows)
+        // The WSL daemon reports Linux labels even when the deck stores a UNC folder.
+        if case .wsl(_, let path)? = ProjectLocation(folder: folder.path) { return path }
+        #endif
+        return folder.standardizedFileURL.path
     }
 
     /// One row of `docker ps`: what it is called, what it runs, whose compose file started it
@@ -380,7 +388,7 @@ public struct LocalStackService: Sendable {
     /// The answer is the other checkout's folder name, or the container's own name when nothing
     /// says which checkout it came from.
     public static func stackHolding(port: Int, in output: String, folder: URL) -> (name: String, directory: String)? {
-        let root = folder.standardizedFileURL.path
+        let root = composeFolder(folder)
         let published = ":\(port)->"
         for row in rows(in: output) where row.ports.contains(published) {
             if row.directory == root || row.directory.hasPrefix(root + "/") { return nil }

@@ -297,6 +297,22 @@ func runSessionGoldenTests(_ run: TestRun) async {
         try expectEqual(candidates.first { $0.name == "inside" }?.approot, inside.folder)
     }
 
+    #if os(Windows)
+    await run.test("an Arc WSL folder matches its Linux compose labels") {
+        let folder = URL(fileURLWithPath: #"\\wsl.localhost\Ubuntu-24.04\srv\paper"#)
+        let rows = "fusion-engine\tengine:1\t/srv/paper/.fusion\t0.0.0.0:43120->8080/tcp\n"
+        try expectEqual(LocalStackService.containers(in: rows, folder: folder).count, 1)
+        try expectNil(LocalStackService.stackHolding(port: 43120, in: rows, folder: folder))
+    }
+
+    await run.test("native DDEV candidates do not hand out inaccessible Linux folders") {
+        let native = StubCommandRunner([("ddev list", CommandResult(exitCode: 0, standardOutput: #"{"raw":[{"name":"inside","approot":"/srv/inside","status":"unknown"}]}"#, standardError: ""))])
+        let (runtime, _) = goldenRuntime(commandRunner: native)
+        runtime.stop()
+        try expectEqual(await runtime.ddevCandidates(), .none)
+    }
+    #endif
+
     await run.test("a working WSL DDEV does not hide a missing native DDEV") {
         let native = StubCommandRunner([("ddev list", CommandResult(exitCode: 1, standardOutput: "", standardError: "not found"))])
         let wsl = StubCommandRunner([("ddev list", CommandResult(exitCode: 0, standardOutput: #"{"raw":[{"name":"outside","approot":"/srv/outside","status":"running"}]}"#, standardError: ""))])

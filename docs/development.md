@@ -158,6 +158,10 @@ DDEV status is read from the project's own place. Candidates combine the native 
 lists, prefer a reachable record over an inaccessible duplicate, and spell WSL folders
 as UNC paths. A successful WSL query does not hide a missing native DDEV executable.
 
+On Windows, Arc matches Linux compose working-directory labels against the Linux path
+inside a WSL UNC folder. Native DDEV candidates exclude Linux folders the native client
+cannot reach. These path checks do not change POSIX folder handling on the Mac.
+
 Mac changes are checked on the Mac and Windows changes on Windows: a branch that touches both is
 merged when both are green.
 

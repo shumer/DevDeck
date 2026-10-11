@@ -702,6 +702,10 @@ public final class DeckRuntime {
         var merged: [DDEVListEntry] = []
         for list in lists {
             for entry in list.entries ?? [] {
+                #if os(Windows)
+                // Native DDEV can list Linux folders from a shared daemon, but cannot use them.
+                if list.distribution == nil, case .posix? = ProjectLocation(folder: entry.approot) { continue }
+                #endif
                 let reached = list.distribution.map { entry.reached(through: $0) } ?? entry
                 if let index = merged.firstIndex(where: { $0.name == entry.name }) {
                     if merged[index].state == .unknown, reached.state != .unknown {
