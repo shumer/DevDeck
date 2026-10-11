@@ -38,12 +38,14 @@ public sealed class ShellCoordinator : IAsyncDisposable
     private Task? hostLoop;
     private long nextId;
     private bool beganSession;
+    private readonly AsyncShutdown shutdown;
 
     public ShellCoordinator(Dispatcher dispatcher, string enginePath, IShellSurface surface)
     {
         this.dispatcher = dispatcher;
         this.enginePath = enginePath;
         this.surface = surface;
+        shutdown = new AsyncShutdown(() => DisposeAsync().AsTask(), surface.Quit);
         displayWatcher = new DisplayWatcher(dispatcher, () => DisplayProvider.Current());
         displayWatcher.Changed += OnDisplaysChanged;
         surface.CardMeasured += OnCardMeasured;
@@ -89,7 +91,15 @@ public sealed class ShellCoordinator : IAsyncDisposable
         var current = CurrentEngine();
         if (current is not null)
         {
-            await current.SendAsync(ProtocolWriter.SessionStop(NextId()));
+            try
+            {
+                await current.SendAsync(ProtocolWriter.SessionStop(NextId()))
+                    .WaitAsync(TimeSpan.FromSeconds(3));
+            }
+            catch (TimeoutException)
+            {
+                Console.Error.WriteLine("Engine shutdown request timed out.");
+            }
         }
         cancellation.Cancel();
         if (hostLoop is not null)
@@ -158,6 +168,10 @@ public sealed class ShellCoordinator : IAsyncDisposable
 
     private void Apply(DeckEvent message)
     {
+        if (cancellation.IsCancellationRequested)
+        {
+            return;
+        }
         if (!protocol.Accept(message))
         {
             return;
@@ -243,7 +257,7 @@ public sealed class ShellCoordinator : IAsyncDisposable
                 surface.OpenMenu();
                 break;
             case "quit":
-                surface.Quit();
+                _ = shutdown.Request();
                 break;
             case "openSettings":
                 surface.OpenSettings(effect);

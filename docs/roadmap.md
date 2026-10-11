@@ -2,6 +2,9 @@
 
 ## Done
 
+- Windows shell lifecycle fixes: one interactive instance per user, asynchronous Quit,
+  and dismissible tray and card menus with deferred menu refreshes.
+
 - **Foundation** - configuration, card catalog and layout, HTTP transport with conditional
   requests, rate-limit parsing, retry and refresh policies, Keychain token storage.
 - **GitHub · my pull requests** - one GraphQL query, health derivation, the card, the panel,

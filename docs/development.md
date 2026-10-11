@@ -174,6 +174,11 @@ A Windows DDEV card distinguishes an unavailable CLI from a project missing from
 successful list. The engine supplies the unavailable wording and disables Start in that
 case; the shell does not translate an unknown state into its own message.
 
+Windows shell lifecycle regressions are covered by the separate shell test executable.
+They check duplicate instance exclusion, the raise signal a second launch sends, separate
+replay instances, dispatcher progress during Quit, popup dismissal on native application
+deactivation and deferred refresh of an open menu.
+
 Mac changes are checked on the Mac and Windows changes on Windows: a branch that touches both is
 merged when both are green.
 

@@ -63,6 +63,7 @@ public sealed class TrayController : IDisposable
 
     public void Dispose()
     {
+        menu.Close();
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         tray.MouseUp -= OnMouseUp;
         tray.Visible = false;

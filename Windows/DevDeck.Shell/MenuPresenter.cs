@@ -6,6 +6,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Text.Json;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
 
 namespace DevDeck.Shell;
 
@@ -58,6 +60,7 @@ public sealed class MenuPresenter
     private readonly MenuActionRunner actions;
     private IReadOnlyList<DeckMenuEntryModel> entries = [];
     private bool alternateIsDown;
+    private Window? inputOwner;
 
     public MenuPresenter(Action<DeckCommand> command, IMenuDialogs? dialogs = null)
     {
@@ -67,6 +70,27 @@ public sealed class MenuPresenter
         menu.Placement = PlacementMode.MousePoint;
         menu.FontFamily = WindowsTheme.Sans;
         menu.FontSize = 13;
+        menu.StaysOpen = false;
+        menu.Opened += (_, _) =>
+        {
+            // A tray or nonactivating card has no foreground owner for its popup.
+            if (PresentationSource.FromVisual(menu) is HwndSource source)
+            {
+                source.RemoveHook(OnPopupMessage);
+                source.AddHook(OnPopupMessage);
+            }
+        };
+        menu.Closed += (_, _) =>
+        {
+            menu.Dispatcher.BeginInvoke(() =>
+            {
+                if (!menu.IsOpen)
+                {
+                    inputOwner?.Hide();
+                }
+            }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+            Populate(menu.Items, entries);
+        };
         menu.Opened += (_, _) => SetAlternate(Keyboard.Modifiers.HasFlag(ModifierKeys.Alt));
         menu.PreviewKeyDown += (_, eventArguments) =>
         {
@@ -92,17 +116,37 @@ public sealed class MenuPresenter
     public void Update(IReadOnlyList<DeckMenuEntryModel> newEntries)
     {
         entries = newEntries;
-        var wasOpen = menu.IsOpen;
-        Populate(menu.Items, entries);
-        if (wasOpen)
+        // Keep the popup and its input capture intact while the engine refreshes.
+        if (!menu.IsOpen)
         {
-            menu.UpdateLayout();
+            Populate(menu.Items, entries);
         }
     }
 
     public void Open()
     {
+        // Nonactivating panels and the tray need a foreground popup owner.
+        inputOwner ??= new Window
+        {
+            Width = 1,
+            Height = 1,
+            Opacity = 0,
+            ShowInTaskbar = false,
+            WindowStyle = WindowStyle.ToolWindow,
+            ResizeMode = ResizeMode.NoResize,
+        };
+        inputOwner.Show();
+        inputOwner.Activate();
+        SetForegroundWindow(new WindowInteropHelper(inputOwner).Handle);
+        menu.PlacementTarget = inputOwner;
         menu.IsOpen = true;
+    }
+
+    public void Close()
+    {
+        menu.IsOpen = false;
+        inputOwner?.Close();
+        inputOwner = null;
     }
 
     private void Populate(ItemCollection target, IReadOnlyList<DeckMenuEntryModel> source)
@@ -168,8 +212,27 @@ public sealed class MenuPresenter
             Style = WindowsTheme.Style("DeckMenuItem"),
         };
         AutomationProperties.SetName(item, model.Title);
-        item.Click += (_, _) => actions.Invoke(model, alternateIsDown);
+        item.Click += (_, _) =>
+        {
+            var useAlternate = alternateIsDown;
+            menu.IsOpen = false;
+            actions.Invoke(model, useAlternate);
+        };
         return item;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(nint window);
+
+    private nint OnPopupMessage(nint window, int message, nint parameter, nint data, ref bool handled)
+    {
+        // Windows reports a click into another application to the popup itself.
+        if (message == 0x001C && parameter == 0)
+        {
+            // Finish native input processing before WPF releases popup capture.
+            menu.Dispatcher.BeginInvoke(() => menu.IsOpen = false);
+        }
+        return 0;
     }
 
     private static Grid ItemContent(DeckMenuItemModel model, bool alternate)
