@@ -277,7 +277,7 @@ func runSessionGoldenTests(_ run: TestRun) async {
             if case .wsl? = ProjectLocation(folder: folder) { return wsl }
             return native
         })
-        let inside = DDEVProject(id: "inside", name: "inside", folder: #"\\wsl.localhost\Ubuntu-24.04\srv\inside"#)
+        let inside = DDEVProject(id: "inside", name: "renamed", folder: #"\\wsl.localhost\Ubuntu-24.04\srv\inside"#)
         let outside = DDEVProject(id: "outside", name: "inside", folder: #"C:\demo\outside"#)
         runtime.saveDDEVProject(inside)
         runtime.saveDDEVProject(outside)
@@ -287,6 +287,7 @@ func runSessionGoldenTests(_ run: TestRun) async {
         runtime.stop()
         await runtime.refreshLocalOnce()
         try expectEqual(runtime.ddevStatus(for: inside).state, .running)
+        try expectEqual(runtime.ddevStatus(for: inside).entry?.approot, inside.folder)
         try expectEqual(runtime.ddevStatus(for: outside).state, .unknown)
         runtime.removeDDEVProject(inside.id)
         runtime.removeDDEVProject(outside.id)

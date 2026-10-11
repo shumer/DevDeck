@@ -508,7 +508,9 @@ public final class DeckRuntime {
             // without reporting must not freeze the card for the rest of the session.
             if !finished.contains(project.id), isBusyAndFresh(project.id) { continue }
             let place = ddevDistribution(for: project)
-            let entries = lists.first { $0.distribution == place }?.entries
+            let entries = lists.first { $0.distribution == place }?.entries?.map { entry in
+                place.map { entry.reached(through: $0) } ?? entry
+            }
             let probed = ddevEnvironment(for: project).status(for: project, entries: entries)
             // `ddev list` answers slowly while a project is starting and occasionally not at
             // all, and the card would say "not in ddev list" about a project that is running.

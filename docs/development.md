@@ -163,7 +163,8 @@ Compare the Windows and WSL outputs against the same daemon.
 
 DDEV status is read from the project's own place. Candidates combine the native and WSL
 lists, prefer a reachable record over an inaccessible duplicate, and spell WSL folders
-as UNC paths. A successful WSL query does not hide a missing native DDEV executable.
+as UNC paths. Status records use that same spelling so a renamed project still matches
+by folder. A successful WSL query does not hide a missing native DDEV executable.
 
 On Windows, Arc matches Linux compose working-directory labels against the Linux path
 inside a WSL UNC folder. Native DDEV candidates exclude Linux folders the native client
