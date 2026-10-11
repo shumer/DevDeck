@@ -134,9 +134,12 @@ Every task ends with screenshots on neutral data and a check against the shell r
 ## Phase 4 - delivery
 
 - **W-14.** Delivery size: framework-dependent .NET, a trimmed single file, or a smaller Swift
-  runtime, chosen from measurements.
-- **W-15.** Installer.
-- **W-16.** Code signing.
+  runtime, chosen from measurements. Measured, see docs/windows-delivery-size.md; decided
+  framework-dependent, [0035](adr/0035-windows-delivery.md).
+- **W-15.** Installer: Inno Setup, per-user, installs .NET 10 Desktop Runtime when missing,
+  [0035](adr/0035-windows-delivery.md).
+- **W-16.** Code signing. Deferred past the beta: the beta ships unsigned,
+  [0035](adr/0035-windows-delivery.md).
 - **W-17.** Updates on Windows: download, verify the signature, install, restart.
 - **W-18.** Release builds in CI next to the Mac release: one tag, two archives.
 - **W-19.** ARM64.
