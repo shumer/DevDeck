@@ -215,7 +215,7 @@ public static class WindowsCardRenderer
             var heroRow = new DockPanel { Margin = new Thickness(0, 2, 0, 4) };
             var heroText = Text(JsonModel.String(hero, "text"), 22, WindowsTheme.Tone(JsonModel.String(hero, "tone")));
             heroText.FontWeight = FontWeights.SemiBold;
-            var heroDot = StatusDot(JsonModel.String(hero, "tone"), 9);
+            var heroDot = StatusDot(JsonModel.String(hero, "tone"), 8, 22, FontWeights.SemiBold);
             heroDot.Margin = new Thickness(0, 0, 9, 0);
             heroRow.Children.Add(heroDot);
             heroRow.Children.Add(heroText);
@@ -392,7 +392,7 @@ public static class WindowsCardRenderer
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7));
+        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7, 13, FontWeights.Normal));
         var key = JsonModel.String(model, "key");
         if (key is not null)
         {
@@ -480,7 +480,7 @@ public static class WindowsCardRenderer
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7));
+        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7, 13, FontWeights.Normal));
         var title = Text(JsonModel.String(model, "title"), 13, WindowsTheme.Brush("TextPrimary"));
         title.Margin = new Thickness(0, 0, 8, 0);
         Grid.SetColumn(title, 1);
@@ -498,7 +498,7 @@ public static class WindowsCardRenderer
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7));
+        row.Children.Add(StatusDot(JsonModel.String(model, "tone"), 7, 12, FontWeights.Normal));
         var title = Text(JsonModel.String(model, "title"), 12, WindowsTheme.Brush("TextPrimary"));
         title.Margin = new Thickness(0, 0, 8, 0);
         Grid.SetColumn(title, 1);
@@ -771,7 +771,7 @@ public static class WindowsCardRenderer
             markView.Margin = new Thickness(0, 2, 8, 2);
             row.Children.Add(markView);
         }
-        var status = StatusDot(JsonModel.String(model, "tone"), 9);
+        var status = StatusDot(JsonModel.String(model, "tone"), 7, 14, FontWeights.SemiBold);
         Grid.SetColumn(status, 1);
         row.Children.Add(status);
         var title = Text(JsonModel.String(model, "title"), 14, WindowsTheme.Brush("TextPrimary"));
@@ -826,7 +826,10 @@ public static class WindowsCardRenderer
         return mark;
     }
 
-    private static Border StatusDot(string? tone, double size)
+    // A state dot centred on the middle of the capital letters of the text beside it. Both are
+    // centred in their row, so the dot moves by the distance between the line box's middle and the
+    // capitals' middle; the shift leaves the layout alone.
+    private static Border StatusDot(string? tone, double size, double textSize, FontWeight textWeight)
     {
         return new Border
         {
@@ -836,7 +839,24 @@ public static class WindowsCardRenderer
             Background = WindowsTheme.Tone(tone),
             Margin = new Thickness(0, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center,
+            RenderTransform = new TranslateTransform(0, DotShift(textSize, textWeight)),
         };
+    }
+
+    public static double DotShift(double textSize, FontWeight textWeight)
+    {
+        WindowsTheme.EnsureLoaded();
+        var typeface = new Typeface(WindowsTheme.Sans, FontStyles.Normal, textWeight, FontStretches.Normal);
+        var line = new FormattedText(
+            "H",
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            textSize,
+            Brushes.Black,
+            1.0);
+        var capitalsMiddle = line.Baseline - typeface.CapsHeight * textSize / 2;
+        return Math.Round(capitalsMiddle - line.Height / 2, 2);
     }
 
     private static Button IconButton(string glyph, string? help, string automationId)

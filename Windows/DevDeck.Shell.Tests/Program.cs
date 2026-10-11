@@ -106,6 +106,7 @@ public static class Program
         Run("action variants and work rows use styled layouts", ActionVariantsAndWorkRowsUseStyledLayouts);
         Run("project kinds share chips actions and collapsed rows", ProjectKindsShareStyledParts);
         Run("card parts sit on one content edge", CardPartsShareOneContentEdge);
+        Run("state dots sit on the capitals of their text", StateDotsSitOnTheirCapitals);
         Run("a crowded button row gives up whole labels", CrowdedActionsGiveUpWholeLabels);
         Run("expanded lists report a larger measured height", ExpandedListsReportLargerHeight);
         Run("runtime menu builds every entry kind", RuntimeMenuBuildsEveryEntryKind);
@@ -743,6 +744,35 @@ public static class Program
         Equal(Visibility.Visible, start.Visibility);
         start.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         True(start.ActualWidth >= start.DesiredSize.Width - 0.5);
+    }
+
+    private static void StateDotsSitOnTheirCapitals()
+    {
+        // The shift is the distance from the line box's middle to the capitals' middle: positive,
+        // because a line box reaches further above the capitals than below the baseline.
+        foreach (var size in new[] { 22.0, 14.0 })
+        {
+            var typeface = new Typeface(WindowsTheme.Sans, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
+            var line = new FormattedText("H", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, size, Brushes.Black, 1.0);
+            var expected = line.Baseline - typeface.CapsHeight * size / 2 - line.Height / 2;
+            Near(Math.Round(expected, 2), WindowsCardRenderer.DotShift(size, FontWeights.SemiBold));
+            True(WindowsCardRenderer.DotShift(size, FontWeights.SemiBold) > 0);
+        }
+
+        void Check(FrameworkElement card, double dotSize, string text, double textSize)
+        {
+            var dot = Descendants(card).OfType<Border>().First(border => border.Width == dotSize && border.Height == dotSize && border.CornerRadius.TopLeft == dotSize / 2);
+            var label = Descendants(card).OfType<TextBlock>().First(block => block.Text == text);
+            var dotMiddle = dot.TranslatePoint(new Point(0, dotSize / 2), card).Y;
+            var typeface = new Typeface(label.FontFamily, label.FontStyle, label.FontWeight, label.FontStretch);
+            var line = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, textSize, Brushes.Black, 1.0);
+            var capitalsMiddle = label.TranslatePoint(new Point(0, line.Baseline - typeface.CapsHeight * textSize / 2), card).Y;
+            True(Math.Abs(dotMiddle - capitalsMiddle) < 0.5);
+        }
+        Check(Render(GoldenModels("arc.project.paper").Last()), 8, "not configured", 22);
+        var collapsed = (FrameworkElement)Render(GoldenModels("project.feed").Last(model =>
+            JsonModel.Bool(model.EnumerateObject().Single().Value, "isCollapsed")));
+        Check(collapsed, 7, "Feed", 14);
     }
 
     private static bool SameColour(Brush expected, Brush? actual)
