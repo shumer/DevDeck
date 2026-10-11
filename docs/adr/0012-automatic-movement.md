@@ -72,7 +72,9 @@ deliberately the timid version of tidying:
   guess, and the first height with data behind it makes room below the way a person's resize
   does, so a fresh deck ends up packed rather than overlapping until somebody tidies it; a
   height is remembered only once the card has data. Restarts are unaffected: by then every
-  card has settled.
+  card has settled. And a settled card that grows onto the one below it makes room for itself:
+  covering a card is worse than moving one, so the column shifts, and only when frames would
+  cross.
 - A deck whose stored positions are already inconsistent stays inconsistent: the fix stops new
   damage rather than repairing old. One Tidy repacks it.
 - `shiftColumn` lost its `persist` parameter. Every move it now makes belongs to the layout, so
