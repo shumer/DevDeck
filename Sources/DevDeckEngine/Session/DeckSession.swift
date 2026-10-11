@@ -34,6 +34,9 @@ public final class DeckSession {
     private var placement: DeckPlacement?
     /// What the shell measured each card at, as drawn.
     private var sizes: [CardID: CGSize] = [:]
+    /// Cards whose model changed since the shell last measured them: the measurement on file
+    /// is of the old drawing.
+    private var stale: Set<CardID> = []
 
     // What was sent last, so only a change is sent again.
     private var sentCards: [CardID: SentCard] = [:]
@@ -109,6 +112,7 @@ public final class DeckSession {
                   size.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 100_000 })
             else { return reject("invalidSize") }
             sizes[card] = CGSize(width: size[0], height: size[1])
+            stale.remove(card)
             apply(placement?.syncSizes())
         case "card.moved":
             guard let card = intent.card, let numbers = intent.frame, let frame = DeckWireGeometry.rect(numbers)
@@ -306,8 +310,12 @@ public final class DeckSession {
         }
         // Until the shell has measured it, the height it last settled at: a guess shrinks the
         // panel the moment its data arrives and grows it back a frame later, which is the card
-        // changing height on every launch.
-        return sizes[card] ?? CGSize(width: CardMetrics.width, height: runtime.preferences.height(for: card) ?? Self.unmeasuredHeight)
+        // changing height on every launch. The same for a measurement of a drawing that has
+        // since changed: the placeholder's height applied the moment the data came was the
+        // one-frame dip that was left.
+        let remembered = runtime.preferences.height(for: card)
+        if stale.contains(card), let remembered { return CGSize(width: CardMetrics.width, height: remembered) }
+        return sizes[card] ?? CGSize(width: CardMetrics.width, height: remembered ?? Self.unmeasuredHeight)
     }
 
     private func apply(_ changes: [DeckPanelChange]?) {
@@ -487,6 +495,7 @@ public final class DeckSession {
             let current = SentCard(model: runtime.model(for: card), menu: runtime.cardMenu(for: card))
             guard current != sentCards[card] else { continue }
             sentCards[card] = current
+            stale.insert(card)
             emit("card.changed") {
                 $0.card = card
                 $0.model = current.model

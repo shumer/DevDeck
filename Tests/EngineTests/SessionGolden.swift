@@ -338,6 +338,13 @@ func runSessionGoldenTests(_ run: TestRun) async {
         #endif
     }
 
+    await run.test("an Arc project with no organisation offers no link addressed to one") {
+        let unnamed = ArcProject(id: "blank", title: "Blank", organization: "")
+        try expect(unnamed.adminLinks.isEmpty, "no host with a hole in it: \(unnamed.adminLinks.map(\.url))")
+        let named = ArcProject(id: "demo", title: "Demo", organization: "sandbox.demo")
+        try expect(named.adminLinks.allSatisfy { $0.url.host?.contains("sandbox.demo") == true })
+    }
+
     await run.test("a folder is spelled the platform's way, and the place of a project is read from it") {
         #if os(Windows)
         try expectEqual(DeckSession.platformPath(URL(fileURLWithPath: #"C:\Users\demo\site"#)), #"C:\Users\demo\site"#)

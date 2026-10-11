@@ -268,6 +268,9 @@ func runDeckRuntimeTests(_ run: TestRun) async {
         let status = deck.runtime.localStatus(for: project)
         try expectEqual(status.state, .stopped)
         try expectEqual(status.detail, "command not found")
+        // The next poll finds it stopped, as it is, and keeps the reason: that is the news.
+        await deck.runtime.refreshLocalOnce()
+        try expectEqual(deck.runtime.localStatus(for: project).detail, "command not found", "a poll does not wipe the reason off the card")
     }
 
     await run.test("a project started outside DevDeck is never stopped from here") {

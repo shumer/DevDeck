@@ -42,6 +42,10 @@ public struct ArcLink: Sendable, Equatable, Codable, Identifiable {
     public var id: String { label }
 
     public func url(organization: String, site: String?) -> URL? {
+        // A template addressed to an organisation nobody has named would resolve to a host
+        // with a hole in it, and a chip that opens `https://.arcpublishing.com` is worse than
+        // no chip.
+        if urlTemplate.contains("{org}"), organization.isEmpty { return nil }
         let resolved = urlTemplate
             .replacingOccurrences(of: "{org}", with: organization)
             .replacingOccurrences(of: "{site}", with: site ?? "")
