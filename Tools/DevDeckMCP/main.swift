@@ -37,6 +37,7 @@ struct Tool {
 }
 
 let cardProperty = ["type": "string", "description": "The card's id, as the cards tool lists it: project.<id>, arc.project.<id>, ddev.project.<id>."]
+let folderProperty = ["type": "string", "description": "An absolute path to the project's folder on this computer, spelled the platform's way."]
 
 let tools = [
     Tool(
@@ -68,6 +69,26 @@ let tools = [
         name: "restart_project",
         description: "Restarts a project the way its Restart button does, waits for it, and returns its card.",
         properties: ["card": cardProperty], required: ["card"], controls: true
+    ),
+    Tool(
+        name: "detect_project",
+        description: "What DevDeck would make of a folder before adding it: the start command, whether it holds its process, whether it needs Docker, and the health URL it would watch, read from the folder's own files. Says if the folder is already on the deck.",
+        properties: ["folder": folderProperty], required: ["folder"], controls: false
+    ),
+    Tool(
+        name: "add_project",
+        description: "Adds a project card for a folder, usually the one you are working in. DevDeck reads the folder the way its settings window does and fills in what it can; anything you pass wins over that. Pass start_command when you know how this project runs, health_url for the address that answers once it is up, local_site_url when the page to open differs from the health URL, holds_process false for a command that returns on its own such as docker compose up -d, and stop_command for such a project. Returns the new card.",
+        properties: [
+            "folder": folderProperty,
+            "title": ["type": "string", "description": "The card's name. Default: the folder's name."],
+            "start_command": ["type": "string", "description": "Run in the folder to start the project, for example npm run dev or docker compose up -d."],
+            "stop_command": ["type": "string", "description": "Run to stop it. Leave empty for a command that holds its process: DevDeck stops what it started."],
+            "holds_process": ["type": "boolean", "description": "Whether the start command keeps running (npm run dev) rather than returning (docker compose up -d)."],
+            "requires_docker": ["type": "boolean", "description": "Whether the project cannot start without Docker."],
+            "health_url": ["type": "string", "description": "The URL that answers when the project is up, for example http://localhost:3000. Empty: the started process being alive counts."],
+            "local_site_url": ["type": "string", "description": "What the Local site link opens, when it is not the health URL."],
+        ],
+        required: ["folder"], controls: true
     ),
     Tool(
         name: "mark_inbox_read",
@@ -138,6 +159,21 @@ func call(_ name: String, arguments: [String: Any]) -> [String: Any] {
     case "start_project": return project("start")
     case "stop_project": return project("stop")
     case "restart_project": return project("restart")
+    case "detect_project":
+        guard let folder = arguments["folder"] as? String else { return toolResult(.unreachable("A folder is needed.")) }
+        return toolResult(ask(["request": "detect", "folder": folder]))
+    case "add_project":
+        guard let folder = arguments["folder"] as? String else { return toolResult(.unreachable("A folder is needed.")) }
+        var request: [String: Any] = ["request": "addProject", "folder": folder]
+        let names = [
+            "title": "title", "start_command": "startCommand", "stop_command": "stopCommand",
+            "holds_process": "holdsProcess", "requires_docker": "requiresDocker",
+            "health_url": "healthURL", "local_site_url": "localSiteURL",
+        ]
+        for (argument, field) in names {
+            if let value = arguments[argument] { request[field] = value }
+        }
+        return toolResult(ask(request))
     case "mark_inbox_read":
         if let thread = arguments["thread"] as? String {
             return toolResult(ask(["request": "command", "command": ["markRead": ["threadID": thread]]]))

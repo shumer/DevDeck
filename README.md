@@ -800,8 +800,9 @@ Signing) and `CODESIGN_IDENTITY="its name" ./build.sh` binds your own tokens the
 ## For agents
 
 A coding agent on the same computer can ask the deck what needs you, read every card and a
-project's log, and, when you allow it, start, stop and restart projects and mark notifications
-read. It goes through the Model Context Protocol: `DevDeckMCP` ships inside the app, and the
+project's log, and, when you allow it, start, stop and restart projects, mark notifications
+read, and add a card for the folder it is working in, with the start command and the address
+it knows. It goes through the Model Context Protocol: `DevDeckMCP` ships inside the app, and the
 answers come from the running deck in its own words, so the agent needs no token of its own.
 
 Settings, General, **Agents (MCP)** has three choices: Off (the default), Read only, and Read and

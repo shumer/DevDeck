@@ -499,6 +499,8 @@
 "agents.error.noLog" = "%@ has no log to read.";
 "agents.error.badRequest" = "DevDeck could not read the request.";
 "agents.error.unknownRequest" = "DevDeck does not know the request %@.";
+"agents.error.noFolder" = "%@ is not a folder on this computer.";
+"agents.error.alreadyOnDeck" = "That folder is already on the deck, as %@.";
 "settings.general.runningFrom" = "Running from %@";
 "settings.general.runningTranslocated" = "Running from a read-only copy macOS made because DevDeck was opened without being moved to Applications. The next update installs it into Applications.";
 "settings.general.startAtLogin" = "Start at login";

@@ -499,6 +499,8 @@
 "agents.error.noLog" = "%@ hat kein Protokoll zum Lesen.";
 "agents.error.badRequest" = "DevDeck konnte die Anfrage nicht lesen.";
 "agents.error.unknownRequest" = "DevDeck kennt die Anfrage %@ nicht.";
+"agents.error.noFolder" = "%@ ist kein Ordner auf diesem Computer.";
+"agents.error.alreadyOnDeck" = "Dieser Ordner ist schon auf dem Deck, als %@.";
 "settings.general.runningFrom" = "Läuft aus %@";
 "settings.general.runningTranslocated" = "Läuft aus einer schreibgeschützten Kopie, die macOS angelegt hat, weil DevDeck geöffnet wurde, ohne in Programme verschoben zu werden. Das nächste Update installiert es nach Programme.";
 "settings.general.startAtLogin" = "Beim Anmelden starten";

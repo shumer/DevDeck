@@ -1,4 +1,5 @@
 import DevDeckCore
+import ProjectKit
 import Foundation
 
 /// The deck as an agent on this computer reaches it: the local endpoint, opened while agent
@@ -63,6 +64,17 @@ public final class DeckAgents {
         var request: String
         var card: CardID?
         var command: DeckCommand?
+        /// `detect` and `addProject`: the folder, in the platform's own spelling.
+        var folder: String?
+        /// `addProject`: what the agent knows that the folder does not say. Absent fields are
+        /// taken from the folder the way the settings window takes them.
+        var title: String?
+        var startCommand: String?
+        var stopCommand: String?
+        var holdsProcess: Bool?
+        var requiresDocker: Bool?
+        var healthURL: String?
+        var localSiteURL: String?
     }
 
     /// One request, one answer, as the endpoint carries them. Public for the suite.
@@ -86,6 +98,47 @@ public final class DeckAgents {
             reply.cards = runtime.cards.visible.compactMap { card in
                 runtime.model(for: card).map { AgentCard(card: card, model: $0) }
             }
+        case "detect":
+            guard let folder = request.folder.flatMap(Self.folderURL) else {
+                reply.error = L("agents.error.noFolder", request.folder ?? "")
+                break
+            }
+            reply.detection = runtime.detect(folder: folder)
+            if let existing = runtime.localProject(inFolder: folder) { reply.card = existing.cardID }
+        case "addProject":
+            guard access == .control else {
+                reply.error = L("agents.error.readOnly")
+                break
+            }
+            guard let folder = request.folder.flatMap(Self.folderURL) else {
+                reply.error = L("agents.error.noFolder", request.folder ?? "")
+                break
+            }
+            if let existing = runtime.localProject(inFolder: folder) {
+                reply.error = L("agents.error.alreadyOnDeck", existing.title)
+                reply.card = existing.cardID
+                break
+            }
+            // The folder is read first, the way the settings window reads it, and what the
+            // agent said on top: it knows the command it has been running all afternoon.
+            let id = runtime.addLocalProject(folder: folder)
+            guard var project = runtime.localProject(forCard: CardID(rawValue: "project.\(id)")) else {
+                reply.error = L("agents.error.badRequest")
+                break
+            }
+            if let title = request.title?.trimmingCharacters(in: .whitespaces), !title.isEmpty { project.title = title }
+            if let command = request.startCommand { project.startCommand = command }
+            if let command = request.stopCommand { project.stopCommand = command }
+            if let holds = request.holdsProcess { project.holdsProcess = holds }
+            if let docker = request.requiresDocker { project.requiresDocker = docker }
+            if let health = request.healthURL { project.healthURL = health }
+            if let site = request.localSiteURL { project.localSiteURL = site }
+            runtime.saveLocalProject(project)
+            runtime.effect(.cardsChanged)
+            await runtime.refreshLocalOnce()
+            reply.card = project.cardID
+            reply.project = project
+            reply.cards = runtime.model(for: project.cardID).map { [AgentCard(card: project.cardID, model: $0)] }
         case "log":
             guard let card = request.card, runtime.hasLogSource(card) else {
                 reply.error = L("agents.error.noLog", request.card?.rawValue ?? "")
@@ -128,6 +181,16 @@ public final class DeckAgents {
         }
     }
 
+    /// A folder that is there. Nil for a path that is not one, so a typo does not become a card.
+    private static func folderURL(_ path: String) -> URL? {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let url = URL(fileURLWithPath: trimmed, isDirectory: true)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue else { return nil }
+        return url
+    }
+
     /// Waits for the work a command started, up to `commandWait`. False when it is still going.
     private func waitForWork() async -> Bool {
         let deadline = Date().addingTimeInterval(Self.commandWait)
@@ -154,6 +217,11 @@ public final class DeckAgents {
         var log: AgentLog?
         /// After a command: whether the work it started has finished.
         var done: Bool?
+        /// `detect`: what the folder says about the project in it.
+        var detection: DeckDetection?
+        /// `addProject`: the new card, and the project as it was written down.
+        var card: CardID?
+        var project: LocalProject?
     }
 
     private struct AgentCard: Encodable {

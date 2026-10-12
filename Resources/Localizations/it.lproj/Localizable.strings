@@ -499,6 +499,8 @@
 "agents.error.noLog" = "%@ non ha un log da leggere.";
 "agents.error.badRequest" = "DevDeck non è riuscito a leggere la richiesta.";
 "agents.error.unknownRequest" = "DevDeck non conosce la richiesta %@.";
+"agents.error.noFolder" = "%@ non è una cartella di questo computer.";
+"agents.error.alreadyOnDeck" = "Quella cartella è già sul pannello, come %@.";
 "settings.general.runningFrom" = "In esecuzione da %@";
 "settings.general.runningTranslocated" = "In esecuzione da una copia di sola lettura creata da macOS perché DevDeck è stato aperto senza spostarlo in Applicazioni. Il prossimo aggiornamento lo installerà in Applicazioni.";
 "settings.general.startAtLogin" = "Avvia al login";

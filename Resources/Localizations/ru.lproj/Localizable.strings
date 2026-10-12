@@ -499,6 +499,8 @@
 "agents.error.noLog" = "У %@ нет лога.";
 "agents.error.badRequest" = "DevDeck не смог прочитать запрос.";
 "agents.error.unknownRequest" = "DevDeck не знает запроса %@.";
+"agents.error.noFolder" = "%@ это не папка на этом компьютере.";
+"agents.error.alreadyOnDeck" = "Эта папка уже на деке, как %@.";
 "settings.general.runningFrom" = "Запущено из %@";
 "settings.general.runningTranslocated" = "Запущено из копии только для чтения: macOS сделала её, потому что DevDeck открыли, не переложив в Applications. Следующее обновление поставит его в Applications.";
 "settings.general.startAtLogin" = "Запускать при входе";

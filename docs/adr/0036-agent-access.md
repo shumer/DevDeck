@@ -35,6 +35,11 @@ reading and acting are different promises, and acting has to follow the rules th
   the same `perform`, and only of three kinds: a project's start, stop or restart, and marking
   inbox threads read. Opening things, settings, the deck's layout and quitting stay with the
   person. In Read only a command is refused in the deck's words.
+  Amended 2026-10-12: two more requests, `detect` (what a folder says about the project in
+  it, the settings window's own probe) and, under control only, `addProject` (a card for a
+  folder, read the window's way, with what the agent knows on top: title, start and stop
+  command, whether it holds its process or needs Docker, health and site URLs). The case is an
+  agent working in a repository that is not on the deck yet. Removing a card stays in Settings.
 - **`DevDeckMCP` is the MCP server**, a small executable shipped with the app (in
   `Contents/Helpers` on the Mac, beside the shell on Windows). An agent starts it over stdio; it
   asks the endpoint one question per tool call and returns the deck's answer. `tools/list` offers
