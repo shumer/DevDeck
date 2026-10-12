@@ -11,31 +11,43 @@ import Foundation
 public struct AgentClient: Sendable, Equatable {
     public let id: String
     public let name: String
+    /// Where the agent's tool may be, in the order to try: its name on the path first, then
+    /// where an application that bundles it keeps it. The first that answers is the one used.
+    public let executables: [String]
     /// Asks whether the deck's server is on the list. Exit 0 means it is.
-    let check: String
+    let check: @Sendable (String) -> String
     /// Takes the deck's server off the list. Fails harmlessly when it was not there.
-    let remove: String
-    /// Puts the deck's server on the list, given the server's executable path.
-    let add: @Sendable (String) -> String
+    let remove: @Sendable (String) -> String
+    /// Puts the deck's server on the list, given the tool and the server's executable path.
+    let add: @Sendable (String, String) -> String
 
     /// Claude Code keeps servers per project unless told `--scope user`; the deck is about a
     /// person rather than a repository, so user scope is the one that makes sense.
     public static let claude = AgentClient(
         id: "claude",
         name: "Claude Code",
-        check: "claude mcp get devdeck",
-        remove: "claude mcp remove --scope user devdeck",
-        add: { "claude mcp add --scope user devdeck -- \"\($0)\"" }
+        executables: ["claude"],
+        check: { "\(quoted($0)) mcp get devdeck" },
+        remove: { "\(quoted($0)) mcp remove --scope user devdeck" },
+        add: { "\(quoted($0)) mcp add --scope user devdeck -- \"\($1)\"" }
     )
 
     /// Codex keeps one global list in `~/.codex/config.toml`, so there is no scope to choose.
+    /// The ChatGPT application for the Mac carries the same tool inside it and reads the same
+    /// file, so a person with Codex in ChatGPT and no `codex` on the path still gets the row.
     public static let codex = AgentClient(
         id: "codex",
         name: "Codex",
-        check: "codex mcp get devdeck",
-        remove: "codex mcp remove devdeck",
-        add: { "codex mcp add devdeck -- \"\($0)\"" }
+        executables: ["codex", "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"],
+        check: { "\(quoted($0)) mcp get devdeck" },
+        remove: { "\(quoted($0)) mcp remove devdeck" },
+        add: { "\(quoted($0)) mcp add devdeck -- \"\($1)\"" }
     )
+
+    /// A path with a space in it, as the shell needs it; a bare name as it is.
+    static func quoted(_ executable: String) -> String {
+        executable.contains(" ") ? "\"\(executable)\"" : executable
+    }
 
     public static let all: [AgentClient] = [.claude, .codex]
 
@@ -56,13 +68,15 @@ public struct AgentClient: Sendable, Equatable {
         public init(_ result: CommandResult) {
             let text = (result.standardError + "\n" + result.standardOutput).lowercased()
             // 127 is the shell on the Mac; cmd.exe says it in words and exits with 1.
+            let missing = text.contains("not found") || text.contains("no mcp server") || text.contains("no server") || text.contains("does not exist")
             if result.exitCode == 127 || text.contains("command not found") || text.contains("not recognized as an internal")
                 || text.contains("no such file or directory") {
                 self = .notInstalled
+            } else if missing, result.exitCode != 0 || text.contains("error") {
+                // Codex says "Error: No MCP server named 'x' found." and exits 0 all the same.
+                self = .no
             } else if result.exitCode == 0 {
                 self = .yes
-            } else if text.contains("not found") || text.contains("no mcp server") || text.contains("no server") || text.contains("does not exist") {
-                self = .no
             } else {
                 let line = result.standardError.split(separator: "\n").first.map(String.init)
                     ?? result.standardOutput.split(separator: "\n").first.map(String.init) ?? ""
@@ -90,14 +104,14 @@ public struct DeckAgentClient: Sendable, Equatable, Codable {
 
     /// Said again in the current language: the state is kept, the words are asked for when the
     /// page is drawn.
-    static func describe(_ client: AgentClient, state: State, server: String, failure: String) -> DeckAgentClient {
+    static func describe(_ client: AgentClient, executable: String, state: State, server: String, failure: String) -> DeckAgentClient {
         let detail: String
         switch state {
         case .checking: detail = L("settings.agents.client.checking")
         case .registered: detail = L("settings.agents.client.registered")
         case .notRegistered: detail = L("settings.agents.client.notRegistered")
-        case .notInstalled: detail = L("settings.agents.client.notInstalled", client.add(server))
-        case .failed: detail = L("settings.agents.client.failed", failure.isEmpty ? client.add(server) : failure)
+        case .notInstalled: detail = L("settings.agents.client.notInstalled", client.add(executable, server))
+        case .failed: detail = L("settings.agents.client.failed", failure.isEmpty ? client.add(executable, server) : failure)
         }
         return DeckAgentClient(id: client.id, name: client.name, state: state, detail: detail)
     }
@@ -112,6 +126,8 @@ final class AgentRegistrar {
     private let onChange: () -> Void
     /// The last outcome per client, with the message a failure carried.
     private var states: [String: (state: DeckAgentClient.State, failure: String)] = [:]
+    /// Which of a client's executables answered, once one has.
+    private var executables: [String: String] = [:]
     /// Serialises the work: a setting flipped twice is two jobs in order, not two at once.
     private var queue: Task<Void, Never>?
 
@@ -125,8 +141,12 @@ final class AgentRegistrar {
     var current: [DeckAgentClient] {
         clients.map { client in
             let entry = states[client.id] ?? (state: .checking, failure: "")
-            return DeckAgentClient.describe(client, state: entry.state, server: server, failure: entry.failure)
+            return DeckAgentClient.describe(client, executable: executable(of: client), state: entry.state, server: server, failure: entry.failure)
         }
+    }
+
+    private func executable(of client: AgentClient) -> String {
+        executables[client.id] ?? client.executables.first ?? client.id
     }
 
     /// Puts the server on every list that is missing it, without touching one that has it.
@@ -134,7 +154,7 @@ final class AgentRegistrar {
     func ensureRegistered() {
         enqueue { [self] in
             for client in clients {
-                switch await run(client.check) {
+                switch await check(client) {
                 case .yes: set(client, .registered)
                 case .no: await register(client)
                 case .notInstalled: set(client, .notInstalled)
@@ -142,6 +162,22 @@ final class AgentRegistrar {
                 }
             }
         }
+    }
+
+    /// Asks each of the client's executables in turn until one is there, and remembers it.
+    private func check(_ client: AgentClient) async -> AgentClient.Outcome {
+        if let known = executables[client.id] {
+            return await run(client.check(known))
+        }
+        var outcome = AgentClient.Outcome.notInstalled
+        for executable in client.executables {
+            outcome = await run(client.check(executable))
+            if outcome != .notInstalled {
+                executables[client.id] = executable
+                break
+            }
+        }
+        return outcome
     }
 
     /// Puts the server on every list, replacing an entry that is there so the path is current.
@@ -159,7 +195,11 @@ final class AgentRegistrar {
         enqueue { [self] in
             for client in clients {
                 set(client, .checking)
-                switch await run(client.remove) {
+                if executables[client.id] == nil, await check(client) == .notInstalled {
+                    set(client, .notInstalled)
+                    continue
+                }
+                switch await run(client.remove(executable(of: client))) {
                 case .yes, .no: set(client, .notRegistered)
                 case .notInstalled: set(client, .notInstalled)
                 case .failed(let message): set(client, .failed, message)
@@ -174,14 +214,19 @@ final class AgentRegistrar {
     }
 
     private func register(_ client: AgentClient) async {
+        if executables[client.id] == nil, await check(client) == .notInstalled {
+            set(client, .notInstalled)
+            return
+        }
+        let executable = executable(of: client)
         // The tools refuse to add a name that exists, and the path may have moved with an
         // upgrade: off first, then on. A remove that found nothing is nothing.
-        let removed = await run(client.remove)
+        let removed = await run(client.remove(executable))
         if removed == .notInstalled {
             set(client, .notInstalled)
             return
         }
-        switch await run(client.add(server)) {
+        switch await run(client.add(executable, server)) {
         case .yes: set(client, .registered)
         case .no, .failed(""): set(client, .failed, "")
         case .notInstalled: set(client, .notInstalled)

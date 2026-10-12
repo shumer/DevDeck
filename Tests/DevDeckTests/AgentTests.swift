@@ -83,7 +83,8 @@ func runAgentTests(_ run: TestRun) async {
             "claude mcp remove --scope user devdeck",
             "claude mcp add --scope user devdeck -- \"/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP\"",
             "codex mcp get devdeck",
-        ], "a launch with the setting on repairs what is missing and checks, nothing more")
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex mcp get devdeck",
+        ], "a launch with the setting on repairs what is missing and checks, nothing more; Codex is also looked for inside ChatGPT")
         try expectEqual(agents.clients.map(\.state), [.registered, .notInstalled])
         try expectEqual(agents.clients.map(\.name), ["Claude Code", "Codex"])
         try expect(agents.clients[1].detail.contains("codex mcp add devdeck -- \"/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP\""),
@@ -99,17 +100,22 @@ func runAgentTests(_ run: TestRun) async {
         agents.applyPreferences()
         await agents.settle()
         commands = await runner.commands.filter { $0.contains(" mcp ") }
-        try expectEqual(commands.suffix(2), ["claude mcp remove --scope user devdeck", "codex mcp remove devdeck"])
+        try expectEqual(commands.suffix(3), [
+            "claude mcp remove --scope user devdeck",
+            "codex mcp get devdeck",
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex mcp get devdeck",
+        ], "a tool never found is looked for again, and nothing is removed from a list that is not there")
         try expectEqual(agents.clients.map(\.state), [.notRegistered, .notInstalled])
 
         deck.preferences.agentAccess = .control
         agents.applyPreferences()
         await agents.settle()
         commands = await runner.commands.filter { $0.contains(" mcp ") }
-        try expectEqual(commands.suffix(3), [
+        try expectEqual(commands.suffix(4), [
             "claude mcp remove --scope user devdeck",
             "claude mcp add --scope user devdeck -- \"/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP\"",
-            "codex mcp remove devdeck",
+            "codex mcp get devdeck",
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex mcp get devdeck",
         ])
         try expectEqual(agents.clients.map(\.state), [.registered, .notInstalled])
 
@@ -118,11 +124,41 @@ func runAgentTests(_ run: TestRun) async {
         try expect(bare.clients.isEmpty)
     }
 
+    await run.test("Codex inside ChatGPT is found when codex is not on the path, and registered through it") {
+        let site = try servedProject()
+        let bundled = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+        let runner = StubCommandRunner([
+            (DockerEnvironment.probeCommand, dockerUp),
+            ("claude mcp get devdeck", CommandResult(exitCode: 0, standardOutput: "devdeck: ok", standardError: "")),
+            // Codex answers "no" with a success status, which is its way.
+            ("\(bundled) mcp get devdeck", CommandResult(exitCode: 0, standardOutput: "Error: No MCP server named 'devdeck' found.", standardError: "")),
+            ("\(bundled) mcp remove devdeck", CommandResult(exitCode: 0, standardOutput: "Error: No MCP server named 'devdeck' found.", standardError: "")),
+            ("\(bundled) mcp add devdeck", CommandResult(exitCode: 0, standardOutput: "Added global MCP server 'devdeck'.", standardError: "")),
+        ])
+        let deck = Deck(cards: [site.project.cardID], runner: runner, localProjects: [site.project], projectFiles: site.files)
+        deck.preferences.agentAccess = .control
+        let agents = deck.runtime.serveAgents(
+            version: "9.9", address: "/tmp/devdeck-chatgpt-\(UUID().uuidString.prefix(6)).sock",
+            serverExecutable: "/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP"
+        )
+        await agents.settle()
+        let commands = await runner.commands.filter { $0.contains(" mcp ") }
+        try expectEqual(commands, [
+            "claude mcp get devdeck",
+            "codex mcp get devdeck",
+            "\(bundled) mcp get devdeck",
+            "\(bundled) mcp remove devdeck",
+            "\(bundled) mcp add devdeck -- \"/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP\"",
+        ])
+        try expectEqual(agents.clients.map(\.state), [.registered, .registered])
+    }
+
     await run.test("what an agent's tool said, read as what it means for the list") {
         try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 0, standardOutput: "devdeck: ok", standardError: "")), .yes)
         try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 127, standardOutput: "", standardError: "zsh: command not found: codex")), .notInstalled)
         try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 1, standardOutput: "", standardError: "'claude' is not recognized as an internal or external command,\noperable program or batch file.")), .notInstalled, "cmd.exe says it in words")
         try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 1, standardOutput: "", standardError: "No MCP server found with name: devdeck")), .no)
+        try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 0, standardOutput: "Error: No MCP server named 'devdeck' found.", standardError: "")), .no, "Codex says no with a success status")
         try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 1, standardOutput: "", standardError: "Error: config is locked\nmore")), .failed("Error: config is locked"))
     }
 
