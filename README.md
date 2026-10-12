@@ -200,21 +200,13 @@ costs.
 ### First run
 
 ```bash
-scripts/seed-token.sh        # optional: copies a token from ~/Projects/Work/AIData/env.local into the Keychain
 scripts/smoke-test.sh        # optional: real GitHub and GitLab calls, prints counts, never a token
 ```
 
-`seed-token.sh` takes an account and a variable name, because one token per account is the
-point - a fine-grained token is approved per organisation, so no single one covers every
-employer:
-
-```bash
-scripts/seed-token.sh --var SHUMER_GITHUB_TOKEN          # a differently named variable
-scripts/seed-token.sh --account account-2 --var WORK_TOKEN    # another account's own token
-```
-
-It protects the item the way the app would: open while the app's tokens are open, and trusting
-only `/Applications/DevDeck.app` once a signed copy has bound them.
+Tokens are typed into Settings, one per account, because a fine-grained token is approved per
+organisation and no single one covers every employer. The app writes each into the Keychain
+itself, protected the way the running copy's signature allows: open for an ad-hoc build,
+trusting only `/Applications/DevDeck.app` once a signed copy has bound them.
 
 The account id is not shown in Settings. `default` is the account the app starts with and keeps
 the un-suffixed Keychain key; accounts added later are `account`, `account-2` and so on, and
@@ -925,7 +917,7 @@ Tools/
 Resources/
   AppIcon/         the application icon: the iconset build.sh packs, its SVG and its geometry
   Localizations/   one .lproj per language, the strings and the plural rules
-scripts/           seed-token.sh, smoke-test.sh
+scripts/           smoke-test.sh, check-arc-stack.sh
 docs/              architecture, development, GitHub API, roadmap, adr/
 ```
 

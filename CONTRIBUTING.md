@@ -59,7 +59,7 @@ Xcode is **not** installed - only the Command Line Tools. Consequences that keep
   from `CodeIdentity.current()` through `KeychainAccessPolicy`, never from a build flag: open
   for an ad-hoc build, bound to the app for a signed one. Never downgraded by itself: a copy
   without an identity leaves bound tokens bound, and never writes a new token open once they are.
-  `scripts/seed-token.sh` follows the same recorded mode. `build.sh` signs with the Developer ID
+  `build.sh` signs with the Developer ID
   it finds, so a local rebuild does not install a copy that cannot read them.
 - **Account ids are Keychain filenames.** `GitHubAccount.id` is never renamed, and the first
   account keeps the un-suffixed key `github`.

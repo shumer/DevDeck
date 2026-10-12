@@ -38,7 +38,7 @@ public enum GitCheckout {
         guard let directory, let config = gitFile("config", in: directory) else { return nil }
         guard let contents = try? String(contentsOf: config, encoding: .utf8) else { return nil }
         guard let remote = originURL(inConfig: contents) else { return nil }
-        return webURL(fromRemote: remote)
+        return webURL(fromRemote: remote, ssh: SSHConfig.current())
     }
 
     /// `url = …` from the `[remote "origin"]` section, and nothing from any other section.
@@ -70,15 +70,26 @@ public enum GitCheckout {
     ///
     /// Host-agnostic on purpose: the same shapes serve GitLab, Bitbucket and a self-hosted
     /// instance, and none of them wants a special case here.
-    public static func webURL(fromRemote remote: String) -> URL? {
+    ///
+    /// An ssh remote names a host the way ssh does, so an alias from `~/.ssh/config`
+    /// (`git@github-work:org/repo.git`) is resolved through `ssh` to the server it stands for.
+    /// An https remote is a real host already and is left alone.
+    public static func webURL(fromRemote remote: String, ssh: SSHConfig? = nil) -> URL? {
         var text = remote.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return nil }
 
         if let range = text.range(of: "://") {
             // Any scheme, with or without credentials in front of the host.
+            let scheme = text[..<range.lowerBound].lowercased()
             var rest = String(text[range.upperBound...])
             if let at = rest.lastIndex(of: "@"), let slash = rest.firstIndex(of: "/"), at < slash {
                 rest = String(rest[rest.index(after: at)...])
+            }
+            if scheme == "ssh" || scheme == "git+ssh", let slash = rest.firstIndex(of: "/") {
+                var host = String(rest[..<slash])
+                // `ssh://host:2222/path`: the port is ssh's, not the web page's.
+                if let colon = host.firstIndex(of: ":") { host = String(host[..<colon]) }
+                rest = resolved(host, ssh: ssh) + String(rest[slash...])
             }
             text = rest
         } else if let colon = text.firstIndex(of: ":") {
@@ -86,7 +97,7 @@ public enum GitCheckout {
             var host = String(text[..<colon])
             if let at = host.lastIndex(of: "@") { host = String(host[host.index(after: at)...]) }
             let path = text[text.index(after: colon)...]
-            text = "\(host)/\(path)"
+            text = "\(resolved(host, ssh: ssh))/\(path)"
         } else {
             return nil
         }
@@ -96,6 +107,11 @@ public enum GitCheckout {
         // A host with no path is not a repository - it is somebody's server.
         guard text.contains("/") else { return nil }
         return URL(string: "https://\(text)")
+    }
+
+    /// The server an ssh host name stands for: its `HostName` when the config has one.
+    private static func resolved(_ host: String, ssh: SSHConfig?) -> String {
+        ssh?.hostName(for: host) ?? host
     }
 
     /// Handles both a normal `.git` directory and the `gitdir:` pointer file that worktrees

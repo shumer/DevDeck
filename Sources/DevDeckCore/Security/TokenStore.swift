@@ -112,8 +112,8 @@ public struct KeychainTokenStore: TokenStore {
     /// stored token. Three tokens, three password prompts, on every update.
     ///
     /// The trade is real and worth stating: any process running as this user can read these
-    /// tokens without a prompt. It is the same trade `scripts/seed-token.sh` has always made with
-    /// `security -A`. A build signed with an identity does not make it: see
+    /// tokens without a prompt, the trade `security add-generic-password -A` makes. A build
+    /// signed with an identity does not make it: see
     /// `KeychainAccessPolicy`. A token nobody stores because the prompt drove them off is not
     /// safer.
     ///
