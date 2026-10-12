@@ -15,15 +15,34 @@ dotnet run --project Windows/DevDeck.Shell.Tests --configuration Release --no-bu
 Tools/Build-WindowsShell.ps1
 ```
 
-The build script writes a framework dependent package to `dist/windows-x64`. It contains the shell, the
-engine host, the process host and Swift runtime libraries. Test assemblies are excluded.
+The build script writes a framework dependent package to `dist/windows-<architecture>`. It defaults
+to the machine architecture and accepts `-Architecture x64` or `-Architecture arm64`. The package
+contains the shell, the engine host, the process host and Swift runtime libraries. Test assemblies are excluded.
 The shell requires .NET 10 Desktop Runtime, supplied separately by Microsoft.
+
+## ARM64
+
+Native ARM64 builds require an ARM64 Swift 6.x toolchain, the Visual Studio 2022 ARM64 C++ tools,
+the Windows 11 SDK and the ARM64 .NET 10 SDK. SwiftPM creates convenience symbolic links below
+`.build`, so enable Windows Developer Mode or grant the user permission to create symbolic links
+before running the warning-free build. Build the delivery and installer with:
+
+```powershell
+pwsh -NoProfile -File Tools/Build-WindowsShell.ps1 -Architecture arm64
+pwsh -NoProfile -File Tools/Build-WindowsInstaller.ps1 -Architecture arm64
+```
+
+The commands write `dist/windows-arm64` and
+`dist/DevDeck-<version>-windows-arm64-setup.exe`. The x64 installer is restricted to x64 Windows
+and refuses to install on ARM64 now that the native package exists. Use the Windows ARM64 edition
+of Docker Desktop and enable its integration for the WSL distribution that runs projects.
 
 ## Install
 
-GitHub releases include `DevDeck-<version>-<build>-windows-setup.exe` and a matching `.exe.sha256`
-file. The build number is the tagged commit count, shared with the Mac archive. The release
-workflow tests both platforms before publishing the Windows installer. A manual run with
+GitHub releases include `DevDeck-<version>-<build>-windows-setup.exe`,
+`DevDeck-<version>-<build>-windows-arm64-setup.exe` and matching `.exe.sha256` files. The build
+number is the tagged commit count, shared with the Mac archive. The release workflow tests Mac,
+Windows x64 and Windows ARM64 before publishing the installers. A manual run with
 `attach=false` keeps its packages as Actions artifacts and leaves the release files and notes alone.
 It builds the dispatched branch commit so an older tag can label the check without supplying old
 source. Published releases and manual runs with `attach=true` build the tag itself.
@@ -34,16 +53,18 @@ Install Inno Setup 6 with `winget install JRSoftware.InnoSetup`, then build:
 pwsh -NoProfile -File Tools/Build-WindowsInstaller.ps1
 ```
 
-The wrapper reads the same root `VERSION` file as the Mac build and writes
-`dist/DevDeck-<version>-windows-setup.exe`. `-OutputDirectory` accepts only a directory inside the
-repository. ISCC is found in the per-user installation, Program Files (x86), or PATH.
+The wrapper reads the same root `VERSION` file as the Mac build. Its default architecture is the
+machine architecture; `-Architecture x64` keeps the existing
+`dist/DevDeck-<version>-windows-setup.exe` name and `-Architecture arm64` writes the ARM64 name
+shown above. `-OutputDirectory` accepts only a directory inside the repository. ISCC is found in
+the per-user installation, Program Files (x86), or PATH.
 
 Setup installs for the current user under `%LOCALAPPDATA%\Programs\DevDeck`, creates a Start
 Menu shortcut with AUMID `DevDeck.Shell`, and registers uninstall in HKCU. It creates no desktop
 shortcut and does not enable Start at login. A matching installer shortcut is kept by the shell.
 
-If .NET 10 Desktop Runtime is missing, setup downloads its x64 installer from Microsoft's
-permanent link and runs `/install /quiet /norestart`. Only this runtime step needs UAC approval;
+If .NET 10 Desktop Runtime is missing, setup downloads the runtime that matches the installer
+architecture from Microsoft's permanent link and runs `/install /quiet /norestart`. Only this runtime step needs UAC approval;
 DevDeck itself needs no administrator rights. Download failures show the download link and stop
 installation with an explanation. The permanent link changes with servicing releases, so a
 fixed checksum is not pinned.

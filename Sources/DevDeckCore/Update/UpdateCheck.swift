@@ -147,17 +147,37 @@ public enum UpdateCheck {
         }
     }
 
+    /// The processor architecture of the Windows installer. It is explicit so update selection
+    /// can be checked on a different host architecture.
+    public enum Architecture: Sendable, Equatable {
+        case x64
+        case arm64
+
+        public static var current: Architecture {
+            #if arch(arm64)
+            return .arm64
+            #else
+            return .x64
+            #endif
+        }
+    }
+
     /// The build attached to a release: what `build.sh` and the release workflow name it.
     ///
     /// The Mac's rule is loose on purpose, prefix and `.zip`: releases before 0.20 named the
     /// archive without a platform, and a copy of those has to find 0.20 and later by the same
     /// rule it shipped with.
-    public static func asset(in release: Release, for platform: Platform = .current) -> ReleaseAsset? {
+    public static func asset(
+        in release: Release,
+        for platform: Platform = .current,
+        architecture: Architecture = .current
+    ) -> ReleaseAsset? {
         switch platform {
         case .mac:
             return release.assets.first { $0.name.hasPrefix("DevDeck-") && $0.name.hasSuffix(".zip") }
         case .windows:
-            return release.assets.first { $0.name.hasPrefix("DevDeck-") && $0.name.hasSuffix("-windows-setup.exe") }
+            let suffix = architecture == .arm64 ? "-windows-arm64-setup.exe" : "-windows-setup.exe"
+            return release.assets.first { $0.name.hasPrefix("DevDeck-") && $0.name.hasSuffix(suffix) }
         }
     }
 
@@ -175,12 +195,17 @@ public enum UpdateCheck {
     /// On Windows the installer is unsigned, so the SHA256 file beside it is the whole of the
     /// check, and an installer without one is not offered: a download nothing can vouch for is
     /// not an update, it is a file.
-    public static func available(current: String, release: Release, platform: Platform = .current) -> AvailableUpdate? {
+    public static func available(
+        current: String,
+        release: Release,
+        platform: Platform = .current,
+        architecture: Architecture = .current
+    ) -> AvailableUpdate? {
         guard !release.draft, !release.prerelease,
               let latest = SemanticVersion(release.tagName),
               let running = SemanticVersion(current),
               latest > running,
-              let asset = asset(in: release, for: platform)
+              let asset = asset(in: release, for: platform, architecture: architecture)
         else { return nil }
         let checksum = platform == .windows ? checksum(for: asset, in: release) : nil
         if platform == .windows, checksum == nil { return nil }

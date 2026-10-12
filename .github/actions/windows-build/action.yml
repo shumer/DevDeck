@@ -1,0 +1,68 @@
+name: Build and test Windows
+description: Install the Windows toolchain, run the suites and optionally build an installer.
+
+inputs:
+  architecture:
+    description: Windows delivery architecture, x64 or arm64.
+    required: true
+  build-installer:
+    description: Whether to compile the Inno Setup installer.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Swift
+      uses: compnerd/gha-setup-swift@bbae8ce86bac5a3449f3992b3d88bc4ca25f2057 # main.
+      with:
+        swift-version: swift-6.4.0-release
+        swift-build: 6.4.0-RELEASE
+        build_arch: ${{ inputs.architecture == 'arm64' && 'arm64' || 'amd64' }}
+        cache: true
+    - name: Swift version
+      shell: pwsh
+      run: swift --version
+    - name: Install .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+    - name: Install Inno Setup
+      if: inputs.build-installer == 'true'
+      shell: pwsh
+      run: choco install innosetup --yes --no-progress
+    - name: Build without project warnings
+      shell: pwsh
+      run: |
+        $Timer = [Diagnostics.Stopwatch]::StartNew()
+        # SwiftPM 6.4 can race while touching resource bundles on Windows, so serialize build jobs.
+        swift build --jobs 1 2>&1 | Tee-Object -FilePath build.log
+        $BuildExit = $LASTEXITCODE
+        $Timer.Stop()
+        Write-Host "Swift build elapsed: $([Math]::Round($Timer.Elapsed.TotalSeconds, 2)) seconds."
+        if ($BuildExit -ne 0) { exit $BuildExit }
+
+        # Swift 6.4 emits swiftlang/swift#91000 from WinSDK. Remove this exception with the toolchain fix.
+        $AllowedWarning = "warning: reference to type 'wchar_t' broken by a context change; 'wchar_t' was expected to be in '_Builtin_stddef', but now a candidate is found only in 'SwiftShims'"
+        $UnexpectedWarnings = Select-String -Path build.log -SimpleMatch "warning:" |
+          Where-Object { -not $_.Line.Contains($AllowedWarning) }
+        if ($UnexpectedWarnings) {
+          $UnexpectedWarnings | ForEach-Object { Write-Host "::error::$($_.Line)" }
+          exit 1
+        }
+    - name: Windows core tests
+      shell: pwsh
+      run: swift run DevDeckWindowsCoreTests
+    - name: Engine tests
+      shell: pwsh
+      run: swift run DevDeckEngineTests
+    - name: Build Windows shell
+      shell: pwsh
+      run: dotnet build Windows/DevDeck.Windows.slnx --configuration Release -warnaserror
+    - name: Windows shell tests
+      shell: pwsh
+      run: dotnet run --project Windows/DevDeck.Shell.Tests --configuration Release --no-build
+    - name: Build the installer
+      if: inputs.build-installer == 'true'
+      shell: pwsh
+      run: pwsh -NoProfile -File Tools/Build-WindowsInstaller.ps1 -Architecture ${{ inputs.architecture }}
