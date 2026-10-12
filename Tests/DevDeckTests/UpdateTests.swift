@@ -113,6 +113,10 @@ func runUpdateTests(_ run: TestRun) async {
             "an installer nothing vouches for is not offered"
         )
         _ = try expectNotNil(UpdateCheck.available(current: "0.10", release: bare, platform: .mac), "the Mac does not need it")
+
+        // The machine decides, not the process: an x64 copy emulated on ARM64 moves to the native build.
+        try expectEqual(UpdateCheck.Architecture.forMachine(0xAA64), .arm64, "IMAGE_FILE_MACHINE_ARM64")
+        try expectEqual(UpdateCheck.Architecture.forMachine(0x8664), .x64, "IMAGE_FILE_MACHINE_AMD64")
     }
 
     await run.test("the checksum file is read as the hash it states") {

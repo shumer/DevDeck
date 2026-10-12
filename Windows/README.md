@@ -34,7 +34,9 @@ pwsh -NoProfile -File Tools/Build-WindowsInstaller.ps1 -Architecture arm64
 
 The commands write `dist/windows-arm64` and
 `dist/DevDeck-<version>-windows-arm64-setup.exe`. The x64 installer is restricted to x64 Windows
-and refuses to install on ARM64 now that the native package exists. Use the Windows ARM64 edition
+and refuses to install on ARM64 now that the native package exists; an x64 copy already running
+under emulation on an ARM64 machine picks the native installer at its next update, because the
+engine asks the machine's architecture rather than its own. Use the Windows ARM64 edition
 of Docker Desktop and enable its integration for the WSL distribution that runs projects.
 
 ## Install

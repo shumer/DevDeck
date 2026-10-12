@@ -1,4 +1,7 @@
 import Foundation
+#if os(Windows)
+import WinSDK
+#endif
 
 /// A version as GitHub tags it and `VERSION` states it: `v0.10`, `0.9.1`, `1.0`.
 ///
@@ -153,12 +156,25 @@ public enum UpdateCheck {
         case x64
         case arm64
 
+        /// The machine's architecture, not this process's: an x64 copy running under emulation
+        /// on an ARM64 machine updates to the native build, since the x64 installer refuses to
+        /// run there now that a native one exists.
         public static var current: Architecture {
+            #if os(Windows)
+            var process: USHORT = 0
+            var native: USHORT = 0
+            if IsWow64Process2(GetCurrentProcess(), &process, &native) { return forMachine(native) }
+            #endif
             #if arch(arm64)
             return .arm64
             #else
             return .x64
             #endif
+        }
+
+        /// The architecture for a PE machine type, as `IsWow64Process2` reports the native one.
+        public static func forMachine(_ machine: UInt16) -> Architecture {
+            machine == 0xAA64 ? .arm64 : .x64
         }
     }
 
