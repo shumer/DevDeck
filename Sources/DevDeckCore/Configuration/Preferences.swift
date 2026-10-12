@@ -211,6 +211,13 @@ public final class Preferences: @unchecked Sendable {
         set { backend.set(newValue ? "1" : "0", forKey: "notify.enabled") }
     }
 
+    /// What a coding agent on this computer may do through the deck's MCP server. Off unless
+    /// somebody turns it on: an agent that can read the deck can read every card on it.
+    public var agentAccess: AgentAccess {
+        get { backend.string(forKey: "agents.access").flatMap(AgentAccess.init(rawValue:)) ?? .off }
+        set { backend.set(newValue.rawValue, forKey: "agents.access") }
+    }
+
     /// Whether a new version of DevDeck gets a banner. On unless switched off.
     public var notifiesUpdates: Bool {
         get { backend.string(forKey: "notify.updates") != "0" }

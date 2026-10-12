@@ -418,8 +418,43 @@ public sealed class SettingsWindow : Window
         page.Children.Add(Card(
             Row("settings.general.checkAutomatically", "settings.general.checkAutomatically.detail", TogglePreference("checksForUpdates")),
             UpdateRow()));
+        AddAgentAccess(page);
         page.Children.Add(Footnote(words.Get("settings.general.runningFrom", AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar))));
         return page;
+    }
+
+    // The engine opens or closes the endpoint when the preference is saved; the page is drawn
+    // again for the line under the choice and the registration note.
+    private void AddAgentAccess(StackPanel page)
+    {
+        var current = PreferenceString("agentAccess");
+        if (current.Length == 0)
+        {
+            current = "off";
+        }
+        var access = new ComboBox { Width = 170 };
+        access.Style = WindowsTheme.Style("SettingsComboBox");
+        foreach (var value in new[] { "off", "read", "control" })
+        {
+            access.Items.Add(new ComboBoxItem { Content = words.Get("settings.agents.access." + value), Tag = value });
+        }
+        access.SelectedValuePath = "Tag";
+        access.SelectedValue = current;
+        access.SelectionChanged += (_, _) =>
+        {
+            if (!applying && access.SelectedValue is string value && value != PreferenceString("agentAccess"))
+            {
+                SetPreference("agentAccess", value);
+                Dispatcher.BeginInvoke(Render);
+            }
+        };
+        page.Children.Add(GroupTitle("settings.agents"));
+        page.Children.Add(Card(Row("settings.agents.access", "settings.agents.access." + current + ".detail", access)));
+        if (current != "off")
+        {
+            var server = Path.Combine(AppContext.BaseDirectory, "DevDeckMCP.exe");
+            page.Children.Add(Footnote(words.Get("settings.agents.register", "claude mcp add devdeck -- \"" + server + "\"")));
+        }
     }
 
     private CheckBox LoginItemToggle()

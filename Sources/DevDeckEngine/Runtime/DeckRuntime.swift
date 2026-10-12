@@ -102,6 +102,12 @@ public final class DeckRuntime {
         }
     }
 
+    /// Whether an action is still under way: a command's start, stop or wait, a mark read.
+    public var hasPendingWork: Bool { !work.isEmpty }
+
+    /// The endpoint agents on this computer reach the deck through, once a host has opened it.
+    public internal(set) var agents: DeckAgents?
+
     /// Waits until every action that is under way, and anything it started, has finished. For
     /// the suite and the protocol host, which both need to know when a button's work is done.
     public func settle() async {
@@ -316,6 +322,7 @@ public final class DeckRuntime {
         loop = nil
         stackLoop?.cancel()
         stackLoop = nil
+        agents?.stop()
     }
 
     // MARK: Arc projects
@@ -1455,14 +1462,22 @@ public final class DeckRuntime {
     }
 
     private func refreshLogs(for card: CardID) async {
+        guard let lines = await readLogs(for: card) else { return }
+        logTails[card] = lines
+    }
+
+    /// A card's log as its window would show it, read now, whether or not a window is open.
+    /// Nil for a card with no log to read.
+    public func readLogs(for card: CardID) async -> LogLines? {
         let limit = LogTail.windowLineLimit
         if let project = project(forCard: card) {
-            logTails[card] = await LocalStackService(project: project, runner: runner(forFolder: project.folder)).logs(limit: limit)
+            return await LocalStackService(project: project, runner: runner(forFolder: project.folder)).logs(limit: limit)
         } else if let project = ddevProject(forCard: card) {
-            logTails[card] = await ddevEnvironment(for: project).logs(for: project, limit: limit)
+            return await ddevEnvironment(for: project).logs(for: project, limit: limit)
         } else if let project = localProject(forCard: card) {
-            logTails[card] = await localService(for: project).logs(limit: limit)
+            return await localService(for: project).logs(limit: limit)
         }
+        return nil
     }
 
     /// Cards whose size the user has just changed, waiting for the deck to make room for them.

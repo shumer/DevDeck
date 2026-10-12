@@ -88,6 +88,7 @@ Push-Location $repository
 try {
     Invoke-SwiftProduct "DevDeckEngineHost"
     Invoke-SwiftProduct "DevDeckProcessHost"
+    Invoke-SwiftProduct "DevDeckMCP"
 
     if (Test-Path -LiteralPath $output) {
         Remove-Item -LiteralPath $output -Recurse -Force
@@ -108,7 +109,8 @@ try {
     }
     $engineHost = Join-Path $product.FullName "DevDeckEngineHost.exe"
     $processHost = Join-Path $product.FullName "DevDeckProcessHost.exe"
-    Copy-Item -LiteralPath $engineHost, $processHost -Destination $output
+    $mcpServer = Join-Path $product.FullName "DevDeckMCP.exe"
+    Copy-Item -LiteralPath $engineHost, $processHost, $mcpServer -Destination $output
     # The engine host reads the delivery's version from this file to know what an update replaces.
     Copy-Item -LiteralPath (Join-Path $repository "VERSION") -Destination $output
 

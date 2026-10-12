@@ -27,6 +27,8 @@ echo "Building v$SHORT_VERSION ($BUILD_NUMBER)…"
 SDK_VERSION="$(xcrun --show-sdk-version 2>/dev/null || echo 14.0)"
 swift build --package-path "$HERE" -c release --product DevDeck \
   -Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION"
+swift build --package-path "$HERE" -c release --product DevDeckMCP \
+  -Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION"
 
 rm -rf "$APP"
 mkdir -p "$MACOS" "$APP/Contents/Resources"
@@ -70,6 +72,13 @@ iconutil -c icns "$HERE/Resources/AppIcon/DevDeck.iconset" -o "$APP/Contents/Res
 cp "$(swift build --package-path "$HERE" -c release --show-bin-path)/DevDeck" "$MACOS/DevDeck"
 chmod +x "$MACOS/DevDeck"
 
+# The MCP server an agent starts, beside the app rather than in MacOS: a stray
+# `pkill -f DevDeck.app/Contents/MacOS/DevDeck` must not take an agent's server with it.
+HELPERS="$APP/Contents/Helpers"
+mkdir -p "$HELPERS"
+cp "$(swift build --package-path "$HERE" -c release --show-bin-path)/DevDeckMCP" "$HELPERS/DevDeckMCP"
+chmod +x "$HELPERS/DevDeckMCP"
+
 # Signed with an identity when one is named, ad-hoc otherwise. CODESIGN_IDENTITY is the name
 # or the SHA-1 of a code-signing identity in the Keychain: a Developer ID on the release
 # runner, or a certificate made by hand in Keychain Access here. With an identity the
@@ -90,10 +99,13 @@ if [ "${CODESIGN_IDENTITY:-}" = "-" ]; then
   CODESIGN_IDENTITY=""
 fi
 if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+  # Nested code first: a bundle's signature covers what is inside it only once that is signed.
+  codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$HELPERS/DevDeckMCP"
   codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$APP"
   codesign --verify --strict --verbose=1 "$APP"
   echo "Signed with: $CODESIGN_IDENTITY"
 else
+  codesign --force --sign - "$HELPERS/DevDeckMCP" 2>/dev/null || true
   codesign --force --sign - "$APP" 2>/dev/null || echo "(ad-hoc signing skipped)"
 fi
 

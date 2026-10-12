@@ -71,6 +71,8 @@ let deliveryVersion: String? = {
     return version.isEmpty ? nil : version
 }()
 session.watchForUpdates(currentVersion: deliveryVersion, canInstall: deliveryVersion != nil, http: URLSessionHTTPClient.makeDefault())
+// Agents on this computer reach the deck here while Settings, General, Agents allows it.
+runtime.serveAgents(version: deliveryVersion ?? "development") { diagnostic($0) }
 
 let input = AsyncStream<Data>(bufferingPolicy: .bufferingOldest(32)) { continuation in
     DispatchQueue.global().async {
