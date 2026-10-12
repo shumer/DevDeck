@@ -183,6 +183,14 @@ extension DeckRuntime {
         return before?.healthURL != project.healthURL || before?.folder != project.folder || before?.startCommand != project.startCommand
     }
 
+    /// The plain project a folder is already on the deck as, if it is.
+    public func localProject(inFolder folder: URL) -> LocalProject? {
+        let wanted = folder.standardizedFileURL.path
+        return localProjectsStore.projects().first { project in
+            project.folderURL.map { $0.standardizedFileURL.path == wanted } ?? false
+        }
+    }
+
     public func removeLocalProject(_ id: String) {
         localProjectsStore.save(localProjectsStore.projects().filter { $0.id != id })
     }

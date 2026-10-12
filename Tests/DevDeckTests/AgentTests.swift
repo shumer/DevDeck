@@ -148,6 +148,52 @@ func runAgentTests(_ run: TestRun) async {
         try expectEqual(deck.preferences.agentAccess, .control)
     }
 
+    await run.test("an agent adds the folder it works in, and what it says wins over what the folder says") {
+        let (deck, _, _) = try makeDeck(.control)
+        let agents = deck.runtime.serveAgents(version: "9.9", address: "/tmp/devdeck-add-\(UUID().uuidString.prefix(6)).sock")
+        defer { agents.stop() }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("devdeck-added-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        // A folder the probe recognises: a dev script in package.json.
+        try #"{"name":"sample","scripts":{"dev":"vite"}}"#.write(to: folder.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+
+        let seen = try object(await agents.answer(request(["request": "detect", "folder": folder.path])))
+        let detection = try expectNotNil(seen["detection"] as? [String: Any], "a detection: \(seen)")
+        let suggestion = try expectNotNil(detection["suggestion"] as? [String: Any], "the folder says what it is")
+        try expectEqual(suggestion["startCommand"] as? String, "npm run dev")
+        try expectNil(seen["card"], "not on the deck yet")
+
+        let added = try object(await agents.answer(request([
+            "request": "addProject", "folder": folder.path, "title": "Sample API",
+            "startCommand": "npm run start:api", "healthURL": "http://localhost:4100/health", "localSiteURL": "http://localhost:4100/docs",
+        ])))
+        try expectNil(added["error"], "\(added)")
+        let card = try expectNotNil(added["card"] as? String, "the new card")
+        let project = try expectNotNil(deck.runtime.localProject(forCard: CardID(rawValue: card)), "written down")
+        try expectEqual(project.title, "Sample API")
+        try expectEqual(project.startCommand, "npm run start:api", "the agent's command, not the folder's")
+        try expectEqual(project.healthURL, "http://localhost:4100/health")
+        try expectEqual(project.localSiteURL, "http://localhost:4100/docs")
+        try expect(project.holdsProcess, "what the folder said stays where the agent said nothing")
+        try expectEqual(project.subtitle, "npm · vite")
+        try expect((added["cards"] as? [[String: Any]])?.first?["card"] as? String == card, "the answer is the card")
+        try expect(deck.effects.contains(.cardsChanged), "the deck is told a card came")
+
+        let again = try object(await agents.answer(request(["request": "addProject", "folder": folder.path])))
+        try expectEqual(again["error"] as? String, L("agents.error.alreadyOnDeck", "Sample API"))
+        try expectEqual(again["card"] as? String, card, "and which card it is")
+        let nowhere = try object(await agents.answer(request(["request": "addProject", "folder": "/nowhere/\(UUID().uuidString)"])))
+        try expect((nowhere["error"] as? String)?.hasSuffix(" is not a folder on this computer.") == true, "a typo is not a card: \(nowhere)")
+
+        let (reader, _, _) = try makeDeck(.read)
+        let readOnly = reader.runtime.serveAgents(version: "9.9", address: "/tmp/devdeck-add-read-\(UUID().uuidString.prefix(6)).sock")
+        defer { readOnly.stop() }
+        let refused = try object(await readOnly.answer(request(["request": "addProject", "folder": folder.path])))
+        try expectEqual(refused["error"] as? String, L("agents.error.readOnly"), "adding a card is control")
+        let allowed = try object(await readOnly.answer(request(["request": "detect", "folder": folder.path])))
+        _ = try expectNotNil(allowed["detection"], "looking at a folder is reading")
+    }
+
     run.section("Agents - the endpoint")
 
     await run.test("a socket only its owner can use carries a line each way, and goes when stopped") {

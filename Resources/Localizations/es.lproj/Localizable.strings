@@ -499,6 +499,8 @@
 "agents.error.noLog" = "%@ no tiene registro que leer.";
 "agents.error.badRequest" = "DevDeck no pudo leer la petición.";
 "agents.error.unknownRequest" = "DevDeck no conoce la petición %@.";
+"agents.error.noFolder" = "%@ no es una carpeta de este ordenador.";
+"agents.error.alreadyOnDeck" = "Esa carpeta ya está en el panel, como %@.";
 "settings.general.runningFrom" = "Ejecutándose desde %@";
 "settings.general.runningTranslocated" = "Se ejecuta desde una copia de solo lectura que creó macOS porque DevDeck se abrió sin moverlo a Aplicaciones. La próxima actualización lo instalará en Aplicaciones.";
 "settings.general.startAtLogin" = "Abrir al iniciar sesión";

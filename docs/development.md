@@ -19,23 +19,49 @@ That single fact shapes the project:
   deployment target stays at macOS 14. The release workflow therefore runs on `macos-26`; the test
   workflow stays on `macos-15`, which keeps the code honest about building on the older SDK.
 
-## Commands
+## Build and run
+
+Needs the Swift 6 toolchain from the Command Line Tools - `xcode-select --install`. **Xcode is
+not required**: there is no project file and nothing here opens in it. Docker is needed only by
+the project cards that run something in containers - Arc's Fusion stack, DDEV, and any plain
+project marked as needing it - and the deck says plainly when it is not running.
 
 ```bash
-./run-tests.sh                    # offline suite; non-zero exit on failure
-./run-tests.sh projects docker    # only the sections whose names contain these words
-scripts/smoke-test.sh             # real GitHub and GitLab calls using the stored tokens
-./build.sh                        # tests, build, bundle, install to /Applications, launch
-./build.sh --no-install           # build the bundle only
-./build.sh --skip-tests           # do not do this
-swift run DevDeck                 # run from the terminal without bundling
+git clone git@github.com:shumer/DevDeck.git widgets && cd widgets
+./run-tests.sh          # offline suite, ~15s, must be green
+./build.sh              # tests, build, bundle, install to /Applications, launch
+```
+
+**`./build.sh` installs by default.** In order it: runs the suite and stops if anything fails,
+builds the release binary, assembles `DevDeck.app` in the repository, signs it with the Developer
+ID it finds in your Keychain (ad-hoc when there is none), then quits any running copy, replaces `/Applications/DevDeck.app` and launches the new one. Nothing
+is left for you to drag anywhere.
+
+The copy in `/Applications` is the one that matters. macOS registers a login item **by path**,
+and the bundle in the repository is deleted and recreated on every build - so "Start at login"
+only works for the installed copy.
+
+| Command | What it does |
+|---|---|
+| `./build.sh` | the whole thing: test, build, install to `/Applications`, launch |
+| `./build.sh --no-install` | builds `./DevDeck.app` only; open it yourself with `open ./DevDeck.app` |
+| `./build.sh --skip-tests` | skips the suite; fine for a quick loop, never in CI |
+| `./build.sh --skip-tests --no-install` | both, in that order |
+| `./run-tests.sh projects docker` | only the test sections whose names contain those words |
+| `CODESIGN_IDENTITY=- ./build.sh` | ad-hoc on purpose, even on a machine that has a certificate |
+| `swift run DevDeck` | runs from the terminal without bundling - handy for `print` debugging |
+| `open -a DevDeck --args --settings project harvest-app` | opens Settings on a page, `general`, `deck`, `cards`, `notifications`, or on one item by kind (`github`, `gitlab`, `arc`, `ddev`, `project`) and id |
+| `open -a DevDeck --args --update` | checks for a newer release and installs it, the same as the menu line |
+| `open -a DevDeck --args --menu sample` | opens the menu-bar menu filled with made-up rows of every tier, for judging or screenshotting it; `--menu` alone opens it with the deck's own |
+| `open -a DevDeck --args --logs` | opens a log window; a card id after it picks the project |
+| `pkill -f DevDeck` | quits every running copy |
+
+More tools, for the pictures and the probes:
+
+```bash
 swift run IconPreview out.png     # draw the menu-bar icon at menu-bar size, at 2×
 swift run GlyphPreview out.png    # draw every card mark at 15 points and blown up
 iconutil -c icns Resources/AppIcon/DevDeck.iconset -o /tmp/DevDeck.icns   # what build.sh packs
-open -a DevDeck --args --menu sample   # the installed app's menu, with a row of every tier
-open -a DevDeck --args --logs         # a log window, without a hand on the mouse
-open -a DevDeck --args --logs project.harvest-app   # that project's log window
-pkill -f DevDeck                  # quit a running instance
 scripts/check-arc-stack.sh        # what an Arc card checks, from a terminal, for a card that
                                   # says "running" when the stack is not
 swiftc -O -o probe-displays scripts/probe-displays.swift && ./probe-displays
@@ -287,7 +313,7 @@ like. Then all four of these are true, or the change is not done:
 
 1. **Code** builds clean: `swift build` with no warnings introduced.
 2. **Tests** cover the new behaviour, and a fixed bug has a test that fails without the fix.
-3. **Docs** updated - `README.md` if user-visible behaviour changed, the relevant file in
+3. **Docs** updated - the relevant file under `docs/` if user-visible behaviour changed, `README.md` if the feature list did, the relevant file in
    `docs/`, and a new ADR when a decision was made rather than a detail implemented.
 4. **Roadmap** updated if the change moves or adds work.
 
@@ -295,3 +321,37 @@ The full checklist, and why it is worded as strictly as it is, is at the top of 
 
 Comments explain *why*, not *what*. If a line needs a comment to say what it does, rename
 something instead.
+
+## Layout
+
+```
+Sources/
+  DevDeckCore/     attention tiers, rows and project history, configuration, cards, HTTP
+                   transport, tokens and code identity, policies,
+                   command runner, git branch, browser choice, the Docker probe, log tail,
+                   the refresh cycle, the update check, the words in six languages
+  KeychainACL/     the C shim for the one deprecated Keychain call Swift cannot silence
+  GitHubKit/       GraphQL and REST clients, models, per-account fan-out
+  GitLabKit/       GitLab accounts per host, the merge requests query, models
+  ArcKit/          Arc projects, link templates, local Fusion stack, .env port
+  DDEVKit/         DDEV projects, ddev list, .ddev/config.yaml, composer.lock version
+  ProjectKit/      plain projects: folder probe, detached start, log and pid, health check
+  DevDeckUI/       SwiftUI cards, the shared card pieces, the brand marks and their SVG
+                   parser, and the visual language
+  DevDeckApp/      AppKit shell: the controller and its loops, the panel coordinator, the
+                   menu, arrangements, the summon key, the updater, the settings window,
+                   the log windows
+    Modules/       one file per kind of card: its view, size, catalog entries and settings
+Tests/
+  TestHarness/     tiny test framework and fakes
+  DevDeckTests/    the suite (404 tests, offline)
+Tools/
+  Smoke/           live API check
+  IconPreview/     renders the menu-bar icon at the size it is actually seen
+  GlyphPreview/    renders every card mark at the size a card draws it
+Resources/
+  AppIcon/         the application icon: the iconset build.sh packs, its SVG and its geometry
+  Localizations/   one .lproj per language, the strings and the plural rules
+scripts/           smoke-test.sh, check-arc-stack.sh
+docs/              architecture, development, GitHub API, roadmap, adr/
+```

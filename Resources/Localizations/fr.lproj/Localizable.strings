@@ -499,6 +499,8 @@
 "agents.error.noLog" = "%@ n’a pas de journal à lire.";
 "agents.error.badRequest" = "DevDeck n’a pas pu lire la demande.";
 "agents.error.unknownRequest" = "DevDeck ne connaît pas la demande %@.";
+"agents.error.noFolder" = "%@ n’est pas un dossier de cet ordinateur.";
+"agents.error.alreadyOnDeck" = "Ce dossier est déjà sur le tableau, sous le nom %@.";
 "settings.general.runningFrom" = "Exécuté depuis %@";
 "settings.general.runningTranslocated" = "Exécuté depuis une copie en lecture seule créée par macOS, parce que DevDeck a été ouvert sans être déplacé dans Applications. La prochaine mise à jour l’installera dans Applications.";
 "settings.general.startAtLogin" = "Ouvrir à l’ouverture de session";

@@ -605,7 +605,7 @@ project, so two Arc checkouts that reach one daemon replace each other. With Doc
 Desktop's WSL integration on, a checkout in WSL and one started from Windows share that
 daemon: starting one stops the other, and its card shows stopped. Checkouts that serve on
 the same port, 80 by default, also answer each other's health checks. The Arc section of
-the [main README](../README.md) has the details.
+[docs/cards.md](../docs/cards.md) has the details.
 
 Docker Engine installed inside a distribution, rather than Docker Desktop, has one trap of its
 own: WSL stops a distribution that has no process of yours in it, systemd services do not count,

@@ -787,7 +787,7 @@ downloaded build against. See [adr/0017-signature-decides.md](adr/0017-signature
 6. If the card can need somebody, give it an attention builder next to its model, returning
    `AttentionItem`s and the `DeckAlert`s for the same facts, add it to `DeckAttention.digest`,
    and test the wording. See [Attention](#attention).
-7. Update `README.md`, this file and `docs/roadmap.md`.
+7. Update `docs/cards.md`, `README.md` when the feature list changes, this file and `docs/roadmap.md`.
 
 What is still per kind by name is inside `DeckRuntime`: the status dictionaries, the local
 refresh loop and the three `perform` functions. That is the data plumbing, and it is the next
