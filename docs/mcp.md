@@ -12,8 +12,8 @@ Settings, General, **Agents (MCP)**:
 | Setting | What an agent can do |
 | --- | --- |
 | Off (default) | Nothing. No endpoint is open. |
-| Read only | `what_needs_me`, `cards`, `project_log`, `detect_project`. |
-| Read and control | The above, plus `start_project`, `stop_project`, `restart_project`, `mark_inbox_read`, `add_project`, `update_project`. |
+| Read only | `what_needs_me`, `what_changed`, `cards`, `project_log`, `detect_project`. |
+| Read and control | The above, plus `start_project`, `stop_project`, `restart_project`, `mark_inbox_read`, `add_project`, `update_project`, `open`. |
 
 The change takes effect at once. Below the choice the page shows one row per agent on this
 computer and where the deck's server stands with it.
@@ -80,6 +80,7 @@ example in `.cursor/mcp.json`:
 | Tool | Arguments | Answer |
 | --- | --- | --- |
 | `what_needs_me` | | The menu's rows, most urgent first: `tier` (`waiting`, `needsFixing`, `stuck`, `goodToKnow`), `title`, `subtitle`, `since`, and the `card`, `url` or inbox `thread` the row is about. |
+| `what_changed` | | What is new since the agent last asked `what_needs_me` or `what_changed` in this session: `added` rows, `gone` rows (dealt with since), and `projects` whose state changed, each with `was` and `now`. The first call reports everything as new with `firstCall`. The memory is the server process's, one per agent session; the deck remembers nothing about who asked. |
 | `cards` | `card` (optional) | Every card on the deck as `{card, model}`, the model being what the shell draws. |
 | `project_log` | `card` | The last lines of the project's log and where they come from. |
 | `start_project`, `stop_project`, `restart_project` | `card` | Runs the card's button, waits up to three minutes for it, and returns the card. `done` is false when it is still going. |
@@ -87,6 +88,7 @@ example in `.cursor/mcp.json`:
 | `detect_project` | `folder` | What DevDeck would make of the folder: `kind` is `arc` for a Fusion checkout (`@arc-fusion/cli` in `package.json`), `ddev` for a DDEV project, `plain` otherwise; for a plain one, what its files say about the start command, the process, Docker and the health URL. Says if the folder is already on the deck, as which card. |
 | `add_project` | `folder`, then `kind`, `title`, `organization`, `site`, `start_command`, `stop_command`, `holds_process`, `requires_docker`, `health_url`, `local_site_url`, `links`, all optional | A card for the folder, of the kind the folder is. An Arc checkout needs `organization` (`sandbox.acme` or `acme`) and gets the Fusion CLI's start, stop and health check; a DDEV project is taken from `ddev list`; a plain project is read from its files, and what the agent passes wins. `links` fills the card's slots by label (Test, UAT, Prod; Sandbox, Prod on Arc) or adds new ones, `kind: tool` for something you work in. A folder already on the deck is refused, naming its card. |
 | `update_project` | `card`, then the same fields | Changes a card on the deck; fields left out stay, links are matched by label. Removing a card stays in Settings. |
+| `open` | `url`, or `card` with `target` | Puts something on the person's screen. A `url` opens in the browser of the account whose host it is, so a GitHub, GitLab or Azure DevOps page opens signed in as the right person; anywhere else, the default browser. With a `card`: `card` (default) brings the deck up on it with its log, `folder` shows its folder, `terminal` opens a terminal there, `site` opens its local site when it is up or its first published one. Needs control: it is the person's screen. |
 
 In Claude Code, inside a repository: "add this project to DevDeck, it starts with `npm run
 dev` and answers on port 3000" is enough; the agent passes the folder it is in and the two

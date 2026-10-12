@@ -1,5 +1,6 @@
 import ArcKit
 import DevDeckCore
+import GitLabKit
 import DevDeckEngine
 import Foundation
 import ProjectKit
@@ -223,6 +224,50 @@ func runAgentTests(_ run: TestRun) async {
         try expectEqual(nonsense["error"] as? String, L("agents.error.badRequest"))
         let other = try object(await agents.answer(request(["request": "dance"])))
         try expectEqual(other["error"] as? String, L("agents.error.unknownRequest", "dance"))
+    }
+
+    await run.test("open puts a page on the screen as the right account, or a card's own places") {
+        let site = try servedProject()
+        let lab = GitLabAccount(id: "lab", label: "Lab", host: URL(string: "https://git.acme.io")!, browser: BrowserChoice(bundleIdentifier: "com.google.Chrome", profileDirectory: "Profile 2"))
+        let deck = Deck(
+            cards: [site.project.cardID], runner: StubCommandRunner([(DockerEnvironment.probeCommand, dockerUp)]),
+            localProjects: [site.project], projectHTTP: FakeHTTPClient(routes: [("localhost", .success(HTTPResponse(statusCode: 200)))]),
+            projectFiles: site.files, gitlabAccounts: [lab]
+        )
+        deck.preferences.agentAccess = .read
+        await deck.runtime.refreshLocalOnce()
+        let agents = deck.runtime.serveAgents(version: "9.9", address: "/tmp/devdeck-open-\(UUID().uuidString.prefix(6)).sock")
+        defer { agents.stop() }
+
+        let refused = try object(await agents.answer(request(["request": "open", "url": "https://git.acme.io/acme/web/-/merge_requests/41"])))
+        try expectEqual(refused["error"] as? String, L("agents.error.readOnly"), "the screen is the person's: read only opens nothing")
+
+        deck.preferences.agentAccess = .control
+        deck.effects.removeAll()
+        let page = try object(await agents.answer(request(["request": "open", "url": "https://git.acme.io/acme/web/-/merge_requests/41"])))
+        try expectNil(page["error"])
+        try expectEqual(page["opened"] as? String, "https://git.acme.io/acme/web/-/merge_requests/41")
+        try expectEqual(deck.effects, [.openURL(URL(string: "https://git.acme.io/acme/web/-/merge_requests/41")!, lab.browser)],
+                        "a GitLab address opens in that instance's browser profile")
+
+        deck.effects.removeAll()
+        _ = try object(await agents.answer(request(["request": "open", "url": "https://example.com/docs"])))
+        try expectEqual(deck.effects, [.openURL(URL(string: "https://example.com/docs")!, .systemDefault)], "anywhere else, the default browser")
+
+        let bad = try object(await agents.answer(request(["request": "open", "url": "not a url"])))
+        try expectEqual(bad["error"] as? String, L("agents.error.badURL", "not a url"))
+
+        deck.effects.removeAll()
+        let folder = try object(await agents.answer(request(["request": "open", "card": site.project.cardID.rawValue, "target": "folder"])))
+        try expectEqual(folder["opened"] as? String, site.project.cardID.rawValue)
+        try expectEqual(deck.effects, [.revealFolder(URL(fileURLWithPath: site.project.folder ?? "", isDirectory: true))])
+
+        deck.effects.removeAll()
+        _ = try object(await agents.answer(request(["request": "open", "card": site.project.cardID.rawValue, "target": "site"])))
+        try expect(deck.effects.contains { if case .openURL = $0 { return true }; return false }, "the local site is up, so it is the site: \(deck.effects)")
+
+        let unknown = try object(await agents.answer(request(["request": "open", "card": "project.nowhere", "target": "terminal"])))
+        try expectEqual(unknown["error"] as? String, L("agents.error.unknownCard", "project.nowhere"))
     }
 
     await run.test("a project's log is read as its window reads it, and a card with none says so") {

@@ -37,7 +37,6 @@ review - worst first:
 | DDEV · one card per project | working | added per project |
 | Project · one card per project | working | added per project |
 | Work in flight · every checkout at once | working | no |
-| Arc XP · deployed bundle versions | planned - needs an org token | - |
 
 Every card is one thing you would otherwise go and check: the deck polls it, words it, and
 decides what needs you. The cards are described in [docs/cards.md](docs/cards.md).
@@ -56,8 +55,9 @@ decides what needs you. The cards are described in [docs/cards.md](docs/cards.md
   display.
 - **Six languages**, chosen in Settings or following the system.
 - **Self-updating** from GitHub releases, asking before it installs.
-- **An MCP server** so a coding agent on the same computer can ask the deck what needs you and,
-  when allowed, run a project's buttons or add a card for the folder it works in.
+- **An MCP server** so a coding agent on the same computer can ask the deck what needs you and
+  what changed since it last looked and, when allowed, run a project's buttons, open a page as
+  the right account or add a card for the folder it works in.
 
 ## Install
 

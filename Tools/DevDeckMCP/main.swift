@@ -52,6 +52,21 @@ let tools = [
         properties: [:], required: [], controls: false
     ),
     Tool(
+        name: "what_changed",
+        description: "What is new since you last asked what_needs_me or what_changed in this session: rows that appeared, rows that went away because they were dealt with, and projects whose state changed (started, stopped, failed). The first call in a session reports everything as new. Cheap to call often.",
+        properties: [:], required: [], controls: false
+    ),
+    Tool(
+        name: "open",
+        description: "Opens something on the person's screen. Give url to open a page in the browser of the account it belongs to (a GitHub, GitLab or Azure DevOps address opens signed in as the right person). Or give card and target: card brings the deck up on that card with its log, folder shows the project's folder, terminal opens a terminal in it, site opens the project's local site when it is up or its first published site.",
+        properties: [
+            "url": ["type": "string", "description": "A web address, http or https."],
+            "card": cardProperty,
+            "target": ["type": "string", "description": "With card: card (default), folder, terminal or site."],
+        ],
+        required: [], controls: true
+    ),
+    Tool(
         name: "cards",
         description: "Every card on the deck as DevDeck draws it: pull requests, merge requests, the inbox, Actions, and each project's state, branch, links and buttons. Give a card id for one card.",
         properties: ["card": cardProperty], required: [], controls: false
@@ -172,6 +187,80 @@ func toolResult(_ answer: DeckAnswer, filterCard: String? = nil) -> [String: Any
     }
 }
 
+// MARK: What changed
+
+/// What the agent saw last: the rows by id, and each project's state. Kept here because this
+/// process is one agent's session; the deck itself remembers nothing about who asked what.
+var seenRows: [String: [String: Any]]?
+var seenProjects: [String: (title: String, state: String)] = [:]
+var seenAt: Date?
+
+/// The project cards' titles and states, from the cards answer.
+func projectStates(_ cards: [[String: Any]]) -> [String: (title: String, state: String)] {
+    var states: [String: (title: String, state: String)] = [:]
+    for entry in cards {
+        guard let card = entry["card"] as? String,
+              let model = (entry["model"] as? [String: Any])?["project"] as? [String: Any],
+              let project = model["_0"] as? [String: Any],
+              let hero = project["hero"] as? [String: Any]
+        else { continue }
+        let state = [hero["text"] as? String, hero["note"] as? String].compactMap { $0 }.joined(separator: " · ")
+        states[card] = (project["title"] as? String ?? card, state)
+    }
+    return states
+}
+
+/// Reads the rows and the projects now, says what differs from last time, and remembers now.
+@MainActor func whatChanged() -> [String: Any] {
+    guard case .answer(let attention) = ask(["request": "attention"]) else { return toolResult(ask(["request": "attention"])) }
+    if let error = attention["error"] as? String { return ["content": [["type": "text", "text": error]], "isError": true] }
+    let rows = (attention["attention"] as? [[String: Any]]) ?? []
+    var current: [String: [String: Any]] = [:]
+    for row in rows { if let id = row["id"] as? String { current[id] = row } }
+    var projects: [String: (title: String, state: String)] = [:]
+    if case .answer(let cards) = ask(["request": "cards"]) {
+        projects = projectStates((cards["cards"] as? [[String: Any]]) ?? [])
+    }
+
+    var result: [String: Any] = [:]
+    let formatter = ISO8601DateFormatter()
+    if let seenRows {
+        result["since"] = seenAt.map(formatter.string(from:)) ?? NSNull()
+        result["added"] = rows.filter { seenRows[($0["id"] as? String) ?? ""] == nil }
+        result["gone"] = seenRows.filter { current[$0.key] == nil }.map(\.value).sorted { ($0["title"] as? String ?? "") < ($1["title"] as? String ?? "") }
+        result["projects"] = projects.compactMap { card, now -> [String: Any]? in
+            guard let was = seenProjects[card], was.state != now.state else { return nil }
+            return ["card": card, "title": now.title, "was": was.state, "now": now.state]
+        }.sorted { ($0["card"] as? String ?? "") < ($1["card"] as? String ?? "") }
+        if (result["added"] as? [Any])?.isEmpty == true, (result["gone"] as? [Any])?.isEmpty == true, (result["projects"] as? [Any])?.isEmpty == true {
+            result["summary"] = "Nothing changed."
+        }
+    } else {
+        result["firstCall"] = true
+        result["added"] = rows
+        result["gone"] = [Any]()
+        result["projects"] = projects.sorted { $0.key < $1.key }
+            .map { card, state -> [String: Any] in ["card": card, "title": state.title, "now": state.state] }
+    }
+    seenRows = current
+    seenProjects = projects
+    seenAt = Date()
+    let data = (try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
+    return ["content": [["type": "text", "text": String(decoding: data, as: UTF8.self)]]]
+}
+
+/// `what_needs_me` is also a look: what it showed is not news on the next `what_changed`.
+@MainActor func remember(_ answer: DeckAnswer) {
+    guard case .answer(let object) = answer, object["error"] == nil else { return }
+    var current: [String: [String: Any]] = [:]
+    for row in (object["attention"] as? [[String: Any]]) ?? [] { if let id = row["id"] as? String { current[id] = row } }
+    seenRows = current
+    seenAt = Date()
+    if case .answer(let cards) = ask(["request": "cards"]) {
+        seenProjects = projectStates((cards["cards"] as? [[String: Any]]) ?? [])
+    }
+}
+
 @MainActor func call(_ name: String, arguments: [String: Any]) -> [String: Any] {
     let card = arguments["card"] as? String
     func project(_ action: String) -> [String: Any] {
@@ -179,7 +268,18 @@ func toolResult(_ answer: DeckAnswer, filterCard: String? = nil) -> [String: Any
         return toolResult(ask(["request": "command", "command": ["project": ["_0": card, "_1": action]]]))
     }
     switch name {
-    case "what_needs_me": return toolResult(ask(["request": "attention"]))
+    case "what_needs_me":
+        let answer = ask(["request": "attention"])
+        remember(answer)
+        return toolResult(answer)
+    case "what_changed": return whatChanged()
+    case "open":
+        var request: [String: Any] = ["request": "open"]
+        if let url = arguments["url"] as? String { request["url"] = url }
+        if let card { request["card"] = card }
+        if let target = arguments["target"] as? String { request["target"] = target }
+        guard request["url"] != nil || card != nil else { return toolResult(.unreachable("A url or a card id is needed.")) }
+        return toolResult(ask(request))
     case "cards": return toolResult(ask(["request": "cards"]), filterCard: card)
     case "project_log":
         guard let card else { return toolResult(.unreachable("A card id is needed.")) }
@@ -249,7 +349,7 @@ func fail(_ id: Any, code: Int, message: String) {
             "protocolVersion": supportedVersions.contains(asked ?? "") ? asked! : supportedVersions[0],
             "capabilities": ["tools": ["listChanged": false]],
             "serverInfo": ["name": "devdeck", "version": version],
-            "instructions": "DevDeck is the developer's desk: pull requests, reviews, the GitHub inbox, CI, and local projects with their state and logs. Ask what_needs_me first. Project tools take card ids from cards.",
+            "instructions": "DevDeck is the developer's desk: pull requests, reviews, the GitHub inbox, CI, and local projects with their state and logs. Ask what_needs_me first, and what_changed later in the session rather than asking again. Project tools take card ids from cards. open puts a page or a project's place on the person's screen.",
         ])
     case "ping":
         reply(id, result: [:])

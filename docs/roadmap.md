@@ -2,6 +2,11 @@
 
 ## Done
 
+- Two more MCP tools: `what_changed`, what is new since the agent last looked, remembered per
+  agent session in the server process; and `open`, a page in the right account's browser or a
+  project's card, folder, terminal or site, under control. Bundle versions on the Arc card were
+  checked against the Deployer API and dropped: the card has no room for the line.
+
 - Opening DevDeck again while it runs, from Spotlight, the Dock or Finder, opens Settings instead
   of doing nothing; a launch at login is not that, and opens nothing. A second launch on Windows
   does the same, where it used to raise the deck.
@@ -282,16 +287,19 @@
    card styles (W-4), tray and menus (W-5), notifications (W-6), display-aware placement
    (W-7), the log window (W-8), Summon (W-9), settings (W-10), and links, folders and the
    phone QR code (W-11), and start at login (W-13).
-2. **Bundle versions on the project card** - live version per environment, which needs an org
-   token and the Developer Center endpoints pinned down against a real organisation.
-3. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
+2. **Resizable panels** - dragging the bottom edge instead of the expander, if the three-row
    default plus expansion turns out not to be enough.
-4. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
+3. **A tunnel, when the wifi is not enough** - `ddev share` for DDEV projects, and ngrok or
    Tailscale for the rest. The QR code covers the same network; this covers the customer on a
    call.
 
 ## Not planned
 
+- Bundle versions on the Arc card. The Deployer API answers with the ordinary Fusion token
+  (`GET /deployments/fusion/live` and `/v1/services` on `api.{organization}.arcpublishing.com`,
+  checked October 2026 against four organizations), but a line with the deployment, the bundle
+  and its age overloads a card that is about the local stack. Revisit as a banner on a new
+  deployment, with nothing on the card, if it is ever missed.
 - WidgetKit widgets in Notification Center. They need Xcode and their own refresh budget; the
   panels already sit on the desktop. Revisit only if Xcode gets installed.
 - Linux. The engine would port easily, but the deck itself would not: GNOME on Wayland, the most

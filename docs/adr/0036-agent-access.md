@@ -90,3 +90,13 @@ are known is the engine's list (`AgentClient.all`); the shells draw one row per 
 `agentClients` answer, which the engine also pushes unasked as the work finishes. Editing the
 agents' configuration files directly was rejected: the tools are the supported way in, and their
 formats have changed before.
+
+## Amendment: what changed, and open
+
+Two tools were added. `what_changed` answers what is new since the agent last looked: rows that
+appeared, rows that went, projects whose state moved. The memory of "last looked" lives in the
+MCP server process, which is one agent's session, and not in the deck: the deck has no notion of
+who asked, and two agents asking must not spoil each other's answer. `open` puts a page or a
+project's place on the person's screen; it takes control, because the screen is the person's,
+and a URL opens in the browser of the account whose host it is, the way a row's link would, so an
+agent that names a pull request does not open it as the wrong person.

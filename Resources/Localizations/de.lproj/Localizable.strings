@@ -23,6 +23,8 @@
 "account.section.instance" = "Instanz";
 "account.section.token" = "Token";
 "account.showOnDeck" = "Auf dem Deck zeigen";
+"agents.error.badURL" = "%@ ist keine Webadresse.";
+"agents.error.nothingToOpen" = "%@ hat keine Website zum Öffnen.";
 "alert.summary.body" = "%@. Klicken, um sie im Menü zu sehen.";
 "alert.summary.named.more" = "%1$@, %2$@ und %3$d weitere";
 "arc.noContainers" = "keine Container für dieses Projekt";

@@ -1656,6 +1656,26 @@ public final class DeckRuntime {
         azureAccountsStore.accounts().first { $0.id == accountID }?.browser ?? .systemDefault
     }
 
+    /// The browser for an address nobody's row carried: the account whose host it is, so a
+    /// pull request an agent names opens signed in as the right person. Anywhere else, the
+    /// system's default.
+    public func browser(forLink url: URL) -> BrowserChoice {
+        guard let host = url.host?.lowercased() else { return .systemDefault }
+        if let account = accountsStore.enabledAccounts().first(where: { account in
+            let api = account.apiBaseURL.host?.lowercased() ?? ""
+            return host == "github.com" ? api == "api.github.com" : (host == api || api.hasSuffix("." + host))
+        }) {
+            return account.browser
+        }
+        if let instance = gitlabAccountsStore.enabledAccounts().first(where: { $0.host.host?.lowercased() == host }) {
+            return instance.browser
+        }
+        if host == "dev.azure.com" || host.hasSuffix(".visualstudio.com"), let organization = azureAccountsStore.enabledAccounts().first {
+            return organization.browser
+        }
+        return .systemDefault
+    }
+
     /// Where a row of any service opens: the browser of the account it came from.
     func browser(for accountID: String, service: DeckLinkService) -> BrowserChoice {
         switch service {

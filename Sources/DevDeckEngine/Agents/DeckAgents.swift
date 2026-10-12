@@ -92,6 +92,10 @@ public final class DeckAgents {
         var request: String
         var card: CardID?
         var command: DeckCommand?
+        /// `open`: a web address, in the browser of the account it belongs to.
+        var url: String?
+        /// `open` with a card: `card` (default), `folder`, `terminal` or `site`.
+        var target: String?
         /// `detect` and `addProject`: the folder, in the platform's own spelling.
         var folder: String?
         /// `addProject`: `plain`, `arc` or `ddev`; absent, what the folder says it is.
@@ -258,6 +262,13 @@ public final class DeckAgents {
                 break
             }
             reply.log = await runtime.readLogs(for: card).map { AgentLog(card: card, lines: $0) }
+        case "open":
+            // Opening things is the person's screen, so it takes control, like a button.
+            guard access == .control else {
+                reply.error = L("agents.error.readOnly")
+                break
+            }
+            open(request, into: &reply)
         case "command":
             guard access == .control else {
                 reply.error = L("agents.error.readOnly")
@@ -292,6 +303,41 @@ public final class DeckAgents {
         case .project, .markRead, .markRestRead: return true
         default: return false
         }
+    }
+
+    /// What "open" opens: a page in the right browser, or one of a card's own places. The
+    /// address decides the browser the way a row would: the account whose host it is.
+    private func open(_ request: Request, into reply: inout Reply) {
+        if let text = request.url?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty {
+            guard let url = URL(string: text), let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme), url.host != nil else {
+                reply.error = L("agents.error.badURL", text)
+                return
+            }
+            runtime.effect(.openURL(url, runtime.browser(forLink: url)))
+            reply.opened = url.absoluteString
+            return
+        }
+        guard let card = request.card, let model = runtime.model(for: card) else {
+            reply.error = L("agents.error.unknownCard", request.card?.rawValue ?? "")
+            return
+        }
+        switch request.target?.lowercased() ?? "card" {
+        case "folder":
+            runtime.perform(.revealFolder(card))
+        case "terminal":
+            runtime.perform(.openTerminal(card))
+        case "site":
+            // The first environment the card offers that is not greyed out: the local site when
+            // the project is up, otherwise the first published one.
+            guard case .project(let project) = model, let chip = project.environments.first(where: { $0.command != nil }), let command = chip.command else {
+                reply.error = L("agents.error.nothingToOpen", card.rawValue)
+                return
+            }
+            runtime.perform(command)
+        default:
+            runtime.perform(.showCard(card))
+        }
+        reply.opened = card.rawValue
     }
 
     /// The deck learns a card came or changed, its data is fetched, and the answer is the card.
@@ -389,6 +435,8 @@ public final class DeckAgents {
         var log: AgentLog?
         /// After a command: whether the work it started has finished.
         var done: Bool?
+        /// `open`: what was opened, the address or the card.
+        var opened: String?
         /// `detect`: what kind of project the folder holds, and for a plain one what its files say.
         var kind: String?
         var detection: DeckDetection?

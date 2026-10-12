@@ -23,6 +23,8 @@
 "account.section.instance" = "Инстанс";
 "account.section.token" = "Токен";
 "account.showOnDeck" = "Показывать на деке";
+"agents.error.badURL" = "%@ это не веб-адрес.";
+"agents.error.nothingToOpen" = "У %@ нет сайта, который можно открыть.";
 "alert.summary.body" = "%@. Нажмите, чтобы посмотреть их в меню.";
 "alert.summary.named.more" = "%1$@, %2$@ и ещё %3$d";
 "arc.noContainers" = "у этого проекта нет контейнеров";
