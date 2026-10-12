@@ -83,4 +83,11 @@ public struct DeckCardList: Sendable {
     public func isEnabled(_ card: CardID) -> Bool {
         preferences.cardLayout.isEnabled(card, catalog: catalog)
     }
+
+    /// Forgets a removed project's switch, so the next project with its id starts on the deck.
+    public func forget(_ card: CardID) {
+        var layout = preferences.cardLayout
+        layout.forget(card)
+        preferences.cardLayout = layout
+    }
 }

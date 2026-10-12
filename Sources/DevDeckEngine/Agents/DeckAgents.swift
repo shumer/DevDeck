@@ -177,6 +177,7 @@ public final class DeckAgents {
                 var project = ArcProject(id: ArcProject.makeID(from: title, existing: existing), title: title, organization: organization, site: request.site?.nonEmpty, folder: folder.path)
                 apply(request, to: &project)
                 runtime.saveArcProject(project)
+                runtime.cards.setEnabled(true, for: project.cardID)
                 reply.arcProject = project
                 await added(project.cardID, into: &reply)
             case .ddev:

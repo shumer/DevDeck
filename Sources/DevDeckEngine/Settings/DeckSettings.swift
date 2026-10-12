@@ -165,6 +165,8 @@ extension DeckRuntime {
         }
         projects.append(project)
         localProjectsStore.save(projects)
+        // On the deck from the start, whatever a removed project with the same id had chosen.
+        cards.setEnabled(true, for: project.cardID)
         return id
     }
 
@@ -206,6 +208,7 @@ extension DeckRuntime {
 
     public func removeLocalProject(_ id: String) {
         localProjectsStore.save(localProjectsStore.projects().filter { $0.id != id })
+        cards.forget(CardID(rawValue: "project.\(id)"))
     }
 
     /// What a folder says about the project in it.
@@ -244,8 +247,10 @@ extension DeckRuntime {
     public func addArcProject() -> String {
         var projects = projectsStore.projects()
         let id = ArcProject.makeID(from: "project", existing: projects.map(\.id))
-        projects.append(ArcProject(id: id, title: L("project.new.title"), organization: ""))
+        let project = ArcProject(id: id, title: L("project.new.title"), organization: "")
+        projects.append(project)
         projectsStore.save(projects)
+        cards.setEnabled(true, for: project.cardID)
         return id
     }
 
@@ -274,6 +279,7 @@ extension DeckRuntime {
 
     public func removeArcProject(_ id: String) {
         projectsStore.save(projectsStore.projects().filter { $0.id != id })
+        cards.forget(CardID(rawValue: "arc.project.\(id)"))
     }
 
     /// What the stack check asks about: the folder and the address it resolves to.
@@ -322,8 +328,10 @@ extension DeckRuntime {
     public func addDDEVProject(_ entry: DDEVListEntry) -> String {
         var projects = ddevProjectsStore.projects()
         let id = DDEVProject.makeID(from: entry.name, existing: projects.map(\.id))
-        projects.append(DDEVProject(id: id, name: entry.name, folder: entry.approot))
+        let project = DDEVProject(id: id, name: entry.name, folder: entry.approot)
+        projects.append(project)
         ddevProjectsStore.save(projects)
+        cards.setEnabled(true, for: project.cardID)
         return id
     }
 
@@ -339,6 +347,7 @@ extension DeckRuntime {
 
     public func removeDDEVProject(_ id: String) {
         ddevProjectsStore.save(ddevProjectsStore.projects().filter { $0.id != id })
+        cards.forget(CardID(rawValue: "ddev.project.\(id)"))
     }
 
     /// The note a chosen folder earns: none for a DDEV project, a warning for anything else. It

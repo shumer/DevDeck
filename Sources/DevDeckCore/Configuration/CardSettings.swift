@@ -63,6 +63,12 @@ public struct CardLayout: Codable, Sendable, Equatable {
         }
     }
 
+    /// Drops what was remembered about a card, for a project that is gone. Ids are reused, and a
+    /// card switched off before it was removed must not keep the next project with its id off
+    /// the deck.
+    public mutating func forget(_ id: CardID) {
+        settings.removeAll { $0.id == id }
+    }
 }
 
 /// A catalog entry combined with the user's preference for it.

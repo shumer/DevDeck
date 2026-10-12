@@ -55,6 +55,27 @@ func runSettingsModelTests(_ run: TestRun) async {
         try expect(project.detail.contains("dev"), "the dev script becomes the start command: \(project.detail)")
     }
 
+    await run.test("a project added under an id a removed one had is on the deck") {
+        let deck = Deck(cards: [])
+        let first = deck.runtime.addArcProject()
+        let card = CardID(rawValue: "arc.project.\(first)")
+        try expect(deck.runtime.cards.visible.contains(card), "a new project is on the deck")
+        // Switched off, then removed: the switch used to outlive the project.
+        deck.runtime.cards.setEnabled(false, for: card)
+        deck.runtime.removeArcProject(first)
+        let second = deck.runtime.addArcProject()
+        try expectEqual(second, first, "ids are reused")
+        try expect(deck.runtime.cards.visible.contains(card), "and the next project with the id is on the deck, not off it")
+
+        let folder = try nodeFolder()
+        let local = deck.runtime.addLocalProject(folder: folder)
+        let localCard = CardID(rawValue: "project.\(local)")
+        deck.runtime.cards.setEnabled(false, for: localCard)
+        deck.runtime.removeLocalProject(local)
+        try expectEqual(deck.runtime.addLocalProject(folder: folder), local)
+        try expect(deck.runtime.cards.visible.contains(localCard))
+    }
+
     await run.test("Detect names what it found, or says why it found nothing") {
         let deck = Deck(cards: [])
         let none = deck.runtime.detect(folder: nil)
