@@ -32,9 +32,11 @@ colleagues who were told what they are installing.
   on uninstall removes the shortcut, the `DevDeck` Run value and
   `%PROGRAMDATA%\DevDeck\NotificationAssets`. It closes a running shell before installing and
   supports a silent mode, which is what the updater will call.
-- **No signature for the beta.** The installer and the executables ship unsigned. SmartScreen
-  will warn; the install notes say so and say why. Signing is W-16 and waits for a public
-  release.
+- **No signature.** The installer and the executables ship unsigned. SmartScreen will warn; the
+  install notes say so and say why. Signing was W-16 and was to wait for a public release;
+  amended 2026-10-12: it is dropped rather than deferred. A certificate is a yearly cost for a
+  warning that the people installing this build already understand, and it comes back only if
+  the build goes to strangers.
 
 ## Consequences
 

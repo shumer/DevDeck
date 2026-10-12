@@ -144,8 +144,10 @@ Every task ends with screenshots on neutral data and a check against the shell r
   [the Windows install notes](../Windows/README.md#install) and
   [the W-15 verification report](windows/W15-windows-installer-report.md)
   for the live checks and the missing runtime limitation.
-- **W-16.** Code signing. Deferred past the beta: the beta ships unsigned,
-  [0035](adr/0035-windows-delivery.md).
+- **W-16.** Code signing. Dropped, 2026-10-12: a certificate costs money every year, and the
+  Windows build is for colleagues who know what they are installing. The installer and the
+  executables ship unsigned, SmartScreen warns, and the install notes say so and say why.
+  Revisit only if the build goes to strangers. [0035](adr/0035-windows-delivery.md).
 - **W-17.** Done: the engine offers the Windows installer with its `.sha256`; the shell downloads
   both, checks SHA256, reports progress and launches the quiet installer. The old shell answers
   `--quit` while the installer is running; the installer starts the new copy with its existing
