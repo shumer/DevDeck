@@ -39,14 +39,16 @@ The clean baseline was taken from a tracked-source snapshot at `C:\src\DevDeck` 
 | `DevDeck.Shell.Tests` baseline | 113 passed, 0 failed. |
 | Updated `DevDeckWindowsCoreTests` | 19 passed, 0 failed; logged `compiled=arm64, Windows=ARM64` and selected the ARM64 update asset. |
 | Updated `DevDeckEngineTests` | 40 passed, 0 failed; every golden transcript still matched. |
+| Hosted macOS release tests | Passed in release dry run 38227908499; `UpdateTests.swift` was compiled and the complete test step succeeded. |
+| Hosted Windows x64 release build | Passed: 19 Windows Core, 40 Engine and 113 shell tests; installer produced. |
+| Hosted Windows ARM64 release build | Passed natively on `windows-11-arm`: 19 Windows Core, 40 Engine and 113 shell tests; installer produced. |
 | Workflow validation | PyYAML and actionlint 1.7.12 passed. |
 
-SwiftPM completed builds successfully but emitted Win32 error 1314 while creating its
-`.build\debug` and `.build\release` convenience symbolic links. Developer Mode is disabled and
-this account cannot change that setting without elevation. The repository warning gate remains
-strict and does not allow this diagnostic. Delivery validation used a disposable staging copy
-whose warning filter excluded only this known host diagnostic. The committed builder still allows
-only the documented WinSDK `wchar_t` warning.
+Before Developer Mode was enabled, SwiftPM completed builds but emitted Win32 error 1314 while
+creating its `.build\debug` and `.build\release` convenience symbolic links. After Developer Mode
+was enabled, a native Windows symbolic-link probe succeeded without elevation. The committed
+warning gate remains strict and the hosted ARM64 release build passed it; only the documented
+WinSDK `wchar_t` warning was present.
 
 ## Delivery
 
@@ -85,10 +87,10 @@ only size comparison.
 | Cards, settings, tray, log, notification, Summon and light/dark theme | Partly checked. The native processes started, and a neutral ARM64 renderer capture was produced. Interactive UI coverage was not completed because the automation surface did not expose the shell's non-activating windows. |
 | Windows, WSL, DDEV and Arc project Start, health, log and Stop | Not completed. Docker, DDEV and Node ARM64 prerequisites are present. |
 | ARM64 installer build | Passed. Inno Setup compiled the architecture-specific runtime URL, registry key and filename. |
-| ARM64 installer install, update and uninstall | Not completed. The machine has no machine-wide ARM64 Desktop Runtime 10, so the next step invokes a UAC runtime installation that requires a user action. |
+| ARM64 installer install, update and uninstall | Not completed. Machine-wide ARM64 Desktop Runtime 10.0.12 is now installed; the remaining installer lifecycle checks still require an isolated install/update/uninstall pass. |
 | x64 installer refusal | Passed for the new rule. An x64 build of the same Inno script exited before creating its isolated target directory on ARM64. |
 | Published v0.20 x64 installer refusal | Not run. v0.20 uses `ArchitecturesAllowed=x64compatible`, which Inno documents as allowing x64 emulation on ARM64. Running it would install instead of proving the expected refusal. W-19 changes the x64 rule to `x64compatible and not arm64`. |
-| ARM64 update asset | Passed in native Windows Core tests. Explicit x64 and ARM64 selection is also covered in `UpdateTests.swift`; hosted Mac execution remains pending. |
+| ARM64 update asset | Passed in native Windows Core tests. Explicit x64 and ARM64 selection is also covered in `UpdateTests.swift`; the hosted macOS release test step passed. |
 | Full local update download and relaunch | Not completed; no ARM64 release asset exists yet. |
 | MCP through Claude Code | Not completed. No token was entered or logged. |
 | x64 delivery under emulation | Not completed; no unpacked x64 delivery was available locally. |
@@ -106,8 +108,24 @@ GitHub documents `windows-11-arm` as a standard hosted ARM64 runner. The pinned
 `compnerd/gha-setup-swift` action supports `build_arch: arm64` and the official Swift 6.4 ARM64
 download layout. Tests and release now share `.github/actions/windows-build`. The release workflow
 keeps the existing x64 filename and adds
-`DevDeck-<version>-<build>-windows-arm64-setup.exe` with its SHA256 file. A hosted dry run has not
-yet been recorded.
+`DevDeck-<version>-<build>-windows-arm64-setup.exe` with its SHA256 file.
+
+[Release dry run 38227908499](https://github.com/shumer/DevDeck/actions/runs/38227908499) passed on
+commit `0b26ee1b0f5b1bc28b56e770ed2c45a3e0430efc` with `attach=false`. The macOS build, tests,
+notarisation and package completed in 4 minutes 53 seconds. The native ARM64 Windows job completed
+in 8 minutes 52 seconds and logged `compiled=arm64, Windows=ARM64`; the x64 job completed in
+9 minutes 44 seconds and logged `compiled=x86_64, Windows=AMD64`. The dry run retained these
+artifacts without modifying release v0.20:
+
+| Artifact | Contents | Artifact bytes |
+|---|---|---:|
+| `mac-app` | Notarised macOS package | 3,665,862 |
+| `windows-arm64-installer` | `DevDeck-0.20-349-windows-arm64-setup.exe` and SHA256 | 23,809,246 |
+| `windows-installer` | `DevDeck-0.20-349-windows-setup.exe` and SHA256 | 24,484,737 |
+
+The ARM64 installer itself is 24,308,945 bytes; the x64 installer is 24,984,256 bytes. GitHub
+reported only action-runtime deprecation notices for Node.js 20 and a macOS runner capacity notice;
+neither affected the builds.
 
 ## Source scope and limits
 
@@ -115,5 +133,5 @@ The only production file changed under `Sources` is
 `Sources/DevDeckCore/Update/UpdateCheck.swift`. Shell product code did not change. Build scripts,
 the installer definition, tests, workflows and Windows documentation carry the remaining changes.
 
-Mac tests were not run locally and are not claimed. The pending interactive items above need a
-follow-up after Developer Mode and the machine-wide ARM64 .NET Desktop Runtime are enabled.
+Mac tests were not run locally, but the complete macOS release test step passed in the hosted dry
+run. The remaining interactive items above need a separate Windows follow-up.
