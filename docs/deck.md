@@ -84,7 +84,9 @@ The settings window looks and behaves like System Settings, down to its measurem
 height translucent sidebar whose rows follow the Mac's own sidebar icon size, the standard title
 bar, and a form for whatever is selected in the sidebar. Its width is fixed, since the form has
 one column, and its height is yours to change. It minimises to the Dock like any other window,
-carrying the app's icon, and ⌘W closes it. At the top of the sidebar are four pages. **General** is start at login, the
+carrying the app's icon, and ⌘W closes it. Opening DevDeck again while it runs, from Spotlight,
+the Dock or Finder, opens this window: a menu-bar app has no other, and silence reads as a launch
+that failed. A launch at login opens nothing. At the top of the sidebar are four pages. **General** is start at login, the
 interface language, updates and the version. **Deck** is where the cards sit, the lock, closing gaps and the summon shortcut.
 **Cards** switches the cards that are not an account or a project on and off, with the refresh
 interval and the Actions repositories. **Notifications** is the master switch and two tables:

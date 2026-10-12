@@ -122,6 +122,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let notifier = Notifier()
     private var cancellables = Set<AnyCancellable>()
 
+    /// A copy that is already running, opened again from Spotlight, the Dock or Finder. A
+    /// menu-bar app has no window to bring forward, and silence reads as a launch that failed,
+    /// so the one window it has comes up. A launch at login never arrives here: this is only
+    /// ever a person asking for the app a second time.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        settingsController.show()
+        return false
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Before anything is worded: menus, cards and banners all read their words as they are
         // drawn, and this is what decides which table they read them from.

@@ -2,6 +2,9 @@
 
 ## Done
 
+- Opening DevDeck again while it runs, from Spotlight, the Dock or Finder, opens Settings instead
+  of doing nothing; a launch at login is not that, and opens nothing.
+
 - **Azure DevOps pull requests** - a third card of the same shape, yours and the ones waiting on
   your vote, from one organization per account on `dev.azure.com`, three REST calls per refresh,
   with the organization on the account because a token is minted per organization. See
