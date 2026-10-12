@@ -1,9 +1,14 @@
 param(
-    [string]$OutputDirectory = "dist\windows-x64"
+    [ValidateSet("x64", "arm64")]
+    [string]$Architecture = $(if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }),
+    [string]$OutputDirectory
 )
 
 $ErrorActionPreference = "Stop"
 $repository = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+if (-not $OutputDirectory) {
+    $OutputDirectory = "dist\windows-$Architecture"
+}
 $output = [System.IO.Path]::GetFullPath((Join-Path $repository $OutputDirectory))
 if (-not $output.StartsWith($repository + [System.IO.Path]::DirectorySeparatorChar)) {
     throw "Output directory must stay inside the repository."
@@ -24,9 +29,14 @@ foreach ($name in @("SDKROOT", "SWIFT_DEVELOPER_DIR")) {
 }
 $visualStudio = $null
 $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$visualStudioComponent = if ($Architecture -eq "arm64") {
+    "Microsoft.VisualStudio.Component.VC.Tools.ARM64"
+} else {
+    "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+}
 if (Test-Path -LiteralPath $vswhere) {
     $visualStudio = & $vswhere -latest -products '*' `
-        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        -requires $visualStudioComponent -property installationPath
     if ($LASTEXITCODE -ne 0) { $visualStudio = $null }
 }
 if (-not $visualStudio) {
@@ -38,28 +48,67 @@ if (-not $visualStudio) {
 if (-not $visualStudio) {
     throw "Visual Studio with C++ build tools is not installed."
 }
+$toolPath = $env:Path
 Import-Module (Join-Path $visualStudio "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
 Enter-VsDevShell `
     -VsInstallPath $visualStudio -SkipAutomaticLocation `
-    -DevCmdArguments "-arch=x64 -host_arch=x64" | Out-Null
+    -DevCmdArguments "-arch=$Architecture -host_arch=$Architecture" | Out-Null
+$env:Path = $toolPath + ";" + $env:Path
+if (-not (($env:LIB -split ';') | Where-Object { Test-Path -LiteralPath (Join-Path $_ "kernel32.lib") })) {
+    $windowsKits = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10"
+    $sdkVersion = Get-ChildItem (Join-Path $windowsKits "Lib") -Directory -ErrorAction SilentlyContinue |
+        Where-Object {
+            Test-Path -LiteralPath (Join-Path $_.FullName "um\$Architecture\kernel32.lib")
+        } |
+        Sort-Object { [Version]$_.Name } -Descending |
+        Select-Object -First 1 -ExpandProperty Name
+    if (-not $sdkVersion) {
+        throw "Windows SDK libraries for $Architecture are not installed."
+    }
+    $sdkInclude = Join-Path $windowsKits "Include\$sdkVersion"
+    $env:INCLUDE += ";$(Join-Path $sdkInclude 'ucrt');$(Join-Path $sdkInclude 'shared');$(Join-Path $sdkInclude 'um');$(Join-Path $sdkInclude 'winrt');$(Join-Path $sdkInclude 'cppwinrt')"
+    $env:LIB += ";$(Join-Path $windowsKits "Lib\$sdkVersion\ucrt\$Architecture");$(Join-Path $windowsKits "Lib\$sdkVersion\um\$Architecture")"
+    $env:LIBPATH = $env:LIB
+    $env:Path = (Join-Path $windowsKits "bin\$sdkVersion\$Architecture") + ";" + $env:Path
+}
 
+$swiftArchitecture = if ($Architecture -eq "arm64") { "aarch64" } else { "x86_64" }
+$swiftCandidates = @()
 $swiftCommand = Get-Command swift.exe -ErrorAction SilentlyContinue
-$swift = $swiftCommand.Source
-if (-not $swift) {
-    $swift = Get-ChildItem `
-        (Join-Path $env:LOCALAPPDATA "Programs\Swift\Toolchains") `
-        -Filter swift.exe -Recurse -ErrorAction SilentlyContinue |
-        Sort-Object FullName -Descending |
-        Select-Object -First 1 -ExpandProperty FullName
+if ($swiftCommand) { $swiftCandidates += $swiftCommand.Source }
+$swiftCandidates += Get-ChildItem `
+    (Join-Path $env:LOCALAPPDATA "Programs\Swift\Toolchains") `
+    -Filter swift.exe -Recurse -ErrorAction SilentlyContinue |
+    Sort-Object FullName -Descending |
+    Select-Object -ExpandProperty FullName
+$swift = $null
+$targetInfo = $null
+foreach ($candidate in $swiftCandidates | Select-Object -Unique) {
+    try {
+        $candidateInfo = & $candidate -print-target-info 2>$null | ConvertFrom-Json
+    } catch {
+        continue
+    }
+    if ($LASTEXITCODE -ne 0 -or -not $candidateInfo.target.triple) { continue }
+    if ($candidateInfo.target.triple.StartsWith("$swiftArchitecture-")) {
+        $swift = $candidate
+        $targetInfo = $candidateInfo
+        break
+    }
 }
 if (-not $swift) {
-    throw "Swift is not installed."
+    throw "Swift for Windows $Architecture is not installed or cannot start."
 }
 $swiftBin = Split-Path $swift
 $env:Path = $swiftBin + ";" + $env:Path
-$targetInfo = (& $swift -print-target-info | ConvertFrom-Json)
 $runtimePaths = @($targetInfo.paths.runtimeLibraryPaths)
-$dotnet = (Get-Command dotnet.exe -ErrorAction SilentlyContinue).Source
+$targetTriple = $targetInfo.target.triple
+$userDotnet = Join-Path $env:LOCALAPPDATA "Microsoft\dotnet\dotnet.exe"
+$dotnet = if (Test-Path -LiteralPath $userDotnet) {
+    $userDotnet
+} else {
+    (Get-Command dotnet.exe -ErrorAction SilentlyContinue).Source
+}
 if (-not $dotnet) {
     $dotnet = "C:\Program Files\dotnet\dotnet.exe"
 }
@@ -96,16 +145,25 @@ try {
     New-Item -ItemType Directory -Path $output | Out-Null
     $env:DOTNET_CLI_TELEMETRY_OPTOUT = "1"
     & $dotnet publish Windows\DevDeck.Shell\DevDeck.Shell.csproj `
-        -c Release -r win-x64 --self-contained false --output $output `
+        -c Release -r "win-$Architecture" --self-contained false --output $output `
         -p:DebugType=None -p:DebugSymbols=false -warnaserror
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    $products = Get-ChildItem .build\out\Products -Directory -Filter "Release-windows-*"
+    $products = @()
+    $legacyProducts = Join-Path $repository ".build\out\Products"
+    if (Test-Path -LiteralPath $legacyProducts) {
+        $products += Get-ChildItem $legacyProducts -Directory -Filter "Release-windows-*"
+    }
+    $tripleProduct = Join-Path $repository ".build\$targetTriple\release"
+    if (Test-Path -LiteralPath $tripleProduct) {
+        $products += Get-Item -LiteralPath $tripleProduct
+    }
     $product = $products | Where-Object {
-        Test-Path -LiteralPath (Join-Path $_.FullName "DevDeckEngineHost.exe")
+        $_.FullName.ToLowerInvariant().Contains($swiftArchitecture) -and
+        (Test-Path -LiteralPath (Join-Path $_.FullName "DevDeckEngineHost.exe"))
     } | Select-Object -First 1
     if (-not $product) {
-        throw "Swift release products were not found."
+        throw "Swift release products for '$targetTriple' were not found."
     }
     $engineHost = Join-Path $product.FullName "DevDeckEngineHost.exe"
     $processHost = Join-Path $product.FullName "DevDeckProcessHost.exe"

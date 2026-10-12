@@ -1,4 +1,6 @@
 param(
+    [ValidateSet("x64", "arm64")]
+    [string]$Architecture = $(if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }),
     [string]$OutputDirectory = "dist"
 )
 
@@ -24,8 +26,8 @@ $version = (Get-Content -LiteralPath (Join-Path $repository "VERSION") -Raw).Tri
 if ($version -notmatch '^\d+\.\d+(\.\d+)?$') {
     throw "VERSION must contain a numeric release version."
 }
-$delivery = Join-Path $output "windows-x64"
-& (Join-Path $PSScriptRoot "Build-WindowsShell.ps1") -OutputDirectory ([System.IO.Path]::GetRelativePath($repository, $delivery))
+$delivery = Join-Path $output "windows-$Architecture"
+& (Join-Path $PSScriptRoot "Build-WindowsShell.ps1") -Architecture $Architecture -OutputDirectory ([System.IO.Path]::GetRelativePath($repository, $delivery))
 if (-not $?) { throw "Windows delivery build failed." }
 $icon = Join-Path $repository "Windows\DevDeck.Shell\Resources\DevDeck.ico"
 $fileEntries = Join-Path $output "installer-runtime-files.iss"
@@ -37,6 +39,11 @@ $entries = @(Get-ChildItem -LiteralPath $delivery -File | Where-Object {
 })
 # Loaded project hosts keep their runtime, so identical files must not be replaced.
 Set-Content -LiteralPath $fileEntries -Value $entries -Encoding utf8
-& $compiler "/DAppVersion=$version" "/DDeliveryDirectory=$delivery" "/DInstallerOutput=$output" "/DAppIcon=$icon" "/DRuntimeFileEntries=$fileEntries" (Join-Path $repository "Windows\Installer\DevDeck.iss")
+$installerName = if ($Architecture -eq "arm64") {
+    "DevDeck-$version-windows-arm64-setup.exe"
+} else {
+    "DevDeck-$version-windows-setup.exe"
+}
+& $compiler "/DAppVersion=$version" "/DArchitecture=$Architecture" "/DDeliveryDirectory=$delivery" "/DInstallerOutput=$output" "/DInstallerBaseName=$([IO.Path]::GetFileNameWithoutExtension($installerName))" "/DAppIcon=$icon" "/DRuntimeFileEntries=$fileEntries" (Join-Path $repository "Windows\Installer\DevDeck.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed with exit code $LASTEXITCODE." }
-Get-Item -LiteralPath (Join-Path $output "DevDeck-$version-windows-setup.exe") | Select-Object Name, Length
+Get-Item -LiteralPath (Join-Path $output $installerName) | Select-Object Name, Length

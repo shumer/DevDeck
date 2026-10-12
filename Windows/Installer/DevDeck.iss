@@ -1,6 +1,23 @@
 #ifndef AppVersion
   #error AppVersion must come from the repository VERSION file through Build-WindowsInstaller.ps1.
 #endif
+#ifndef Architecture
+  #error Architecture must come from Build-WindowsInstaller.ps1.
+#endif
+#ifndef InstallerBaseName
+  #error InstallerBaseName must come from Build-WindowsInstaller.ps1.
+#endif
+
+#if Architecture == "arm64"
+  #define AllowedArchitectures "arm64"
+  #define InstallModeArchitecture "arm64"
+  #define RuntimeArchitecture "arm64"
+#else
+  ; Keep the x64 installer off Arm64 now that a native delivery exists.
+  #define AllowedArchitectures "x64compatible and not arm64"
+  #define InstallModeArchitecture "x64compatible"
+  #define RuntimeArchitecture "x64"
+#endif
 
 [Setup]
 AppId=DevDeck
@@ -11,8 +28,8 @@ AppPublisherURL=https://github.com/shumer/DevDeck
 AppSupportURL=https://github.com/shumer/DevDeck
 DefaultDirName={localappdata}\Programs\DevDeck
 PrivilegesRequired=lowest
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed={#AllowedArchitectures}
+ArchitecturesInstallIn64BitMode={#InstallModeArchitecture}
 MinVersion=10.0.22621
 DisableProgramGroupPage=yes
 DisableDirPage=yes
@@ -23,7 +40,7 @@ CloseApplications=yes
 CloseApplicationsFilter=DevDeck.Shell.exe,DevDeckEngineHost.exe,DevDeckMCP.exe
 RestartApplications=no
 OutputDir={#InstallerOutput}
-OutputBaseFilename=DevDeck-{#AppVersion}-windows-setup
+OutputBaseFilename={#InstallerBaseName}
 SetupIconFile={#AppIcon}
 UninstallDisplayIcon={app}\DevDeck.Shell.exe
 Compression=lzma2
@@ -64,8 +81,8 @@ Type: filesandordirs; Name: "{commonappdata}\DevDeck\NotificationAssets"
 
 [Code]
 const
-  RuntimeURL = 'https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe';
-  RuntimeKey = 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App';
+  RuntimeURL = 'https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-{#RuntimeArchitecture}.exe';
+  RuntimeKey = 'SOFTWARE\dotnet\Setup\InstalledVersions\{#RuntimeArchitecture}\sharedfx\Microsoft.WindowsDesktop.App';
 
 function NeedsDeliveryFile(FileName, ExpectedHash: String): Boolean;
 var
@@ -88,7 +105,7 @@ var
   Index: Integer;
 begin
   Result := False;
-  // The x64 runtime also registers in the 32 bit registry view.
+  // The desktop runtime can register in either registry view.
   if RegGetValueNames(HKLM32, RuntimeKey, Names) then
     for Index := 0 to GetArrayLength(Names) - 1 do
       if Pos('10.', Names[Index]) = 1 then
@@ -151,7 +168,7 @@ begin
   Result := '';
   if not HasDesktopRuntime then begin
     try
-      DownloadTemporaryFile(RuntimeURL, 'windowsdesktop-runtime-10-win-x64.exe', '', nil);
+      DownloadTemporaryFile(RuntimeURL, 'windowsdesktop-runtime-10-win-{#RuntimeArchitecture}.exe', '', nil);
     except
       Result := 'The .NET runtime could not be downloaded. Install it from ' + RuntimeURL + ' and run setup again.';
       Log(Result);
@@ -160,7 +177,7 @@ begin
           ShellExec('open', RuntimeURL, '', '', SW_SHOWNORMAL, ewNoWait, ExitCode);
       Exit;
     end;
-    if not ShellExec('runas', ExpandConstant('{tmp}\windowsdesktop-runtime-10-win-x64.exe'),
+    if not ShellExec('runas', ExpandConstant('{tmp}\windowsdesktop-runtime-10-win-{#RuntimeArchitecture}.exe'),
       '/install /quiet /norestart', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then begin
       Result := 'The .NET runtime was not installed. Allow its administrator request and try again.';
       Exit;

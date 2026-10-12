@@ -155,7 +155,8 @@ Every task ends with screenshots on neutral data and a check against the shell r
 - **W-18.** Done: one tag builds the Mac archive and Windows installer with a SHA256 file.
   Dry runs keep Actions artifacts without changing the release. See
   [the release verification](windows/W18-windows-release-report.md).
-- **W-19.** ARM64.
+- **W-19.** Done: Windows ARM64 has native build, installer, update selection and hosted CI paths.
+  See [the ARM64 verification report](windows/W19-arm64-report.md).
 - **W-20.** README and install notes for Windows. Done: the root README names Windows and points
   at [Windows/README.md](../Windows/README.md), whose Install and Updates sections are what a
   colleague needs; the release notes carry the Windows paragraph.

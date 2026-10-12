@@ -6,6 +6,42 @@ import TestHarness
 let run = TestRun()
 run.section("Windows core - offline platform checks")
 
+await run.test("the process runs natively for its compiled architecture") {
+    #if arch(arm64)
+    let compiled = "arm64"
+    let windows = "ARM64"
+    #elseif arch(x86_64)
+    let compiled = "x86_64"
+    let windows = "AMD64"
+    #else
+    let compiled = "unsupported"
+    let windows = "unsupported"
+    #endif
+    let process = ProcessInfo.processInfo.environment["PROCESSOR_ARCHITECTURE"]?.uppercased()
+    print("  process architecture: compiled=\(compiled), Windows=\(process ?? "missing")")
+    try expectEqual(process, windows, "the test process must not run through another architecture")
+}
+
+await run.test("the native process selects its Windows update asset") {
+    #if arch(arm64)
+    let expected = "DevDeck-0.21-400-windows-arm64-setup.exe"
+    #else
+    let expected = "DevDeck-0.21-400-windows-setup.exe"
+    #endif
+    let release = Release(
+        tagName: "v0.21",
+        htmlUrl: URL(string: "https://example.test/releases/v0.21")!,
+        assets: [
+            "DevDeck-0.21-400-macos.zip",
+            "DevDeck-0.21-400-windows-setup.exe",
+            "DevDeck-0.21-400-windows-arm64-setup.exe",
+        ].map {
+            ReleaseAsset(name: $0, browserDownloadUrl: URL(string: "https://example.test/\($0)")!, size: 1)
+        }
+    )
+    try expectEqual(UpdateCheck.asset(in: release, for: .windows)?.name, expected)
+}
+
 await run.test("an application alias is present without opening its target") {
     try expect(WindowsTerminalCatalog.applicationExists(atPath: "C:/demo/wt.exe", readAttributes: { _ in 0x420 }))
     try expect(!WindowsTerminalCatalog.applicationExists(atPath: "C:/demo/wt.exe", readAttributes: { _ in 0xffffffff }))
