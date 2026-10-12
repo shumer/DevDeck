@@ -453,7 +453,7 @@ public sealed class SettingsWindow : Window
         if (current != "off")
         {
             var server = Path.Combine(AppContext.BaseDirectory, "DevDeckMCP.exe");
-            page.Children.Add(Footnote(words.Get("settings.agents.register", "claude mcp add devdeck -- \"" + server + "\"")));
+            page.Children.Add(Footnote(words.Get("settings.agents.register", "claude mcp add --scope user devdeck -- \"" + server + "\"")));
         }
     }
 

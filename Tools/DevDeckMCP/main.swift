@@ -9,7 +9,7 @@ import Foundation
 // project and inbox commands as well while it allows control. The agent's client asks the person
 // before a tool runs; the deck decides whether the command may run at all.
 //
-//   claude mcp add devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP
+//   claude mcp add --scope user devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP
 //
 // See docs/mcp.md and docs/adr/0036-agent-access.md.
 

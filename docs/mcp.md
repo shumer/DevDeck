@@ -19,17 +19,22 @@ The change takes effect at once. Below the choice the page shows the line to reg
 
 ## Registering the server
 
-Claude Code, on the Mac:
+Claude Code, on the Mac, for every project on this computer:
 
 ```bash
-claude mcp add devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP
+claude mcp add --scope user devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP
 ```
 
 On Windows:
 
 ```powershell
-claude mcp add devdeck -- "$env:LOCALAPPDATA\Programs\DevDeck\DevDeckMCP.exe"
+claude mcp add --scope user devdeck -- "$env:LOCALAPPDATA\Programs\DevDeck\DevDeckMCP.exe"
 ```
+
+`--scope user` is what makes it global. Without it Claude Code registers the server for the
+folder the command ran in only, its `local` scope, and in any other project the tools are not
+there. The deck is about you rather than about one repository, so user scope is the one that
+makes sense; `claude mcp list` shows where it is registered.
 
 Cursor and other clients take the same executable as a stdio server with no arguments, for
 example in `.cursor/mcp.json`:

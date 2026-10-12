@@ -82,7 +82,7 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
         if preferences.agentAccess != .off {
             // The server ships inside the bundle, in Helpers beside the app's own binary.
             let server = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/DevDeckMCP").path
-            form.footnote(L("settings.agents.register", "claude mcp add devdeck -- \"\(server)\""))
+            form.footnote(L("settings.agents.register", "claude mcp add --scope user devdeck -- \"\(server)\""))
         }
 
         form.footnote(AppVersion.isTranslocated

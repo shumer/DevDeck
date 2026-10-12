@@ -442,7 +442,7 @@ adapters. Nothing is sent to a QR service.
 The General page has **Agents (MCP)** with an **MCP server** choice: Off, Read only, Read and control. While it is not Off the engine
 host opens `\\.\pipe\DevDeck.Agent.<user>`, a pipe that refuses remote clients and whose access
 list names the current user alone, and `DevDeckMCP.exe` beside the shell is the MCP server an
-agent starts. The page shows the `claude mcp add` line with its path. Setup closes a running
+agent starts. The page shows the `claude mcp add --scope user` line with its path. Setup closes a running
 `DevDeckMCP.exe` during an update; the agent starts it again. See [docs/mcp.md](../docs/mcp.md).
 
 ## Start at login
