@@ -806,7 +806,7 @@ project's log, and, when you allow it, start, stop and restart projects and mark
 read. It goes through the Model Context Protocol: `DevDeckMCP` ships inside the app, and the
 answers come from the running deck in its own words, so the agent needs no token of its own.
 
-Settings, General, **Agents** has three choices: Off (the default), Read only, and Read and
+Settings, General, **Agents (MCP)** has three choices: Off (the default), Read only, and Read and
 control. Below the choice is the line that registers the server with Claude Code. The endpoint
 is a socket only you can open, nothing listens on a network port, and a command follows the
 rules the card's buttons follow: a project started outside DevDeck is not stopped by an agent

@@ -7,7 +7,7 @@ built this way is [adr/0036](adr/0036-agent-access.md).
 
 ## Turning it on
 
-Settings, General, **Agents**:
+Settings, General, **Agents (MCP)**:
 
 | Setting | What an agent can do |
 | --- | --- |

@@ -5,7 +5,7 @@ import Foundation
 //
 // It holds nothing of its own: every tool is one question to the running deck over its local
 // endpoint, and the answer is the deck's, in the deck's words. Which tools there are follows the
-// setting in DevDeck, Settings, General, Agents: reading tools while it allows reading, and the
+// setting in DevDeck, Settings, General, Agents (MCP): reading tools while it allows reading, and the
 // project and inbox commands as well while it allows control. The agent's client asks the person
 // before a tool runs; the deck decides whether the command may run at all.
 //
@@ -94,7 +94,7 @@ func ask(_ request: [String: Any]) -> DeckAnswer {
         }
         return .answer(object)
     } catch LocalEndpointError.notListening {
-        return .unreachable("DevDeck is not running, or agent access is off. Turn it on in DevDeck: Settings, General, Agents.")
+        return .unreachable("DevDeck is not running, or its MCP server is off. Turn it on in DevDeck: Settings, General, Agents (MCP).")
     } catch {
         return .unreachable("DevDeck could not be reached: \(error)")
     }

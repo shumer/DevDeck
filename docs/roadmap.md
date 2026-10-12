@@ -3,7 +3,7 @@
 ## Done
 
 - An MCP server for coding agents, with Off, Read only and Read and control in Settings,
-  General, Agents. The running deck answers through a local endpoint only its user can open;
+  General, Agents (MCP). The running deck answers through a local endpoint only its user can open;
   commands are a project's buttons and the inbox's, under the same rules. See
   [mcp.md](mcp.md) and [adr/0036](adr/0036-agent-access.md).
 
