@@ -34,7 +34,6 @@ let folderRunner: @Sendable (String?) -> any CommandRunning = { folder in
 let programFiles = ProcessInfo.processInfo.environment["ProgramFiles"] ?? "C:\\Program Files"
 let canStartDocker = FileManager.default.fileExists(atPath: programFiles + "\\Docker\\Docker\\Docker Desktop.exe")
 let terminalApplications: @Sendable () -> [TerminalApplication] = { WindowsTerminalCatalog.current() }
-let checksArcReadiness = true
 #else
 // On the Mac the host is for development: it keeps its own preferences, apart from the app's,
 // and never opens the app's Keychain items. A token for it is typed into a check and forgotten
@@ -45,7 +44,6 @@ let runner: any CommandRunning = ShellCommandRunner()
 let folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil
 let canStartDocker = false
 let terminalApplications: @Sendable () -> [TerminalApplication] = { [] }
-let checksArcReadiness = false
 #endif
 
 let runtime = DeckRuntime(
@@ -60,8 +58,7 @@ let runtime = DeckRuntime(
     canStartDocker: canStartDocker,
     localAddress: { LocalAddress.current() },
     folderRunner: folderRunner,
-    terminalApplications: terminalApplications,
-    checksArcReadiness: checksArcReadiness
+    terminalApplications: terminalApplications
 )
 let session = DeckSession(runtime: runtime, localizationRoot: LocalizationResources.root) { data in
     FileHandle.standardOutput.write(data)

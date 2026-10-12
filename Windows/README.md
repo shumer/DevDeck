@@ -545,7 +545,8 @@ terminal profile. Direct PowerShell starts in the folder through an encoded, quo
 This choice only affects Open terminal. Background Windows projects still use cmd.exe, and
 WSL projects use their distribution's runner. No execution policy is changed.
 
-The Windows engine checks Arc launch requirements in the project's environment. It checks the
+The engine checks Arc launch requirements in the project's environment, once per folder and
+start command, and again after they change, on Start or Restart, and on Check Now. It checks the
 folder and command, Node, npx and the installed local or global `@arc-fusion/cli` binary. It does
 not call `npx fusion` during a check and does not download or install dependencies. Missing
 requirements appear on the card and the Check Now row; Start and Restart are disabled. Before
@@ -554,8 +555,8 @@ when the stack is serving. A custom Node start checks Node and its script instea
 Fusion. Other custom shell commands are reported as checked at run time because evaluating
 arbitrary shell code during a preflight would itself start work.
 
-See [the verification](../docs/windows/terminal-arc-readiness-report.md). The Mac runtime's
-launch behavior is unchanged. Windows terminal choices do not alter the Mac terminal.
+See [the verification](../docs/windows/terminal-arc-readiness-report.md). The same check runs on
+the Mac. Windows terminal choices do not alter the Mac terminal.
 
 ## Docker and DDEV on Windows
 

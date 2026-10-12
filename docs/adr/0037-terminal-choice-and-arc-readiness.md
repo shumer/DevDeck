@@ -14,8 +14,7 @@ their distribution and Linux path. No PowerShell execution policy is changed. Te
 is stored separately from the common preferences wire model so older settings forms continue
 to save that model without losing the new choice.
 
-Arc readiness belongs to the runtime and ArcKit. The Windows host enables the check; the Mac
-keeps its previous behavior. A missing folder or recognized command prerequisite disables
+Arc readiness belongs to the runtime and ArcKit, on both platforms: one engine says one thing. A missing folder or recognized command prerequisite disables
 Start and Restart in the model. An actual Start or Restart repeats the check and asks Docker
 through that project's runner before executing any lifecycle command. A healthy stack keeps
 Stop. Local and global CLI probes only resolve package and binary files, never download them.
@@ -29,3 +28,11 @@ The existing default terminal was retained instead of silently forcing Command P
 Moving background launches to the selected interactive shell was rejected because it would
 change quoting, process lifetime and WSL ownership. Putting readiness in C# was rejected because
 it would let a shell decide whether an action exists and leave other callers unprotected.
+
+Amended 2026-10-12, before merging. The check ran on every ten-second poll for every stopped Arc
+project, up to five processes each, seconds apiece through WSL. It is now asked once per folder
+and start command and remembered: a changed project, a press of Start or Restart, and Check Now
+ask afresh. A card is stopped and neutral until the first answer, rather than amber with
+"checking" under it. And the check runs on the Mac as well, since nothing about a missing npx or
+Fusion CLI is Windows-specific; the golden runtime alone keeps it off, because its transcripts
+predate it.

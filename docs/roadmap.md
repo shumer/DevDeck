@@ -7,8 +7,9 @@
   commands are a project's buttons and the inbox's, under the same rules. See
   [mcp.md](mcp.md) and [adr/0036](adr/0036-agent-access.md).
 
-- Windows terminal application and profile selection is stored by the engine. Arc checks its
-  launch requirements before enabling Start and rechecks them before Start or Restart. See
+- Windows terminal application and profile selection is stored by the engine. An Arc card on
+  either platform checks its launch requirements once per folder and command before enabling
+  Start, and rechecks them before Start or Restart. See
   [the verification](windows/terminal-arc-readiness-report.md).
 
 - Windows updates download the installer and its checksum, verify SHA256, report progress to

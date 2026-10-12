@@ -204,13 +204,14 @@ terminal preserves older shells' behavior. A WSL folder still names its own dist
 Linux directory in the launch command; a chosen profile cannot substitute another distribution.
 The Windows runtime resolves a default application from its catalog before emitting the effect.
 
-On the Windows host, `checkArcStack` also checks launch requirements. A stopped Arc card disables
+`checkArcStack` also checks launch requirements. A stopped Arc card disables
 Start and Restart when its folder, start command, Node, npx or installed Fusion CLI is missing.
 Start and Restart recheck these requirements and Docker in the project's runner before running
 a command. Stop remains available for a serving stack. The check resolves local or global
 `@arc-fusion/cli` files without invoking an installer. Custom Node commands check Node and the
 script; other custom shell commands remain executable and are marked as checked at run time.
-These Windows checks are enabled by the host; the Mac runtime keeps its existing behavior.
+The check is asked once per folder and start command and remembered until they change, a press of
+Start or Restart, or Check Now; it runs on every host.
 
 A request that changes the deck (anything that adds, saves or removes, a token check, new
 preferences) is followed by what it changed: panels, cards, the menu, the deck's lock, every

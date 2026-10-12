@@ -591,5 +591,4 @@
 "arc.readiness.npx" = "npx ist in der Umgebung dieses Projekts nicht verfügbar.";
 "arc.readiness.fusion" = "Installiere @arc-fusion/cli im Projekt. DevDeck installiert es nicht selbst.";
 "arc.readiness.failed" = "Die Startprüfung konnte nicht abgeschlossen werden. Prüfe Ordner und Befehl.";
-"arc.readiness.checking" = "Startvoraussetzungen werden geprüft";
 "arc.readiness.notReady" = "Noch nicht startbereit";

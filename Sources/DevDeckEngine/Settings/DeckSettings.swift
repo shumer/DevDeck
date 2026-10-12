@@ -265,7 +265,7 @@ extension DeckRuntime {
         guard project.supportsLocalStack else { return nil }
         var status = await LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts).status()
         if checksArcReadiness {
-            status.readiness = await ArcLaunchReadiness.check(project, runner: runner(forFolder: project.folder))
+            status.readiness = await arcLaunchReadiness(for: project, fresh: true)
             if status.readiness?.canStart == true {
                 let docker = await DockerEnvironment(runner: runner(forFolder: project.folder), workingDirectory: project.folderURL ?? URL(fileURLWithPath: "/")).status()
                 if !docker.isReady { status.readiness = ArcLaunchReadiness(canStart: false, detail: DockerGate.text(docker)) }

@@ -225,7 +225,14 @@ public final class DeckRuntime {
     /// `commandRunner`.
     private let folderRunner: (@Sendable (String?) -> any CommandRunning)?
     let terminalApplications: @Sendable () -> [TerminalApplication]
+    /// Whether an Arc card checks that a start can work before offering it. Off only in the
+    /// suite's golden runtime, whose transcripts predate the check.
     let checksArcReadiness: Bool
+    /// What the last launch check said about each Arc project, with the folder and command it
+    /// was asked about. Asked again only when those change, when a start is pressed, or when
+    /// Check Now asks: the check is a handful of processes, which is not a thing to run every
+    /// ten seconds in a loop.
+    private var arcReadiness: [String: (address: String, readiness: ArcLaunchReadiness)] = [:]
     let http: (any HTTPClient)?
     let projectHTTP: (any HTTPClient)?
     let projectFiles: ProjectRuntimeFiles
@@ -280,7 +287,7 @@ public final class DeckRuntime {
         settings: GitHubSettings = .default,
         folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil,
         terminalApplications: @escaping @Sendable () -> [TerminalApplication] = { [] },
-        checksArcReadiness: Bool = false
+        checksArcReadiness: Bool = true
     ) {
         self.preferences = preferences
         self.tokenStore = tokenStore
@@ -344,13 +351,19 @@ public final class DeckRuntime {
 
     public func stackStatus(for project: ArcProject) -> LocalStackStatus {
         if let status = stackStatuses[project.id] { return status }
-        guard project.supportsLocalStack else { return .unavailable }
-        var status = LocalStackStatus(state: .stopped)
-        if checksArcReadiness {
-            status.readiness = ArcLaunchReadiness(canStart: false, detail: L("arc.readiness.checking"))
-            status.detail = status.readiness?.detail
-        }
-        return status
+        // Stopped and neutral until the first poll has asked: a card that says "not ready" in
+        // amber before anything has been checked is a card crying wolf at every launch.
+        return project.supportsLocalStack ? LocalStackStatus(state: .stopped) : .unavailable
+    }
+
+    /// The launch check for a project: the remembered answer while the folder and command are
+    /// the ones it was given, a fresh one otherwise or when `fresh` says so.
+    func arcLaunchReadiness(for project: ArcProject, fresh: Bool = false) async -> ArcLaunchReadiness {
+        let address = Self.stackAddress(of: project)
+        if !fresh, let known = arcReadiness[project.id], known.address == address { return known.readiness }
+        let readiness = await ArcLaunchReadiness.check(project, runner: runner(forFolder: project.folder))
+        arcReadiness[project.id] = (address, readiness)
+        return readiness
     }
 
     private func restartStackLoop() {
@@ -394,7 +407,7 @@ public final class DeckRuntime {
             let service = LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts)
             var probed = await service.status()
             if checksArcReadiness, !probed.isRunning {
-                probed.readiness = await ArcLaunchReadiness.check(project, runner: runner(forFolder: project.folder))
+                probed.readiness = await arcLaunchReadiness(for: project)
                 probed.detail = probed.detail ?? probed.readiness?.detail
             }
             // Asked again after the wait: `docker ps` through WSL can take twenty seconds, and a
@@ -466,7 +479,8 @@ public final class DeckRuntime {
             let service = LocalStackService(project: project, runner: self.runner(forFolder: project.folder))
             if self.checksArcReadiness, action == .start || action == .restart {
                 let projectRunner = self.runner(forFolder: project.folder)
-                var readiness = await ArcLaunchReadiness.check(project, runner: projectRunner)
+                // Fresh: a press is the moment to find out, not to trust what was true earlier.
+                var readiness = await self.arcLaunchReadiness(for: project, fresh: true)
                 if readiness.canStart {
                     let docker = await DockerEnvironment(runner: projectRunner, workingDirectory: project.folderURL ?? URL(fileURLWithPath: "/")).status()
                     if !docker.isReady { readiness = ArcLaunchReadiness(canStart: false, detail: DockerGate.text(docker)) }

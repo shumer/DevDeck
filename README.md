@@ -310,6 +310,12 @@ you use, the browser they open in, and control of its local Fusion stack.
   asked, `/release` by default. The chip says
   **Local site** and greys out while the stack is down; the address it opens is in its
   tooltip, along with every other link's.
+- **Start is offered only when it can work.** Before a stopped Arc card enables Start, the deck
+  checks the folder, the start command, Node, npx and an installed `@arc-fusion/cli`, in the
+  project's own environment and without installing anything; a card that cannot start says
+  what is missing, in amber, and keeps Stop for a stack that is serving. The check is asked once
+  per folder and command and again when they change or a button is pressed. A custom Node
+  command is checked for Node and its script; any other custom command is left to run.
 - **After a start the card waits.** `fusion daemon` returns as soon as the containers exist,
   while the engine needs longer to serve, so the card polls every three seconds for up to three
   minutes before concluding anything - and if nothing ever answers it names the URL it tried.

@@ -150,6 +150,36 @@ func runTerminalReadinessTests(_ run: TestRun) async {
         try expect(commands.contains { $0.contains("docker version") })
         try expect(!commands.contains { $0.contains("npx fusion daemon") })
     }
+    await run.test("a stopped Arc card is neutral until the first poll has asked") {
+        let (runtime, _) = goldenRuntime(commandRunner: StubCommandRunner([]), checksArcReadiness: true)
+        let project = ArcProject(id: "fresh", title: "Fresh", organization: "demo", folder: NSHomeDirectory())
+        let status = runtime.stackStatus(for: project)
+        try expectNil(status.readiness, "nothing has been checked yet")
+        let card = DeckProjectCardModel.arc(project, status: status, docker: DockerStatus(state: .running), canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectEqual(card.hero.text, L("card.state.stopped"))
+        try expectEqual(card.hero.tone, .neutral)
+    }
+    await run.test("the launch check runs once per folder and command, and again after they change or a press") {
+        let runner = StubCommandRunner([])
+        let (runtime, _) = goldenRuntime(commandRunner: runner, checksArcReadiness: true)
+        var project = ArcProject(id: "paper", title: "Paper", organization: "demo", folder: NSHomeDirectory())
+        _ = runtime.saveArcProject(project)
+        func probes() async -> Int { await runner.commands.filter { $0.contains("node --version") }.count }
+        await runtime.refreshLocalOnce()
+        await runtime.refreshLocalOnce()
+        await runtime.refreshLocalOnce()
+        try expectEqual(await probes(), 1, "three polls, one check")
+        try expect(runtime.stackStatus(for: project).readiness?.canStart == false, "and its answer is on the card")
+        project.startCommand = "PATH=/opt/demo/bin:$PATH npx fusion daemon"
+        _ = runtime.saveArcProject(project)
+        await runtime.refreshLocalOnce()
+        try expectEqual(await probes(), 2, "a new command is a new question")
+        runtime.perform(.start, for: project)
+        await runtime.settle()
+        try expectEqual(await probes(), 3, "a press asks afresh")
+        await runtime.refreshLocalOnce()
+        try expectEqual(await probes(), 3, "and the poll after it trusts that answer")
+    }
     await run.test("editing an Arc start command gives Check Now a new question") {
         let (runtime, _) = goldenRuntime()
         var project = ArcProject(id: "demo", title: "Demo", organization: "demo", folder: "/demo")
