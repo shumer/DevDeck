@@ -584,8 +584,8 @@ the Mac. Windows terminal choices do not alter the Mac terminal.
 ## Docker and DDEV on Windows
 
 Only one live DevDeck shell runs per Windows user session. A second launch starts no host
-and shows no window: it signals the running shell, which raises the deck the way the summon
-shortcut does, and exits. A replay holds its own instance, so one replay runs at a time next
+and shows no window: it signals the running shell, which opens Settings the way the Mac does
+when the app is opened again, and exits. A replay holds its own instance, so one replay runs at a time next
 to the live shell without blocking it or being blocked by it. Developer commands such as
 `--add-project` and `--remove-project` remain separate short lived requests outside both.
 Quit completes host cleanup asynchronously before shutting down the UI dispatcher.

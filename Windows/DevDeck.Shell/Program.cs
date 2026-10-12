@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Windows;
 
 namespace DevDeck.Shell;
@@ -37,7 +38,8 @@ public static class Program
             using var instance = SingleInstance.For(options.ReplayPath is not null);
             if (!instance.IsFirst)
             {
-                // A second launch raises the running deck, the way the summon shortcut does.
+                // A second launch opens the running deck's settings, as it does on the Mac: a
+                // person who started the app again wants a window, and this is the one it has.
                 instance.SignalFirst();
                 return 0;
             }
@@ -46,7 +48,8 @@ public static class Program
             var surface = new ShellSurface();
             using var trace = options.TracePath is { } tracePath ? new ProtocolTrace(tracePath) : null;
             var coordinator = new ShellCoordinator(application.Dispatcher, options.EnginePath, surface, trace);
-            instance.OnSignal(() => application.Dispatcher.BeginInvoke(surface.PresentDeck));
+            instance.OnSignal(() => application.Dispatcher.BeginInvoke(() =>
+                surface.OpenSettings(JsonDocument.Parse("""{"kind":"openSettings","page":"general"}""").RootElement)));
             instance.OnQuit(() => application.Dispatcher.BeginInvoke(() =>
                 _ = coordinator.RequestShutdownAsync()));
             application.Startup += async (_, _) =>

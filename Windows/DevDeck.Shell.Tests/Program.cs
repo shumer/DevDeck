@@ -79,7 +79,7 @@ public static class Program
         Run("a replay sizes its own panels from measurements", ReplaySizesItsPanels);
         Run("a card updated before it is shown still reports its height", CardUpdatedBeforeShowReportsHeight);
         Run("the protocol trace records both directions without typed tokens", ProtocolTraceLeavesTokensOut);
-        Run("a second launch raises the first deck", SecondLaunchSignalsFirst);
+        Run("a second launch signals the first", SecondLaunchSignalsFirst);
         Run("replay and live shells hold separate instances", ReplayInstanceIsSeparate);
         Run("quit keeps the dispatcher responsive until cleanup completes", ShutdownKeepsDispatcherResponsive);
         Run("menus dismiss when another application takes focus", MenusDismissOutsideApplication);

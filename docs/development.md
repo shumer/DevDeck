@@ -201,7 +201,7 @@ successful list. The engine supplies the unavailable wording and disables Start 
 case; the shell does not translate an unknown state into its own message.
 
 Windows shell lifecycle regressions are covered by the separate shell test executable.
-They check duplicate instance exclusion, the raise signal a second launch sends, separate
+They check duplicate instance exclusion, the signal a second launch sends, separate
 replay instances, dispatcher progress during Quit, popup dismissal on native application
 deactivation and deferred refresh of an open menu.
 
