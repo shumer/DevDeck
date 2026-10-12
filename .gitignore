@@ -15,3 +15,7 @@ env.local
 .env
 
 config.json
+
+# Rendered by the preview tools in the current folder.
+glyph-preview.png
+icon-preview*.png
