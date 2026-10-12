@@ -466,7 +466,7 @@
 "settings.agents.client.notInstalled" = "No está instalado en este equipo. Para registrarlo a mano más tarde: %@";
 "settings.agents.client.notRegistered" = "No registrado.";
 "settings.agents.client.registered" = "Registrado. El agente ve el deck en todos los proyectos.";
-"settings.agents.clients.footnote" = "DevDeck añade su servidor MCP a estos agentes cuando el ajuste está activado y lo quita cuando está desactivado, con sus propias herramientas de línea de comandos. Nada más cambia en este equipo.";
+"settings.agents.clients.footnote" = "DevDeck lo añade y lo quita al cambiar el ajuste, con las herramientas de los agentes.";
 "settings.cards.actions.footnote" = "Vacío: los repositorios de tus pull requests abiertos, hasta cinco por cuenta.";
 "settings.cards.actionsRepositories" = "Repositorios de Actions";
 "settings.cards.fetching" = "Consultas";
