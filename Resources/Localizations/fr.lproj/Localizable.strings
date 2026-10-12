@@ -571,3 +571,25 @@
 "update.upToDate.detail" = "%1$@, vérifié à %2$@";
 "update.waits" = "%@ attend";
 "update.waits.detail" = "s’installera quand %@ aura fini";
+
+"terminal.title" = "Terminal";
+"terminal.detail" = "Pour Ouvrir le terminal. Les commandes en arrière-plan gardent leur exécuteur. Les dossiers WSL ouvrent toujours leur distribution.";
+"terminal.application" = "Application";
+"terminal.profile" = "Profil";
+"terminal.system" = "Par défaut du système";
+"terminal.defaultProfile" = "Profil par défaut";
+"terminal.unavailable" = "Indisponible";
+"terminal.windowsTerminal" = "Windows Terminal";
+"terminal.commandPrompt" = "Invite de commandes";
+"terminal.windowsPowerShell" = "Windows PowerShell";
+"terminal.powerShell" = "PowerShell";
+"arc.readiness.folder" = "Choisis un dossier de projet existant.";
+"arc.readiness.command" = "Saisis une commande de démarrage.";
+"arc.readiness.custom" = "Cette commande personnalisée est vérifiée à son exécution.";
+"arc.readiness.node" = "Node est indisponible dans l'environnement de ce projet.";
+"arc.readiness.script" = "Le script de démarrage est absent de ce dossier.";
+"arc.readiness.npx" = "npx est indisponible dans l'environnement de ce projet.";
+"arc.readiness.fusion" = "Installe @arc-fusion/cli dans le projet. DevDeck ne l'installe pas à ta place.";
+"arc.readiness.failed" = "La vérification du démarrage a échoué. Vérifie le dossier et la commande.";
+"arc.readiness.checking" = "Vérification des conditions de démarrage";
+"arc.readiness.notReady" = "Pas prêt à démarrer";

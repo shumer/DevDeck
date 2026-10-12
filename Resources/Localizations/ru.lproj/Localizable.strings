@@ -571,3 +571,25 @@
 "update.upToDate.detail" = "%1$@, проверено в %2$@";
 "update.waits" = "%@ ждёт";
 "update.waits.detail" = "поставится, когда %@ закончит";
+
+"terminal.title" = "Терминал";
+"terminal.detail" = "Для команды «Открыть терминал». Фоновые команды используют свой раннер. Папки WSL всегда открываются в своем дистрибутиве.";
+"terminal.application" = "Приложение";
+"terminal.profile" = "Профиль";
+"terminal.system" = "Системный по умолчанию";
+"terminal.defaultProfile" = "Профиль по умолчанию";
+"terminal.unavailable" = "Недоступен";
+"terminal.windowsTerminal" = "Windows Terminal";
+"terminal.commandPrompt" = "Командная строка";
+"terminal.windowsPowerShell" = "Windows PowerShell";
+"terminal.powerShell" = "PowerShell";
+"arc.readiness.folder" = "Выберите существующую папку проекта.";
+"arc.readiness.command" = "Введите команду запуска.";
+"arc.readiness.custom" = "Эта своя команда проверяется при запуске.";
+"arc.readiness.node" = "Node недоступен в среде этого проекта.";
+"arc.readiness.script" = "Скрипта запуска нет в этой папке.";
+"arc.readiness.npx" = "npx недоступен в среде этого проекта.";
+"arc.readiness.fusion" = "Установите @arc-fusion/cli в проект. DevDeck не устанавливает его сам.";
+"arc.readiness.failed" = "Не удалось проверить запуск. Проверьте папку и команду.";
+"arc.readiness.checking" = "Проверяем условия запуска";
+"arc.readiness.notReady" = "Не готов к запуску";

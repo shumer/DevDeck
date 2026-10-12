@@ -529,6 +529,34 @@ To compare the four schemes of the reference mock off screen:
 dotnet run --project Windows/DevDeck.Shell.Tests -- --capture-theme Tests/EngineTests/Golden/session-en.expected.jsonl C:	emp	heme.png
 ```
 
+## Terminal selection and Arc launch checks
+
+General has an Application and, for Windows Terminal, a Profile picker. The engine supplies
+the group, translated labels, options and selected values. It stores the choice in its normal
+preferences. System default keeps the existing behavior: Windows Terminal when installed,
+otherwise Command Prompt. Direct Command Prompt, Windows PowerShell and PowerShell are also
+offered when installed. Changing the application resets the profile. Profile GUIDs keep a
+selection stable when its name changes; hidden profiles are not offered.
+
+Windows Terminal profiles are read from its stable, preview, canary or unpackaged settings file.
+Comments and trailing commas are supported. The shell passes a selected GUID with `wt -p`.
+WSL paths always open `wsl.exe -d <distribution> --cd <linux path>`, even with a selected
+terminal profile. Direct PowerShell starts in the folder through an encoded, quoted command.
+This choice only affects Open terminal. Background Windows projects still use cmd.exe, and
+WSL projects use their distribution's runner. No execution policy is changed.
+
+The Windows engine checks Arc launch requirements in the project's environment. It checks the
+folder and command, Node, npx and the installed local or global `@arc-fusion/cli` binary. It does
+not call `npx fusion` during a check and does not download or install dependencies. Missing
+requirements appear on the card and the Check Now row; Start and Restart are disabled. Before
+either command actually runs, the engine rechecks requirements and Docker. Stop is retained
+when the stack is serving. A custom Node start checks Node and its script instead of requiring
+Fusion. Other custom shell commands are reported as checked at run time because evaluating
+arbitrary shell code during a preflight would itself start work.
+
+See [the verification](../docs/windows/terminal-arc-readiness-report.md). The Mac runtime's
+launch behavior is unchanged. Windows terminal choices do not alter the Mac terminal.
+
 ## Docker and DDEV on Windows
 
 Only one live DevDeck shell runs per Windows user session. A second launch starts no host

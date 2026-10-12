@@ -119,6 +119,9 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             case .running where status.detail != nil: tone = .attention; text = status.detail ?? L("card.state.running")
             case .running: tone = .good; text = L("card.state.running")
             case .working: tone = .attention; text = status.detail ?? L("card.state.working")
+            case .stopped where status.readiness?.canStart == false:
+                tone = .attention
+                text = L("arc.readiness.notReady")
             case .stopped: tone = .neutral; text = L("card.state.stopped")
             case .unavailable: tone = .neutral; text = L("card.state.notConfigured")
             }
@@ -148,7 +151,9 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
 
         let lifecycle = lifecycle(
             card: card, blocked: blocked, docker: docker, canStartDocker: canStartDocker,
-            isRunning: status.isRunning, canStart: !status.isBusy && project.supportsLocalStack, canRestart: true
+            isRunning: status.isRunning,
+            canStart: !status.isBusy && project.supportsLocalStack && status.readiness?.canStart != false,
+            canRestart: status.readiness?.canStart != false
         )
         let site = status.isRunning ? (status.siteURL ?? project.localSiteURL) : nil
         let note = status.isRunning && hero.note != nil && !blocked ? hero.note : hero.text

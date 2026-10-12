@@ -69,6 +69,9 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     case words
     case preferences
     case setPreferences(DeckPreferencesModel)
+    case terminalSettings
+    case setTerminalApplication(value: String?)
+    case setTerminalProfile(value: String?)
 
     // What a form edits, as stored.
     case localProject(id: String)
@@ -136,6 +139,7 @@ public enum DeckSettingsAnswer: Sendable, Equatable, Codable {
     case cards([DeckSettingsCard])
     case words([String: String])
     case preferences(DeckPreferencesModel)
+    case terminalSettings(DeckTerminalSettings)
     case localProject(LocalProject?)
     case arcProject(ArcProject?)
     case ddevProject(DDEVProject?)
@@ -224,6 +228,13 @@ extension DeckRuntime {
             #endif
             return .words(words)
         case .preferences: return .preferences(preferencesModel)
+        case .terminalSettings: return .terminalSettings(terminalSettings())
+        case .setTerminalApplication(let value):
+            setTerminalApplication(value)
+            return .terminalSettings(terminalSettings())
+        case .setTerminalProfile(let value):
+            setTerminalProfile(value)
+            return .terminalSettings(terminalSettings())
         case .setPreferences(let model):
             apply(model)
             return .preferences(preferencesModel)

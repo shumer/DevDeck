@@ -75,4 +75,5 @@ await run.test("project paths select execution location without a UI choice") {
 
 await runRuntimeGoldenTests(run)
 await runSessionGoldenTests(run)
+await runTerminalReadinessTests(run)
 run.finish()

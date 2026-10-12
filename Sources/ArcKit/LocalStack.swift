@@ -33,6 +33,7 @@ public struct LocalStackStatus: Sendable, Equatable, Codable {
     /// The status the health URL answered with when it answered and was not a success: the
     /// engine is up and unwell, which is a different thing from nothing answering.
     public var healthStatusCode: Int?
+    public var readiness: ArcLaunchReadiness?
 
     public init(
         state: LocalStackState,
@@ -564,6 +565,9 @@ public extension LocalStackStatus {
     func summary(checkedAddress: String, currentAddress: String) -> CheckSummary {
         guard checkedAddress == currentAddress else {
             return CheckSummary(tone: .idle, state: L("check.notChecked"), detail: L("check.notChecked.detail"))
+        }
+        if let readiness, !readiness.canStart {
+            return CheckSummary(tone: .bad, state: L("arc.readiness.notReady"), detail: readiness.detail ?? "")
         }
         let when = CheckSummary.time(checkedAt)
         switch state {

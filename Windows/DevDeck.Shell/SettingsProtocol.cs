@@ -137,6 +137,7 @@ public sealed class SettingsClient
     public JsonNode? List { get; private set; }
     public JsonArray? Cards { get; private set; }
     public JsonObject? Preferences { get; private set; }
+    public JsonObject? TerminalSettings { get; private set; }
     public event Action<SettingsWireRequest>? RequestSent;
     public event Action<string>? IntentSent;
     public event Action<JsonElement>? AnswerReceived;
@@ -150,6 +151,7 @@ public sealed class SettingsClient
         Request(SettingsJson.Empty("list"));
         Request(SettingsJson.Empty("cards"));
         Request(SettingsJson.Empty("preferences"));
+        Request(SettingsJson.Empty("terminalSettings"));
     }
 
     public string Request(string request, Action<JsonElement>? callback = null)
@@ -183,6 +185,10 @@ public sealed class SettingsClient
             Preferences = preferences;
             preferencesChanged = true;
         }
+        else if (SettingsJson.CaseValue(answer, "terminalSettings") is JsonObject terminalSettings)
+        {
+            TerminalSettings = terminalSettings;
+        }
 
         if (id is not null && callbacks.Remove(id, out var callback))
         {
@@ -194,6 +200,7 @@ public sealed class SettingsClient
         if (preferencesChanged)
         {
             Request(SettingsJson.Empty("words"));
+            Request(SettingsJson.Empty("terminalSettings"));
         }
     }
 

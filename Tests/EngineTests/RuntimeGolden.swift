@@ -78,7 +78,9 @@ struct InstantSleeper: Sleeper {
 func goldenRuntime(
     http: FakeHTTPClient = RuntimeFixture.http,
     commandRunner: any CommandRunning = StubCommandRunner([]),
-    folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil
+    folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil,
+    terminalApplications: @escaping @Sendable () -> [TerminalApplication] = { [] },
+    checksArcReadiness: Bool = false
 ) -> (DeckRuntime, Preferences) {
     let preferences = Preferences(backend: InMemoryPreferences())
     preferences.notificationsEnabled = true
@@ -114,7 +116,9 @@ func goldenRuntime(
         projectFiles: ProjectRuntimeFiles(directory: URL(fileURLWithPath: "/invalid/runtime")),
         clock: MutableDateProvider(now: RuntimeFixture.now),
         sleeper: InstantSleeper(),
-        folderRunner: folderRunner
+        folderRunner: folderRunner,
+        terminalApplications: terminalApplications,
+        checksArcReadiness: checksArcReadiness
     )
     for descriptor in runtime.cards.catalog {
         runtime.cards.setEnabled(descriptor.isImplemented, for: descriptor.id)

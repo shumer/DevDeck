@@ -6,6 +6,12 @@ import TestHarness
 let run = TestRun()
 run.section("Windows core - offline platform checks")
 
+await run.test("an application alias is present without opening its target") {
+    try expect(WindowsTerminalCatalog.applicationExists(atPath: "C:/demo/wt.exe", readAttributes: { _ in 0x420 }))
+    try expect(!WindowsTerminalCatalog.applicationExists(atPath: "C:/demo/wt.exe", readAttributes: { _ in 0xffffffff }))
+    try expect(!WindowsTerminalCatalog.applicationExists(atPath: "C:/demo/wt.exe", readAttributes: { _ in 0x10 }))
+}
+
 await run.test("conditional HTTP responses retain their cached body") {
     let body = Data("fixture".utf8)
     let client = FakeHTTPClient([

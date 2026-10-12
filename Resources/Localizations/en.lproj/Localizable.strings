@@ -571,3 +571,25 @@
 "update.upToDate.detail" = "%1$@, checked at %2$@";
 "update.waits" = "%@ waits";
 "update.waits.detail" = "installs once %@ finishes";
+
+"terminal.title" = "Terminal";
+"terminal.detail" = "Used for Open terminal. Background project commands keep their own runner. WSL folders always open in their distribution.";
+"terminal.application" = "Application";
+"terminal.profile" = "Profile";
+"terminal.system" = "System default";
+"terminal.defaultProfile" = "Default profile";
+"terminal.unavailable" = "Unavailable";
+"terminal.windowsTerminal" = "Windows Terminal";
+"terminal.commandPrompt" = "Command Prompt";
+"terminal.windowsPowerShell" = "Windows PowerShell";
+"terminal.powerShell" = "PowerShell";
+"arc.readiness.folder" = "Choose an existing project folder.";
+"arc.readiness.command" = "Enter a start command.";
+"arc.readiness.custom" = "This custom command is checked when it runs.";
+"arc.readiness.node" = "Node is not available in this project's environment.";
+"arc.readiness.script" = "The start script does not exist in this folder.";
+"arc.readiness.npx" = "npx is not available in this project's environment.";
+"arc.readiness.fusion" = "Install @arc-fusion/cli in the project. DevDeck does not install it for you.";
+"arc.readiness.failed" = "The launch check could not complete. Check the folder and command.";
+"arc.readiness.checking" = "Checking launch requirements";
+"arc.readiness.notReady" = "Not ready to start";

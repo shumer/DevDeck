@@ -98,6 +98,16 @@ public final class Preferences: @unchecked Sendable {
 
     // MARK: Placement
 
+    public var terminalWindows: TerminalChoice {
+        get {
+            guard let data = backend.data(forKey: "windows.terminal"),
+                  let choice = try? JSONDecoder().decode(TerminalChoice.self, from: data)
+            else { return TerminalChoice() }
+            return choice
+        }
+        set { backend.set(try? JSONEncoder().encode(newValue), forKey: "windows.terminal") }
+    }
+
     public var displayMode: DisplayMode {
         get { DisplayMode(rawValue: backend.string(forKey: "panels.mode") ?? "") ?? .desktop }
         set { backend.set(newValue.rawValue, forKey: "panels.mode") }

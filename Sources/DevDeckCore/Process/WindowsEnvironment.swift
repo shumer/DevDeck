@@ -5,15 +5,22 @@ import WinSDK
 enum WindowsEnvironment {
     static func current() -> [String: String] {
         var environment = ProcessInfo.processInfo.environment.filter { $0.key.lowercased() != "path" }
-        let machine = registryPath(
+        let machine = registryString(
             root: HKEY_LOCAL_MACHINE, key: "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment")
-        let user = registryPath(root: HKEY_CURRENT_USER, key: "Environment")
+        let user = registryString(root: HKEY_CURRENT_USER, key: "Environment")
         environment["Path"] = [machine, user].compactMap { $0 }.joined(separator: ";")
         return environment
     }
 
-    private static func registryPath(root: HKEY?, key: String) -> String? {
-        let name = Array("Path\0".utf16)
+    static var localAppData: String? {
+        registryString(
+            root: HKEY_CURRENT_USER,
+            key: "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders",
+            field: "Local AppData")
+    }
+
+    private static func registryString(root: HKEY?, key: String, field: String = "Path") -> String? {
+        let name = Array((field + "\0").utf16)
         let subkey = Array((key + "\0").utf16)
         var size: DWORD = 0
         return subkey.withUnsafeBufferPointer { keyBuffer in
