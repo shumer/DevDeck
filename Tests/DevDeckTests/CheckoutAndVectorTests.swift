@@ -60,6 +60,55 @@ func runVectorTests(_ run: TestRun) async {
         }
     }
 
+    await run.test("an ssh alias leads to the server it stands for, as ssh resolves it") {
+        let config = SSHConfig.parse("""
+        # Work account through its own key.
+        Host github-work
+          HostName github.com
+          User someone
+          IdentityFile ~/.ssh/work
+
+        Host gl-*  !gl-private
+            Hostname=gitlab.example.com
+
+        Host *.internal
+          HostName %h.example.net
+
+        Host github-work
+          HostName ignored.example.com
+        """)
+        try expectEqual(GitCheckout.webURL(fromRemote: "git@github-work:acme/newsroom.git", ssh: config)?.absoluteString,
+                        "https://github.com/acme/newsroom", "scp syntax")
+        try expectEqual(GitCheckout.webURL(fromRemote: "ssh://git@github-work/acme/newsroom.git", ssh: config)?.absoluteString,
+                        "https://github.com/acme/newsroom", "ssh:// syntax")
+        try expectEqual(GitCheckout.webURL(fromRemote: "ssh://git@github-work:2222/acme/newsroom.git", ssh: config)?.absoluteString,
+                        "https://github.com/acme/newsroom", "the port is ssh's")
+        try expectEqual(GitCheckout.webURL(fromRemote: "git@gl-team:acme/newsroom.git", ssh: config)?.absoluteString,
+                        "https://gitlab.example.com/acme/newsroom", "a wildcard, keyword with =")
+        try expectEqual(GitCheckout.webURL(fromRemote: "git@gl-private:acme/newsroom.git", ssh: config)?.absoluteString,
+                        "https://gl-private/acme/newsroom", "an excluded pattern is not that block")
+        try expectEqual(GitCheckout.webURL(fromRemote: "git@code.internal:acme/newsroom.git", ssh: config)?.absoluteString,
+                        "https://code.internal.example.net/acme/newsroom", "%h is the name asked about")
+        try expectEqual(GitCheckout.webURL(fromRemote: "git@github.com:acme/newsroom.git", ssh: config)?.absoluteString,
+                        "https://github.com/acme/newsroom", "a real host stays itself")
+        try expectEqual(GitCheckout.webURL(fromRemote: "https://github-work/acme/newsroom", ssh: config)?.absoluteString,
+                        "https://github-work/acme/newsroom", "https is not ssh's to resolve")
+    }
+
+    await run.test("an Include is read where it stands, and the first value wins") {
+        let included = ["work.conf": "Host github-work\n  HostName github.com\n"]
+        let config = SSHConfig.parse("""
+        Include work.conf
+        Host github-work
+          HostName later.example.com
+        Host *
+          HostName fallback.example.com
+        """, include: { included[$0].map { [$0] } ?? [] })
+        try expectEqual(config.hostName(for: "github-work"), "github.com")
+        try expectEqual(config.hostName(for: "anything"), "fallback.example.com", "Host * still applies to the rest")
+        try expectNil(SSHConfig.parse("Host a\n  User x\n").hostName(for: "a"), "no HostName, no answer")
+    }
+
     await run.test("what is not a repository produces no link at all") {
         try expectNil(GitCheckout.webURL(fromRemote: ""), "empty")
         try expectNil(GitCheckout.webURL(fromRemote: "/Users/x/some/local/path"), "a local path")
