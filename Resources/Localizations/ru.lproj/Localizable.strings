@@ -501,6 +501,9 @@
 "agents.error.unknownRequest" = "DevDeck не знает запроса %@.";
 "agents.error.noFolder" = "%@ это не папка на этом компьютере.";
 "agents.error.alreadyOnDeck" = "Эта папка уже на деке, как %@.";
+"agents.error.needsOrganization" = "Проекту Arc нужна организация, например sandbox.acme: передайте ее.";
+"agents.error.ddevNotListed" = "ddev не видит %@. Выполните там один раз ddev start, потом добавьте.";
+"agents.error.notEditable" = "%@ это не карточка проекта, которую можно править отсюда.";
 "settings.general.runningFrom" = "Запущено из %@";
 "settings.general.runningTranslocated" = "Запущено из копии только для чтения: macOS сделала её, потому что DevDeck открыли, не переложив в Applications. Следующее обновление поставит его в Applications.";
 "settings.general.startAtLogin" = "Запускать при входе";

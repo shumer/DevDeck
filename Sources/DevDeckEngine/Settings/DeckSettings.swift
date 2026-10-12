@@ -191,6 +191,19 @@ extension DeckRuntime {
         }
     }
 
+    /// The card a folder is already on the deck as, of whichever kind, if it is.
+    public func cardInFolder(_ folder: URL) -> (card: CardID, title: String)? {
+        let wanted = folder.standardizedFileURL.path
+        func same(_ url: URL?) -> Bool { url.map { $0.standardizedFileURL.path == wanted } ?? false }
+        if let project = localProjectsStore.projects().first(where: { same($0.folderURL) }) { return (project.cardID, project.title) }
+        if let project = projectsStore.projects().first(where: { same($0.folderURL) }) { return (project.cardID, project.title) }
+        if let project = ddevProjectsStore.projects().first(where: { same($0.folderURL) }) { return (project.cardID, project.displayTitle) }
+        return nil
+    }
+
+    /// Every Arc project, as stored.
+    public func arcProjects() -> [ArcProject] { projectsStore.projects() }
+
     public func removeLocalProject(_ id: String) {
         localProjectsStore.save(localProjectsStore.projects().filter { $0.id != id })
     }

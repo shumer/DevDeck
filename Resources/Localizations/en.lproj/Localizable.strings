@@ -501,6 +501,9 @@
 "agents.error.unknownRequest" = "DevDeck does not know the request %@.";
 "agents.error.noFolder" = "%@ is not a folder on this computer.";
 "agents.error.alreadyOnDeck" = "That folder is already on the deck, as %@.";
+"agents.error.needsOrganization" = "An Arc project needs its organization, such as sandbox.acme: pass it.";
+"agents.error.ddevNotListed" = "ddev does not list %@. Run ddev start there once, then add it.";
+"agents.error.notEditable" = "%@ is not a project card that can be edited from here.";
 "settings.general.runningFrom" = "Running from %@";
 "settings.general.runningTranslocated" = "Running from a read-only copy macOS made because DevDeck was opened without being moved to Applications. The next update installs it into Applications.";
 "settings.general.startAtLogin" = "Start at login";

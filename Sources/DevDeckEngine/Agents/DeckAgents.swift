@@ -1,6 +1,8 @@
+import ArcKit
+import DDEVKit
 import DevDeckCore
-import ProjectKit
 import Foundation
+import ProjectKit
 
 /// The deck as an agent on this computer reaches it: the local endpoint, opened while agent
 /// access is on, and the answers it gives.
@@ -66,8 +68,11 @@ public final class DeckAgents {
         var command: DeckCommand?
         /// `detect` and `addProject`: the folder, in the platform's own spelling.
         var folder: String?
-        /// `addProject`: what the agent knows that the folder does not say. Absent fields are
-        /// taken from the folder the way the settings window takes them.
+        /// `addProject`: `plain`, `arc` or `ddev`; absent, what the folder says it is.
+        var kind: String?
+        /// `addProject` and `updateProject`: what the agent knows that the folder does not say.
+        /// Absent fields are taken from the folder the way the settings window takes them, or
+        /// left as they are on an update.
         var title: String?
         var startCommand: String?
         var stopCommand: String?
@@ -75,6 +80,30 @@ public final class DeckAgents {
         var requiresDocker: Bool?
         var healthURL: String?
         var localSiteURL: String?
+        /// Arc: the organisation as the host names it, `sandbox.acme`, and the site.
+        var organization: String?
+        var site: String?
+        /// Links on the card, by label: an existing label is filled in, a new one appended.
+        var links: [LinkRequest]?
+    }
+
+    private struct LinkRequest: Decodable {
+        var label: String
+        var url: String
+        /// `site` for an environment, `tool` for something you work in. Default `site`.
+        var kind: String?
+        var isTool: Bool { kind?.lowercased() == "tool" }
+    }
+
+    /// What a folder is to the deck.
+    enum ProjectKind: String {
+        case plain, arc, ddev
+
+        static func detect(_ folder: URL) -> ProjectKind {
+            if ArcCheckout.isFusionCheckout(folder) { return .arc }
+            if DDEVConfig.isProject(folder) { return .ddev }
+            return .plain
+        }
     }
 
     /// One request, one answer, as the endpoint carries them. Public for the suite.
@@ -103,8 +132,10 @@ public final class DeckAgents {
                 reply.error = L("agents.error.noFolder", request.folder ?? "")
                 break
             }
-            reply.detection = runtime.detect(folder: folder)
-            if let existing = runtime.localProject(inFolder: folder) { reply.card = existing.cardID }
+            let kind = ProjectKind.detect(folder)
+            reply.kind = kind.rawValue
+            if kind == .plain { reply.detection = runtime.detect(folder: folder) }
+            if let existing = runtime.cardInFolder(folder) { reply.card = existing.card }
         case "addProject":
             guard access == .control else {
                 reply.error = L("agents.error.readOnly")
@@ -114,31 +145,86 @@ public final class DeckAgents {
                 reply.error = L("agents.error.noFolder", request.folder ?? "")
                 break
             }
-            if let existing = runtime.localProject(inFolder: folder) {
+            if let existing = runtime.cardInFolder(folder) {
                 reply.error = L("agents.error.alreadyOnDeck", existing.title)
-                reply.card = existing.cardID
+                reply.card = existing.card
                 break
             }
-            // The folder is read first, the way the settings window reads it, and what the
-            // agent said on top: it knows the command it has been running all afternoon.
-            let id = runtime.addLocalProject(folder: folder)
-            guard var project = runtime.localProject(forCard: CardID(rawValue: "project.\(id)")) else {
-                reply.error = L("agents.error.badRequest")
+            let kind = request.kind.flatMap(ProjectKind.init(rawValue:)) ?? ProjectKind.detect(folder)
+            reply.kind = kind.rawValue
+            switch kind {
+            case .plain:
+                // The folder is read first, the way the settings window reads it, and what
+                // the agent said on top: it knows the command it has been running all afternoon.
+                let id = runtime.addLocalProject(folder: folder)
+                guard var project = runtime.localProject(forCard: CardID(rawValue: "project.\(id)")) else {
+                    reply.error = L("agents.error.badRequest")
+                    break
+                }
+                apply(request, to: &project)
+                runtime.saveLocalProject(project)
+                reply.project = project
+                await added(project.cardID, into: &reply)
+            case .arc:
+                // Nothing in a checkout names the organisation; the agent has to say it, and
+                // without it no link on the card would resolve.
+                guard let organization = request.organization?.trimmingCharacters(in: .whitespaces), !organization.isEmpty else {
+                    reply.error = L("agents.error.needsOrganization")
+                    break
+                }
+                let title = request.title?.trimmingCharacters(in: .whitespaces).nonEmpty ?? folder.lastPathComponent
+                let existing = runtime.arcProjects().map(\.id)
+                var project = ArcProject(id: ArcProject.makeID(from: title, existing: existing), title: title, organization: organization, site: request.site?.nonEmpty, folder: folder.path)
+                apply(request, to: &project)
+                runtime.saveArcProject(project)
+                reply.arcProject = project
+                await added(project.cardID, into: &reply)
+            case .ddev:
+                // DDEV names the project; the deck adds what `ddev list` knows, as Settings does.
+                let wanted = folder.standardizedFileURL.path
+                guard let entry = await runtime.ddevList()?.first(where: { URL(fileURLWithPath: $0.approot).standardizedFileURL.path == wanted }) else {
+                    reply.error = L("agents.error.ddevNotListed", folder.path)
+                    break
+                }
+                let id = runtime.addDDEVProject(entry)
+                guard var project = runtime.ddevProject(forCard: CardID(rawValue: "ddev.project.\(id)")) else {
+                    reply.error = L("agents.error.badRequest")
+                    break
+                }
+                apply(request, to: &project)
+                runtime.saveDDEVProject(project)
+                reply.ddevProject = project
+                await added(project.cardID, into: &reply)
+            }
+        case "updateProject":
+            guard access == .control else {
+                reply.error = L("agents.error.readOnly")
                 break
             }
-            if let title = request.title?.trimmingCharacters(in: .whitespaces), !title.isEmpty { project.title = title }
-            if let command = request.startCommand { project.startCommand = command }
-            if let command = request.stopCommand { project.stopCommand = command }
-            if let holds = request.holdsProcess { project.holdsProcess = holds }
-            if let docker = request.requiresDocker { project.requiresDocker = docker }
-            if let health = request.healthURL { project.healthURL = health }
-            if let site = request.localSiteURL { project.localSiteURL = site }
-            runtime.saveLocalProject(project)
-            runtime.effect(.cardsChanged)
-            await runtime.refreshLocalOnce()
-            reply.card = project.cardID
-            reply.project = project
-            reply.cards = runtime.model(for: project.cardID).map { [AgentCard(card: project.cardID, model: $0)] }
+            guard let card = request.card else {
+                reply.error = L("agents.error.unknownCard", "")
+                break
+            }
+            if var project = runtime.localProject(forCard: card) {
+                apply(request, to: &project)
+                runtime.saveLocalProject(project)
+                reply.kind = ProjectKind.plain.rawValue
+                reply.project = project
+            } else if var project = runtime.project(forCard: card) {
+                apply(request, to: &project)
+                runtime.saveArcProject(project)
+                reply.kind = ProjectKind.arc.rawValue
+                reply.arcProject = project
+            } else if var project = runtime.ddevProject(forCard: card) {
+                apply(request, to: &project)
+                runtime.saveDDEVProject(project)
+                reply.kind = ProjectKind.ddev.rawValue
+                reply.ddevProject = project
+            } else {
+                reply.error = L("agents.error.notEditable", card.rawValue)
+                break
+            }
+            await added(card, into: &reply)
         case "log":
             guard let card = request.card, runtime.hasLogSource(card) else {
                 reply.error = L("agents.error.noLog", request.card?.rawValue ?? "")
@@ -181,6 +267,65 @@ public final class DeckAgents {
         }
     }
 
+    /// The deck learns a card came or changed, its data is fetched, and the answer is the card.
+    private func added(_ card: CardID, into reply: inout Reply) async {
+        runtime.effect(.cardsChanged)
+        await runtime.refreshLocalOnce()
+        reply.card = card
+        reply.cards = runtime.model(for: card).map { [AgentCard(card: card, model: $0)] }
+    }
+
+    private func apply(_ request: Request, to project: inout LocalProject) {
+        if let title = request.title?.trimmingCharacters(in: .whitespaces).nonEmpty { project.title = title }
+        if let command = request.startCommand { project.startCommand = command }
+        if let command = request.stopCommand { project.stopCommand = command }
+        if let holds = request.holdsProcess { project.holdsProcess = holds }
+        if let docker = request.requiresDocker { project.requiresDocker = docker }
+        if let health = request.healthURL { project.healthURL = health }
+        if let site = request.localSiteURL { project.localSiteURL = site }
+        for link in request.links ?? [] {
+            if let index = project.links.firstIndex(where: { $0.label.caseInsensitiveCompare(link.label) == .orderedSame }) {
+                project.links[index].urlTemplate = link.url
+                project.links[index].isEnabled = !link.url.isEmpty
+                if link.kind != nil { project.links[index].kind = link.isTool ? .tool : .site }
+            } else {
+                project.links.append(LocalProjectLink(label: link.label, urlTemplate: link.url, isEnabled: !link.url.isEmpty, kind: link.isTool ? .tool : .site))
+            }
+        }
+    }
+
+    private func apply(_ request: Request, to project: inout ArcProject) {
+        if let title = request.title?.trimmingCharacters(in: .whitespaces).nonEmpty { project.title = title }
+        if let organization = request.organization?.trimmingCharacters(in: .whitespaces).nonEmpty { project.organization = organization }
+        if let site = request.site { project.site = site.nonEmpty }
+        if let command = request.startCommand { project.startCommand = command }
+        if let command = request.stopCommand { project.stopCommand = command }
+        // The local address is read from the checkout's .env unless the agent names one.
+        if let site = request.localSiteURL { project.localURL = site }
+        for link in request.links ?? [] {
+            if let index = project.links.firstIndex(where: { $0.label.caseInsensitiveCompare(link.label) == .orderedSame }) {
+                project.links[index].urlTemplate = link.url
+                project.links[index].isEnabled = !link.url.isEmpty
+                if link.kind != nil { project.links[index].kind = link.isTool ? .admin : .site }
+            } else {
+                project.links.append(ArcLink(label: link.label, urlTemplate: link.url, isEnabled: !link.url.isEmpty, kind: link.isTool ? .admin : .site))
+            }
+        }
+    }
+
+    private func apply(_ request: Request, to project: inout DDEVProject) {
+        if let title = request.title?.trimmingCharacters(in: .whitespaces).nonEmpty { project.title = title }
+        for link in request.links ?? [] {
+            if let index = project.customLinks.firstIndex(where: { $0.label.caseInsensitiveCompare(link.label) == .orderedSame }) {
+                project.customLinks[index].urlTemplate = link.url
+                project.customLinks[index].isEnabled = !link.url.isEmpty
+                if link.kind != nil { project.customLinks[index].kind = link.isTool ? .tool : .site }
+            } else {
+                project.customLinks.append(DDEVCustomLink(label: link.label, urlTemplate: link.url, isEnabled: !link.url.isEmpty, kind: link.isTool ? .tool : .site))
+            }
+        }
+    }
+
     /// A folder that is there. Nil for a path that is not one, so a typo does not become a card.
     private static func folderURL(_ path: String) -> URL? {
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -217,11 +362,14 @@ public final class DeckAgents {
         var log: AgentLog?
         /// After a command: whether the work it started has finished.
         var done: Bool?
-        /// `detect`: what the folder says about the project in it.
+        /// `detect`: what kind of project the folder holds, and for a plain one what its files say.
+        var kind: String?
         var detection: DeckDetection?
-        /// `addProject`: the new card, and the project as it was written down.
+        /// `addProject` and `updateProject`: the card, and the project as it was written down.
         var card: CardID?
         var project: LocalProject?
+        var arcProject: ArcProject?
+        var ddevProject: DDEVProject?
     }
 
     private struct AgentCard: Encodable {
@@ -306,4 +454,8 @@ extension DeckRuntime {
         agents.applyPreferences()
         return agents
     }
+}
+
+private extension String {
+    var nonEmpty: String? { isEmpty ? nil : self }
 }

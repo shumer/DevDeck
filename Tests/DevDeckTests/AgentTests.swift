@@ -1,3 +1,4 @@
+import ArcKit
 import DevDeckCore
 import DevDeckEngine
 import Foundation
@@ -192,6 +193,76 @@ func runAgentTests(_ run: TestRun) async {
         try expectEqual(refused["error"] as? String, L("agents.error.readOnly"), "adding a card is control")
         let allowed = try object(await readOnly.answer(request(["request": "detect", "folder": folder.path])))
         _ = try expectNotNil(allowed["detection"], "looking at a folder is reading")
+    }
+
+    await run.test("an Arc checkout becomes an Arc card with its organisation and its published sites") {
+        let (deck, _, _) = try makeDeck(.control)
+        let agents = deck.runtime.serveAgents(version: "9.9", address: "/tmp/devdeck-arc-\(UUID().uuidString.prefix(6)).sock")
+        defer { agents.stop() }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("devdeck-arc-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try #"{"name":"theme","scripts":{"fusion":"fusion"},"dependencies":{"@arc-fusion/cli":"3.3.0"}}"#.write(to: folder.appendingPathComponent("package.json"), atomically: true, encoding: .utf8)
+
+        let seen = try object(await agents.answer(request(["request": "detect", "folder": folder.path])))
+        try expectEqual(seen["kind"] as? String, "arc", "the CLI in package.json is the tell")
+
+        let missing = try object(await agents.answer(request(["request": "addProject", "folder": folder.path])))
+        try expectEqual(missing["error"] as? String, L("agents.error.needsOrganization"), "nothing in a checkout names the organisation")
+
+        let added = try object(await agents.answer(request([
+            "request": "addProject", "folder": folder.path, "title": "Daily", "organization": "sandbox.daily",
+            "links": [["label": "Sandbox", "url": "https://sandbox-daily.example.test"], ["label": "Prod", "url": "https://www.daily.example.test"], ["label": "Styleguide", "url": "https://sandbox.daily.example.test/styleguide", "kind": "tool"]],
+        ])))
+        try expectNil(added["error"], "\(added)")
+        try expectEqual(added["kind"] as? String, "arc")
+        let card = try expectNotNil(added["card"] as? String, "the new card")
+        let project = try expectNotNil(deck.runtime.project(forCard: CardID(rawValue: card)), "an Arc project")
+        try expectEqual(project.organization, "sandbox.daily")
+        try expectEqual(project.startCommand, "npx fusion daemon", "the Fusion CLI starts it")
+        try expectEqual(project.stopCommand, "npx fusion stop", "and stops it, containers and all")
+        try expectEqual(project.siteLinks.map(\.label), ["Sandbox", "Prod"], "the published sites filled the slots")
+        try expectEqual(project.siteLinks.first?.url.absoluteString, "https://sandbox-daily.example.test")
+        try expect(project.adminLinks.map(\.label).contains("Styleguide"), "a tool joins Arc's own tooling")
+        try expectEqual(project.links.count, ArcLink.defaults().count + 1, "known labels are filled, not doubled")
+
+        let again = try object(await agents.answer(request(["request": "addProject", "folder": folder.path, "organization": "daily"])))
+        try expectEqual(again["error"] as? String, L("agents.error.alreadyOnDeck", "Daily"))
+        try expectEqual(again["card"] as? String, card)
+    }
+
+    await run.test("an agent edits a card it can see, by label for the links, and nothing else") {
+        let (deck, project, _) = try makeDeck(.control)
+        let agents = deck.runtime.serveAgents(version: "9.9", address: "/tmp/devdeck-edit-\(UUID().uuidString.prefix(6)).sock")
+        defer { agents.stop() }
+        let edited = try object(await agents.answer(request([
+            "request": "updateProject", "card": project.cardID.rawValue, "title": "Sample API", "health_url": "ignored",
+            "healthURL": "http://localhost:5173/health",
+            "links": [["label": "prod", "url": "https://www.example.test"], ["label": "Mail", "url": "{site}/mail", "kind": "tool"]],
+        ])))
+        try expectNil(edited["error"], "\(edited)")
+        let saved = try expectNotNil(deck.runtime.localProject(forCard: project.cardID), "still there")
+        try expectEqual(saved.title, "Sample API")
+        try expectEqual(saved.healthURL, "http://localhost:5173/health")
+        try expectEqual(saved.startCommand, project.startCommand, "what was not passed stays")
+        let prod = try expectNotNil(saved.links.first { $0.label == "Prod" }, "the slot, matched without regard to case")
+        try expectEqual(prod.urlTemplate, "https://www.example.test")
+        try expect(prod.isEnabled)
+        try expectEqual(saved.links.filter { $0.label == "Mail" }.first?.kind, .tool)
+        let nobody = try object(await agents.answer(request(["request": "updateProject", "card": CardID.githubPullRequests.rawValue, "title": "x"])))
+        try expectEqual(nobody["error"] as? String, L("agents.error.notEditable", CardID.githubPullRequests.rawValue))
+    }
+
+    await run.test("a DDEV folder ddev does not list is not added, and says what to do") {
+        let (deck, _, _) = try makeDeck(.control)
+        let agents = deck.runtime.serveAgents(version: "9.9", address: "/tmp/devdeck-ddev-\(UUID().uuidString.prefix(6)).sock")
+        defer { agents.stop() }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("devdeck-ddev-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent(".ddev"), withIntermediateDirectories: true)
+        try "name: sample\ntype: php\n".write(to: folder.appendingPathComponent(".ddev/config.yaml"), atomically: true, encoding: .utf8)
+        let seen = try object(await agents.answer(request(["request": "detect", "folder": folder.path])))
+        try expectEqual(seen["kind"] as? String, "ddev")
+        let added = try object(await agents.answer(request(["request": "addProject", "folder": folder.path])))
+        try expectEqual(added["error"] as? String, L("agents.error.ddevNotListed", folder.path), "the stub runner has no ddev")
     }
 
     run.section("Agents - the endpoint")

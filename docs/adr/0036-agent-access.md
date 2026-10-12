@@ -40,6 +40,11 @@ reading and acting are different promises, and acting has to follow the rules th
   folder, read the window's way, with what the agent knows on top: title, start and stop
   command, whether it holds its process or needs Docker, health and site URLs). The case is an
   agent working in a repository that is not on the deck yet. Removing a card stays in Settings.
+  Later the same day: a folder's kind is detected, so a Fusion checkout becomes an Arc card
+  with the CLI's own start and stop and the organisation the agent names, and a DDEV project a
+  DDEV card from `ddev list`; links are filled by label; and `updateProject` edits a card the
+  same way. The first agent to add an Arc checkout got a plain card whose empty stop would
+  have left ten containers running, which is what a kind is for.
 - **`DevDeckMCP` is the MCP server**, a small executable shipped with the app (in
   `Contents/Helpers` on the Mac, beside the shell on Windows). An agent starts it over stdio; it
   asks the endpoint one question per tool call and returns the deck's answer. `tools/list` offers

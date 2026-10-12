@@ -13,7 +13,7 @@ Settings, General, **Agents (MCP)**:
 | --- | --- |
 | Off (default) | Nothing. No endpoint is open. |
 | Read only | `what_needs_me`, `cards`, `project_log`, `detect_project`. |
-| Read and control | The above, plus `start_project`, `stop_project`, `restart_project`, `mark_inbox_read`, `add_project`. |
+| Read and control | The above, plus `start_project`, `stop_project`, `restart_project`, `mark_inbox_read`, `add_project`, `update_project`. |
 
 The change takes effect at once. Below the choice the page shows the line to register the server.
 
@@ -52,8 +52,9 @@ example in `.cursor/mcp.json`:
 | `project_log` | `card` | The last lines of the project's log and where they come from. |
 | `start_project`, `stop_project`, `restart_project` | `card` | Runs the card's button, waits up to three minutes for it, and returns the card. `done` is false when it is still going. |
 | `mark_inbox_read` | `thread` (optional) | Marks that thread read; without one, everything in the inbox that is not addressed to you. Returns `what_needs_me`'s rows. |
-| `detect_project` | `folder` | What DevDeck would make of the folder, read from its files the way the settings window reads them: the start command, whether it holds its process, whether it needs Docker, the health URL. Says if the folder is already on the deck. |
-| `add_project` | `folder`, then `title`, `start_command`, `stop_command`, `holds_process`, `requires_docker`, `health_url`, `local_site_url`, all optional | Adds a project card for the folder, usually the one the agent works in. The folder is read first and what the agent passes wins over it. Returns the new card. A folder already on the deck is refused, naming its card. Removing a card stays in Settings. |
+| `detect_project` | `folder` | What DevDeck would make of the folder: `kind` is `arc` for a Fusion checkout (`@arc-fusion/cli` in `package.json`), `ddev` for a DDEV project, `plain` otherwise; for a plain one, what its files say about the start command, the process, Docker and the health URL. Says if the folder is already on the deck, as which card. |
+| `add_project` | `folder`, then `kind`, `title`, `organization`, `site`, `start_command`, `stop_command`, `holds_process`, `requires_docker`, `health_url`, `local_site_url`, `links`, all optional | A card for the folder, of the kind the folder is. An Arc checkout needs `organization` (`sandbox.acme` or `acme`) and gets the Fusion CLI's start, stop and health check; a DDEV project is taken from `ddev list`; a plain project is read from its files, and what the agent passes wins. `links` fills the card's slots by label (Test, UAT, Prod; Sandbox, Prod on Arc) or adds new ones, `kind: tool` for something you work in. A folder already on the deck is refused, naming its card. |
+| `update_project` | `card`, then the same fields | Changes a card on the deck; fields left out stay, links are matched by label. Removing a card stays in Settings. |
 
 In Claude Code, inside a repository: "add this project to DevDeck, it starts with `npm run
 dev` and answers on port 3000" is enough; the agent passes the folder it is in and the two

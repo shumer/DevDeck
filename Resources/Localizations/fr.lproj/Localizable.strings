@@ -501,6 +501,9 @@
 "agents.error.unknownRequest" = "DevDeck ne connaît pas la demande %@.";
 "agents.error.noFolder" = "%@ n’est pas un dossier de cet ordinateur.";
 "agents.error.alreadyOnDeck" = "Ce dossier est déjà sur le tableau, sous le nom %@.";
+"agents.error.needsOrganization" = "Un projet Arc a besoin de son organisation, par exemple sandbox.acme : indiquez-la.";
+"agents.error.ddevNotListed" = "ddev ne liste pas %@. Lancez ddev start là-bas une fois, puis ajoutez-le.";
+"agents.error.notEditable" = "%@ n’est pas une carte de projet modifiable d’ici.";
 "settings.general.runningFrom" = "Exécuté depuis %@";
 "settings.general.runningTranslocated" = "Exécuté depuis une copie en lecture seule créée par macOS, parce que DevDeck a été ouvert sans être déplacé dans Applications. La prochaine mise à jour l’installera dans Applications.";
 "settings.general.startAtLogin" = "Ouvrir à l’ouverture de session";
