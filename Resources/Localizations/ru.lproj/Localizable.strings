@@ -461,6 +461,12 @@
 "settings.add.github" = "Аккаунт GitHub";
 "settings.add.gitlab" = "Инстанс GitLab";
 "settings.add.local" = "Проект из папки…";
+"settings.agents.client.checking" = "Проверяем…";
+"settings.agents.client.failed" = "Не удалось зарегистрировать: %@";
+"settings.agents.client.notInstalled" = "Не установлен на этом компьютере. Зарегистрировать вручную позже: %@";
+"settings.agents.client.notRegistered" = "Не зарегистрирован.";
+"settings.agents.client.registered" = "Зарегистрирован. Агент видит деку в любом проекте.";
+"settings.agents.clients.footnote" = "DevDeck добавляет свой MCP-сервер этим агентам, когда настройка включена, и убирает, когда выключена, через их собственные команды. Больше ничего на компьютере не меняется.";
 "settings.cards.actions.footnote" = "Пусто: репозитории ваших открытых pull requests, до пяти на аккаунт.";
 "settings.cards.actionsRepositories" = "Репозитории Actions";
 "settings.cards.fetching" = "Обновление данных";
@@ -502,8 +508,6 @@
 "settings.agents.access.off.detail" = "Выключен: ни один агент на этом компьютере не видит деку.";
 "settings.agents.access.read.detail" = "Агенты, подключенные по MCP, например Claude Code или Cursor, видят то же, что карточки и меню, и ничего не меняют.";
 "settings.agents.access.control.detail" = "Агенты, подключенные по MCP, могут еще запускать, останавливать и перезапускать проекты и отмечать уведомления прочитанными, с теми же ограничениями, что у кнопок.";
-"settings.agents.register" = "Добавить DevDeck в Claude Code: %@";
-"settings.agents.register.codex" = "Добавить DevDeck в Codex: %@";
 "agents.error.off" = "MCP-сервер выключен. Включите его в DevDeck: Настройки, Основные, Агенты (MCP).";
 "agents.error.readOnly" = "MCP-сервер работает только на чтение. Выберите «Чтение и управление» в DevDeck: Настройки, Основные, Агенты (MCP).";
 "agents.error.notAllowed" = "Агент не может просить DevDeck об этом.";

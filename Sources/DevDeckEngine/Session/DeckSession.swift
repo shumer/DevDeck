@@ -417,6 +417,10 @@ public final class DeckSession {
             send(effect: "launchDocker")
         case .attentionChanged:
             scheduleFlush()
+        case .agentClientsChanged:
+            // Unasked, with no id: the settings window takes it like the answer it asked for.
+            answering = nil
+            emit("settings.answered") { $0.answer = .agentClients(runtime.agents?.clients ?? []) }
         case .openURL(let url, let browser):
             send(effect: "openURL") {
                 $0.url = url.absoluteString

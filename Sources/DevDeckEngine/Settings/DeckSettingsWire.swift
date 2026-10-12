@@ -83,6 +83,9 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     case terminalSettings
     case setTerminalApplication(value: String?)
     case setTerminalProfile(value: String?)
+    /// Where the deck's MCP server stands with each agent on this computer. Also sent unasked,
+    /// as `settings.answered` with no id, whenever that changes.
+    case agentClients
 
     // What a form edits, as stored.
     case localProject(id: String)
@@ -160,6 +163,7 @@ public enum DeckSettingsAnswer: Sendable, Equatable, Codable {
     case words([String: String])
     case preferences(DeckPreferencesModel)
     case terminalSettings(DeckTerminalSettings)
+    case agentClients([DeckAgentClient])
     case localProject(LocalProject?)
     case arcProject(ArcProject?)
     case ddevProject(DDEVProject?)
@@ -250,6 +254,7 @@ extension DeckRuntime {
             return .words(words)
         case .preferences: return .preferences(preferencesModel)
         case .terminalSettings: return .terminalSettings(terminalSettings())
+        case .agentClients: return .agentClients(agents?.clients ?? [])
         case .setTerminalApplication(let value):
             setTerminalApplication(value)
             return .terminalSettings(terminalSettings())

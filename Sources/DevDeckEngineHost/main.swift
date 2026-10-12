@@ -77,7 +77,16 @@ let deliveryVersion: String? = {
 }()
 session.watchForUpdates(currentVersion: deliveryVersion, canInstall: deliveryVersion != nil, http: URLSessionHTTPClient.makeDefault())
 // Agents on this computer reach the deck here while Settings, General, Agents allows it.
-runtime.serveAgents(version: deliveryVersion ?? "development") { diagnostic($0) }
+#if os(Windows)
+// The server is installed beside the shell and this host.
+let agentServer: String? = Bundle.main.executableURL.map {
+    $0.deletingLastPathComponent().appendingPathComponent("DevDeckMCP.exe").path
+}
+#else
+// The Mac's development host keeps nothing registered: the app does that for its own copy.
+let agentServer: String? = nil
+#endif
+runtime.serveAgents(version: deliveryVersion ?? "development", serverExecutable: agentServer) { diagnostic($0) }
 
 let input = AsyncStream<Data>(bufferingPolicy: .bufferingOldest(32)) { continuation in
     DispatchQueue.global().async {

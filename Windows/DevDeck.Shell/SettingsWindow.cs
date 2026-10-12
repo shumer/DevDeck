@@ -451,12 +451,21 @@ public sealed class SettingsWindow : Window
             }
         };
         page.Children.Add(GroupTitle("settings.agents"));
-        page.Children.Add(Card(Row("settings.agents.access", "settings.agents.access." + current + ".detail", access)));
-        if (current != "off")
+        // The engine puts the server on each agent's list when the setting is on and takes it
+        // off when it is off; the rows under the choice say how that went.
+        var rows = new List<FrameworkElement> { Row("settings.agents.access", "settings.agents.access." + current + ".detail", access) };
+        var clients = current == "off" ? null : client.AgentClients;
+        if (clients is not null)
         {
-            var server = Path.Combine(AppContext.BaseDirectory, "DevDeckMCP.exe");
-            page.Children.Add(Footnote(words.Get("settings.agents.register", "claude mcp add --scope user devdeck -- \"" + server + "\"")));
-            page.Children.Add(Footnote(words.Get("settings.agents.register.codex", "codex mcp add devdeck -- \"" + server + "\"")));
+            foreach (var entry in clients.OfType<JsonObject>())
+            {
+                rows.Add(ModelRow(SettingsJson.String(entry, "name"), SettingsJson.String(entry, "detail"), null));
+            }
+        }
+        page.Children.Add(Card(rows.ToArray()));
+        if (clients is { Count: > 0 })
+        {
+            page.Children.Add(Footnote(words.Get("settings.agents.clients.footnote")));
         }
     }
 

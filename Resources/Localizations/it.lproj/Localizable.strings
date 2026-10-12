@@ -461,6 +461,12 @@
 "settings.add.github" = "Account GitHub";
 "settings.add.gitlab" = "Istanza GitLab";
 "settings.add.local" = "Progetto da una cartella…";
+"settings.agents.client.checking" = "Verifica in corso…";
+"settings.agents.client.failed" = "Registrazione non riuscita: %@";
+"settings.agents.client.notInstalled" = "Non installato su questo computer. Per registrarlo a mano più tardi: %@";
+"settings.agents.client.notRegistered" = "Non registrato.";
+"settings.agents.client.registered" = "Registrato. L’agente vede il deck in ogni progetto.";
+"settings.agents.clients.footnote" = "DevDeck aggiunge il suo server MCP a questi agenti quando l’impostazione è attiva e lo rimuove quando è disattivata, con i loro strumenti da riga di comando. Nient’altro cambia su questo computer.";
 "settings.cards.actions.footnote" = "Vuoto: i repository delle tue pull request aperte, fino a cinque per account.";
 "settings.cards.actionsRepositories" = "Repository Actions";
 "settings.cards.fetching" = "Recupero";
@@ -502,8 +508,6 @@
 "settings.agents.access.off.detail" = "Disattivato: nessun agente su questo computer vede il pannello.";
 "settings.agents.access.read.detail" = "Gli agenti collegati via MCP, come Claude Code o Cursor, vedono ciò che mostrano le schede e il menu, e non cambiano nulla.";
 "settings.agents.access.control.detail" = "Gli agenti collegati via MCP possono anche avviare, fermare e riavviare i progetti e segnare le notifiche come lette, con gli stessi limiti dei pulsanti.";
-"settings.agents.register" = "Aggiungi DevDeck a Claude Code con: %@";
-"settings.agents.register.codex" = "Aggiungi DevDeck a Codex con: %@";
 "agents.error.off" = "Il server MCP è disattivato. Attivalo in DevDeck: Impostazioni, Generali, Agenti (MCP).";
 "agents.error.readOnly" = "Il server MCP è in sola lettura. Scegli Lettura e controllo in DevDeck: Impostazioni, Generali, Agenti (MCP).";
 "agents.error.notAllowed" = "Un agente non può chiedere questo a DevDeck.";

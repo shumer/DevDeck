@@ -15,12 +15,21 @@ Settings, General, **Agents (MCP)**:
 | Read only | `what_needs_me`, `cards`, `project_log`, `detect_project`. |
 | Read and control | The above, plus `start_project`, `stop_project`, `restart_project`, `mark_inbox_read`, `add_project`, `update_project`. |
 
-The change takes effect at once. Below the choice the page shows the lines to register the
-server with Claude Code and with Codex.
+The change takes effect at once. Below the choice the page shows one row per agent on this
+computer and where the deck's server stands with it.
 
 ## Registering the server
 
-Claude Code, on the Mac, for every project on this computer:
+DevDeck does this itself. Turning the setting on puts `DevDeckMCP` on the server list of every
+agent installed on this computer, with the agents' own command-line tools (`claude mcp add`,
+`codex mcp add`); turning it off takes it off again (`claude mcp remove`, `codex mcp remove`).
+A launch with the setting already on checks each list and repairs an entry that is missing,
+which is also how an upgrade that moved the executable is caught. Nothing else on the computer
+is changed, and an agent that is not installed is said to be that, with the line to run by hand
+once it is. The rows under the setting say how it went.
+
+The same by hand, for a client the deck does not know or a machine where the tools are not on
+the path. Claude Code, on the Mac, for every project on this computer:
 
 ```bash
 claude mcp add --scope user devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP

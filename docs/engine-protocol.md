@@ -176,6 +176,7 @@ so a slow check does not hold up the list. The full list is `DeckSettingsRequest
 | `words` | `words`: every word the window says, key to text in the deck's language (`DeckSettingsWords.prefixes`); asked at start and after the language changes. A `%@` in a text is filled by the shell with the one value the key names. Platform wording is the engine's: on Windows `settings.notifications.allow.detail` already says how Windows keeps banners. |
 | `preferences`, `setPreferences` | `preferences`: the deck-wide settings as they now are. `agentAccess` (`off`, `read`, `control`) opens or closes the agent endpoint when it is saved; a shell that leaves it out leaves it as it is. |
 | `terminalSettings`, `setTerminalApplication(value)`, `setTerminalProfile(value)` | `terminalSettings`: the Windows terminal group, including its title, detail and ordered fields with label, request, selected value and options |
+| `agentClients` | `agentClients`: one row per coding agent the engine registers its MCP server with, `id`, `name`, `state` (`checking`, `registered`, `notRegistered`, `notInstalled`, `failed`) and `detail` in the deck's language. Also sent unasked, as `settings.answered` with no `id`, whenever a row changes, since the registration runs after the preference is saved |
 | `localProject`, `arcProject`, `ddevProject`, `githubAccount`, `gitlabAccount`, `azureAccount` by `id` | the record a form edits, as stored |
 | `add...` | `added` with the new id |
 | `save...` | `saved`, with `checkAgain` when the form's status line has a new question |

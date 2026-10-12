@@ -74,3 +74,19 @@ reading and acting are different promises, and acting has to follow the rules th
   browser page can try. A socket and a pipe are owned by a user.
 - **Asking on the deck before each command.** Possible later as a fourth setting; the clients
   already ask, and two prompts for one action teach people to click through both.
+
+## Amendment: the engine registers the server
+
+The page used to show a command line to paste into a terminal, first for Claude Code, then a
+second one for Codex. Nobody should have to: the setting is the decision. Turning it on now runs
+the agents' own tools (`claude mcp add --scope user`, `codex mcp add`) for the server executable
+the host names, turning it off runs their `remove`, and a launch with the setting already on
+checks each list (`claude mcp get`, `codex mcp get`) and repairs a missing entry, which is also
+how a moved executable after an upgrade is caught. The tools are run through the deck's command
+runner, in the person's home folder, with the same shell and `PATH` a project's start command
+gets. An agent whose tool is not on this computer is reported as not installed, with the line to
+run by hand later; a tool that answers with an error is reported with its first line. Which agents
+are known is the engine's list (`AgentClient.all`); the shells draw one row per agent from the
+`agentClients` answer, which the engine also pushes unasked as the work finishes. Editing the
+agents' configuration files directly was rejected: the tools are the supported way in, and their
+formats have changed before.

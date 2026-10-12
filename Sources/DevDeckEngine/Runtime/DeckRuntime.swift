@@ -52,6 +52,9 @@ public enum DeckEffect: Sendable, Equatable {
     case arrangementApplied
     /// A newer build is out: one banner, in these words, whose click installs it.
     case offerUpdate(title: String, body: String, version: String)
+    /// Where the deck's MCP server stands with the agents on this computer changed; a settings
+    /// window showing it draws the rows again.
+    case agentClientsChanged
 }
 
 /// A card's model, whichever card it is. See `DeckRuntime.model(for:)`.

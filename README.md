@@ -100,8 +100,8 @@ it knows. It goes through the Model Context Protocol: `DevDeckMCP` ships inside 
 answers come from the running deck in its own words, so the agent needs no token of its own.
 
 Settings, General, **Agents (MCP)** has three choices: Off (the default), Read only, and Read and
-control. Below the choice are the lines that register the server with Claude Code and with
-Codex. The endpoint
+control. Turning it on registers the server with Claude Code and Codex on this computer, and
+turning it off removes it; the page says how that went. The endpoint
 is a socket only you can open, nothing listens on a network port, and a command follows the
 rules the card's buttons follow: a project started outside DevDeck is not stopped by an agent
 either. [docs/mcp.md](docs/mcp.md) lists the tools and how to add the server to other clients;

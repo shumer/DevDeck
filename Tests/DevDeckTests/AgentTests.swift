@@ -61,6 +61,71 @@ func runAgentTests(_ run: TestRun) async {
         try expectNil(answer["access"])
     }
 
+    await run.test("the agents' own lists follow the setting, through their own tools") {
+        let site = try servedProject()
+        // Claude Code is installed with no entry yet; Codex is not on this computer at all.
+        let runner = StubCommandRunner([
+            (DockerEnvironment.probeCommand, dockerUp),
+            ("claude mcp get devdeck", CommandResult(exitCode: 1, standardOutput: "", standardError: "No MCP server found with name: devdeck")),
+            ("claude mcp remove", CommandResult(exitCode: 1, standardOutput: "", standardError: "No MCP server found with name: devdeck in user config")),
+            ("claude mcp add", CommandResult(exitCode: 0, standardOutput: "Added stdio MCP server devdeck", standardError: "")),
+        ])
+        let deck = Deck(cards: [site.project.cardID], runner: runner, localProjects: [site.project], projectFiles: site.files)
+        deck.preferences.agentAccess = .read
+        let agents = deck.runtime.serveAgents(
+            version: "9.9", address: "/tmp/devdeck-register-\(UUID().uuidString.prefix(6)).sock",
+            serverExecutable: "/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP"
+        )
+        await agents.settle()
+        var commands = await runner.commands.filter { $0.contains(" mcp ") }
+        try expectEqual(commands, [
+            "claude mcp get devdeck",
+            "claude mcp remove --scope user devdeck",
+            "claude mcp add --scope user devdeck -- \"/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP\"",
+            "codex mcp get devdeck",
+        ], "a launch with the setting on repairs what is missing and checks, nothing more")
+        try expectEqual(agents.clients.map(\.state), [.registered, .notInstalled])
+        try expectEqual(agents.clients.map(\.name), ["Claude Code", "Codex"])
+        try expect(agents.clients[1].detail.contains("codex mcp add devdeck -- \"/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP\""),
+                   "the one not installed says how to do it by hand later")
+        try expect(deck.effects.contains(.agentClientsChanged), "the settings page is told to draw the rows again")
+        guard case .agentClients(let rows) = await deck.runtime.answer(.agentClients) else {
+            throw TestFailure(message: "agentClients expected", file: #filePath, line: #line)
+        }
+        try expectEqual(rows, agents.clients)
+
+        // Off takes the server off the lists; on again puts it back, replacing what is there.
+        deck.preferences.agentAccess = .off
+        agents.applyPreferences()
+        await agents.settle()
+        commands = await runner.commands.filter { $0.contains(" mcp ") }
+        try expectEqual(commands.suffix(2), ["claude mcp remove --scope user devdeck", "codex mcp remove devdeck"])
+        try expectEqual(agents.clients.map(\.state), [.notRegistered, .notInstalled])
+
+        deck.preferences.agentAccess = .control
+        agents.applyPreferences()
+        await agents.settle()
+        commands = await runner.commands.filter { $0.contains(" mcp ") }
+        try expectEqual(commands.suffix(3), [
+            "claude mcp remove --scope user devdeck",
+            "claude mcp add --scope user devdeck -- \"/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP\"",
+            "codex mcp remove devdeck",
+        ])
+        try expectEqual(agents.clients.map(\.state), [.registered, .notInstalled])
+
+        // A launch where the host keeps no server to register has nothing to say.
+        let bare = deck.runtime.serveAgents(version: "9.9", address: "/tmp/devdeck-bare-\(UUID().uuidString.prefix(6)).sock")
+        try expect(bare.clients.isEmpty)
+    }
+
+    await run.test("what an agent's tool said, read as what it means for the list") {
+        try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 0, standardOutput: "devdeck: ok", standardError: "")), .yes)
+        try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 127, standardOutput: "", standardError: "zsh: command not found: codex")), .notInstalled)
+        try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 1, standardOutput: "", standardError: "'claude' is not recognized as an internal or external command,\noperable program or batch file.")), .notInstalled, "cmd.exe says it in words")
+        try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 1, standardOutput: "", standardError: "No MCP server found with name: devdeck")), .no)
+        try expectEqual(AgentClient.Outcome(CommandResult(exitCode: 1, standardOutput: "", standardError: "Error: config is locked\nmore")), .failed("Error: config is locked"))
+    }
+
     await run.test("read sees the cards and the menu's rows, and may not command") {
         let (deck, project, _) = try makeDeck(.read)
         await deck.runtime.refreshLocalOnce()

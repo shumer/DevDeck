@@ -138,6 +138,7 @@ public sealed class SettingsClient
     public JsonArray? Cards { get; private set; }
     public JsonObject? Preferences { get; private set; }
     public JsonObject? TerminalSettings { get; private set; }
+    public JsonArray? AgentClients { get; private set; }
     public event Action<SettingsWireRequest>? RequestSent;
     public event Action<string>? IntentSent;
     public event Action<JsonElement>? AnswerReceived;
@@ -152,6 +153,7 @@ public sealed class SettingsClient
         Request(SettingsJson.Empty("cards"));
         Request(SettingsJson.Empty("preferences"));
         Request(SettingsJson.Empty("terminalSettings"));
+        Request(SettingsJson.Empty("agentClients"));
     }
 
     public string Request(string request, Action<JsonElement>? callback = null)
@@ -189,6 +191,11 @@ public sealed class SettingsClient
         {
             TerminalSettings = terminalSettings;
         }
+        else if (SettingsJson.CaseValue(answer, "agentClients") is JsonArray agentClients)
+        {
+            // Asked for, and also pushed by the engine with no id as registration moves.
+            AgentClients = agentClients;
+        }
 
         if (id is not null && callbacks.Remove(id, out var callback))
         {
@@ -201,6 +208,7 @@ public sealed class SettingsClient
         {
             Request(SettingsJson.Empty("words"));
             Request(SettingsJson.Empty("terminalSettings"));
+            Request(SettingsJson.Empty("agentClients"));
         }
     }
 

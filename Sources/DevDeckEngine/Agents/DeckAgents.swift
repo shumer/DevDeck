@@ -23,12 +23,29 @@ public final class DeckAgents {
     private var server: LocalEndpointServer?
     /// A sentence for the host's diagnostics when the endpoint could not open.
     public var onDiagnostic: ((String) -> Void)?
+    /// Keeps the agents' own server lists in step with the setting. Nil when the host did not
+    /// say where the MCP server executable is, as the Mac's development host does not.
+    private let registrar: AgentRegistrar?
+    /// What the setting said the last time it was applied, so a change is told from a repeat.
+    private var wasWanted: Bool?
 
-    init(runtime: DeckRuntime, version: String, address: String) {
+    init(runtime: DeckRuntime, version: String, address: String, serverExecutable: String? = nil) {
         self.runtime = runtime
         self.version = version
         self.address = address
+        self.registrar = serverExecutable.map { server in
+            AgentRegistrar(server: server, runner: runtime.commandRunner) { [weak runtime] in
+                runtime?.effect(.agentClientsChanged)
+            }
+        }
     }
+
+    /// Where the deck's server stands with each agent on this computer, for the settings page.
+    /// Empty when the host keeps no server to register.
+    public var clients: [DeckAgentClient] { registrar?.current ?? [] }
+
+    /// Waits for registration work under way, for the suite.
+    public func settle() async { await registrar?.settle() }
 
     /// Whether an agent can reach the deck right now.
     public var isListening: Bool { server?.running ?? false }
@@ -37,6 +54,15 @@ public final class DeckAgents {
     /// changes nothing here: every request reads the setting as it is.
     public func applyPreferences() {
         let wanted = runtime.preferences.agentAccess != .off
+        // The agents' lists follow the setting: on puts the server on them, off takes it off,
+        // and a launch with it already on only repairs what is missing.
+        switch (wasWanted, wanted) {
+        case (nil, true): registrar?.ensureRegistered()
+        case (false, true): registrar?.register()
+        case (true, false): registrar?.unregister()
+        default: break
+        }
+        wasWanted = wanted
         if wanted, server == nil {
             let server = LocalEndpointServer(address: address) { [weak self] line in
                 await self?.answer(line) ?? Self.encode(["error": L("agents.error.off")])
@@ -447,9 +473,10 @@ extension DeckRuntime {
     /// endpoint follows the setting from then on through `agents?.applyPreferences()`.
     @discardableResult
     public func serveAgents(
-        version: String, address: String = LocalEndpoint.address, onDiagnostic: ((String) -> Void)? = nil
+        version: String, address: String = LocalEndpoint.address, serverExecutable: String? = nil,
+        onDiagnostic: ((String) -> Void)? = nil
     ) -> DeckAgents {
-        let agents = DeckAgents(runtime: self, version: version, address: address)
+        let agents = DeckAgents(runtime: self, version: version, address: address, serverExecutable: serverExecutable)
         agents.onDiagnostic = onDiagnostic
         self.agents = agents
         agents.applyPreferences()

@@ -7,7 +7,10 @@
   with the organization on the account because a token is minted per organization. See
   [adr/0038-azure-devops.md](adr/0038-azure-devops.md).
 
-- The MCP page shows the registration line for Codex beside the one for Claude Code.
+- The MCP setting registers the server with Claude Code and Codex itself, through their own
+  command-line tools, when it is turned on, and removes it when it is turned off; the page shows
+  one row per agent with how that went, and the line to run by hand for an agent that is not
+  installed.
 
 - An MCP server for coding agents, with Off, Read only and Read and control in Settings,
   General, Agents (MCP). The running deck answers through a local endpoint only its user can open;

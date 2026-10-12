@@ -23,12 +23,15 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
 
     private let preferences: Preferences
     private let updater: Updater
+    /// Where the MCP server stands with each agent, asked when the page is drawn.
+    private let agentClients: () -> [DeckAgentClient]
     private weak var updateLine: StatusLine?
     private weak var updateButton: NSButton?
 
-    init(preferences: Preferences, updater: Updater) {
+    init(preferences: Preferences, updater: Updater, agentClients: @escaping () -> [DeckAgentClient] = { [] }) {
         self.preferences = preferences
         self.updater = updater
+        self.agentClients = agentClients
     }
 
     func build(in container: FlippedContainer) {
@@ -80,12 +83,17 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
         access.action = #selector(agentAccessChanged(_:))
         access.setAccessibilityLabel(L("settings.agents.access"))
         form.settingRow(L("settings.agents.access"), subtitle: Self.detail(for: preferences.agentAccess), control: access)
+        // The engine puts the server on each agent's list when the setting is on and takes it
+        // off when it is off; these rows say how that went.
+        let clients = agentClients()
+        if preferences.agentAccess != .off, !clients.isEmpty {
+            for client in clients {
+                form.settingRow(client.name, subtitle: client.detail, control: NSView())
+            }
+        }
         form.endGroup()
-        if preferences.agentAccess != .off {
-            // The server ships inside the bundle, in Helpers beside the app's own binary.
-            let server = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/DevDeckMCP").path
-            form.footnote(L("settings.agents.register", "claude mcp add --scope user devdeck -- \"\(server)\""))
-            form.footnote(L("settings.agents.register.codex", "codex mcp add devdeck -- \"\(server)\""))
+        if preferences.agentAccess != .off, !clients.isEmpty {
+            form.footnote(L("settings.agents.clients.footnote"))
         }
 
         form.footnote(AppVersion.isTranslocated

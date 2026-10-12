@@ -85,7 +85,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var summoner: Summoner = Summoner(preferences: preferences) { [unowned self] raised in
         self.panels.setRaised(raised)
     }
-    private lazy var generalPage = GeneralSettingsPage(preferences: preferences, updater: updater)
+    private lazy var generalPage = GeneralSettingsPage(preferences: preferences, updater: updater) { [unowned self] in
+        self.controller.runtime.agents?.clients ?? []
+    }
     private lazy var notificationsPage = NotificationsSettingsPage(
         preferences: preferences,
         githubStore: accountsStore,
@@ -181,6 +183,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.notifier.postUpdate(title: title, body: body, version: version)
                 return
             }
+            if case .agentClientsChanged = effect {
+                self?.settingsController.reloadIfShowing(.general)
+                return
+            }
             self?.menu.carryOut(effect)
         }
         notifier.refreshAuthorization()
@@ -200,7 +206,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         summoner.install()
         updater.start()
         // Opens only while Settings, General, Agents allows it.
-        controller.runtime.serveAgents(version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")
+        controller.runtime.serveAgents(
+            version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development",
+            // The server ships inside the bundle, in Helpers beside the app's own binary.
+            serverExecutable: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/DevDeckMCP").path
+        )
 
         notificationsPage.onRequestAuthorization = { [weak self] completion in
             self?.notifier.requestAuthorization(completion) ?? completion(false)
