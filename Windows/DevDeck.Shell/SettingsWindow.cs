@@ -414,6 +414,7 @@ public sealed class SettingsWindow : Window
         page.Children.Add(Card(
             Row("settings.general.startAtLogin", null, start),
             Row("settings.language", "settings.language.detail", language)));
+        AddTerminalSettings(page);
         page.Children.Add(GroupTitle("settings.general.updates"));
         page.Children.Add(Card(
             Row("settings.general.checkAutomatically", "settings.general.checkAutomatically.detail", TogglePreference("checksForUpdates")),
@@ -455,6 +456,53 @@ public sealed class SettingsWindow : Window
             var server = Path.Combine(AppContext.BaseDirectory, "DevDeckMCP.exe");
             page.Children.Add(Footnote(words.Get("settings.agents.register", "claude mcp add --scope user devdeck -- \"" + server + "\"")));
         }
+    }
+
+    private void AddTerminalSettings(StackPanel page)
+    {
+        if (client.TerminalSettings is not { } model || model["fields"] is not JsonArray fields || fields.Count == 0)
+        {
+            return;
+        }
+        page.Children.Add(new TextBlock
+        {
+            Text = SettingsJson.String(model, "title"),
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 18, 0, 8),
+        });
+        var rows = new List<FrameworkElement>();
+        foreach (var node in fields)
+        {
+            var field = SettingsJson.Object(node);
+            var picker = new ComboBox
+            {
+                MinWidth = 220,
+                Style = WindowsTheme.Style("SettingsComboBox"),
+            };
+            var selected = field["selected"]?.GetValue<string>();
+            foreach (var optionNode in field["options"] as JsonArray ?? [])
+            {
+                var option = SettingsJson.Object(optionNode);
+                var item = new ComboBoxItem
+                {
+                    Content = SettingsJson.String(option, "title"),
+                    Tag = option["value"]?.GetValue<string>(),
+                    IsEnabled = SettingsJson.Bool(option, "isEnabled"),
+                };
+                picker.Items.Add(item);
+                if (Equals(item.Tag, selected)) picker.SelectedItem = item;
+            }
+            picker.SelectionChanged += (_, _) =>
+            {
+                if (!applying && picker.SelectedItem is ComboBoxItem item)
+                {
+                    client.Request(SettingsJson.Named(SettingsJson.String(field, "request"), "value", item.Tag as string));
+                }
+            };
+            rows.Add(FormRow(SettingsJson.String(field, "label"), "", picker));
+        }
+        page.Children.Add(Card(rows.ToArray()));
+        page.Children.Add(Footnote(SettingsJson.String(model, "detail")));
     }
 
     private CheckBox LoginItemToggle()

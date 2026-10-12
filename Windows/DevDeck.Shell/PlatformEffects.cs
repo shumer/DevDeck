@@ -19,7 +19,7 @@ public static class PlatformEffects
             {
                 "openURL" when JsonModel.String(effect, "url") is { } url => BrowserPlan(effect, url),
                 "openTerminal" when JsonModel.String(effect, "folder") is { } folder =>
-                    TerminalPlan(folder, ExecutableExists("wt.exe")),
+                    TerminalPlan(folder, ExecutableExists("wt.exe"), WindowsTerminalChoice.Parse(effect)),
                 "revealFolder" when JsonModel.String(effect, "folder") is { } folder =>
                     new PlatformLaunchPlan("explorer.exe", [folder], true),
                 "launchDocker" => DockerPlan(),
@@ -69,18 +69,47 @@ public static class PlatformEffects
         return new PlatformLaunchPlan(executable, arguments);
     }
 
-    public static PlatformLaunchPlan TerminalPlan(string folder, bool windowsTerminalAvailable)
+    public static PlatformLaunchPlan TerminalPlan(
+        string folder, bool windowsTerminalAvailable, WindowsTerminalChoice? choice = null)
     {
+        var application = choice?.Application;
+        if (application is "windowsPowerShell" or "powerShell")
+        {
+            var script = TryWslFolder(folder, out var distro, out var path)
+                ? $"& wsl.exe -d '{PowerShellLiteral(distro)}' --cd '{PowerShellLiteral(path)}'"
+                : $"Set-Location -LiteralPath '{PowerShellLiteral(folder)}'";
+            var encoded = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(script));
+            return new PlatformLaunchPlan(application == "powerShell" ? "pwsh.exe" : "powershell.exe",
+                ["-NoExit", "-EncodedCommand", encoded], true);
+        }
+        if (application is not null && application is not ("windowsTerminal" or "commandPrompt"))
+        {
+            throw new InvalidOperationException("Unknown terminal application.");
+        }
+        if (application == "windowsTerminal" && !windowsTerminalAvailable)
+        {
+            throw new InvalidOperationException("The selected terminal is unavailable.");
+        }
+        var useWindowsTerminal = application != "commandPrompt" && windowsTerminalAvailable;
+        var profileArguments = choice?.Profile is { Length: > 0 } profile
+            ? new[] { "-p", profile }
+            : Array.Empty<string>();
         if (TryWslFolder(folder, out var distribution, out var linuxPath))
         {
             var arguments = new[] { "wsl.exe", "-d", distribution, "--cd", linuxPath };
-            return windowsTerminalAvailable
-                ? new PlatformLaunchPlan("wt.exe", arguments)
+            if (useWindowsTerminal) return new PlatformLaunchPlan("wt.exe", [.. profileArguments, .. arguments]);
+            return application == "commandPrompt"
+                ? new PlatformLaunchPlan("cmd.exe", ["/K", .. arguments], true)
                 : new PlatformLaunchPlan("wsl.exe", arguments[1..], true);
         }
-        return windowsTerminalAvailable
-            ? new PlatformLaunchPlan("wt.exe", ["-d", folder])
+        return useWindowsTerminal
+            ? new PlatformLaunchPlan("wt.exe", [.. profileArguments, "-d", folder])
             : new PlatformLaunchPlan("cmd.exe", ["/K", "cd", "/d", folder], true);
+    }
+
+    private static string PowerShellLiteral(string value)
+    {
+        return value.Replace("'", "''", StringComparison.Ordinal);
     }
 
     public static bool TryWslFolder(string folder, out string distribution, out string linuxPath)
@@ -134,7 +163,7 @@ public static class PlatformEffects
 
     private static void Start(PlatformLaunchPlan plan)
     {
-        var startInfo = new ProcessStartInfo(plan.Executable)
+        var startInfo = new ProcessStartInfo(TerminalExecutable(plan.Executable))
         {
             UseShellExecute = plan.UseShellExecute,
         };
@@ -143,5 +172,20 @@ public static class PlatformEffects
             startInfo.ArgumentList.Add(argument);
         }
         _ = Process.Start(startInfo);
+    }
+
+    public static string TerminalExecutable(
+        string executable, string? searchPath = null, string? programFiles = null, Func<string, bool>? exists = null)
+    {
+        if (!executable.Equals("pwsh.exe", StringComparison.OrdinalIgnoreCase)) return executable;
+        exists ??= File.Exists;
+        searchPath ??= Environment.GetEnvironmentVariable("Path") + Path.PathSeparator +
+            Environment.ExpandEnvironmentVariables(
+                Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.Machine) + Path.PathSeparator +
+                Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User));
+        var folders = searchPath.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+        var candidates = folders.Select(folder => Path.Combine(folder, executable)).Append(
+            Path.Combine(programFiles ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PowerShell", "7", executable));
+        return candidates.FirstOrDefault(candidate => exists(candidate)) ?? executable;
     }
 }

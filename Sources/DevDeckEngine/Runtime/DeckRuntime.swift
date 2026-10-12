@@ -224,6 +224,15 @@ public final class DeckRuntime {
     /// The runner a project's commands go through, picked from its folder, when it is not
     /// `commandRunner`.
     private let folderRunner: (@Sendable (String?) -> any CommandRunning)?
+    let terminalApplications: @Sendable () -> [TerminalApplication]
+    /// Whether an Arc card checks that a start can work before offering it. Off only in the
+    /// suite's golden runtime, whose transcripts predate the check.
+    let checksArcReadiness: Bool
+    /// What the last launch check said about each Arc project, with the folder and command it
+    /// was asked about. Asked again only when those change, when a start is pressed, or when
+    /// Check Now asks: the check is a handful of processes, which is not a thing to run every
+    /// ten seconds in a loop.
+    private var arcReadiness: [String: (address: String, readiness: ArcLaunchReadiness)] = [:]
     let http: (any HTTPClient)?
     let projectHTTP: (any HTTPClient)?
     let projectFiles: ProjectRuntimeFiles
@@ -276,7 +285,9 @@ public final class DeckRuntime {
         clock: any DateProvider = SystemDateProvider(),
         sleeper: any Sleeper = TaskSleeper(),
         settings: GitHubSettings = .default,
-        folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil
+        folderRunner: (@Sendable (String?) -> any CommandRunning)? = nil,
+        terminalApplications: @escaping @Sendable () -> [TerminalApplication] = { [] },
+        checksArcReadiness: Bool = true
     ) {
         self.preferences = preferences
         self.tokenStore = tokenStore
@@ -290,6 +301,8 @@ public final class DeckRuntime {
         self.dockerEnvironment = DockerEnvironment(runner: commandRunner, clock: clock)
         self.commandRunner = commandRunner
         self.folderRunner = folderRunner
+        self.terminalApplications = terminalApplications
+        self.checksArcReadiness = checksArcReadiness
         self.canStartDocker = canStartDocker
         self.currentAddress = localAddress
         self.http = http
@@ -337,9 +350,20 @@ public final class DeckRuntime {
     }
 
     public func stackStatus(for project: ArcProject) -> LocalStackStatus {
-        stackStatuses[project.id] ?? (project.supportsLocalStack
-            ? LocalStackStatus(state: .stopped)
-            : .unavailable)
+        if let status = stackStatuses[project.id] { return status }
+        // Stopped and neutral until the first poll has asked: a card that says "not ready" in
+        // amber before anything has been checked is a card crying wolf at every launch.
+        return project.supportsLocalStack ? LocalStackStatus(state: .stopped) : .unavailable
+    }
+
+    /// The launch check for a project: the remembered answer while the folder and command are
+    /// the ones it was given, a fresh one otherwise or when `fresh` says so.
+    func arcLaunchReadiness(for project: ArcProject, fresh: Bool = false) async -> ArcLaunchReadiness {
+        let address = Self.stackAddress(of: project)
+        if !fresh, let known = arcReadiness[project.id], known.address == address { return known.readiness }
+        let readiness = await ArcLaunchReadiness.check(project, runner: runner(forFolder: project.folder))
+        arcReadiness[project.id] = (address, readiness)
+        return readiness
     }
 
     private func restartStackLoop() {
@@ -381,7 +405,11 @@ public final class DeckRuntime {
             // the top of it would flip the card back to "stopped" mid-restart.
             if stackStatuses[project.id]?.isBusy == true { continue }
             let service = LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts)
-            let probed = await service.status()
+            var probed = await service.status()
+            if checksArcReadiness, !probed.isRunning {
+                probed.readiness = await arcLaunchReadiness(for: project)
+                probed.detail = probed.detail ?? probed.readiness?.detail
+            }
             // Asked again after the wait: `docker ps` through WSL can take twenty seconds, and a
             // button pressed meanwhile owns the card now.
             if stackStatuses[project.id]?.isBusy == true { continue }
@@ -449,6 +477,24 @@ public final class DeckRuntime {
         spawn { [weak self] in
             guard let self else { return }
             let service = LocalStackService(project: project, runner: self.runner(forFolder: project.folder))
+            if self.checksArcReadiness, action == .start || action == .restart {
+                let projectRunner = self.runner(forFolder: project.folder)
+                // Fresh: a press is the moment to find out, not to trust what was true earlier.
+                var readiness = await self.arcLaunchReadiness(for: project, fresh: true)
+                if readiness.canStart {
+                    let docker = await DockerEnvironment(runner: projectRunner, workingDirectory: project.folderURL ?? URL(fileURLWithPath: "/")).status()
+                    if !docker.isReady { readiness = ArcLaunchReadiness(canStart: false, detail: DockerGate.text(docker)) }
+                }
+                guard readiness.canStart else {
+                    var stopped = previous ?? LocalStackStatus(state: .stopped)
+                    stopped.readiness = readiness
+                    stopped.detail = readiness.detail
+                    stopped.checkedAt = self.clock.now
+                    self.stackStatuses[project.id] = stopped
+                    self.watch.noteStartFailed(project.id, line: readiness.detail ?? "", at: self.clock.now)
+                    return
+                }
+            }
             // Every line the command prints lands on the card as it arrives. A Fusion start
             // takes a minute and says plenty on the way; showing none of it is what made the
             // card look asleep while it was working.

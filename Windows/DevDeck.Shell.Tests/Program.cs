@@ -159,6 +159,8 @@ public static class Program
         Run("Chromium Local State yields named profiles", ChromiumLocalStateYieldsNamedProfiles);
         Run("browser launch plans keep the chosen profile", BrowserLaunchPlansKeepChosenProfile);
         Run("terminal plans enter Windows and WSL folders", TerminalPlansEnterWindowsAndWslFolders);
+        Run("terminal choices keep profiles and the WSL distribution", TerminalChoicesKeepProfilesAndDistribution);
+        Run("terminal settings render engine rows and send engine requests", TerminalSettingsRenderEngineRows);
         Run("Docker launches from Program Files without arguments", DockerLaunchesFromProgramFiles);
         Run("phone QR bytes are stable", PhoneQrBytesAreStable);
         Run("login item uses the Run value and quoted executable", LoginItemUsesRunValueAndQuotedExecutable);
@@ -1877,6 +1879,63 @@ public static class Program
         var fallback = PlatformEffects.TerminalPlan(@"C:\Samples\Site", false);
         Equal("cmd.exe", fallback.Executable);
         Equal(@"/K,cd,/d,C:\Samples\Site", string.Join(',', fallback.Arguments));
+    }
+
+    private static void TerminalChoicesKeepProfilesAndDistribution()
+    {
+        var choice = new WindowsTerminalChoice("windowsTerminal", "{00000000-0000-0000-0000-000000000001}");
+        var windows = PlatformEffects.TerminalPlan(@"C:\Sample folder", true, choice);
+        Equal("wt.exe", windows.Executable);
+        True(windows.Arguments.SequenceEqual(new[] { "-p", choice.Profile!, "-d", @"C:\Sample folder" }));
+        var wsl = PlatformEffects.TerminalPlan(@"\\wsl.localhost\Demo\home\sample", true, choice);
+        True(wsl.Arguments.SequenceEqual(new[] { "-p", choice.Profile!, "wsl.exe", "-d", "Demo", "--cd", "/home/sample" }));
+        var cmd = PlatformEffects.TerminalPlan(@"C:\Sample", true, new WindowsTerminalChoice("commandPrompt", null));
+        Equal("cmd.exe", cmd.Executable);
+        var powershell = PlatformEffects.TerminalPlan(@"C:\Sample's folder", true, new WindowsTerminalChoice("powerShell", null));
+        Equal("pwsh.exe", powershell.Executable);
+        Equal("Set-Location -LiteralPath 'C:\\Sample''s folder'",
+            System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(powershell.Arguments[2])));
+        var linux = PlatformEffects.TerminalPlan(@"\\wsl.localhost\Demo\home\sample", true,
+            new WindowsTerminalChoice("windowsPowerShell", null));
+        Equal("& wsl.exe -d 'Demo' --cd '/home/sample'",
+            System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(linux.Arguments[2])));
+        var effect = Json("""
+            {"kind":"openTerminal","folder":"C:/Sample","terminal":{"application":"windowsTerminal","profile":"demo"}}
+            """);
+        Equal("demo", WindowsTerminalChoice.Parse(effect)?.Profile);
+        Equal(@"C:\Programs\PowerShell\7\pwsh.exe",
+            PlatformEffects.TerminalExecutable("pwsh.exe", "", @"C:\Programs",
+                path => path == @"C:\Programs\PowerShell\7\pwsh.exe"));
+        var threw = false;
+        try { PlatformEffects.TerminalPlan(@"C:\Sample", false, choice); }
+        catch (InvalidOperationException) { threw = true; }
+        True(threw);
+    }
+
+    private static void TerminalSettingsRenderEngineRows()
+    {
+        var client = new SettingsClient();
+        var requests = new List<SettingsWireRequest>();
+        client.RequestSent += requests.Add;
+        client.BeginSession();
+        True(requests.Any(request => request.Json == "{\"terminalSettings\":{}}"));
+        client.Receive("words", Json("{\"words\":{\"_0\":{\"settings.window.title\":\"Settings\",\"settings.general.title\":\"General\"}}}"));
+        client.Receive("terminal", Json("""
+            {"terminalSettings":{"_0":{"title":"Demo terminal","detail":"Engine detail","fields":[
+              {"request":"setTerminalApplication","label":"Engine application","options":[{"title":"Engine default","isEnabled":true},{"value":"commandPrompt","title":"Engine command prompt","isEnabled":true}]},
+              {"request":"setTerminalProfile","label":"Engine profile","options":[{"title":"Engine profile default","isEnabled":true}]}
+            ]}}}
+            """));
+        var window = TestSettingsWindow(client);
+        window.Apply(client.Words, client.List, client.Cards, client.Preferences, null);
+        window.Show();
+        window.UpdateLayout();
+        var pickers = Descendants(window).OfType<ComboBox>()
+            .Where(picker => picker.Items.OfType<ComboBoxItem>().Any(item => Equals(item.Content, "Engine default"))).ToArray();
+        Equal(1, pickers.Length);
+        pickers[0].SelectedIndex = 1;
+        Equal("{\"setTerminalApplication\":{\"value\":\"commandPrompt\"}}", requests.Last().Json);
+        window.Close();
     }
 
     private static void PhoneQrBytesAreStable()

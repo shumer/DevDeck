@@ -92,7 +92,7 @@ has both.
 | `kind` | Fields | |
 | --- | --- | --- |
 | `openURL` | `url`, `browser` | Open in this browser and profile; an empty `browser` is the system default. |
-| `openTerminal` | `folder` | A terminal in this folder, spelled the platform's way. |
+| `openTerminal` | `folder`, optional `terminal` | A terminal in this folder, spelled the platform's way. `terminal` carries the saved Windows application and profile. |
 | `revealFolder` | `folder` | Show this folder. |
 | `launchDocker` | | Start Docker Desktop. The cards already say it is starting. |
 | `openLogs` / `closeLogs` | `card` | Open or close the card's log window, then report it with `logWindow.changed`. |
@@ -175,6 +175,7 @@ so a slow check does not hold up the list. The full list is `DeckSettingsRequest
 | `cards`, `setCard` | `cards`: the Cards page, every built-in card with its title, detail and switch; `setCard` flips one and answers with the page again |
 | `words` | `words`: every word the window says, key to text in the deck's language (`DeckSettingsWords.prefixes`); asked at start and after the language changes. A `%@` in a text is filled by the shell with the one value the key names. Platform wording is the engine's: on Windows `settings.notifications.allow.detail` already says how Windows keeps banners. |
 | `preferences`, `setPreferences` | `preferences`: the deck-wide settings as they now are. `agentAccess` (`off`, `read`, `control`) opens or closes the agent endpoint when it is saved; a shell that leaves it out leaves it as it is. |
+| `terminalSettings`, `setTerminalApplication(value)`, `setTerminalProfile(value)` | `terminalSettings`: the Windows terminal group, including its title, detail and ordered fields with label, request, selected value and options |
 | `localProject`, `arcProject`, `ddevProject`, `githubAccount`, `gitlabAccount` by `id` | the record a form edits, as stored |
 | `add...` | `added` with the new id |
 | `save...` | `saved`, with `checkAgain` when the form's status line has a new question |
@@ -189,6 +190,28 @@ so a slow check does not hold up the list. The full list is `DeckSettingsRequest
 A token travels once, typed, inside a check request. One that works is stored by the engine in
 the system's credential store and never sent back; an empty one checks the stored token. A check
 answer belongs to the record in the request: a form that changed since asks again.
+
+Terminal application values are `windowsTerminal`, `commandPrompt`, `windowsPowerShell` and
+`powerShell`; null is the existing system default. The host supplies installed applications
+and Windows Terminal profiles to the runtime. The engine supplies the choices, decides whether
+the profile row exists and clears the profile when the application changes. A profile value is
+its GUID, not its display name. A null profile uses the terminal's default. Unknown choices are
+not saved. Ask for this group again after a language change. Its labels are already translated,
+so the shell renders them directly rather than looking up or constructing words.
+
+`openTerminal.terminal` is `{application, profile}`, with absent members for defaults. An absent
+terminal preserves older shells' behavior. A WSL folder still names its own distribution and
+Linux directory in the launch command; a chosen profile cannot substitute another distribution.
+The Windows runtime resolves a default application from its catalog before emitting the effect.
+
+`checkArcStack` also checks launch requirements. A stopped Arc card disables
+Start and Restart when its folder, start command, Node, npx or installed Fusion CLI is missing.
+Start and Restart recheck these requirements and Docker in the project's runner before running
+a command. Stop remains available for a serving stack. The check resolves local or global
+`@arc-fusion/cli` files without invoking an installer. Custom Node commands check Node and the
+script; other custom shell commands remain executable and are marked as checked at run time.
+The check is asked once per folder and start command and remembered until they change, a press of
+Start or Restart, or Check Now; it runs on every host.
 
 A request that changes the deck (anything that adds, saves or removes, a token check, new
 preferences) is followed by what it changed: panels, cards, the menu, the deck's lock, every

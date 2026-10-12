@@ -125,6 +125,7 @@ public struct DeckWireEffect: Encodable, Sendable, Equatable {
     public let kind: String
     public var url: String?
     public var browser: BrowserChoice?
+    public var terminal: TerminalChoice?
     /// A folder in the platform's own spelling.
     public var folder: String?
     public var card: CardID?

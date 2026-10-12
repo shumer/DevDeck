@@ -428,7 +428,10 @@ public final class DeckSession {
                 $0.item = setting.rawValue
             }
         case .openTerminal(let folder):
-            send(effect: "openTerminal") { $0.folder = Self.platformPath(folder) }
+            send(effect: "openTerminal") {
+                $0.folder = Self.platformPath(folder)
+                $0.terminal = runtime.terminalForOpen
+            }
         case .revealFolder(let folder):
             send(effect: "revealFolder") { $0.folder = Self.platformPath(folder) }
         case .cardsChanged:

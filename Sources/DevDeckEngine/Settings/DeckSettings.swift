@@ -257,13 +257,22 @@ extension DeckRuntime {
 
     /// What the stack check asks about: the folder and the address it resolves to.
     public static func stackAddress(of project: ArcProject) -> String {
-        "\(project.folder ?? "")|\(project.effectiveLocalURL)|\(project.healthPath)"
+        "\(project.folder ?? "")|\(project.effectiveLocalURL)|\(project.healthPath)|\(project.startCommand)"
     }
 
     /// The stack's status, asked the way the deck asks it. Nil for a project with no local stack.
     public func checkArcStack(_ project: ArcProject) async -> LocalStackStatus? {
         guard project.supportsLocalStack else { return nil }
-        return await LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts).status()
+        var status = await LocalStackService(project: project, runner: runner(forFolder: project.folder), neighbours: arcCheckouts).status()
+        if checksArcReadiness {
+            status.readiness = await arcLaunchReadiness(for: project, fresh: true)
+            if status.readiness?.canStart == true {
+                let docker = await DockerEnvironment(runner: runner(forFolder: project.folder), workingDirectory: project.folderURL ?? URL(fileURLWithPath: "/")).status()
+                if !docker.isReady { status.readiness = ArcLaunchReadiness(canStart: false, detail: DockerGate.text(docker)) }
+            }
+            status.detail = status.detail ?? status.readiness?.detail
+        }
+        return status
     }
 
     /// What the stack line says before a project has a folder to check.
