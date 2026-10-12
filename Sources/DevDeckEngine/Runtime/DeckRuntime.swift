@@ -359,7 +359,9 @@ public final class DeckRuntime {
     /// The launch check for a project: the remembered answer while the folder and command are
     /// the ones it was given, a fresh one otherwise or when `fresh` says so.
     func arcLaunchReadiness(for project: ArcProject, fresh: Bool = false) async -> ArcLaunchReadiness {
-        let address = Self.stackAddress(of: project)
+        // The answer carries its reason in words, so a change of language is a new question too:
+        // the next poll asks again and the card reads in the language it is drawn in.
+        let address = Self.stackAddress(of: project) + "|" + preferences.language.rawValue
         if !fresh, let known = arcReadiness[project.id], known.address == address { return known.readiness }
         let readiness = await ArcLaunchReadiness.check(project, runner: runner(forFolder: project.folder))
         arcReadiness[project.id] = (address, readiness)

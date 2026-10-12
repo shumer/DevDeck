@@ -180,6 +180,20 @@ func runTerminalReadinessTests(_ run: TestRun) async {
         await runtime.refreshLocalOnce()
         try expectEqual(await probes(), 3, "and the poll after it trusts that answer")
     }
+    await run.test("a change of language is a new question, so the reason reads in the new language") {
+        let runner = StubCommandRunner([])
+        let (runtime, preferences) = goldenRuntime(commandRunner: runner, checksArcReadiness: true)
+        let project = ArcProject(id: "paper", title: "Paper", organization: "demo", folder: NSHomeDirectory())
+        _ = runtime.saveArcProject(project)
+        await runtime.refreshLocalOnce()
+        try expectEqual(runtime.stackStatus(for: project).readiness?.detail, "Node is not available in this project's environment.")
+        preferences.language = .russian
+        Strings.use(.russian, lookingIn: LocalizationResources.root)
+        defer { Strings.use(.english, lookingIn: LocalizationResources.root) }
+        await runtime.refreshLocalOnce()
+        try expectEqual(runtime.stackStatus(for: project).readiness?.detail, "Node недоступен в среде этого проекта.")
+        try expectEqual(await runner.commands.filter { $0.contains("node --version") }.count, 2, "asked once per language")
+    }
     await run.test("editing an Arc start command gives Check Now a new question") {
         let (runtime, _) = goldenRuntime()
         var project = ArcProject(id: "demo", title: "Demo", organization: "demo", folder: "/demo")
