@@ -307,7 +307,7 @@ extension DeckRuntime {
     private func command(for action: AttentionAction) -> DeckCommand? {
         switch action {
         case .open(let url, let service, let account):
-            return .openLink(url, account: account, service: service == .github ? .github : .gitlab)
+            return .openLink(url, account: account, service: DeckLinkService(service))
         case .accountSettings(let service, let account):
             return .openAccountSettings(service, account: account.isEmpty ? nil : account)
         case .showCard(let card):

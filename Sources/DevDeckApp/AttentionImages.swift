@@ -15,6 +15,7 @@ enum AttentionImages {
         switch mark {
         case .github: return SettingsIcons.mark(.github, size: size)
         case .gitlab: return SettingsIcons.mark(.gitlab, size: size)
+        case .azure: return SettingsIcons.mark(.azure, size: size)
         case .arc: return SettingsIcons.mark(.arc, size: size)
         case .ddev: return SettingsIcons.mark(.ddev, size: size)
         case .docker: return SettingsIcons.mark(.docker, size: size)

@@ -32,6 +32,7 @@ review - worst first:
 | GitHub · inbox (notifications) | working | yes |
 | GitHub · Actions | working | no |
 | GitLab · merge requests | working | switched on when you add an instance |
+| Azure DevOps · pull requests | working | switched on when you add an organization |
 | Arc XP · one card per project | working | added per project |
 | DDEV · one card per project | working | added per project |
 | Project · one card per project | working | added per project |
@@ -43,8 +44,8 @@ decides what needs you. The cards are described in [docs/cards.md](docs/cards.md
 
 ## What it does
 
-- **Pull requests, reviews, the inbox and CI** across every GitHub account and GitLab instance a
-  token can see, worst first, with one request per account per refresh.
+- **Pull requests, reviews, the inbox and CI** across every GitHub account, GitLab instance and
+  Azure DevOps organization a token can see, worst first, with one request per account per refresh.
 - **Local projects as cards**: Arc XP Fusion stacks, DDEV sites and any folder with a start
   command, with Start, Stop and Restart, the log in a window, the branch, the links you use, and
   a QR code to open the site on your phone.
@@ -99,7 +100,8 @@ it knows. It goes through the Model Context Protocol: `DevDeckMCP` ships inside 
 answers come from the running deck in its own words, so the agent needs no token of its own.
 
 Settings, General, **Agents (MCP)** has three choices: Off (the default), Read only, and Read and
-control. Below the choice is the line that registers the server with Claude Code. The endpoint
+control. Below the choice are the lines that register the server with Claude Code and with
+Codex. The endpoint
 is a socket only you can open, nothing listens on a network port, and a command follows the
 rules the card's buttons follow: a project started outside DevDeck is not stopped by an agent
 either. [docs/mcp.md](docs/mcp.md) lists the tools and how to add the server to other clients;

@@ -38,6 +38,7 @@ public enum AttentionTier: Int, Sendable, Equatable, Comparable, CaseIterable, C
 public enum AttentionMark: Sendable, Equatable, Codable {
     case github
     case gitlab
+    case azure
     case arc
     case ddev
     /// A plain project, by the raw value of its kind, so the row wears the card's own mark.
@@ -70,11 +71,13 @@ public enum AttentionAction: Sendable, Equatable {
 public enum AttentionService: String, Sendable, Equatable, Codable {
     case github
     case gitlab
+    case azure
 
     public var name: String {
         switch self {
         case .github: return "GitHub"
         case .gitlab: return "GitLab"
+        case .azure: return "Azure DevOps"
         }
     }
 }

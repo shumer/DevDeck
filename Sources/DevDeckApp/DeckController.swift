@@ -5,6 +5,7 @@ import DevDeckCore
 import DevDeckEngine
 import Foundation
 import GitHubKit
+import AzureKit
 import GitLabKit
 import ProjectKit
 
@@ -23,6 +24,7 @@ final class DeckController: ObservableObject {
     @Published private(set) var inbox: CardState<InboxSnapshot>
     @Published private(set) var actions: CardState<ActionsSnapshot>
     @Published private(set) var mergeRequests: CardState<MergeRequestsSnapshot>
+    @Published private(set) var azurePullRequests: CardState<AzurePullRequestsSnapshot>
     @Published private(set) var checkouts: [CheckoutState]
     @Published private(set) var checkoutsCheckedAt: Date?
     @Published private(set) var expandedCards: Set<CardID>
@@ -58,6 +60,7 @@ final class DeckController: ObservableObject {
         tokenStore: any TokenStore,
         accountsStore: GitHubAccountsStore,
         gitlabAccountsStore: GitLabAccountsStore,
+        azureAccountsStore: AzureAccountsStore,
         projectsStore: ArcProjectsStore,
         ddevProjectsStore: DDEVProjectsStore,
         localProjectsStore: LocalProjectsStore,
@@ -69,6 +72,7 @@ final class DeckController: ObservableObject {
             tokenStore: tokenStore,
             accountsStore: accountsStore,
             gitlabAccountsStore: gitlabAccountsStore,
+            azureAccountsStore: azureAccountsStore,
             projectsStore: projectsStore,
             ddevProjectsStore: ddevProjectsStore,
             localProjectsStore: localProjectsStore,
@@ -82,6 +86,7 @@ final class DeckController: ObservableObject {
         inbox = runtime.inbox
         actions = runtime.actions
         mergeRequests = runtime.mergeRequests
+        azurePullRequests = runtime.azurePullRequests
         checkouts = runtime.checkouts
         checkoutsCheckedAt = runtime.checkoutsCheckedAt
         expandedCards = runtime.expandedCards
@@ -108,6 +113,7 @@ final class DeckController: ObservableObject {
         case .inbox: inbox = runtime.inbox
         case .actions: actions = runtime.actions
         case .mergeRequests: mergeRequests = runtime.mergeRequests
+        case .azurePullRequests: azurePullRequests = runtime.azurePullRequests
         case .checkouts: checkouts = runtime.checkouts
         case .checkoutsCheckedAt: checkoutsCheckedAt = runtime.checkoutsCheckedAt
         case .expandedCards: expandedCards = runtime.expandedCards
@@ -153,6 +159,8 @@ final class DeckController: ObservableObject {
     var accountLabels: [String: String] { runtime.accountLabels }
     var githubLabels: [String: String] { runtime.githubLabels }
     var gitlabLabels: [String: String] { runtime.gitlabLabels }
+    var azureAccountLabels: [String: String] { runtime.azureAccountLabels }
+    var azureLabels: [String: String] { runtime.azureLabels }
     var watchedProjects: [WatchedProject] { runtime.watchedProjects }
     var lastCheckedAt: Date? { runtime.lastCheckedAt }
     var firstGitHubBrowser: BrowserChoice { runtime.firstGitHubBrowser }
@@ -203,6 +211,7 @@ final class DeckController: ObservableObject {
     func toggleExpanded(_ card: CardID) { runtime.toggleExpanded(card) }
 
     func gitlabBrowser(for accountID: String) -> BrowserChoice { runtime.gitlabBrowser(for: accountID) }
+    func azureBrowser(for accountID: String) -> BrowserChoice { runtime.azureBrowser(for: accountID) }
     func browser(for accountID: String) -> BrowserChoice { runtime.browser(for: accountID) }
 
     func attention(update: AttentionItem?) -> AttentionDigest { runtime.attention(update: update) }

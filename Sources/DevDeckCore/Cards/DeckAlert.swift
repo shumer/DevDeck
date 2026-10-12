@@ -7,6 +7,7 @@ public struct DeckAlert: Sendable, Equatable, Identifiable, Codable {
     public enum Source: String, Sendable, Equatable, Codable {
         case github
         case gitlab
+        case azure
         case arc
         case ddev
         case project

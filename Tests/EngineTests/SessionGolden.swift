@@ -1,4 +1,5 @@
 import ArcKit
+import AzureKit
 import DDEVKit
 import DevDeckCore
 import DevDeckEngine
@@ -216,10 +217,10 @@ func runSessionGoldenTests(_ run: TestRun) async {
             throw TestFailure(message: "cards expected", file: #filePath, line: #line)
         }
         try expectEqual(cards.map(\.id.rawValue), [
-            "github.pullRequests", "github.inbox", "github.actions", "gitlab.mergeRequests", "local.workInFlight",
+            "github.pullRequests", "github.inbox", "github.actions", "gitlab.mergeRequests", "azure.pullRequests", "local.workInFlight",
             "arc.project.paper", "ddev.project.shop", "project.feed",
         ])
-        try expectEqual(cards.map(\.isProject), [false, false, false, false, false, true, true, true], "projects after the built-in cards, marked as such")
+        try expectEqual(cards.map(\.isProject), [false, false, false, false, false, false, true, true, true], "projects after the built-in cards, marked as such")
         try expect(cards.allSatisfy(\.isEnabled))
         try expect(cards.allSatisfy { !$0.detail.isEmpty }, "each says what it is")
         guard case .cards(let after) = await runtime.answer(.setCard(id: .githubInbox, isEnabled: false)) else {
@@ -236,9 +237,11 @@ func runSessionGoldenTests(_ run: TestRun) async {
         _ = await runtime.answer(.openGitHubTokenPage)
         let lab = GitLabAccount(id: "lab", label: "Lab", host: URL(string: "https://gitlab.example.invalid")!)
         _ = await runtime.answer(.openGitLabTokenPage(lab))
+        _ = await runtime.answer(.openAzureTokenPage(AzureAccount(id: "ado", label: "ADO", organization: "demo")))
         try expectEqual(effects, [
             .openURL(DeckTokenPages.github, .systemDefault),
             .openURL(URL(string: "https://gitlab.example.invalid/-/user_settings/personal_access_tokens?name=DevDeck&scopes=read_api")!, .systemDefault),
+            .openURL(URL(string: "https://dev.azure.com/demo/_usersSettings/tokens")!, .systemDefault),
         ])
     }
 

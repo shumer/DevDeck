@@ -105,7 +105,7 @@ has both.
 ### Notifications
 
 `{"id", "source", "title", "subtitle", "body", "isQuiet", "command"}`. `source` picks the mark the
-banner carries: `github`, `gitlab`, `arc`, `ddev`, `project`, `docker`, `devdeck`. `isQuiet` means
+banner carries: `github`, `gitlab`, `azure`, `arc`, `ddev`, `project`, `docker`, `devdeck`. `isQuiet` means
 no sound. Several at once are already summarised by the engine.
 
 ### If the engine stops
@@ -176,7 +176,7 @@ so a slow check does not hold up the list. The full list is `DeckSettingsRequest
 | `words` | `words`: every word the window says, key to text in the deck's language (`DeckSettingsWords.prefixes`); asked at start and after the language changes. A `%@` in a text is filled by the shell with the one value the key names. Platform wording is the engine's: on Windows `settings.notifications.allow.detail` already says how Windows keeps banners. |
 | `preferences`, `setPreferences` | `preferences`: the deck-wide settings as they now are. `agentAccess` (`off`, `read`, `control`) opens or closes the agent endpoint when it is saved; a shell that leaves it out leaves it as it is. |
 | `terminalSettings`, `setTerminalApplication(value)`, `setTerminalProfile(value)` | `terminalSettings`: the Windows terminal group, including its title, detail and ordered fields with label, request, selected value and options |
-| `localProject`, `arcProject`, `ddevProject`, `githubAccount`, `gitlabAccount` by `id` | the record a form edits, as stored |
+| `localProject`, `arcProject`, `ddevProject`, `githubAccount`, `gitlabAccount`, `azureAccount` by `id` | the record a form edits, as stored |
 | `add...` | `added` with the new id |
 | `save...` | `saved`, with `checkAgain` when the form's status line has a new question |
 | `remove...`, `restructureArcProject` | `done` |
@@ -184,8 +184,8 @@ so a slow check does not hold up the list. The full list is `DeckSettingsRequest
 | `checkLocalProject`, `checkArcStack` | `check`: the form's status line for the record as sent |
 | `test...Link` | `note`: words when there is nothing to open; otherwise the page opens as an `openURL` effect |
 | `ddevCandidates`, `ddevFolderNote` | `ddevCandidates`, `note` |
-| `checkGitHubToken`, `checkGitLabToken` | `token`: `works` or `refused`, in words |
-| `openGitHubTokenPage`, `openGitLabTokenPage` | `done`; the page where a token is made opens as an `openURL` effect |
+| `checkGitHubToken`, `checkGitLabToken`, `checkAzureToken` | `token`: `works` or `refused`, in words |
+| `openGitHubTokenPage`, `openGitLabTokenPage`, `openAzureTokenPage` | `done`; the page where a token is made opens as an `openURL` effect |
 
 A token travels once, typed, inside a check request. One that works is stored by the engine in
 the system's credential store and never sent back; an empty one checks the stored token. A check

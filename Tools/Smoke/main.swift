@@ -1,6 +1,7 @@
 import DevDeckCore
 import Foundation
 import GitHubKit
+import AzureKit
 import GitLabKit
 
 // A live check against the real APIs, using the same clients the panels use.
@@ -11,7 +12,8 @@ import GitLabKit
 // GitHub checks the first account only, whose token has a name in the environment as well as
 // in the Keychain. GitLab checks every instance in the app's settings, because an instance is
 // routinely self-hosted and there is no default host to fall back on; with none configured it
-// tries gitlab.com with GITLAB_TOKEN.
+// tries gitlab.com with GITLAB_TOKEN. Azure DevOps checks every organization in the app's settings;
+// there is no default organization to fall back on.
 
 /// The app's own preferences domain, which is where the instances are. Readable from here:
 /// a suite name is a file under ~/Library/Preferences, not something a process owns.
@@ -113,6 +115,30 @@ for instance in instances {
         for mergeRequest in snapshot.prioritized(limit: 5) {
             let health = mergeRequest.health.rawValue.padding(toLength: 9, withPad: " ", startingAt: 0)
             lines.append("\(health) \(mergeRequest.shortLabel) - \(mergeRequest.statusLine)")
+        }
+        return lines
+    }
+}
+
+// MARK: Azure DevOps
+
+let organizations = AzureAccountsStore(backend: appDefaults).enabledAccounts()
+if organizations.isEmpty {
+    print("Azure DevOps - skipped: no organization in Settings.\n")
+}
+
+for organization in organizations {
+    await report("Azure DevOps pull requests in \(organization.displayOrganization)") {
+        let client = AzureClient.makeDefault(account: organization, tokenStore: tokenStore)
+        let snapshot = try await AzurePullRequestsService(client: client, account: organization).fetch()
+        var lines = [
+            "open: \(snapshot.totalCount) (fetched \(snapshot.pullRequests.count))",
+            "repositories: \(snapshot.repositoryCount)  projects: \(snapshot.projectCount)",
+            "blocked: \(snapshot.blockedCount)  ready: \(snapshot.readyCount)  waiting on me: \(snapshot.reviewRequestCount)",
+        ]
+        for pullRequest in snapshot.prioritized(limit: 5) {
+            let health = pullRequest.health.rawValue.padding(toLength: 9, withPad: " ", startingAt: 0)
+            lines.append("\(health) \(pullRequest.shortLabel) - \(pullRequest.statusLine)")
         }
         return lines
     }

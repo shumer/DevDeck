@@ -154,7 +154,7 @@ public struct DeckWireUpdate: Encodable, Sendable, Equatable {
 /// A banner. Clicking it sends `command` back.
 public struct DeckWireNotification: Encodable, Sendable, Equatable {
     public let id: String
-    /// Whose mark the banner carries: `github`, `gitlab`, `arc`, `ddev`, `project`, `docker`,
+    /// Whose mark the banner carries: `github`, `gitlab`, `azure`, `arc`, `ddev`, `project`, `docker`,
     /// `devdeck`.
     public let source: String
     public let title: String

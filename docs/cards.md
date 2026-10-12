@@ -61,7 +61,7 @@ cannot work:
 └────────────────────────────────────────────┘
 ```
 
-## The GitHub and GitLab cards
+## The GitHub, GitLab and Azure DevOps cards
 
 **The card carries both halves of "what do I owe today."** Your own open pull requests, and
 the ones somebody has asked you to review - two searches in one GraphQL request, because
@@ -79,6 +79,19 @@ without a search string. Add one with **+** under the Settings sidebar, then **G
 an address, a token with `read_api`, and the browser profile it opens in. The host lives on the account because
 GitLab is routinely self-hosted, so gitlab.com and a customer's own instance are two accounts on
 one card. Nothing appears until you add one.
+
+**And once more, for Azure DevOps.** Pull requests you have open in an organization and the ones
+waiting on your vote, in the same layout and the same words. Add one with **+**, then **Azure
+DevOps Organization**: the organization's name as it appears in `dev.azure.com/{organization}`
+(a pasted address is reduced to that word), a personal access token with the **Code (Read)**
+scope, and the browser profile its links open in. The card asks who the token belongs to, then
+for the pull requests you created and the ones you are a reviewer of, across every project in
+the organization. A row leaves the card the moment you vote, approved or not, the way a reviewed
+pull request leaves the GitHub card. Health comes from the merge check and the votes: a conflict
+or a reviewer waiting for the author blocks a row, a required vote still owed or no approval yet
+needs someone, approved and mergeable is ready. Build results and branch policies are not read,
+because they are a request per pull request, and the list is what is polled. The one date a
+row has is when it was opened: the list says nothing about when it was last touched.
 
 **The inbox can be cleared from the card.** While something in it is addressed to you, its
 footer offers **Mark as read, except the 2 for you**: comments, CI notes, subscriptions and your
@@ -315,8 +328,8 @@ the same ten-second loop, which runs only while a project card is on the deck:
 
 ### Status codes
 
-Rows end in a two-character code so the width goes to the title, the same codes on the GitHub
-and the GitLab card. Hovering a row spells it out.
+Rows end in a two-character code so the width goes to the title, the same codes on the GitHub,
+the GitLab and the Azure DevOps card. Hovering a row spells it out.
 
 | | | | |
 |---|---|---|---|
@@ -324,7 +337,7 @@ and the GitLab card. Hovering a row spells it out.
 | `MC` | merge conflict | `DR` | draft |
 | `CF` | checks or pipeline failed | `AP` | approved, or ready to merge |
 | `CR` | changes requested (GitHub) | `WR` | waiting for review (GitHub) |
-| `T3` | three unresolved threads, up to `T9` | `A2` | two approvals left (GitLab) |
+| `T3` | three unresolved threads, up to `T9` | `A2` | two approvals left (GitLab), two required votes left (Azure DevOps) |
 
 A conflict is named before a failed check, because until it is resolved the checks ran on code
 that will not be merged.

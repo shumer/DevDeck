@@ -3,6 +3,10 @@
 // from one of them or left over in one.
 
 "account.advanced" = "Avancé";
+"account.azure.create" = "Créer un token sur dev.azure.com…";
+"account.azure.noOrganization" = "Indiquez d’abord l’organisation";
+"account.azure.organization" = "Organisation";
+"account.azure.token.help" = "Un token d’accès personnel pour cette organisation avec le scope Code (Read). La carte demande les pull requests et leurs relecteurs, rien d’autre.";
 "account.github.advanced.summary" = "Limiter à des organisations";
 "account.github.create" = "Créer un token sur GitHub…";
 "account.github.organisations" = "Organisations";
@@ -64,6 +68,7 @@
 "attention.banner.pr.changes.title" = "Des changements sont demandés sur votre pull request";
 "attention.banner.pr.checks.title" = "Les checks ont échoué sur votre pull request";
 "attention.banner.pr.conflict.title" = "Votre pull request a un conflit de merge";
+"attention.banner.pr.merge.title" = "Votre pull request ne peut pas être fusionnée";
 "attention.banner.review.title" = "On demande votre revue";
 "attention.banner.review.title.who" = "%@ a demandé votre revue";
 "attention.banner.run.body" = "La dernière exécution a échoué. Cliquez pour la voir.";
@@ -117,6 +122,7 @@
 "attention.stuck.changesRequested" = "Changements demandés";
 "attention.stuck.checksFailed" = "Les checks ont échoué";
 "attention.stuck.conflict" = "Conflit de merge";
+"attention.stuck.mergeFailed" = "Le merge a échoué";
 "attention.stuck.pipelineFailed" = "Le pipeline a échoué";
 "attention.summary.none" = "rien ne vous attend";
 "attention.tier.goodToKnow" = "Bon à savoir";
@@ -168,11 +174,14 @@
 "card.actions.run.help" = "%1$@ · %2$@ sur %3$@";
 "card.actions.running" = "%d en cours";
 "card.actions.successWindow" = "%% de réussite · %dj";
+"card.addAzure" = "Ajoutez une organisation Azure DevOps dans les Réglages";
 "card.addGitLab" = "Ajoutez une instance GitLab dans les Réglages";
 "card.addToken" = "Ajoutez un token %@ dans les Réglages";
 "card.allAccounts" = "tous les comptes";
 "card.asOf" = "à %@";
 "card.branch.checkedOut" = "branche active";
+"card.chrome.pulls.azure" = "Azure DevOps · pull requests";
+"card.title.pulls.azure" = "Azure DevOps pull requests";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, la branche est %2$@";
@@ -447,6 +456,7 @@
 "project.stopNoEffect" = "l’arrêt n’a pas pris effet, il répond encore";
 "project.urlAnswered" = "%1$@ a répondu %2$d";
 "settings.add.arc" = "Projet Arc XP";
+"settings.add.azure" = "Organisation Azure DevOps";
 "settings.add.ddev" = "Projet DDEV…";
 "settings.add.github" = "Compte GitHub";
 "settings.add.gitlab" = "Instance GitLab";
@@ -493,6 +503,7 @@
 "settings.agents.access.read.detail" = "Les agents connectés par MCP, comme Claude Code ou Cursor, voient ce que montrent les cartes et le menu, et ne changent rien.";
 "settings.agents.access.control.detail" = "Les agents connectés par MCP peuvent aussi démarrer, arrêter et redémarrer des projets et marquer des notifications comme lues, avec les mêmes limites que les boutons.";
 "settings.agents.register" = "Ajoutez DevDeck à Claude Code avec : %@";
+"settings.agents.register.codex" = "Ajoutez DevDeck à Codex avec : %@";
 "agents.error.off" = "Le serveur MCP est désactivé. Activez-le dans DevDeck : Réglages, Général, Agents (MCP).";
 "agents.error.readOnly" = "Le serveur MCP est en lecture seule. Choisissez Lecture et contrôle dans DevDeck : Réglages, Général, Agents (MCP).";
 "agents.error.notAllowed" = "Un agent ne peut pas demander cela à DevDeck.";

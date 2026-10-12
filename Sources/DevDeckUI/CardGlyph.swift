@@ -9,6 +9,7 @@ import SwiftUI
 public enum CardGlyph: String, Sendable, Equatable, CaseIterable {
     case github
     case gitlab
+    case azure
     case arc
     case ddev
     case node
@@ -41,6 +42,7 @@ public struct CardGlyphView: View {
         switch glyph {
         case .github: return BrandMark.github
         case .gitlab: return BrandMark.gitlab
+        case .azure: return BrandMark.azure
         case .node: return BrandMark.node
         case .next: return BrandMark.next
         case .nest: return BrandMark.nest
@@ -56,6 +58,7 @@ public struct CardGlyphView: View {
         switch glyph {
         case .github: VectorMark(BrandMark.github)
         case .gitlab: VectorMark(BrandMark.gitlab)
+        case .azure: VectorMark(BrandMark.azure)
         case .node: VectorMark(BrandMark.node)
         case .next: VectorMark(BrandMark.next)
         case .nest: VectorMark(BrandMark.nest)

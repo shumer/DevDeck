@@ -37,6 +37,13 @@ public enum BrandMark {
         color: Color(red: 0.988, green: 0.435, blue: 0.114)
     )
 
+    /// Azure DevOps, in its own blue, which reads on dark glass as it is.
+    public static let azure = Vector(
+        paths: [azurePath],
+        viewBox: CGSize(width: 24, height: 24),
+        color: Color(red: 0.0, green: 0.471, blue: 0.831)
+    )
+
     public static let node = Vector(
         paths: [nodePath],
         viewBox: CGSize(width: 24, height: 24),
@@ -89,6 +96,12 @@ M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-
 /// facets and an approximation of it reads as a paper aeroplane.
 private let gitlabPath = """
 M23.955 13.587l-1.342-4.135-2.664-8.189c-.135-.423-.73-.423-.867 0L16.418 9.45H7.582L4.919 1.263C4.783.84 4.19.84 4.052 1.263L1.39 9.45.048 13.587c-.121.375.014.789.331 1.023L12 23.054l11.625-8.443c.318-.235.453-.647.33-1.024
+"""
+
+/// dev.azure.com - the folded arrow, from simple-icons as it was before Microsoft's marks left
+/// the set. Two subpaths, one shape.
+private let azurePath = """
+M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z
 """
 
 /// nodejs.org - the hexagon with its JS, from simple-icons.

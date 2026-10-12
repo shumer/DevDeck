@@ -72,10 +72,11 @@ public enum NotificationArtwork {
         flip.scaleX(by: 1, yBy: -1)
 
         switch source {
-        case .github, .gitlab, .ddev, .docker:
+        case .github, .gitlab, .azure, .ddev, .docker:
             let vector: BrandMark.Vector = {
                 switch source {
                 case .gitlab: return BrandMark.gitlab
+                case .azure: return BrandMark.azure
                 case .ddev: return BrandMark.ddev
                 case .docker: return BrandMark.docker
                 default: return BrandMark.github

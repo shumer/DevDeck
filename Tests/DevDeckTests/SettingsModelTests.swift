@@ -3,6 +3,7 @@ import DevDeckCore
 import DevDeckEngine
 import Foundation
 import GitHubKit
+import AzureKit
 import GitLabKit
 import ProjectKit
 import TestHarness
@@ -135,6 +136,22 @@ func runSettingsModelTests(_ run: TestRun) async {
         deck.runtime.cards.setEnabled(false, for: .gitlabMergeRequests)
         _ = deck.runtime.addGitLabAccount()
         try expect(deck.runtime.cards.isEnabled(.gitlabMergeRequests))
+    }
+
+    await run.test("adding an Azure DevOps organization turns its card on, and needs the organization before a token") {
+        let deck = Deck(cards: [])
+        deck.runtime.cards.setEnabled(false, for: .azurePullRequests)
+        let id = deck.runtime.addAzureAccount()
+        try expect(deck.runtime.cards.isEnabled(.azurePullRequests))
+        let fresh = AzureAccount(id: id, label: "Azure DevOps")
+        try expectEqual(await deck.runtime.checkAzureToken(for: fresh, typed: "pat"), .refused(L("account.azure.noOrganization")))
+        try expect(!deck.runtime.hasToken(fresh.tokenKey), "nothing stored for an organization that is not there yet")
+        try expectEqual(deck.runtime.testLink(fresh), .note(L("account.azure.noOrganization")))
+        var named = fresh
+        named.organization = "acme"
+        try expectEqual(deck.runtime.testLink(named), .open(URL(string: "https://dev.azure.com/acme/_pulls")!, .systemDefault))
+        deck.runtime.removeAzureAccount(id)
+        try expect(deck.runtime.settingsList().accounts.allSatisfy { $0.kind != .azure }, "gone from the sidebar with it")
     }
 
     await run.test("a typed token is kept only once it works") {

@@ -1,9 +1,11 @@
+import AzureKit
 import DevDeckCore
 import Foundation
 import GitHubKit
 import GitLabKit
 
-/// The pull requests card and the merge requests card, which are one card with the nouns changed.
+/// The pull requests card, the merge requests card and the Azure DevOps card, which are one card
+/// with the nouns changed.
 ///
 /// Same layout, same order, same vocabulary for the three states: two cards on one desktop that
 /// answer the same question in two shapes would be two things to learn instead of one. Both
@@ -123,7 +125,40 @@ public struct ReviewListCardModel: Sendable, Equatable, Codable {
         )
     }
 
-    // MARK: Shared by both
+    /// The Azure DevOps card.
+    public static func azurePullRequests(
+        state: CardState<AzurePullRequestsSnapshot>,
+        accountLabels: [String: String],
+        isExpanded: Bool,
+        isCollapsed: Bool,
+        now: Date
+    ) -> ReviewListCardModel {
+        let snapshot = state.value
+        let input = snapshot.map { snapshot in
+            Input(
+                totalCount: snapshot.totalCount,
+                blockedCount: snapshot.blockedCount,
+                reviewRequestCount: snapshot.reviewRequestCount,
+                healths: snapshot.pullRequests.map { tone(of: $0.health) },
+                rows: snapshot.prioritized(limit: CardMetrics.rowCount(total: snapshot.pullRequests.count, isExpanded: isExpanded)).map {
+                    InputRow(
+                        id: $0.id, tone: tone(of: $0.health), accountID: $0.accountID, isReviewRequest: $0.isReviewRequest,
+                        key: $0.ticket.key, subject: $0.ticket.subject, trailing: $0.statusCode,
+                        help: L("attention.row.colon", $0.shortLabel, $0.statusLine), url: $0.url
+                    )
+                },
+                failures: snapshot.failures,
+                covers: L("card.footer.pair", LN("card.repos", snapshot.repositoryCount), LN("card.projects", snapshot.projectCount))
+            )
+        }
+        return build(
+            card: .azurePullRequests, title: L("card.chrome.pulls.azure"), collapsedTitle: L("card.title.pulls"),
+            mark: .azure, service: .azure, state: state, input: input,
+            accountLabels: accountLabels, isExpanded: isExpanded, isCollapsed: isCollapsed, now: now
+        )
+    }
+
+    // MARK: Shared by all three
 
     /// What either snapshot comes down to, once its own nouns are spent.
     private struct Input {
@@ -292,6 +327,14 @@ public struct ReviewListCardModel: Sendable, Equatable, Codable {
     }
 
     private static func tone(of health: MergeRequestHealth) -> DeckTone {
+        switch health {
+        case .blocked: return .alert
+        case .attention: return .attention
+        case .ready: return .good
+        }
+    }
+
+    private static func tone(of health: AzurePullRequestHealth) -> DeckTone {
         switch health {
         case .blocked: return .alert
         case .attention: return .attention

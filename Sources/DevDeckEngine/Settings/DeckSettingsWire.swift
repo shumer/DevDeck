@@ -1,4 +1,5 @@
 import ArcKit
+import AzureKit
 import DDEVKit
 import DevDeckCore
 import Foundation
@@ -57,6 +58,13 @@ public enum DeckTokenPages {
         components?.queryItems = [URLQueryItem(name: "name", value: "DevDeck"), URLQueryItem(name: "scopes", value: "read_api")]
         return components?.url ?? host
     }
+
+    /// The organization's token page. Azure DevOps takes no scopes in the link, so the form's
+    /// help says which to tick.
+    public static func azure(organization: String) -> URL {
+        guard !organization.isEmpty else { return AzureAccount.host }
+        return AzureAccount.host.appendingPathComponent(organization).appendingPathComponent("_usersSettings/tokens")
+    }
 }
 
 /// One thing a settings window asks of the engine.
@@ -82,6 +90,7 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
     case ddevProject(id: String)
     case githubAccount(id: String)
     case gitlabAccount(id: String)
+    case azureAccount(id: String)
 
     case addLocalProject(folder: String)
     case saveLocalProject(LocalProject)
@@ -106,19 +115,25 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
 
     case addGitHubAccount
     case addGitLabAccount
+    case addAzureAccount
     case saveGitHubAccount(GitHubAccount)
     case saveGitLabAccount(GitLabAccount)
+    case saveAzureAccount(AzureAccount)
     case removeGitHubAccount(id: String)
     case removeGitLabAccount(id: String)
+    case removeAzureAccount(id: String)
     case testGitHubAccountLink(GitHubAccount)
     case testGitLabAccountLink(GitLabAccount)
+    case testAzureAccountLink(AzureAccount)
     /// The token typed into the form, or an empty one to check the stored token. A token that
     /// works is stored; it is never sent back.
     case checkGitHubToken(GitHubAccount, typed: String)
     case checkGitLabToken(GitLabAccount, typed: String)
+    case checkAzureToken(AzureAccount, typed: String)
     /// The page where a token is made, opened in the default browser.
     case openGitHubTokenPage
     case openGitLabTokenPage(GitLabAccount)
+    case openAzureTokenPage(AzureAccount)
 
     /// Whether the answer means the deck itself changed: cards came or went, or a deck-wide
     /// setting moved.
@@ -127,8 +142,10 @@ public enum DeckSettingsRequest: Sendable, Equatable, Codable {
         case .setPreferences, .setCard, .addLocalProject, .saveLocalProject, .removeLocalProject,
              .addArcProject, .saveArcProject, .restructureArcProject, .removeArcProject,
              .addDDEVProject, .saveDDEVProject, .removeDDEVProject,
-             .addGitHubAccount, .addGitLabAccount, .saveGitHubAccount, .saveGitLabAccount,
-             .removeGitHubAccount, .removeGitLabAccount, .checkGitHubToken, .checkGitLabToken:
+             .addGitHubAccount, .addGitLabAccount, .addAzureAccount,
+             .saveGitHubAccount, .saveGitLabAccount, .saveAzureAccount,
+             .removeGitHubAccount, .removeGitLabAccount, .removeAzureAccount,
+             .checkGitHubToken, .checkGitLabToken, .checkAzureToken:
             return true
         default:
             return false
@@ -148,6 +165,7 @@ public enum DeckSettingsAnswer: Sendable, Equatable, Codable {
     case ddevProject(DDEVProject?)
     case githubAccount(GitHubAccount?)
     case gitlabAccount(GitLabAccount?)
+    case azureAccount(AzureAccount?)
     /// Something was added under this id.
     case added(id: String)
     /// Saved. `checkAgain` when the form's status line has a new question to answer.
@@ -247,6 +265,7 @@ extension DeckRuntime {
         case .ddevProject(let id): return .ddevProject(ddevProjectsStore.projects().first { $0.id == id })
         case .githubAccount(let id): return .githubAccount(accountsStore.accounts().first { $0.id == id })
         case .gitlabAccount(let id): return .gitlabAccount(gitlabAccountsStore.accounts().first { $0.id == id })
+        case .azureAccount(let id): return .azureAccount(azureAccountsStore.accounts().first { $0.id == id })
 
         case .addLocalProject(let folder): return .added(id: addLocalProject(folder: URL(fileURLWithPath: folder)))
         case .saveLocalProject(let project): return .saved(checkAgain: saveLocalProject(project))
@@ -287,11 +306,15 @@ extension DeckRuntime {
 
         case .addGitHubAccount: return .added(id: addGitHubAccount())
         case .addGitLabAccount: return .added(id: addGitLabAccount())
+        case .addAzureAccount: return .added(id: addAzureAccount())
         case .saveGitHubAccount(let account):
             saveGitHubAccount(account)
             return .saved(checkAgain: false)
         case .saveGitLabAccount(let account):
             saveGitLabAccount(account)
+            return .saved(checkAgain: false)
+        case .saveAzureAccount(let account):
+            saveAzureAccount(account)
             return .saved(checkAgain: false)
         case .removeGitHubAccount(let id):
             removeGitHubAccount(id)
@@ -299,15 +322,23 @@ extension DeckRuntime {
         case .removeGitLabAccount(let id):
             removeGitLabAccount(id)
             return .done
+        case .removeAzureAccount(let id):
+            removeAzureAccount(id)
+            return .done
         case .testGitHubAccountLink(let account): return open(testLink(account))
         case .testGitLabAccountLink(let account): return open(testLink(account))
+        case .testAzureAccountLink(let account): return open(testLink(account))
         case .checkGitHubToken(let account, let typed): return .token(await checkGitHubToken(for: account, typed: typed))
         case .checkGitLabToken(let account, let typed): return .token(await checkGitLabToken(for: account, typed: typed))
+        case .checkAzureToken(let account, let typed): return .token(await checkAzureToken(for: account, typed: typed))
         case .openGitHubTokenPage:
             effect(.openURL(DeckTokenPages.github, .systemDefault))
             return .done
         case .openGitLabTokenPage(let account):
             effect(.openURL(DeckTokenPages.gitlab(host: account.host), .systemDefault))
+            return .done
+        case .openAzureTokenPage(let account):
+            effect(.openURL(DeckTokenPages.azure(organization: account.organization), .systemDefault))
             return .done
         }
     }

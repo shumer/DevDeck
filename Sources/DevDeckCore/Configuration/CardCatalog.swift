@@ -17,6 +17,7 @@ public extension CardID {
     static let githubInbox = CardID(rawValue: "github.inbox")
     static let githubActions = CardID(rawValue: "github.actions")
     static let gitlabMergeRequests = CardID(rawValue: "gitlab.mergeRequests")
+    static let azurePullRequests = CardID(rawValue: "azure.pullRequests")
     static let workInFlight = CardID(rawValue: "local.workInFlight")
     static let arcOrganizations = CardID(rawValue: "arc.organizations")
     static let localStack = CardID(rawValue: "local.stack")
@@ -74,6 +75,14 @@ public enum CardCatalog {
             // Two entries called "Pull requests" and "Merge requests" side by side are two
             // things nobody can tell apart at a glance.
             title: L("card.title.merges.gitlab"),
+            subtitle: L("card.catalog.pulls.subtitle"),
+            isImplemented: true,
+            isEnabledByDefault: false
+        ),
+        // Off by default for the same reason, and on from the moment an organization is added.
+        CardDescriptor(
+            id: .azurePullRequests,
+            title: L("card.title.pulls.azure"),
             subtitle: L("card.catalog.pulls.subtitle"),
             isImplemented: true,
             isEnabledByDefault: false

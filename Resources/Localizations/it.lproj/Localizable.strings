@@ -3,6 +3,10 @@
 // from one of them or left over in one.
 
 "account.advanced" = "Avanzate";
+"account.azure.create" = "Crea un token su dev.azure.com…";
+"account.azure.noOrganization" = "Prima indica l’organizzazione";
+"account.azure.organization" = "Organizzazione";
+"account.azure.token.help" = "Un token di accesso personale per questa organizzazione con lo scope Code (Read). La scheda chiede le pull request e i loro revisori, nient’altro.";
 "account.github.advanced.summary" = "Limita alle organizzazioni";
 "account.github.create" = "Crea un token su GitHub…";
 "account.github.organisations" = "Organizzazioni";
@@ -64,6 +68,7 @@
 "attention.banner.pr.changes.title" = "Modifiche richieste sul tuo pull request";
 "attention.banner.pr.checks.title" = "Check falliti sul tuo pull request";
 "attention.banner.pr.conflict.title" = "Il tuo pull request ha un conflitto di merge";
+"attention.banner.pr.merge.title" = "Il tuo pull request non si può unire";
 "attention.banner.review.title" = "Chiedono la tua review";
 "attention.banner.review.title.who" = "%@ ha chiesto la tua review";
 "attention.banner.run.body" = "L’ultima esecuzione è fallita. Fai clic per vederla.";
@@ -117,6 +122,7 @@
 "attention.stuck.changesRequested" = "Modifiche richieste";
 "attention.stuck.checksFailed" = "Check falliti";
 "attention.stuck.conflict" = "Conflitto di merge";
+"attention.stuck.mergeFailed" = "Merge fallito";
 "attention.stuck.pipelineFailed" = "Pipeline fallita";
 "attention.summary.none" = "niente ti aspetta";
 "attention.tier.goodToKnow" = "Buono a sapersi";
@@ -168,11 +174,14 @@
 "card.actions.run.help" = "%1$@ · %2$@ su %3$@";
 "card.actions.running" = "%d in esecuzione";
 "card.actions.successWindow" = "%% di successo · %dg";
+"card.addAzure" = "Aggiungi un’organizzazione Azure DevOps nelle Impostazioni";
 "card.addGitLab" = "Aggiungi un’istanza GitLab nelle Impostazioni";
 "card.addToken" = "Aggiungi un token %@ nelle Impostazioni";
 "card.allAccounts" = "tutti gli account";
 "card.asOf" = "alle %@";
 "card.branch.checkedOut" = "branch attivo";
+"card.chrome.pulls.azure" = "Azure DevOps · pull requests";
+"card.title.pulls.azure" = "Azure DevOps pull requests";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, il branch è %2$@";
@@ -447,6 +456,7 @@
 "project.stopNoEffect" = "lo stop non ha avuto effetto, risponde ancora";
 "project.urlAnswered" = "%1$@ ha risposto %2$d";
 "settings.add.arc" = "Progetto Arc XP";
+"settings.add.azure" = "Organizzazione Azure DevOps";
 "settings.add.ddev" = "Progetto DDEV…";
 "settings.add.github" = "Account GitHub";
 "settings.add.gitlab" = "Istanza GitLab";
@@ -493,6 +503,7 @@
 "settings.agents.access.read.detail" = "Gli agenti collegati via MCP, come Claude Code o Cursor, vedono ciò che mostrano le schede e il menu, e non cambiano nulla.";
 "settings.agents.access.control.detail" = "Gli agenti collegati via MCP possono anche avviare, fermare e riavviare i progetti e segnare le notifiche come lette, con gli stessi limiti dei pulsanti.";
 "settings.agents.register" = "Aggiungi DevDeck a Claude Code con: %@";
+"settings.agents.register.codex" = "Aggiungi DevDeck a Codex con: %@";
 "agents.error.off" = "Il server MCP è disattivato. Attivalo in DevDeck: Impostazioni, Generali, Agenti (MCP).";
 "agents.error.readOnly" = "Il server MCP è in sola lettura. Scegli Lettura e controllo in DevDeck: Impostazioni, Generali, Agenti (MCP).";
 "agents.error.notAllowed" = "Un agente non può chiedere questo a DevDeck.";

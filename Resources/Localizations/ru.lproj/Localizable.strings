@@ -3,6 +3,10 @@
 // from one of them or left over in one.
 
 "account.advanced" = "Дополнительно";
+"account.azure.create" = "Создать токен на dev.azure.com…";
+"account.azure.noOrganization" = "Сначала укажите организацию";
+"account.azure.organization" = "Организация";
+"account.azure.token.help" = "Персональный токен доступа для этой организации со scope Code (Read). Карточка просит pull requests и их ревьюеров, больше ничего.";
 "account.github.advanced.summary" = "Ограничить организациями";
 "account.github.create" = "Создать токен на GitHub…";
 "account.github.organisations" = "Организации";
@@ -64,6 +68,7 @@
 "attention.banner.pr.changes.title" = "У вашего pull request просят правки";
 "attention.banner.pr.checks.title" = "У вашего pull request упали проверки";
 "attention.banner.pr.conflict.title" = "У вашего pull request конфликт слияния";
+"attention.banner.pr.merge.title" = "Ваш pull request нельзя влить";
 "attention.banner.review.title" = "Просят ваше ревью";
 "attention.banner.review.title.who" = "%@ просит вас посмотреть";
 "attention.banner.run.body" = "Последний запуск упал. Нажмите, чтобы посмотреть.";
@@ -117,6 +122,7 @@
 "attention.stuck.changesRequested" = "Просят правки";
 "attention.stuck.checksFailed" = "Проверки упали";
 "attention.stuck.conflict" = "Конфликт слияния";
+"attention.stuck.mergeFailed" = "Merge не прошёл";
 "attention.stuck.pipelineFailed" = "Pipeline упал";
 "attention.summary.none" = "ничего не ждёт";
 "attention.tier.goodToKnow" = "Просто к сведению";
@@ -168,11 +174,14 @@
 "card.actions.run.help" = "%1$@ · %2$@ на %3$@";
 "card.actions.running" = "%d выполняется";
 "card.actions.successWindow" = "%% успеха · %dд";
+"card.addAzure" = "Добавьте организацию Azure DevOps в настройках";
 "card.addGitLab" = "Добавьте инстанс GitLab в настройках";
 "card.addToken" = "Добавьте токен %@ в настройках";
 "card.allAccounts" = "все аккаунты";
 "card.asOf" = "на %@";
 "card.branch.checkedOut" = "текущая ветка";
+"card.chrome.pulls.azure" = "Azure DevOps · pull requests";
+"card.title.pulls.azure" = "Azure DevOps pull requests";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, ветка %2$@";
@@ -447,6 +456,7 @@
 "project.stopNoEffect" = "остановка не сработала, он всё ещё отвечает";
 "project.urlAnswered" = "%1$@ ответил %2$d";
 "settings.add.arc" = "Проект Arc XP";
+"settings.add.azure" = "Организация Azure DevOps";
 "settings.add.ddev" = "Проект DDEV…";
 "settings.add.github" = "Аккаунт GitHub";
 "settings.add.gitlab" = "Инстанс GitLab";
@@ -493,6 +503,7 @@
 "settings.agents.access.read.detail" = "Агенты, подключенные по MCP, например Claude Code или Cursor, видят то же, что карточки и меню, и ничего не меняют.";
 "settings.agents.access.control.detail" = "Агенты, подключенные по MCP, могут еще запускать, останавливать и перезапускать проекты и отмечать уведомления прочитанными, с теми же ограничениями, что у кнопок.";
 "settings.agents.register" = "Добавить DevDeck в Claude Code: %@";
+"settings.agents.register.codex" = "Добавить DevDeck в Codex: %@";
 "agents.error.off" = "MCP-сервер выключен. Включите его в DevDeck: Настройки, Основные, Агенты (MCP).";
 "agents.error.readOnly" = "MCP-сервер работает только на чтение. Выберите «Чтение и управление» в DevDeck: Настройки, Основные, Агенты (MCP).";
 "agents.error.notAllowed" = "Агент не может просить DevDeck об этом.";

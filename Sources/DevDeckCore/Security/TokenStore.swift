@@ -145,6 +145,7 @@ public struct EnvironmentTokenStore: TokenStore {
     public static let defaultVariableNames: [String: [String]] = [
         "github": ["DEVDECK_GITHUB_TOKEN", "GITHUB_TOKEN"],
         "gitlab": ["DEVDECK_GITLAB_TOKEN", "GITLAB_TOKEN"],
+        "azure": ["DEVDECK_AZURE_DEVOPS_TOKEN", "AZURE_DEVOPS_EXT_PAT"],
     ]
 
     public init(

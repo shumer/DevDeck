@@ -1,4 +1,5 @@
 import ArcKit
+import AzureKit
 import DDEVKit
 import DevDeckCore
 import DevDeckEngine
@@ -57,9 +58,30 @@ enum RuntimeFixture {
      "reviewing":{"count":0,"nodes":[]}}}}
     """
 
+    static let azureIdentity = #"{"authenticatedUser":{"id":"me-1","providerDisplayName":"Demo Person"}}"#
+
+    /// One of mine with a vote against it, and one somebody else opened that waits on my vote.
+    static let azureMine = """
+    {"value":[
+     {"pullRequestId":7,"title":"DEMO-7 - Rename the feed","creationDate":"2026-10-08T09:30:00.1234567Z","isDraft":false,"mergeStatus":"succeeded",
+      "createdBy":{"id":"me-1","displayName":"Demo Person"},"repository":{"id":"repo-1","name":"portal","project":{"name":"Demo"}},
+      "reviewers":[{"id":"rev-1","vote":-5,"isRequired":true,"displayName":"Olga"}]}
+    ],"count":1}
+    """
+    static let azureReviewing = """
+    {"value":[
+     {"pullRequestId":8,"title":"Split the parser","creationDate":"2026-10-08T07:00:00Z","isDraft":false,"mergeStatus":"succeeded",
+      "createdBy":{"id":"rev-1","displayName":"Olga"},"repository":{"id":"repo-1","name":"portal","project":{"name":"Demo"}},
+      "reviewers":[{"id":"me-1","vote":0,"isRequired":true,"displayName":"Demo Person"}]}
+    ],"count":1}
+    """
+
     static var http: FakeHTTPClient {
         FakeHTTPClient(routes: [
             ("gitlab.example.invalid", .success(.json(merges))),
+            ("/_apis/connectionData", .success(.json(azureIdentity))),
+            ("searchCriteria.creatorId", .success(.json(azureMine))),
+            ("searchCriteria.reviewerId", .success(.json(azureReviewing))),
             ("/graphql", .success(.json(pulls))),
             ("/notifications", .success(.json(notifications))),
             ("/actions/runs", .success(.json(runs))),
@@ -91,6 +113,9 @@ func goldenRuntime(
     let gitlabAccount = GitLabAccount(id: "lab", label: "Lab", host: URL(string: "https://gitlab.example.invalid")!)
     let gitlab = GitLabAccountsStore(backend: InMemoryPreferences())
     gitlab.save([gitlabAccount])
+    let azureAccount = AzureAccount(id: "ado", label: "ADO", organization: "demo")
+    let azure = AzureAccountsStore(backend: InMemoryPreferences())
+    azure.save([azureAccount])
     let arc = ArcProjectsStore(backend: InMemoryPreferences())
     arc.save([ArcProject(id: "paper", title: "Paper", organization: "demo")])
     let ddev = DDEVProjectsStore(backend: InMemoryPreferences())
@@ -102,9 +127,10 @@ func goldenRuntime(
     )])
     let runtime = DeckRuntime(
         preferences: preferences,
-        tokenStore: InMemoryTokenStore(tokens: [account.tokenKey: "token", gitlabAccount.tokenKey: "token"]),
+        tokenStore: InMemoryTokenStore(tokens: [account.tokenKey: "token", gitlabAccount.tokenKey: "token", azureAccount.tokenKey: "token"]),
         accountsStore: accounts,
         gitlabAccountsStore: gitlab,
+        azureAccountsStore: azure,
         projectsStore: arc,
         ddevProjectsStore: ddev,
         localProjectsStore: local,

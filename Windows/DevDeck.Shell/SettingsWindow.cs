@@ -190,6 +190,7 @@ public sealed class SettingsWindow : Window
         {
             (Answer: "githubAccount", Page: "github"),
             (Answer: "gitlabAccount", Page: "gitlab"),
+            (Answer: "azureAccount", Page: "azure"),
             (Answer: "localProject", Page: "project"),
             (Answer: "arcProject", Page: "arc"),
             (Answer: "ddevProject", Page: "ddev"),
@@ -385,7 +386,7 @@ public sealed class SettingsWindow : Window
             "deck" => DeckPage(),
             "cards" => CardsPage(),
             "notifications" => NotificationsPage(),
-            "github" or "gitlab" or "project" or "arc" or "ddev" => RecordPage(),
+            "github" or "gitlab" or "azure" or "project" or "arc" or "ddev" => RecordPage(),
             _ => EmptyPage(),
         };
         applying = false;
@@ -455,6 +456,7 @@ public sealed class SettingsWindow : Window
         {
             var server = Path.Combine(AppContext.BaseDirectory, "DevDeckMCP.exe");
             page.Children.Add(Footnote(words.Get("settings.agents.register", "claude mcp add --scope user devdeck -- \"" + server + "\"")));
+            page.Children.Add(Footnote(words.Get("settings.agents.register.codex", "codex mcp add devdeck -- \"" + server + "\"")));
         }
     }
 
@@ -824,7 +826,12 @@ public sealed class SettingsWindow : Window
         bool value)
     {
         SettingsJson.Set(record, property, value);
-        var request = page == "github" ? "saveGitHubAccount" : "saveGitLabAccount";
+        var request = page switch
+        {
+            "github" => "saveGitHubAccount",
+            "azure" => "saveAzureAccount",
+            _ => "saveGitLabAccount",
+        };
         client.Request(SettingsJson.Value(request, record), _ => client.RefreshList());
         records[RecordKey(page, id)] = record;
     }
@@ -857,7 +864,7 @@ public sealed class SettingsWindow : Window
         }
         return route.Page switch
         {
-            "github" or "gitlab" => AccountPage(record),
+            "github" or "gitlab" or "azure" => AccountPage(record),
             _ => ProjectPage(record),
         };
     }
@@ -865,7 +872,12 @@ public sealed class SettingsWindow : Window
     private FrameworkElement AccountPage(JsonObject record)
     {
         var title = SettingsJson.String(record, "label");
-        var subtitle = route.Page == "github" ? SettingsJson.String(record, "apiBaseURL") : SettingsJson.String(record, "host");
+        var subtitle = route.Page switch
+        {
+            "github" => SettingsJson.String(record, "apiBaseURL"),
+            "azure" => AzureOrganization(record),
+            _ => SettingsJson.String(record, "host"),
+        };
         var page = ModelHeader(title, subtitle, route.Page, record);
         if (route.Page == "gitlab")
         {
@@ -873,6 +885,16 @@ public sealed class SettingsWindow : Window
             page.Children.Add(Card(
                 FieldRow("account.name", record, "label", false),
                 FieldRow("account.gitlab.address", record, "host", true),
+                BrowserRow(record)));
+        }
+        else if (route.Page == "azure")
+        {
+            // The organization first: the token belongs to whatever organization is in this
+            // form, and the link that makes one is built from it.
+            page.Children.Add(GroupTitle("account.section.account"));
+            page.Children.Add(Card(
+                FieldRow("account.name", record, "label", false),
+                FieldRow("account.azure.organization", record, "organization", true),
                 BrowserRow(record)));
         }
         page.Children.Add(GroupTitle("account.section.token"));
@@ -898,10 +920,21 @@ public sealed class SettingsWindow : Window
         return page;
     }
 
+    private static string AzureOrganization(JsonObject record)
+    {
+        var organization = SettingsJson.String(record, "organization");
+        return organization.Length > 0 ? organization : "dev.azure.com";
+    }
+
     private FrameworkElement TokenPageLink(JsonObject record)
     {
-        var key = route.Page == "github" ? "account.github.create" : "account.gitlab.create";
-        var value = route.Page == "github" ? null : AccountHost(record);
+        var key = route.Page switch
+        {
+            "github" => "account.github.create",
+            "azure" => "account.azure.create",
+            _ => "account.gitlab.create",
+        };
+        var value = route.Page == "gitlab" ? AccountHost(record) : null;
         var button = new Button
         {
             Content = words.Get(key, value),
@@ -910,9 +943,12 @@ public sealed class SettingsWindow : Window
         };
         button.Click += (_, _) =>
         {
-            var request = route.Page == "github"
-                ? SettingsJson.Empty("openGitHubTokenPage")
-                : SettingsJson.Value("openGitLabTokenPage", record);
+            var request = route.Page switch
+            {
+                "github" => SettingsJson.Empty("openGitHubTokenPage"),
+                "azure" => SettingsJson.Value("openAzureTokenPage", record),
+                _ => SettingsJson.Value("openGitLabTokenPage", record),
+            };
             client.Request(request);
         };
         return button;
@@ -973,7 +1009,7 @@ public sealed class SettingsWindow : Window
         {
             var typed = submission.Take();
             password.Clear();
-            var request = route.Page == "github" ? "checkGitHubToken" : "checkGitLabToken";
+            var request = TokenCheckRequest();
             SetTokenChecking(recordKey);
             client.Request(SettingsJson.Token(request, record, typed), answer => ApplyTokenAnswer(recordKey, answer));
         });
@@ -992,10 +1028,20 @@ public sealed class SettingsWindow : Window
             {
                 SetTokenChecking(recordKey);
                 client.Request(
-                    SettingsJson.Token(route.Page == "github" ? "checkGitHubToken" : "checkGitLabToken", record, ""),
+                    SettingsJson.Token(TokenCheckRequest(), record, ""),
                     answer => ApplyTokenAnswer(recordKey, answer));
             })),
             FormRow(words.Get("token.field"), "", controls));
+    }
+
+    private string TokenCheckRequest()
+    {
+        return route.Page switch
+        {
+            "github" => "checkGitHubToken",
+            "azure" => "checkAzureToken",
+            _ => "checkGitLabToken",
+        };
     }
 
     private FrameworkElement ProjectPage(JsonObject record)
@@ -1623,6 +1669,7 @@ public sealed class SettingsWindow : Window
         {
             "github" => "githubAccount",
             "gitlab" => "gitlabAccount",
+            "azure" => "azureAccount",
             "project" => "localProject",
             "arc" => "arcProject",
             "ddev" => "ddevProject",
@@ -1655,6 +1702,7 @@ public sealed class SettingsWindow : Window
         {
             "github" => "saveGitHubAccount",
             "gitlab" => "saveGitLabAccount",
+            "azure" => "saveAzureAccount",
             "project" => "saveLocalProject",
             "arc" => "saveArcProject",
             "ddev" => "saveDDEVProject",
@@ -1784,6 +1832,7 @@ public sealed class SettingsWindow : Window
         addMenu = new ContextMenu { Style = WindowsTheme.Style("DeckContextMenu") };
         AddMenuItem(addMenu, "settings.add.github", () => AddSimple("addGitHubAccount", "github"));
         AddMenuItem(addMenu, "settings.add.gitlab", () => AddSimple("addGitLabAccount", "gitlab"));
+        AddMenuItem(addMenu, "settings.add.azure", () => AddSimple("addAzureAccount", "azure"));
         AddMenuItem(addMenu, "settings.add.local", AddLocal);
         AddMenuItem(addMenu, "settings.add.arc", () => AddSimple("addArcProject", "arc"));
         AddMenuItem(addMenu, "settings.add.ddev", AddDdev);
@@ -1889,7 +1938,7 @@ public sealed class SettingsWindow : Window
         {
             return;
         }
-        var account = route.Page is "github" or "gitlab";
+        var account = route.Page is "github" or "gitlab" or "azure";
         var title = words.Get("settings.remove.account.title", RecordTitle(record));
         var detailKey = account ? "settings.remove.account.detail" : $"settings.remove.project.detail.{(route.Page == "project" ? "local" : route.Page)}";
         if (!SettingsConfirmation.Show(this, title, words.Get(detailKey), words.Get("button.remove"), words.Get("button.cancel")))
@@ -1900,6 +1949,7 @@ public sealed class SettingsWindow : Window
         {
             "github" => "removeGitHubAccount",
             "gitlab" => "removeGitLabAccount",
+            "azure" => "removeAzureAccount",
             "project" => "removeLocalProject",
             "arc" => "removeArcProject",
             "ddev" => "removeDDEVProject",
@@ -1949,6 +1999,7 @@ public sealed class SettingsWindow : Window
         {
             "github" => "testGitHubAccountLink",
             "gitlab" => "testGitLabAccountLink",
+            "azure" => "testAzureAccountLink",
             "project" => "testLocalProjectLink",
             "arc" => "testArcProjectLink",
             "ddev" => "testDDEVProjectLink",
@@ -2063,7 +2114,7 @@ public sealed class SettingsWindow : Window
 
     private static bool IsRecordPage(string page)
     {
-        return page is "github" or "gitlab" or "project" or "arc" or "ddev";
+        return page is "github" or "gitlab" or "azure" or "project" or "arc" or "ddev";
     }
 
     private static string RecordKey(string page, string id)

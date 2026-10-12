@@ -1,3 +1,4 @@
+import AzureKit
 import DevDeckCore
 import Foundation
 import GitHubKit
@@ -14,9 +15,11 @@ public enum DeckAttention {
         public var inbox: CardState<InboxSnapshot>
         public var actions: CardState<ActionsSnapshot>
         public var mergeRequests: CardState<MergeRequestsSnapshot>
+        public var azurePullRequests: CardState<AzurePullRequestsSnapshot>
         /// Labels by account id, only when there is more than one account of that service.
         public var githubLabels: [String: String]
         public var gitlabLabels: [String: String]
+        public var azureLabels: [String: String]
         /// When each account started failing, keyed `service:id`.
         public var accountFailingSince: [String: Date]
         public var projects: [WatchedProject]
@@ -33,8 +36,10 @@ public enum DeckAttention {
             inbox: CardState<InboxSnapshot> = CardState(),
             actions: CardState<ActionsSnapshot> = CardState(),
             mergeRequests: CardState<MergeRequestsSnapshot> = CardState(),
+            azurePullRequests: CardState<AzurePullRequestsSnapshot> = CardState(),
             githubLabels: [String: String] = [:],
             gitlabLabels: [String: String] = [:],
+            azureLabels: [String: String] = [:],
             accountFailingSince: [String: Date] = [:],
             projects: [WatchedProject] = [],
             watch: ProjectWatch = ProjectWatch(),
@@ -49,8 +54,10 @@ public enum DeckAttention {
             self.inbox = inbox
             self.actions = actions
             self.mergeRequests = mergeRequests
+            self.azurePullRequests = azurePullRequests
             self.githubLabels = githubLabels
             self.gitlabLabels = gitlabLabels
+            self.azureLabels = azureLabels
             self.accountFailingSince = accountFailingSince
             self.projects = projects
             self.watch = watch
@@ -76,6 +83,9 @@ public enum DeckAttention {
         if active.contains(.gitlabMergeRequests) {
             items += GitLabAttention.items(mergeRequests: input.mergeRequests.value, labels: input.gitlabLabels)
         }
+        if active.contains(.azurePullRequests) {
+            items += AzureAttention.items(pullRequests: input.azurePullRequests.value, labels: input.azureLabels)
+        }
 
         items += AccountAttention.items(
             failures: githubFailures(input),
@@ -89,6 +99,14 @@ public enum DeckAttention {
                 service: .gitlab,
                 now: now,
                 failingSince: since(input.accountFailingSince, service: .gitlab)
+            )
+        }
+        if active.contains(.azurePullRequests) {
+            items += AccountAttention.items(
+                failures: failures(of: input.azurePullRequests, snapshot: input.azurePullRequests.value?.failures),
+                service: .azure,
+                now: now,
+                failingSince: since(input.accountFailingSince, service: .azure)
             )
         }
 

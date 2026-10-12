@@ -1,4 +1,5 @@
 import ArcKit
+import AzureKit
 import DDEVKit
 import DevDeckCore
 import Foundation
@@ -14,7 +15,7 @@ import ProjectKit
 
 /// Which kind of thing a sidebar row is about.
 public enum DeckSettingsKind: String, Sendable, Equatable, Codable {
-    case github, gitlab, arc, ddev, project
+    case github, gitlab, azure, arc, ddev, project
 }
 
 /// One row of the settings sidebar.
@@ -90,6 +91,17 @@ extension DeckRuntime {
                 title: account.label,
                 detail: hasToken ? account.displayHost : L("settings.list.noToken", account.displayHost),
                 mark: .gitlab,
+                tone: hasToken ? nil : .attention,
+                isDimmed: !account.isEnabled
+            )
+        } + azureAccountsStore.accounts().map { account -> DeckSettingsItem in
+            let hasToken = hasToken(account.tokenKey)
+            return DeckSettingsItem(
+                kind: .azure,
+                id: account.id,
+                title: account.label,
+                detail: hasToken ? account.displayOrganization : L("settings.list.noToken", account.displayOrganization),
+                mark: .azure,
                 tone: hasToken ? nil : .attention,
                 isDimmed: !account.isEnabled
             )
@@ -385,6 +397,16 @@ extension DeckRuntime {
         return id
     }
 
+    /// Adds an Azure DevOps organization and turns its card on, for the same reason.
+    public func addAzureAccount() -> String {
+        var accounts = azureAccountsStore.accounts()
+        let id = AzureAccount.makeID(from: "azure", existing: accounts.map(\.id))
+        accounts.append(AzureAccount(id: id, label: "Azure DevOps"))
+        azureAccountsStore.save(accounts)
+        cards.setEnabled(true, for: .azurePullRequests)
+        return id
+    }
+
     public func saveGitHubAccount(_ account: GitHubAccount) {
         var accounts = accountsStore.accounts()
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
@@ -405,6 +427,16 @@ extension DeckRuntime {
         gitlabAccountsStore.save(accounts)
     }
 
+    public func saveAzureAccount(_ account: AzureAccount) {
+        var accounts = azureAccountsStore.accounts()
+        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+            accounts[index] = account
+        } else {
+            accounts.append(account)
+        }
+        azureAccountsStore.save(accounts)
+    }
+
     /// Removes an account and its token with it.
     public func removeGitHubAccount(_ id: String) {
         if let account = accountsStore.accounts().first(where: { $0.id == id }) {
@@ -420,6 +452,13 @@ extension DeckRuntime {
         gitlabAccountsStore.save(gitlabAccountsStore.accounts().filter { $0.id != id })
     }
 
+    public func removeAzureAccount(_ id: String) {
+        if let account = azureAccountsStore.accounts().first(where: { $0.id == id }) {
+            try? tokenStore.setToken(nil, for: account.tokenKey)
+        }
+        azureAccountsStore.save(azureAccountsStore.accounts().filter { $0.id != id })
+    }
+
     /// The account's own pull requests on the web, in its own browser.
     public func testLink(_ account: GitHubAccount) -> DeckLinkTest {
         .open(URL(string: "https://github.com/pulls")!, account.browser)
@@ -428,6 +467,13 @@ extension DeckRuntime {
     /// The instance's merge requests dashboard, in the account's own browser.
     public func testLink(_ account: GitLabAccount) -> DeckLinkTest {
         .open(account.host.appendingPathComponent("dashboard").appendingPathComponent("merge_requests"), account.browser)
+    }
+
+    /// The organization's own pull requests page, in the account's own browser. With no
+    /// organization typed yet there is nothing to open, and the form says so.
+    public func testLink(_ account: AzureAccount) -> DeckLinkTest {
+        guard !account.organization.isEmpty else { return .note(L("account.azure.noOrganization")) }
+        return .open(account.organizationURL.appendingPathComponent("_pulls"), account.browser)
     }
 
     /// Checks a GitHub token, the one typed or the one stored, and stores a typed one only once
@@ -463,6 +509,24 @@ extension DeckRuntime {
         } catch let error as APIError {
             // Said the way GitHub's says it: no token anywhere is a different problem from one
             // that was refused.
+            return .refused(typed.isEmpty && !hasToken(account.tokenKey) ? L("token.needed") : error.displayMessage)
+        } catch {
+            return .refused(error.localizedDescription)
+        }
+    }
+
+    /// The same for an Azure DevOps organization.
+    public func checkAzureToken(for account: AzureAccount, typed: String) async -> DeckTokenCheck {
+        guard !account.organization.isEmpty else { return .refused(L("account.azure.noOrganization")) }
+        let probe: any TokenStore = typed.isEmpty ? tokenStore : InMemoryTokenStore(tokens: [account.tokenKey: typed])
+        let client = http.map {
+            AzureClient(transport: APITransport(client: $0), tokenStore: probe, account: account)
+        } ?? AzureClient.makeDefault(account: account, tokenStore: probe)
+        do {
+            let snapshot = try await AzurePullRequestsService(client: client, account: account).fetch()
+            if !typed.isEmpty { try tokenStore.setToken(typed, for: account.tokenKey) }
+            return .works(LN("token.works.pulls", snapshot.totalCount))
+        } catch let error as APIError {
             return .refused(typed.isEmpty && !hasToken(account.tokenKey) ? L("token.needed") : error.displayMessage)
         } catch {
             return .refused(error.localizedDescription)

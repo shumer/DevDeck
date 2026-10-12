@@ -22,7 +22,7 @@ public enum DeckTone: String, Sendable, Equatable, Codable {
 
 /// A card's brand mark. The shell draws its own vector for each.
 public enum DeckMark: String, Sendable, Equatable, Codable {
-    case github, gitlab, arc, ddev, node, next, nest, bun, docker, make, project
+    case github, gitlab, azure, arc, ddev, node, next, nest, bun, docker, make, project
 }
 
 /// What an icon means, not which picture it is.
@@ -60,7 +60,16 @@ public struct DeckIconModel: Sendable, Equatable, Codable {
 
 /// The services whose links open in an account's own browser.
 public enum DeckLinkService: String, Sendable, Equatable, Codable {
-    case github, gitlab
+    case github, gitlab, azure
+
+    /// The same service, from the attention side's name for it.
+    public init(_ service: AttentionService) {
+        switch service {
+        case .github: self = .github
+        case .gitlab: self = .gitlab
+        case .azure: self = .azure
+        }
+    }
 }
 
 /// What a click asks for. The runtime carries it out: it changes the deck, or it hands the shell
@@ -183,8 +192,13 @@ public struct DeckPlaceholderModel: Sendable, Equatable, Codable {
         message = state.failure?.displayMessage ?? L("token.checking")
         isFailure = state.failure != nil
         if case .missingToken(let service) = state.failure {
-            // A GitLab card has no token of its own until there is an instance to hold one.
-            hint = service == "GitLab" ? L("card.addGitLab") : L("card.addToken", service)
+            // A GitLab or Azure DevOps card has no token of its own until there is an account
+            // to hold one.
+            switch service {
+            case "GitLab": hint = L("card.addGitLab")
+            case "Azure DevOps": hint = L("card.addAzure")
+            default: hint = L("card.addToken", service)
+            }
         } else {
             hint = nil
         }

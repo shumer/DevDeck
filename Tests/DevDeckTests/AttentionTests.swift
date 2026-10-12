@@ -3,6 +3,7 @@ import DevDeckEngine
 import DevDeckUI
 import Foundation
 import GitHubKit
+import AzureKit
 import GitLabKit
 import TestHarness
 
@@ -237,7 +238,7 @@ func runAttentionTests(_ run: TestRun) async {
 
         let missing = AccountFailure(account: "GitHub", message: "No GitHub token yet", kind: .rejected)
         try expectEqual(AccountAttention.items(failures: [missing], service: .github, now: now, failingSince: [:]).first?.title,
-                        "Add a GitHub token")
+                        "Add a token for GitHub")
     }
 
     await run.test("a network blip is only good to know, until it has lasted") {
@@ -434,6 +435,20 @@ func runAttentionTests(_ run: TestRun) async {
 
         input.activeCards = []
         try expect(DeckAttention.digest(input, now: now).isEmpty, "what a hidden card fetched before is not news")
+
+        let vote = AzurePullRequestSummary(
+            id: "r/1", number: 1, title: "Split the parser", project: "Shop", repository: "web",
+            url: URL(string: "https://dev.azure.com/acme/Shop/_git/web/pullrequest/1")!, isDraft: false, merge: .succeeded,
+            createdAt: now, approvals: 0, hasChangesRequested: false, requiredVotesMissing: 1, accountID: "ado", isReviewRequest: true
+        )
+        let azure = DeckAttention.Input(
+            activeCards: [.azurePullRequests],
+            azurePullRequests: CardState(value: AzurePullRequestsSnapshot(totalCount: 1, pullRequests: [vote]), updatedAt: now)
+        )
+        try expectEqual(DeckAttention.digest(azure, now: now).iconTier, .waiting, "an Azure DevOps vote owed lights the icon")
+        var tokenless = DeckAttention.Input(activeCards: [.azurePullRequests])
+        tokenless.azurePullRequests.fail(.missingToken("Azure DevOps"))
+        try expectEqual(DeckAttention.digest(tokenless, now: now).items.first?.title, "Add a token for Azure DevOps")
 
         var rejected = DeckAttention.Input(activeCards: [.githubPullRequests])
         rejected.pullRequests.fail(.accounts([AccountFailure(account: "Work", accountID: "work", error: APIError.unauthorized)]))

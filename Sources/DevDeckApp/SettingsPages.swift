@@ -2,6 +2,7 @@ import AppKit
 import DevDeckCore
 import DevDeckEngine
 import GitHubKit
+import AzureKit
 import GitLabKit
 import ArcKit
 import DDEVKit
@@ -84,6 +85,7 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
             // The server ships inside the bundle, in Helpers beside the app's own binary.
             let server = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/DevDeckMCP").path
             form.footnote(L("settings.agents.register", "claude mcp add --scope user devdeck -- \"\(server)\""))
+            form.footnote(L("settings.agents.register.codex", "codex mcp add devdeck -- \"\(server)\""))
         }
 
         form.footnote(AppVersion.isTranslocated
@@ -426,6 +428,7 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
     private let preferences: Preferences
     private let githubStore: GitHubAccountsStore
     private let gitlabStore: GitLabAccountsStore
+    private let azureStore: AzureAccountsStore
     private let arcStore: ArcProjectsStore
     private let ddevStore: DDEVProjectsStore
     private let localStore: LocalProjectsStore
@@ -439,6 +442,7 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
         preferences: Preferences,
         githubStore: GitHubAccountsStore,
         gitlabStore: GitLabAccountsStore,
+        azureStore: AzureAccountsStore,
         arcStore: ArcProjectsStore,
         ddevStore: DDEVProjectsStore,
         localStore: LocalProjectsStore
@@ -446,6 +450,7 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
         self.preferences = preferences
         self.githubStore = githubStore
         self.gitlabStore = gitlabStore
+        self.azureStore = azureStore
         self.arcStore = arcStore
         self.ddevStore = ddevStore
         self.localStore = localStore
@@ -476,7 +481,8 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
 
         let github = githubStore.accounts()
         let gitlab = gitlabStore.accounts()
-        if !github.isEmpty || !gitlab.isEmpty {
+        let azure = azureStore.accounts()
+        if !github.isEmpty || !gitlab.isEmpty || !azure.isEmpty {
             form.section(L("settings.notifications.accounts"))
             form.beginGroup()
             form.settingRow("", control: Self.columns([
@@ -497,6 +503,13 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
                     toggle(.stuck, "gitlab", account.id, isOn: account.notifiesBlocked, title: L("notify.toggle.stuck", account.label)),
                     // GitLab has no Actions card, so there is nothing to switch here. A dash
                     // rather than a hole, so the column reads as "not for this one".
+                    Self.columnLabel("-"),
+                ]))
+            }
+            for account in azure {
+                form.settingRow(account.label, subtitle: "Azure DevOps", control: Self.columns([
+                    toggle(.review, "azure", account.id, isOn: account.notifiesReviewRequests, title: L("notify.toggle.review", account.label)),
+                    toggle(.stuck, "azure", account.id, isOn: account.notifiesBlocked, title: L("notify.toggle.stuck", account.label)),
                     Self.columnLabel("-"),
                 ]))
             }
@@ -605,6 +618,8 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
         case (.runs, "github"): updateGitHub(target.id) { $0.notifiesFailedRuns = isOn }
         case (.review, "gitlab"): updateGitLab(target.id) { $0.notifiesReviewRequests = isOn }
         case (.stuck, "gitlab"): updateGitLab(target.id) { $0.notifiesBlocked = isOn }
+        case (.review, "azure"): updateAzure(target.id) { $0.notifiesReviewRequests = isOn }
+        case (.stuck, "azure"): updateAzure(target.id) { $0.notifiesBlocked = isOn }
         case (.down, _):
             // Stored as the exceptions, so a project added later is covered without asking.
             if isOn { preferences.projectsQuietWhenDown.remove(target.id) } else { preferences.projectsQuietWhenDown.insert(target.id) }
@@ -628,5 +643,12 @@ final class NotificationsSettingsPage: NSObject, SettingsPage {
         guard let index = accounts.firstIndex(where: { $0.id == id }) else { return }
         change(&accounts[index])
         gitlabStore.save(accounts)
+    }
+
+    private func updateAzure(_ id: String, _ change: (inout AzureAccount) -> Void) {
+        var accounts = azureStore.accounts()
+        guard let index = accounts.firstIndex(where: { $0.id == id }) else { return }
+        change(&accounts[index])
+        azureStore.save(accounts)
     }
 }

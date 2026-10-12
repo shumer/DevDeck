@@ -5,6 +5,7 @@ import DevDeckEngine
 import DevDeckLocalization
 import Foundation
 import GitHubKit
+import AzureKit
 import GitLabKit
 import ProjectKit
 
@@ -51,6 +52,7 @@ let runtime = DeckRuntime(
     tokenStore: tokenStore,
     accountsStore: GitHubAccountsStore(backend: backend),
     gitlabAccountsStore: GitLabAccountsStore(backend: backend),
+    azureAccountsStore: AzureAccountsStore(backend: backend),
     projectsStore: ArcProjectsStore(backend: backend),
     ddevProjectsStore: DDEVProjectsStore(backend: backend),
     localProjectsStore: LocalProjectsStore(backend: backend),

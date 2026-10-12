@@ -5,6 +5,7 @@ import Combine
 import DevDeckCore
 import DevDeckUI
 import GitHubKit
+import AzureKit
 import GitLabKit
 import ProjectKit
 import SwiftUI
@@ -22,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let tokenStore: any TokenStore = CompositeTokenStore.standard()
     private let accountsStore = GitHubAccountsStore(backend: UserDefaults.standard)
     private let gitlabAccountsStore = GitLabAccountsStore(backend: UserDefaults.standard)
+    private let azureAccountsStore = AzureAccountsStore(backend: UserDefaults.standard)
     private let projectsStore = ArcProjectsStore(backend: UserDefaults.standard)
     private let ddevProjectsStore = DDEVProjectsStore(backend: UserDefaults.standard)
     private let localProjectsStore = LocalProjectsStore(backend: UserDefaults.standard)
@@ -31,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         tokenStore: tokenStore,
         accountsStore: accountsStore,
         gitlabAccountsStore: gitlabAccountsStore,
+        azureAccountsStore: azureAccountsStore,
         projectsStore: projectsStore,
         ddevProjectsStore: ddevProjectsStore,
         localProjectsStore: localProjectsStore
@@ -47,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             InboxModule(context: context),
             ActionsModule(context: context),
             MergeRequestsModule(context: context),
+            AzurePullRequestsModule(context: context),
             WorkInFlightModule(context: context),
             arcModule,
             ddevModule,
@@ -69,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.settingsController.show(target.section, id: target.id)
         },
         openAccountSettings: { [unowned self] service, id in
-            self.settingsController.show(service == .github ? .github : .gitlab, id: id)
+            self.settingsController.show(SettingsWindowController.Section(service), id: id)
         },
         // The runtime has put the card on the deck and opened its log; what is left is the Mac's.
         showCard: { [unowned self] _ in self.summoner.present() },
@@ -86,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         preferences: preferences,
         githubStore: accountsStore,
         gitlabStore: gitlabAccountsStore,
+        azureStore: azureAccountsStore,
         arcStore: projectsStore,
         ddevStore: ddevProjectsStore,
         localStore: localProjectsStore
@@ -100,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sections: [
             GitHubAccountsSection(store: accountsStore, runtime: controller.runtime),
             GitLabInstancesSection(store: gitlabAccountsStore, runtime: controller.runtime),
+            AzureOrganizationsSection(store: azureAccountsStore, runtime: controller.runtime),
             arcModule,
             ddevModule,
             localModule,
@@ -146,9 +152,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller.$localStatuses.map { _ in () }.eraseToAnyPublisher(),
             controller.$collapsedCards.map { _ in () }.eraseToAnyPublisher(),
             controller.$parkedCards.map { _ in () }.eraseToAnyPublisher(),
-            // The rest of what the menu-bar badge is made of: GitLab, Docker, the projects'
-            // history and the checkouts.
+            // The rest of what the menu-bar badge is made of: GitLab, Azure DevOps, Docker, the
+            // projects' history and the checkouts.
             controller.$mergeRequests.map { _ in () }.eraseToAnyPublisher(),
+            controller.$azurePullRequests.map { _ in () }.eraseToAnyPublisher(),
             controller.$docker.map { _ in () }.eraseToAnyPublisher(),
             controller.$watch.map { _ in () }.eraseToAnyPublisher(),
             controller.$checkouts.map { _ in () }.eraseToAnyPublisher()
@@ -296,6 +303,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let keys = accountsStore.accounts().map(\.tokenKey)
             + gitlabAccountsStore.accounts().map(\.tokenKey)
+            + azureAccountsStore.accounts().map(\.tokenKey)
         let result = KeychainAccessPolicy.rewrite(keys: keys, in: tokenStore)
         guard result.isComplete else {
             // Left unrecorded, so the next launch tries again rather than trusting a half done job.

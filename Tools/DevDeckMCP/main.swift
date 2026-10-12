@@ -10,6 +10,7 @@ import Foundation
 // before a tool runs; the deck decides whether the command may run at all.
 //
 //   claude mcp add --scope user devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP
+//   codex mcp add devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP
 //
 // See docs/mcp.md and docs/adr/0036-agent-access.md.
 

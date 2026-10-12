@@ -1,4 +1,5 @@
 import ArcKit
+import AzureKit
 import DDEVKit
 import DevDeckCore
 import Foundation
@@ -8,7 +9,7 @@ import ProjectKit
 
 /// One stored field of the runtime, named when it is assigned. See `DeckRuntime.onChange`.
 public enum DeckField: String, CaseIterable, Sendable {
-    case pullRequests, inbox, actions, mergeRequests, checkouts, checkoutsCheckedAt
+    case pullRequests, inbox, actions, mergeRequests, azurePullRequests, checkouts, checkoutsCheckedAt
     case expandedCards, logTails, logWindowCards, inboxProgress, collapsedCards, parkedCards
     case stackStatuses, ddevStatuses, localStatuses, docker, watch, localAddress, phoneReach
 }
@@ -128,6 +129,9 @@ public final class DeckRuntime {
     public private(set) var mergeRequests = CardState<MergeRequestsSnapshot>() {
         didSet { changed(.mergeRequests) }
     }
+    public private(set) var azurePullRequests = CardState<AzurePullRequestsSnapshot>() {
+        didSet { changed(.azurePullRequests) }
+    }
     public private(set) var checkouts: [CheckoutState] = [] {
         didSet { changed(.checkouts) }
     }
@@ -216,6 +220,7 @@ public final class DeckRuntime {
     let tokenStore: any TokenStore
     let accountsStore: GitHubAccountsStore
     let gitlabAccountsStore: GitLabAccountsStore
+    let azureAccountsStore: AzureAccountsStore
     let projectsStore: ArcProjectsStore
     let ddevProjectsStore: DDEVProjectsStore
     let localProjectsStore: LocalProjectsStore
@@ -273,6 +278,7 @@ public final class DeckRuntime {
         tokenStore: any TokenStore,
         accountsStore: GitHubAccountsStore,
         gitlabAccountsStore: GitLabAccountsStore,
+        azureAccountsStore: AzureAccountsStore,
         projectsStore: ArcProjectsStore,
         ddevProjectsStore: DDEVProjectsStore,
         localProjectsStore: LocalProjectsStore,
@@ -293,6 +299,7 @@ public final class DeckRuntime {
         self.tokenStore = tokenStore
         self.accountsStore = accountsStore
         self.gitlabAccountsStore = gitlabAccountsStore
+        self.azureAccountsStore = azureAccountsStore
         self.projectsStore = projectsStore
         self.ddevProjectsStore = ddevProjectsStore
         self.localProjectsStore = localProjectsStore
@@ -1381,6 +1388,14 @@ public final class DeckRuntime {
         }
     }
 
+    private func alerts(from snapshot: AzurePullRequestsSnapshot) -> [DeckAlert] {
+        let accounts = Dictionary(azureAccountsStore.accounts().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return AzureAttention.alerts(pullRequests: snapshot, labels: azureLabels).filter { alert in
+            guard case .url(_, let accountID) = alert.target, let account = accounts[accountID] else { return false }
+            return alert.kind == .reviewRequest ? account.notifiesReviewRequests : account.notifiesBlocked
+        }
+    }
+
     /// Banners for the projects on this Mac, after each pass of the local loop, kept to the
     /// projects that may interrupt you.
     private func announceProjects() {
@@ -1416,9 +1431,13 @@ public final class DeckRuntime {
         let gitlab = activeCards.contains(.gitlabMergeRequests)
             ? DeckAttention.failures(of: mergeRequests, snapshot: mergeRequests.value?.failures)
             : []
+        let azure = activeCards.contains(.azurePullRequests)
+            ? DeckAttention.failures(of: azurePullRequests, snapshot: azurePullRequests.value?.failures)
+            : []
+        let byService = [(AttentionService.github, github), (.gitlab, gitlab), (.azure, azure)]
         let now = clock.now
         var failing: [String: Date] = [:]
-        for (service, failures) in [(AttentionService.github, github), (.gitlab, gitlab)] {
+        for (service, failures) in byService {
             for failure in failures {
                 let key = "\(service.rawValue):\(failure.accountID ?? failure.account)"
                 failing[key] = accountFailingSince[key] ?? now
@@ -1427,7 +1446,7 @@ public final class DeckRuntime {
         accountFailingSince = failing
 
         var candidates: [DeckAlert] = []
-        for (service, failures) in [(AttentionService.github, github), (.gitlab, gitlab)] {
+        for (service, failures) in byService {
             for failure in failures {
                 let key = "\(service.rawValue):\(failure.accountID ?? failure.account)"
                 if let alert = AccountAttention.alert(for: failure, service: service, since: failing[key]) {
@@ -1555,6 +1574,7 @@ public final class DeckRuntime {
         if card == .githubInbox { return inbox.value != nil }
         if card == .githubActions { return actions.value != nil }
         if card == .gitlabMergeRequests { return mergeRequests.value != nil }
+        if card == .azurePullRequests { return azurePullRequests.value != nil }
         if card == .workInFlight { return checkoutsCheckedAt != nil }
         if let project = project(forCard: card) { return stackStatuses[project.id] != nil }
         if let project = ddevProject(forCard: card) { return ddevStatuses[project.id] != nil }
@@ -1619,6 +1639,29 @@ public final class DeckRuntime {
         gitlabAccountsStore.accounts().first { $0.id == accountID }?.browser ?? .systemDefault
     }
 
+    /// Azure DevOps account id to label, for the per-row chips on its card. Same rule as the
+    /// others: chips only appear when there is more than one organization to tell apart.
+    public var azureAccountLabels: [String: String] {
+        Dictionary(
+            azureAccountsStore.enabledAccounts().map { ($0.id, $0.label) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
+    /// Where an Azure DevOps row opens. An unknown id falls back to the system default.
+    public func azureBrowser(for accountID: String) -> BrowserChoice {
+        azureAccountsStore.accounts().first { $0.id == accountID }?.browser ?? .systemDefault
+    }
+
+    /// Where a row of any service opens: the browser of the account it came from.
+    func browser(for accountID: String, service: DeckLinkService) -> BrowserChoice {
+        switch service {
+        case .github: return browser(for: accountID)
+        case .gitlab: return gitlabBrowser(for: accountID)
+        case .azure: return azureBrowser(for: accountID)
+        }
+    }
+
     /// Account id to label, for the per-row chips. Cards only draw chips when there is more
     /// than one account, so this doubles as the "is this a multi-account deck" answer.
     public var accountLabels: [String: String] {
@@ -1670,6 +1713,17 @@ public final class DeckRuntime {
         let tokenStore = tokenStore
         return GitLabWorkspace(accounts: gitlabAccountsStore.enabledAccounts()) { account in
             GitLabClient(transport: APITransport(client: http), tokenStore: tokenStore, account: account)
+        }
+    }
+
+    /// Rebuilt every pass, like the other two.
+    private var azure: AzureWorkspace {
+        guard let http else {
+            return AzureWorkspace(accounts: azureAccountsStore.enabledAccounts(), tokenStore: tokenStore)
+        }
+        let tokenStore = tokenStore
+        return AzureWorkspace(accounts: azureAccountsStore.enabledAccounts()) { account in
+            AzureClient(transport: APITransport(client: http), tokenStore: tokenStore, account: account)
         }
     }
 
@@ -1744,6 +1798,12 @@ public final class DeckRuntime {
                 self.announce(self.alerts(from: snapshot), channel: "gitlab")
                 return nil
             },
+            RefreshSource(card: .azurePullRequests) { @MainActor [weak self] in
+                guard let self else { return nil }
+                let snapshot = try await self.fetch(into: \.azurePullRequests) { try await self.azure.pullRequests() }
+                self.announce(self.alerts(from: snapshot), channel: "azure")
+                return nil
+            },
             RefreshSource(card: .githubActions) { @MainActor [weak self] in
                 guard let self else { return nil }
                 let snapshot = try await self.fetch(into: \.actions) {
@@ -1805,6 +1865,10 @@ public final class DeckRuntime {
         gitlabAccountLabels.count > 1 ? gitlabAccountLabels : [:]
     }
 
+    public var azureLabels: [String: String] {
+        azureAccountLabels.count > 1 ? azureAccountLabels : [:]
+    }
+
     /// The projects on the deck, in the words the attention rows name them with.
     public var watchedProjects: [WatchedProject] {
         activeProjects.map {
@@ -1837,8 +1901,10 @@ public final class DeckRuntime {
             inbox: inbox,
             actions: actions,
             mergeRequests: mergeRequests,
+            azurePullRequests: azurePullRequests,
             githubLabels: githubLabels,
             gitlabLabels: gitlabLabels,
+            azureLabels: azureLabels,
             accountFailingSince: accountFailingSince,
             projects: watchedProjects,
             watch: watch,
@@ -1977,6 +2043,14 @@ public final class DeckRuntime {
                 isCollapsed: isCollapsed(card),
                 now: clock.now
             ))
+        case .azurePullRequests:
+            return .reviewList(.azurePullRequests(
+                state: azurePullRequests,
+                accountLabels: azureAccountLabels,
+                isExpanded: isExpanded(card),
+                isCollapsed: isCollapsed(card),
+                now: clock.now
+            ))
         case .githubInbox:
             return .inbox(.build(
                 state: inbox,
@@ -2046,13 +2120,15 @@ public final class DeckRuntime {
     public func perform(_ command: DeckCommand) {
         switch command {
         case .openLink(let url, let account, let service):
-            effect(.openURL(url, service == .github ? browser(for: account) : gitlabBrowser(for: account)))
+            effect(.openURL(url, browser(for: account, service: service)))
         case .openDashboard(let card):
             guard let url = dashboardURL(for: card) else { return }
             // The dashboard belongs to whichever account is first; there is no row to ask. A
             // GitLab card's first account is a GitLab one, in that account's browser.
             if card == .gitlabMergeRequests {
                 effect(.openURL(url, gitlabBrowser(for: gitlabAccountLabels.keys.sorted().first ?? "")))
+            } else if card == .azurePullRequests {
+                effect(.openURL(url, azureBrowser(for: azureAccountLabels.keys.sorted().first ?? "")))
             } else {
                 effect(.openURL(url, browser(for: accountLabels.keys.sorted().first ?? "")))
             }
@@ -2158,8 +2234,14 @@ public final class DeckRuntime {
     private func follow(_ target: DeckAlert.Target) {
         switch target {
         case .url(let url, let account):
-            let isGitLab = gitlabAccountLabels[account] != nil
-            effect(.openURL(url, isGitLab ? gitlabBrowser(for: account) : browser(for: account)))
+            // The id says which service the banner came from: each store has its own ids.
+            if gitlabAccountLabels[account] != nil {
+                effect(.openURL(url, gitlabBrowser(for: account)))
+            } else if azureAccountLabels[account] != nil {
+                effect(.openURL(url, azureBrowser(for: account)))
+            } else {
+                effect(.openURL(url, browser(for: account)))
+            }
         case .card(let card):
             showCard(card)
         case .accountSettings(let service, let account):
@@ -2179,6 +2261,12 @@ public final class DeckRuntime {
         // The instance is per account, so this is only the nearest thing to a constant; the
         // card's own rows carry absolute URLs.
         case .gitlabMergeRequests: return URL(string: "https://gitlab.com/dashboard/merge_requests")
+        // Per organization, like GitLab's per instance; the first enabled organization's page.
+        case .azurePullRequests:
+            guard let account = azureAccountsStore.enabledAccounts().first, !account.organization.isEmpty else {
+                return URL(string: "https://dev.azure.com")
+            }
+            return account.organizationURL.appendingPathComponent("_pulls")
         default: return nil
         }
     }

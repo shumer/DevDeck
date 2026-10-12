@@ -3,6 +3,10 @@
 // from one of them or left over in one.
 
 "account.advanced" = "Advanced";
+"account.azure.create" = "Create a token on dev.azure.com…";
+"account.azure.noOrganization" = "Type the organization first";
+"account.azure.organization" = "Organization";
+"account.azure.token.help" = "A personal access token for this organization with the Code (Read) scope. The card asks for pull requests and their reviewers, and nothing else.";
 "account.github.advanced.summary" = "Limit to organisations";
 "account.github.create" = "Create a token on GitHub…";
 "account.github.organisations" = "Organisations";
@@ -36,7 +40,7 @@
 "attention.account.forbidden.subtitle" = "%@ · approve it for the organisation or sign in with SSO";
 "attention.account.forbidden.title" = "%1$@ token can't see everything (%2$@)";
 "attention.account.missing.subtitle" = "Nothing from %@ can load until there is one";
-"attention.account.missing.title" = "Add a %@ token";
+"attention.account.missing.title" = "Add a token for %@";
 "attention.account.rate.back" = "Back at %@, nothing to do";
 "attention.account.rate.self" = "Nothing to do, it resets by itself";
 "attention.account.rate.title" = "%1$@ rate limit (%2$@)";
@@ -64,6 +68,7 @@
 "attention.banner.pr.changes.title" = "Changes requested on your pull request";
 "attention.banner.pr.checks.title" = "Checks failed on your pull request";
 "attention.banner.pr.conflict.title" = "Your pull request has a merge conflict";
+"attention.banner.pr.merge.title" = "Your pull request cannot be merged";
 "attention.banner.review.title" = "Your review is requested";
 "attention.banner.review.title.who" = "%@ asked for your review";
 "attention.banner.run.body" = "The last run failed. Click to see it.";
@@ -117,6 +122,7 @@
 "attention.stuck.changesRequested" = "Changes requested";
 "attention.stuck.checksFailed" = "Checks failed";
 "attention.stuck.conflict" = "Merge conflict";
+"attention.stuck.mergeFailed" = "Merge failed";
 "attention.stuck.pipelineFailed" = "Pipeline failed";
 "attention.summary.none" = "nothing needs you";
 "attention.tier.goodToKnow" = "Good to know";
@@ -168,11 +174,14 @@
 "card.actions.run.help" = "%1$@ · %2$@ on %3$@";
 "card.actions.running" = "%d running";
 "card.actions.successWindow" = "%% success · %dd";
+"card.addAzure" = "Add an Azure DevOps organization in Settings";
 "card.addGitLab" = "Add a GitLab instance in Settings";
 "card.addToken" = "Add a %@ token in Settings";
 "card.allAccounts" = "all accounts";
 "card.asOf" = "as of %@";
 "card.branch.checkedOut" = "checked out branch";
+"card.chrome.pulls.azure" = "Azure DevOps · pull requests";
+"card.title.pulls.azure" = "Azure DevOps pull requests";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, the branch is %2$@";
@@ -447,6 +456,7 @@
 "project.stopNoEffect" = "stop did not take effect, still answering";
 "project.urlAnswered" = "%1$@ answered %2$d";
 "settings.add.arc" = "Arc XP Project";
+"settings.add.azure" = "Azure DevOps Organization";
 "settings.add.ddev" = "DDEV Project…";
 "settings.add.github" = "GitHub Account";
 "settings.add.gitlab" = "GitLab Instance";
@@ -493,6 +503,7 @@
 "settings.agents.access.read.detail" = "Agents connected over MCP, such as Claude Code or Cursor, see what the cards and the menu show, and change nothing.";
 "settings.agents.access.control.detail" = "Agents connected over MCP can also start, stop and restart projects and mark notifications read, with the same limits as the buttons.";
 "settings.agents.register" = "Add DevDeck to Claude Code with: %@";
+"settings.agents.register.codex" = "Add DevDeck to Codex with: %@";
 "agents.error.off" = "The MCP server is off. Turn it on in DevDeck: Settings, General, Agents (MCP).";
 "agents.error.readOnly" = "The MCP server is read only. Choose Read and control in DevDeck: Settings, General, Agents (MCP).";
 "agents.error.notAllowed" = "An agent cannot ask DevDeck to do that.";

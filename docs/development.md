@@ -333,6 +333,7 @@ Sources/
   KeychainACL/     the C shim for the one deprecated Keychain call Swift cannot silence
   GitHubKit/       GraphQL and REST clients, models, per-account fan-out
   GitLabKit/       GitLab accounts per host, the merge requests query, models
+  AzureKit/        Azure DevOps accounts per organization, the pull request lists, models
   ArcKit/          Arc projects, link templates, local Fusion stack, .env port
   DDEVKit/         DDEV projects, ddev list, .ddev/config.yaml, composer.lock version
   ProjectKit/      plain projects: folder probe, detached start, log and pid, health check

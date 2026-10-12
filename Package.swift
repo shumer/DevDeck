@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
         .library(name: "GitHubKit", targets: ["GitHubKit"]),
         .library(name: "GitLabKit", targets: ["GitLabKit"]),
+        .library(name: "AzureKit", targets: ["AzureKit"]),
         .library(name: "ArcKit", targets: ["ArcKit"]),
         .library(name: "DDEVKit", targets: ["DDEVKit"]),
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
@@ -32,12 +33,13 @@ let package = Package(
         ),
         .target(name: "GitHubKit", dependencies: ["DevDeckCore"]),
         .target(name: "GitLabKit", dependencies: ["DevDeckCore"]),
+        .target(name: "AzureKit", dependencies: ["DevDeckCore"]),
         .target(name: "ArcKit", dependencies: ["DevDeckCore"]),
         .target(name: "DDEVKit", dependencies: ["DevDeckCore"]),
         .target(name: "ProjectKit", dependencies: ["DevDeckCore"]),
         .target(
             name: "DevDeckEngine",
-            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit", "ProjectKit"]
         ),
         .target(
             name: "DevDeckLocalization",
@@ -50,7 +52,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "DevDeckEngineHost",
-            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit", "ProjectKit"]
         ),
 
         // Holds a native Windows project's Job Object, so the project outlives the engine.
@@ -80,7 +82,7 @@ let package = Package(
         .executableTarget(
             name: "DevDeckEngineTests",
             dependencies: [
-                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit",
+                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit",
                 "ProjectKit", "TestHarness",
             ],
             path: "Tests/EngineTests",
@@ -104,6 +106,8 @@ let package = Package(
     products: [
         .library(name: "DevDeckCore", targets: ["DevDeckCore"]),
         .library(name: "GitHubKit", targets: ["GitHubKit"]),
+        .library(name: "GitLabKit", targets: ["GitLabKit"]),
+        .library(name: "AzureKit", targets: ["AzureKit"]),
         .library(name: "ArcKit", targets: ["ArcKit"]),
         .library(name: "DDEVKit", targets: ["DDEVKit"]),
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
@@ -136,7 +140,7 @@ let package = Package(
 
         .target(
             name: "DevDeckEngine",
-            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit", "ProjectKit"]
         ),
         .target(
             name: "DevDeckLocalization",
@@ -149,13 +153,13 @@ let package = Package(
         ),
         .executableTarget(
             name: "DevDeckEngineHost",
-            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
+            dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit", "ProjectKit"]
         ),
         .executableTarget(name: "DevDeckMCP", dependencies: ["DevDeckCore"], path: "Tools/DevDeckMCP"),
         .executableTarget(
             name: "DevDeckEngineTests",
             dependencies: [
-                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit",
+                "DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit",
                 "ProjectKit", "TestHarness",
             ],
             path: "Tests/EngineTests",
@@ -165,7 +169,7 @@ let package = Package(
         // SwiftUI card views shared by the desktop panels and any future surface.
         .target(
             name: "DevDeckUI",
-            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine"],
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
 
@@ -174,11 +178,14 @@ let package = Package(
             dependencies: ["DevDeckCore"]
         ),
 
+        // Azure DevOps integration: organizations, the pull request lists, models.
+        .target(name: "AzureKit", dependencies: ["DevDeckCore"]),
+
         // The AppKit shell: borderless panels, menu bar, placement and locking.
         .executableTarget(
             name: "DevDeckApp",
             dependencies: [
-                "DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine", "DevDeckUI",
+                "DevDeckCore", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine", "DevDeckUI",
             ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
@@ -211,7 +218,7 @@ let package = Package(
         // Live check against the real API, run by scripts/smoke-test.sh.
         .executableTarget(
             name: "DevDeckSmoke",
-            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit"],
+            dependencies: ["DevDeckCore", "GitHubKit", "GitLabKit", "AzureKit"],
             path: "Tools/Smoke"
         ),
 
@@ -225,7 +232,7 @@ let package = Package(
             // DevDeckUI is here for the card-sizing arithmetic, which the panels depend on
             // being right and which is plain maths rather than anything drawn.
             dependencies: [
-                "DevDeckCore", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine",
+                "DevDeckCore", "GitHubKit", "GitLabKit", "AzureKit", "ArcKit", "DDEVKit", "ProjectKit", "DevDeckEngine",
                 "DevDeckUI", "TestHarness",
             ],
             path: "Tests/DevDeckTests"

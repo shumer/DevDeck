@@ -6,7 +6,7 @@ the Keychain protects what it holds.
 ## First run
 
 ```bash
-scripts/smoke-test.sh        # optional: real GitHub and GitLab calls, prints counts, never a token
+scripts/smoke-test.sh        # optional: real GitHub, GitLab and Azure DevOps calls, prints counts, never a token
 ```
 
 Tokens are typed into Settings, one per account, because a fine-grained token is approved per
@@ -20,9 +20,10 @@ the un-suffixed Keychain key; accounts added later are `account`, `account-2` an
 a rejected one never lands in the Keychain to fail invisibly later.
 
 While no GitHub account has a token, the app opens its settings window at launch; paste one
-there instead. The first GitHub account and the first GitLab instance also read
-`DEVDECK_GITHUB_TOKEN` or `GITHUB_TOKEN`, and `DEVDECK_GITLAB_TOKEN` or `GITLAB_TOKEN`, from the
-environment when the Keychain has nothing for them.
+there instead. The first GitHub account, the first GitLab instance and the first Azure DevOps
+organization also read `DEVDECK_GITHUB_TOKEN` or `GITHUB_TOKEN`, `DEVDECK_GITLAB_TOKEN` or
+`GITLAB_TOKEN`, and `DEVDECK_AZURE_DEVOPS_TOKEN` or `AZURE_DEVOPS_EXT_PAT`, from the environment
+when the Keychain has nothing for them.
 
 Settings live in the `com.shumer.devdeck` preferences domain. To start over:
 `defaults delete com.shumer.devdeck` (tokens survive that - they are in the Keychain).
@@ -81,7 +82,8 @@ catch people out:
 `scripts/smoke-test.sh` checks the `default` account's token and prints how many repositories
 and organisations its open pull requests span; zero organisations where you know there are pull
 requests is the fastest way to tell "no open pull requests" from "cannot see the organisation".
-It also checks every enabled GitLab instance, with the token each one has in the Keychain.
+It also checks every enabled GitLab instance and Azure DevOps organization, with the token each
+one has in the Keychain.
 
 ## The Keychain and the password prompt
 

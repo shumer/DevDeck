@@ -15,7 +15,8 @@ Settings, General, **Agents (MCP)**:
 | Read only | `what_needs_me`, `cards`, `project_log`, `detect_project`. |
 | Read and control | The above, plus `start_project`, `stop_project`, `restart_project`, `mark_inbox_read`, `add_project`, `update_project`. |
 
-The change takes effect at once. Below the choice the page shows the line to register the server.
+The change takes effect at once. Below the choice the page shows the lines to register the
+server with Claude Code and with Codex.
 
 ## Registering the server
 
@@ -35,6 +36,26 @@ claude mcp add --scope user devdeck -- "$env:LOCALAPPDATA\Programs\DevDeck\DevDe
 folder the command ran in only, its `local` scope, and in any other project the tools are not
 there. The deck is about you rather than about one repository, so user scope is the one that
 makes sense; `claude mcp list` shows where it is registered.
+
+Codex, on the Mac:
+
+```bash
+codex mcp add devdeck -- /Applications/DevDeck.app/Contents/Helpers/DevDeckMCP
+```
+
+On Windows:
+
+```powershell
+codex mcp add devdeck -- "$env:LOCALAPPDATA\Programs\DevDeck\DevDeckMCP.exe"
+```
+
+Codex keeps its servers in `~/.codex/config.toml`, which is global already, so there is no scope
+to choose; `codex mcp list` shows what is registered. The same entry can be written by hand:
+
+```toml
+[mcp_servers.devdeck]
+command = "/Applications/DevDeck.app/Contents/Helpers/DevDeckMCP"
+```
 
 Cursor and other clients take the same executable as a stdio server with no arguments, for
 example in `.cursor/mcp.json`:

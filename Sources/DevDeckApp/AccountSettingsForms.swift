@@ -2,6 +2,7 @@ import AppKit
 import DevDeckCore
 import DevDeckEngine
 import GitHubKit
+import AzureKit
 import GitLabKit
 
 /// The token block both account forms share: one status line, a field for a new token, a
@@ -267,6 +268,104 @@ final class GitLabAccountForm: FlippedContainer, NSTextFieldDelegate {
 
     /// GitLab's own page for a new token, with the name and the one scope filled in.
     @objc private func createToken() { NSWorkspace.shared.open(DeckTokenPages.gitlab(host: editedAccount.host)) }
+
+    func controlTextDidEndEditing(_ notification: Notification) {
+        guard (notification.object as? NSTextField) !== token.field else { return }
+        onChange?(self)
+    }
+}
+
+// MARK: - Azure DevOps
+
+/// One Azure DevOps organization: its token, its name, the organization and where its links open.
+@MainActor
+final class AzureAccountForm: FlippedContainer, NSTextFieldDelegate {
+    private(set) var account: AzureAccount
+    let token: TokenBlock
+
+    private let nameField: NSTextField
+    private let organizationField: NSTextField
+    private let browser: BrowserPicker
+    private var enabledSwitch: NSSwitch?
+
+    var onChange: ((AzureAccountForm) -> Void)?
+    var onSave: ((AzureAccountForm) -> Void)?
+    var onTestLink: ((AzureAccountForm) -> Void)?
+
+    init(account: AzureAccount, hasToken: Bool, draft: String = "", width: CGFloat) {
+        self.account = account
+        token = TokenBlock(hasToken: hasToken, placeholder: "…", draft: draft)
+        nameField = SettingsForm.field(account.label, placeholder: "Azure DevOps")
+        organizationField = SettingsForm.field(account.organization, placeholder: "my-organization", code: true)
+        browser = BrowserPicker(choice: account.browser)
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
+
+        let form = SettingsForm(in: self)
+        enabledSwitch = form.pageHeader(
+            icon: SettingsIcons.mark(.azure, size: 32),
+            title: account.label,
+            subtitle: account.displayOrganization,
+            toggleTitle: L("account.showOnDeck"),
+            isOn: account.isEnabled,
+            target: self,
+            action: #selector(changed)
+        )
+
+        // The organization first: the token belongs to whatever organization is in this form,
+        // and the link that makes one is built from it.
+        form.section(L("account.section.account"))
+        form.beginGroup()
+        nameField.delegate = self
+        form.fieldRow(L("account.name"), [(nameField, nil)])
+        organizationField.delegate = self
+        form.fieldRow(L("account.azure.organization"), [(organizationField, nil)])
+        browser.onChange = { [weak self] in self?.changed() }
+        form.fieldRow(L("account.openLinksIn"), [(browser.browserPopUp, 170), (browser.profilePopUp, nil)], trailing: SettingsForm.button(L("button.test"), target: self, action: #selector(testLink)))
+        form.endGroup()
+
+        form.section(L("account.section.token"), help: L("account.azure.token.help"))
+        form.beginGroup()
+        token.add(to: form)
+        form.endGroup()
+        form.textButton(L("account.azure.create"), target: self, action: #selector(createToken))
+
+        frame.size.height = form.usedHeight
+        token.onSave = { [weak self] in
+            guard let self else { return }
+            self.onSave?(self)
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not used, this view is built in code")
+    }
+
+    var editedAccount: AzureAccount {
+        var edited = account
+        let label = nameField.stringValue.trimmingCharacters(in: .whitespaces)
+        edited.label = label.isEmpty ? account.label : label
+        if let organization = AzureAccount.normalizedOrganization(organizationField.stringValue) {
+            edited.organization = organization
+        }
+        edited.isEnabled = enabledSwitch?.state != .off
+        edited.browser = browser.choice
+        return edited
+    }
+
+    func apply(_ account: AzureAccount) {
+        self.account = account
+        // Whatever was pasted, the field shows the one word that was kept of it.
+        if organizationField.stringValue != account.organization, !account.organization.isEmpty {
+            organizationField.stringValue = account.organization
+        }
+    }
+
+    @objc private func changed() { onChange?(self) }
+    @objc private func testLink() { onTestLink?(self) }
+
+    /// The organization's own page for a new token.
+    @objc private func createToken() { NSWorkspace.shared.open(DeckTokenPages.azure(organization: editedAccount.organization)) }
 
     func controlTextDidEndEditing(_ notification: Notification) {
         guard (notification.object as? NSTextField) !== token.field else { return }

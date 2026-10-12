@@ -2,6 +2,13 @@
 
 ## Done
 
+- **Azure DevOps pull requests** - a third card of the same shape, yours and the ones waiting on
+  your vote, from one organization per account on `dev.azure.com`, three REST calls per refresh,
+  with the organization on the account because a token is minted per organization. See
+  [adr/0038-azure-devops.md](adr/0038-azure-devops.md).
+
+- The MCP page shows the registration line for Codex beside the one for Claude Code.
+
 - An MCP server for coding agents, with Off, Read only and Read and control in Settings,
   General, Agents (MCP). The running deck answers through a local endpoint only its user can open;
   commands are a project's buttons and the inbox's, under the same rules. See

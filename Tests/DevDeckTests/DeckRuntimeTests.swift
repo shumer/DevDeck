@@ -4,6 +4,7 @@ import DevDeckCore
 import DevDeckEngine
 import Foundation
 import GitHubKit
+import AzureKit
 import GitLabKit
 import ProjectKit
 import TestHarness
@@ -80,6 +81,7 @@ final class Deck {
         projectHTTP: (any HTTPClient)? = nil,
         projectFiles: ProjectRuntimeFiles = .standard(),
         gitlabAccounts: [GitLabAccount] = [],
+        azureAccounts: [AzureAccount] = [],
         canStartDocker: Bool = false,
         notifications: Bool = false,
         localAddress: String? = nil
@@ -92,11 +94,14 @@ final class Deck {
         preferences.notificationsEnabled = notifications
         let gitlab = GitLabAccountsStore(backend: InMemoryPreferences())
         gitlab.save(gitlabAccounts)
+        let azure = AzureAccountsStore(backend: InMemoryPreferences())
+        azure.save(azureAccounts)
         runtime = DeckRuntime(
             preferences: preferences,
             tokenStore: InMemoryTokenStore(tokens: [account.tokenKey: "token"]),
             accountsStore: accounts,
             gitlabAccountsStore: gitlab,
+            azureAccountsStore: azure,
             projectsStore: ArcProjectsStore(backend: InMemoryPreferences()),
             ddevProjectsStore: DDEVProjectsStore(backend: InMemoryPreferences()),
             localProjectsStore: local,

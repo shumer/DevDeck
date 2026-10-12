@@ -36,9 +36,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         case notifications
         case github
         case gitlab
+        case azure
         case arc
         case ddev
         case project
+
+        /// The service's own section: where a banner or a menu row about an account opens.
+        init(_ service: AttentionService) {
+            switch service {
+            case .github: self = .github
+            case .gitlab: self = .gitlab
+            case .azure: self = .azure
+            }
+        }
     }
 
     private let pages: [SettingsPage]
