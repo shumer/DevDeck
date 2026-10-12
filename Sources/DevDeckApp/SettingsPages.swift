@@ -1,5 +1,6 @@
 import AppKit
 import DevDeckCore
+import DevDeckEngine
 import GitHubKit
 import GitLabKit
 import ArcKit
@@ -317,29 +318,41 @@ final class CardsSettingsPage: NSObject, SettingsPage, NSTextFieldDelegate {
         ]
     }
 
-    init(preferences: Preferences) {
+    private let cards: () -> DeckCardList
+
+    init(preferences: Preferences, cards: @escaping () -> DeckCardList) {
         self.preferences = preferences
+        self.cards = cards
     }
 
     func build(in container: FlippedContainer) {
         let form = SettingsForm(in: container)
         form.pageHeader(icon: SettingsIcons.tile("square.grid.2x2.fill", color: .systemIndigo, size: 32), title: title, subtitle: L("settings.cards.subtitle"))
 
-        form.section(L("settings.cards.onDeck"))
-        form.beginGroup()
         switches = [:]
         let layout = preferences.cardLayout
-        for descriptor in CardCatalog.all where descriptor.isImplemented {
-            let toggle = SettingsForm.makeSwitch(
-                isOn: layout.isEnabled(descriptor.id),
-                title: descriptor.title,
-                target: self,
-                action: #selector(cardChanged(_:))
-            )
-            switches[toggle] = descriptor.id
-            form.settingRow(descriptor.title, subtitle: descriptor.subtitle, control: toggle)
+        // The built-in cards, then every project's: a project's card is what the menu's "take
+        // off the deck" hides, and this is the one page that shows it again.
+        let builtIn = Set(CardCatalog.all.map(\.id))
+        let catalog = cards().catalog.filter(\.isImplemented)
+        for (heading, descriptors) in [
+            (L("settings.cards.onDeck"), catalog.filter { builtIn.contains($0.id) }),
+            (L("settings.cards.projects"), catalog.filter { !builtIn.contains($0.id) }),
+        ] where !descriptors.isEmpty {
+            form.section(heading)
+            form.beginGroup()
+            for descriptor in descriptors {
+                let toggle = SettingsForm.makeSwitch(
+                    isOn: layout.isEnabled(descriptor.id, catalog: catalog),
+                    title: descriptor.title,
+                    target: self,
+                    action: #selector(cardChanged(_:))
+                )
+                switches[toggle] = descriptor.id
+                form.settingRow(descriptor.title, subtitle: descriptor.subtitle, control: toggle)
+            }
+            form.endGroup()
         }
-        form.endGroup()
 
         form.section(L("settings.cards.fetching"))
         form.beginGroup()

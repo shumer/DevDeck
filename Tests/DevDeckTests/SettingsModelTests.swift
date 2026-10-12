@@ -76,6 +76,22 @@ func runSettingsModelTests(_ run: TestRun) async {
         try expect(deck.runtime.cards.visible.contains(localCard))
     }
 
+    await run.test("the Cards page lists every project's card after the built-in ones, with its switch") {
+        let deck = Deck(cards: [])
+        let id = deck.runtime.addArcProject()
+        let card = CardID(rawValue: "arc.project.\(id)")
+        guard case .cards(let listed) = await deck.runtime.answer(.cards) else {
+            throw TestFailure(message: "the cards page", file: #filePath, line: #line)
+        }
+        let row = try expectNotNil(listed.first { $0.id == card }, "the project is listed")
+        try expect(row.isProject, "as a project")
+        try expect(row.isEnabled, "on the deck")
+        try expect(listed.first?.isProject == false, "the built-in cards come first")
+        deck.runtime.cards.setEnabled(false, for: card)
+        guard case .cards(let after) = await deck.runtime.answer(.cards) else { throw TestFailure(message: "again", file: #filePath, line: #line) }
+        try expect(after.first { $0.id == card }?.isEnabled == false, "a project taken off the deck shows as off here, where it can be put back")
+    }
+
     await run.test("Detect names what it found, or says why it found nothing") {
         let deck = Deck(cards: [])
         let none = deck.runtime.detect(folder: nil)

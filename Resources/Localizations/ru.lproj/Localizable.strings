@@ -459,6 +459,7 @@
 "settings.cards.interval.2" = "2 минуты";
 "settings.cards.interval.5" = "5 минут";
 "settings.cards.onDeck" = "На деке";
+"settings.cards.projects" = "Проекты";
 "settings.cards.refreshEvery" = "Обновлять каждые";
 "settings.cards.subtitle" = "Карточки, которые не аккаунт и не проект";
 "settings.cards.title" = "Карточки";

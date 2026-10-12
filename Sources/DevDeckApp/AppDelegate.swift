@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pages: [
             generalPage,
             DeckSettingsPage(preferences: preferences),
-            CardsSettingsPage(preferences: preferences),
+            CardsSettingsPage(preferences: preferences) { [unowned self] in self.controller.runtime.cards },
             notificationsPage,
         ],
         sections: [

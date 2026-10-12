@@ -459,6 +459,7 @@
 "settings.cards.interval.2" = "2 minutes";
 "settings.cards.interval.5" = "5 minutes";
 "settings.cards.onDeck" = "Sur le deck";
+"settings.cards.projects" = "Projets";
 "settings.cards.refreshEvery" = "Actualiser toutes les";
 "settings.cards.subtitle" = "Les cartes qui ne sont ni un compte ni un projet";
 "settings.cards.title" = "Cartes";

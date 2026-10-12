@@ -208,14 +208,18 @@ func runSessionGoldenTests(_ run: TestRun) async {
         try expectEqual(Set(english.keys), Set(russian.keys), "every language says everything English says")
     }
 
-    await run.test("the Cards page lists the built-in cards, and a switch takes one off the deck") {
+    await run.test("the Cards page lists the built-in cards, then every project's, and a switch takes one off the deck") {
         let (runtime, _) = goldenRuntime()
         var effects: [DeckEffect] = []
         runtime.onEffect = { effects.append($0) }
         guard case .cards(let cards) = await runtime.answer(.cards) else {
             throw TestFailure(message: "cards expected", file: #filePath, line: #line)
         }
-        try expectEqual(cards.map(\.id.rawValue), ["github.pullRequests", "github.inbox", "github.actions", "gitlab.mergeRequests", "local.workInFlight"])
+        try expectEqual(cards.map(\.id.rawValue), [
+            "github.pullRequests", "github.inbox", "github.actions", "gitlab.mergeRequests", "local.workInFlight",
+            "arc.project.paper", "ddev.project.shop", "project.feed",
+        ])
+        try expectEqual(cards.map(\.isProject), [false, false, false, false, false, true, true, true], "projects after the built-in cards, marked as such")
         try expect(cards.allSatisfy(\.isEnabled))
         try expect(cards.allSatisfy { !$0.detail.isEmpty }, "each says what it is")
         guard case .cards(let after) = await runtime.answer(.setCard(id: .githubInbox, isEnabled: false)) else {

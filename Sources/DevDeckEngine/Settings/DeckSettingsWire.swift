@@ -36,12 +36,15 @@ public struct DeckPreferencesModel: Sendable, Equatable, Codable {
     public var agentAccess: AgentAccess?
 }
 
-/// A built-in card as the Cards page lists it: what it is, and whether it is on the deck.
+/// A card as the Cards page lists it: what it is, and whether it is on the deck.
 public struct DeckSettingsCard: Sendable, Equatable, Codable {
     public let id: CardID
     public let title: String
     public let detail: String
     public let isEnabled: Bool
+    /// A project's card rather than a built-in one: the page lists those under their own
+    /// heading, after the built-in cards.
+    public let isProject: Bool
 }
 
 /// Where a new token is made, for the link under a form's token row.
@@ -311,9 +314,15 @@ extension DeckRuntime {
 
     /// The built-in cards the Cards page switches, as the Mac's page lists them: the ones that
     /// are implemented, in catalog order, projects and accounts left to their own pages.
+    /// Every card with a switch: the built-in ones, then every project's. A project's card is
+    /// what the menu's "take off the deck" hides, and this is the one page that shows it again.
     func settingsCards() -> [DeckSettingsCard] {
-        CardCatalog.all.filter(\.isImplemented).map { descriptor in
-            DeckSettingsCard(id: descriptor.id, title: descriptor.title, detail: descriptor.subtitle, isEnabled: cards.isEnabled(descriptor.id))
+        let builtIn = Set(CardCatalog.all.map(\.id))
+        return cards.catalog.filter(\.isImplemented).map { descriptor in
+            DeckSettingsCard(
+                id: descriptor.id, title: descriptor.title, detail: descriptor.subtitle,
+                isEnabled: cards.isEnabled(descriptor.id), isProject: !builtIn.contains(descriptor.id)
+            )
         }
     }
 

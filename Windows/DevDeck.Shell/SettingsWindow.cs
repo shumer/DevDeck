@@ -580,20 +580,23 @@ public sealed class SettingsWindow : Window
     private FrameworkElement CardsPage()
     {
         var page = PageHeader("settings.cards.title", "settings.cards.subtitle", "grid");
-        var cardRows = cards?
-            .OfType<JsonObject>()
-            .Select(card => ModelRow(
-                SettingsJson.String(card, "title"),
-                SettingsJson.String(card, "detail"),
-                Toggle(
-                    SettingsJson.Bool(card, "isEnabled"),
-                    true,
-                    isEnabled => client.Request(SettingsJson.SetCard(SettingsJson.String(card, "id"), isEnabled)))))
-            .ToArray() ?? [];
-        if (cardRows.Length > 0)
+        FrameworkElement CardRow(JsonObject card) => ModelRow(
+            SettingsJson.String(card, "title"),
+            SettingsJson.String(card, "detail"),
+            Toggle(
+                SettingsJson.Bool(card, "isEnabled"),
+                true,
+                isEnabled => client.Request(SettingsJson.SetCard(SettingsJson.String(card, "id"), isEnabled))));
+        var allCards = cards?.OfType<JsonObject>().ToArray() ?? [];
+        // The engine says which rows are projects; they sit under their own heading.
+        foreach (var (heading, isProject) in new[] { ("settings.cards.onDeck", false), ("settings.cards.projects", true) })
         {
-            page.Children.Add(GroupTitle("settings.cards.onDeck"));
-            page.Children.Add(Card(cardRows));
+            var cardRows = allCards.Where(card => SettingsJson.Bool(card, "isProject") == isProject).Select(CardRow).ToArray();
+            if (cardRows.Length > 0)
+            {
+                page.Children.Add(GroupTitle(heading));
+                page.Children.Add(Card(cardRows));
+            }
         }
         page.Children.Add(GroupTitle("settings.cards.fetching"));
         var interval = new ComboBox { Width = 150 };
