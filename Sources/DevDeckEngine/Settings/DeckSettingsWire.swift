@@ -31,6 +31,9 @@ public struct DeckPreferencesModel: Sendable, Equatable, Codable {
     public var projectsQuietWhenDown: [String]
     /// Projects whose failed start is not worth a banner, by id, sorted.
     public var projectsQuietWhenStartFails: [String]
+    /// What a coding agent may do through the deck. Optional on the way in, so a shell that does
+    /// not know the field yet leaves it as it is.
+    public var agentAccess: AgentAccess?
 }
 
 /// A built-in card as the Cards page lists it: what it is, and whether it is on the deck.
@@ -176,7 +179,8 @@ extension DeckRuntime {
             summonShortcutWindows: preferences.summonShortcutWindows,
             actionsRepositories: preferences.actionsRepositories,
             projectsQuietWhenDown: preferences.projectsQuietWhenDown.sorted(),
-            projectsQuietWhenStartFails: preferences.projectsQuietWhenStartFails.sorted()
+            projectsQuietWhenStartFails: preferences.projectsQuietWhenStartFails.sorted(),
+            agentAccess: preferences.agentAccess
         )
     }
 
@@ -195,6 +199,10 @@ extension DeckRuntime {
         preferences.actionsRepositories = model.actionsRepositories
         preferences.projectsQuietWhenDown = Set(model.projectsQuietWhenDown)
         preferences.projectsQuietWhenStartFails = Set(model.projectsQuietWhenStartFails)
+        if let access = model.agentAccess {
+            preferences.agentAccess = access
+            agents?.applyPreferences()
+        }
     }
 
     /// Carries out one request. A link to test is opened as an effect, like any other link.

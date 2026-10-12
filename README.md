@@ -799,6 +799,20 @@ certificate made in Keychain Access (Certificate Assistant, Create a Certificate
 Signing) and `CODESIGN_IDENTITY="its name" ./build.sh` binds your own tokens the same way. See
 [adr/0017-signature-decides.md](docs/adr/0017-signature-decides.md).
 
+## For agents
+
+A coding agent on the same computer can ask the deck what needs you, read every card and a
+project's log, and, when you allow it, start, stop and restart projects and mark notifications
+read. It goes through the Model Context Protocol: `DevDeckMCP` ships inside the app, and the
+answers come from the running deck in its own words, so the agent needs no token of its own.
+
+Settings, General, **Agents** has three choices: Off (the default), Read only, and Read and
+control. Below the choice is the line that registers the server with Claude Code. The endpoint
+is a socket only you can open, nothing listens on a network port, and a command follows the
+rules the card's buttons follow: a project started outside DevDeck is not stopped by an agent
+either. [docs/mcp.md](docs/mcp.md) lists the tools and how to add the server to other clients;
+[adr/0036](docs/adr/0036-agent-access.md) says why it is built this way.
+
 ## Releases
 
 Each release carries two builds, named for their platform: `DevDeck-<version>-<build>-macos.zip` and the Windows installer `DevDeck-<version>-<build>-windows-setup.exe` with its SHA256 file.
@@ -870,6 +884,7 @@ command is done. Settings, General has the switch and a **Check Now** button wit
 - [docs/engine-protocol.md](docs/engine-protocol.md) - protocol v2 between the engine and a shell in another process
 - [docs/windows-migration.md](docs/windows-migration.md) - the port's plan, its state and its decisions
 - [docs/windows-style.md](docs/windows-style.md) - how a card is drawn on Windows
+- [docs/mcp.md](docs/mcp.md) - the MCP server: settings, tools, registering it with an agent
 - [docs/adr/](docs/adr/) - twenty-one decisions and what they cost: why native, why SwiftPM only,
   why cards are configurable, why accounts are plural, how local stacks are driven, why DDEV
   shares one call, how a plain project is started, why Docker is checked first, how a card is

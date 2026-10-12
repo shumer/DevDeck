@@ -225,4 +225,33 @@ await run.test("a stop that does not finish says so instead of looking done") {
     try expect(failed.standardError.contains("stop did not finish"), "got: \(failed.standardError)")
 }
 
+await run.test("an agent's pipe carries a line each way, and is gone when stopped") {
+    let address = "\\\\.\\pipe\\DevDeck.Test." + UUID().uuidString
+    let server = LocalEndpointServer(address: address) { line in line.uppercased() }
+    try server.start()
+    let first = try await Task.detached { try LocalEndpointClient.request("hello", address: address) }.value
+    let second = try await Task.detached { try LocalEndpointClient.request("again", address: address) }.value
+    try expectEqual(first, "HELLO")
+    try expectEqual(second, "AGAIN")
+    // A second server under the same name is refused: the first instance is ours.
+    let squatter = LocalEndpointServer(address: address) { _ in "" }
+    do {
+        try squatter.start()
+        squatter.stop()
+        throw TestFailure(message: "a second server took the name", file: #filePath, line: #line)
+    } catch is LocalEndpointError {}
+    server.stop()
+    var closed = false
+    for _ in 0..<40 {
+        do {
+            _ = try await Task.detached { try LocalEndpointClient.request("hello", address: address) }.value
+        } catch LocalEndpointError.notListening {
+            closed = true
+            break
+        } catch {}
+        try await Task.sleep(for: .milliseconds(50))
+    }
+    try expect(closed, "a stopped endpoint is not there to answer")
+}
+
 run.finish()

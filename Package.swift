@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "DevDeckEngine", targets: ["DevDeckEngine"]),
         .executable(name: "DevDeckEngineHost", targets: ["DevDeckEngineHost"]),
         .executable(name: "DevDeckProcessHost", targets: ["DevDeckProcessHost"]),
+        .executable(name: "DevDeckMCP", targets: ["DevDeckMCP"]),
     ],
     targets: [
         // The login-shell PATH is Mac-only. LocalAddress has a Windows adapter in the same file.
@@ -54,6 +55,7 @@ let package = Package(
 
         // Holds a native Windows project's Job Object, so the project outlives the engine.
         .executableTarget(name: "DevDeckProcessHost", dependencies: ["DevDeckCore"]),
+        .executableTarget(name: "DevDeckMCP", dependencies: ["DevDeckCore"], path: "Tools/DevDeckMCP"),
 
         .executableTarget(
             name: "DevDeckWindowsLifecycle",
@@ -107,6 +109,7 @@ let package = Package(
         .library(name: "ProjectKit", targets: ["ProjectKit"]),
         .library(name: "DevDeckEngine", targets: ["DevDeckEngine"]),
         .executable(name: "DevDeckEngineHost", targets: ["DevDeckEngineHost"]),
+        .executable(name: "DevDeckMCP", targets: ["DevDeckMCP"]),
         .library(name: "DevDeckUI", targets: ["DevDeckUI"]),
         .executable(name: "DevDeck", targets: ["DevDeckApp"]),
     ],
@@ -148,6 +151,7 @@ let package = Package(
             name: "DevDeckEngineHost",
             dependencies: ["DevDeckCore", "DevDeckEngine", "DevDeckLocalization", "GitHubKit", "GitLabKit", "ArcKit", "DDEVKit", "ProjectKit"]
         ),
+        .executableTarget(name: "DevDeckMCP", dependencies: ["DevDeckCore"], path: "Tools/DevDeckMCP"),
         .executableTarget(
             name: "DevDeckEngineTests",
             dependencies: [

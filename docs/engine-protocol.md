@@ -174,7 +174,7 @@ so a slow check does not hold up the list. The full list is `DeckSettingsRequest
 | `list` | `list`: the sidebar, accounts and projects, each with its words, mark and tone |
 | `cards`, `setCard` | `cards`: the Cards page, every built-in card with its title, detail and switch; `setCard` flips one and answers with the page again |
 | `words` | `words`: every word the window says, key to text in the deck's language (`DeckSettingsWords.prefixes`); asked at start and after the language changes. A `%@` in a text is filled by the shell with the one value the key names. Platform wording is the engine's: on Windows `settings.notifications.allow.detail` already says how Windows keeps banners. |
-| `preferences`, `setPreferences` | `preferences`: the deck-wide settings as they now are |
+| `preferences`, `setPreferences` | `preferences`: the deck-wide settings as they now are. `agentAccess` (`off`, `read`, `control`) opens or closes the agent endpoint when it is saved; a shell that leaves it out leaves it as it is. |
 | `localProject`, `arcProject`, `ddevProject`, `githubAccount`, `gitlabAccount` by `id` | the record a form edits, as stored |
 | `add...` | `added` with the new id |
 | `save...` | `saved`, with `checkAgain` when the form's status line has a new question |

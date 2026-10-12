@@ -192,6 +192,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.start()
         summoner.install()
         updater.start()
+        // Opens only while Settings, General, Agents allows it.
+        controller.runtime.serveAgents(version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")
 
         notificationsPage.onRequestAuthorization = { [weak self] completion in
             self?.notifier.requestAuthorization(completion) ?? completion(false)
@@ -252,6 +254,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Anything in settings changed: a project added or removed changes the card list, not just
     /// the data, and any deck preference may have changed, which only counts once it is applied.
     private func settingsChanged() {
+        controller.runtime.agents?.applyPreferences()
         panels.syncPanels()
         // A project taken out of settings takes its log window with it: a window titled with a
         // project that no longer exists has nothing to read.

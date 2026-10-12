@@ -66,9 +66,55 @@ final class GeneralSettingsPage: NSObject, SettingsPage {
         updateLine = line
         updateButton = button
 
+        form.section(L("settings.agents"))
+        form.beginGroup()
+        let access = NSPopUpButton()
+        for choice in AgentAccess.allCases {
+            access.addItem(withTitle: Self.title(for: choice))
+            access.lastItem?.representedObject = choice.rawValue
+        }
+        access.selectItem(at: AgentAccess.allCases.firstIndex(of: preferences.agentAccess) ?? 0)
+        access.target = self
+        access.action = #selector(agentAccessChanged(_:))
+        access.setAccessibilityLabel(L("settings.agents.access"))
+        form.settingRow(L("settings.agents.access"), subtitle: Self.detail(for: preferences.agentAccess), control: access)
+        form.endGroup()
+        if preferences.agentAccess != .off {
+            // The server ships inside the bundle, in Helpers beside the app's own binary.
+            let server = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/DevDeckMCP").path
+            form.footnote(L("settings.agents.register", "claude mcp add devdeck -- \"\(server)\""))
+        }
+
         form.footnote(AppVersion.isTranslocated
             ? L("settings.general.runningTranslocated")
             : L("settings.general.runningFrom", AppVersion.location))
+    }
+
+    private static func title(for access: AgentAccess) -> String {
+        switch access {
+        case .off: return L("settings.agents.access.off")
+        case .read: return L("settings.agents.access.read")
+        case .control: return L("settings.agents.access.control")
+        }
+    }
+
+    private static func detail(for access: AgentAccess) -> String {
+        switch access {
+        case .off: return L("settings.agents.access.off.detail")
+        case .read: return L("settings.agents.access.read.detail")
+        case .control: return L("settings.agents.access.control.detail")
+        }
+    }
+
+    @objc private func agentAccessChanged(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let access = AgentAccess(rawValue: raw)
+        else { return }
+        preferences.agentAccess = access
+        // The deck opens or closes the endpoint on "changed"; the page is redrawn for the line
+        // under the choice and the registration note.
+        host?.changed()
+        host?.reloadDetail()
     }
 
     /// Called when the updater moves, so the row changes where it stands without the page

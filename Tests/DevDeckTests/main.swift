@@ -34,5 +34,6 @@ await runMenuModelTests(run)
 await runPlacementTests(run)
 await runSettingsModelTests(run)
 await runUpdateModelTests(run)
+await runAgentTests(run)
 
 run.finish()

@@ -18,8 +18,9 @@ DisableProgramGroupPage=yes
 DisableDirPage=yes
 DisableWelcomePage=no
 CloseApplications=yes
-; Detached project hosts must outlive setup just as they outlive the shell.
-CloseApplicationsFilter=DevDeck.Shell.exe,DevDeckEngineHost.exe
+; Detached project hosts must outlive setup just as they outlive the shell. An agent's MCP
+; server is closed so its file can be replaced; the agent starts it again on its next call.
+CloseApplicationsFilter=DevDeck.Shell.exe,DevDeckEngineHost.exe,DevDeckMCP.exe
 RestartApplications=no
 OutputDir={#InstallerOutput}
 OutputBaseFilename=DevDeck-{#AppVersion}-windows-setup
