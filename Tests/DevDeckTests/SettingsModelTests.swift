@@ -131,11 +131,16 @@ func runSettingsModelTests(_ run: TestRun) async {
         try expectNil(status)
     }
 
-    await run.test("adding a GitLab instance turns the GitLab card on") {
+    await run.test("adding a GitLab instance turns the GitLab card on, and removing the last one turns it off") {
         let deck = Deck(cards: [])
         deck.runtime.cards.setEnabled(false, for: .gitlabMergeRequests)
-        _ = deck.runtime.addGitLabAccount()
+        let first = deck.runtime.addGitLabAccount()
+        let second = deck.runtime.addGitLabAccount()
         try expect(deck.runtime.cards.isEnabled(.gitlabMergeRequests))
+        deck.runtime.removeGitLabAccount(first)
+        try expect(deck.runtime.cards.isEnabled(.gitlabMergeRequests), "one instance left still wants the card")
+        deck.runtime.removeGitLabAccount(second)
+        try expect(!deck.runtime.cards.isEnabled(.gitlabMergeRequests), "a card asking for a token nobody has")
     }
 
     await run.test("adding an Azure DevOps organization turns its card on, and needs the organization before a token") {
@@ -152,6 +157,7 @@ func runSettingsModelTests(_ run: TestRun) async {
         try expectEqual(deck.runtime.testLink(named), .open(URL(string: "https://dev.azure.com/acme/_pulls")!, .systemDefault))
         deck.runtime.removeAzureAccount(id)
         try expect(deck.runtime.settingsList().accounts.allSatisfy { $0.kind != .azure }, "gone from the sidebar with it")
+        try expect(!deck.runtime.cards.isEnabled(.azurePullRequests), "and the card goes with the last organization")
     }
 
     await run.test("a typed token is kept only once it works") {

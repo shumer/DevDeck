@@ -78,7 +78,7 @@ instance covers both halves, since GitLab's `currentUser` answers "mine" and "wa
 without a search string. Add one with **+** under the Settings sidebar, then **GitLab Instance**:
 an address, a token with `read_api`, and the browser profile it opens in. The host lives on the account because
 GitLab is routinely self-hosted, so gitlab.com and a customer's own instance are two accounts on
-one card. Nothing appears until you add one.
+one card. Nothing appears until you add one, and the card leaves with the last one.
 
 **And once more, for Azure DevOps.** Pull requests you have open in an organization and the ones
 waiting on your vote, in the same layout and the same words. Add one with **+**, then **Azure

@@ -445,18 +445,25 @@ extension DeckRuntime {
         accountsStore.save(accountsStore.accounts().filter { $0.id != id })
     }
 
+    /// Removes an instance, and with the last one the card: a card that asks for a token to an
+    /// instance nobody has is the thing the card being opt-in was meant to avoid.
     public func removeGitLabAccount(_ id: String) {
         if let account = gitlabAccountsStore.accounts().first(where: { $0.id == id }) {
             try? tokenStore.setToken(nil, for: account.tokenKey)
         }
-        gitlabAccountsStore.save(gitlabAccountsStore.accounts().filter { $0.id != id })
+        let remaining = gitlabAccountsStore.accounts().filter { $0.id != id }
+        gitlabAccountsStore.save(remaining)
+        if remaining.isEmpty { cards.setEnabled(false, for: .gitlabMergeRequests) }
     }
 
+    /// The same for an organization: the last one out takes the card with it.
     public func removeAzureAccount(_ id: String) {
         if let account = azureAccountsStore.accounts().first(where: { $0.id == id }) {
             try? tokenStore.setToken(nil, for: account.tokenKey)
         }
-        azureAccountsStore.save(azureAccountsStore.accounts().filter { $0.id != id })
+        let remaining = azureAccountsStore.accounts().filter { $0.id != id }
+        azureAccountsStore.save(remaining)
+        if remaining.isEmpty { cards.setEnabled(false, for: .azurePullRequests) }
     }
 
     /// The account's own pull requests on the web, in its own browser.
