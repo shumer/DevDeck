@@ -199,9 +199,9 @@ var seenAt: Date?
 func projectStates(_ cards: [[String: Any]]) -> [String: (title: String, state: String)] {
     var states: [String: (title: String, state: String)] = [:]
     for entry in cards {
+        // The model is written as `{"project": {...}}`, the fields straight under the kind.
         guard let card = entry["card"] as? String,
-              let model = (entry["model"] as? [String: Any])?["project"] as? [String: Any],
-              let project = model["_0"] as? [String: Any],
+              let project = (entry["model"] as? [String: Any])?["project"] as? [String: Any],
               let hero = project["hero"] as? [String: Any]
         else { continue }
         let state = [hero["text"] as? String, hero["note"] as? String].compactMap { $0 }.joined(separator: " · ")
