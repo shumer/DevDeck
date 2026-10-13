@@ -2,6 +2,11 @@
 
 ## Done
 
+- Who pressed: a start or stop that came through the MCP server is written down as the agent's,
+  in the menu, on the card and above the log. `project_time` and a Good to know row say how long
+  each project ran today and this week, from a run log kept across launches. `wait_for` lets an
+  agent wait for a project or a pull request's checks instead of polling.
+
 - Two more MCP tools: `what_changed`, what is new since the agent last looked, remembered per
   agent session in the server process; and `open`, a page in the right account's browser or a
   project's card, folder, terminal or site, under control. Bundle versions on the Arc card were

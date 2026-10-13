@@ -67,6 +67,22 @@ let tools = [
         required: [], controls: true
     ),
     Tool(
+        name: "wait_for",
+        description: "Waits until something settles, then returns it: a project card until it is running, stopped or healthy (until: running, stopped, healthy, or changed for any change of state), or a pull request by url until its checks are no longer running (until: checks). Polls the deck every few seconds up to timeout seconds (default 180, at most 600). satisfied says whether the condition was met before the timeout.",
+        properties: [
+            "card": cardProperty,
+            "url": ["type": "string", "description": "A pull request's web address, as what_needs_me or cards give it."],
+            "until": ["type": "string", "description": "running, stopped, healthy or changed for a card; checks for a pull request."],
+            "timeout": ["type": "number", "description": "Seconds to wait, at most 600. Default 180."],
+        ],
+        required: ["until"], controls: false
+    ),
+    Tool(
+        name: "project_time",
+        description: "How long each project on the deck has been running today and over the last seven days, as DevDeck observed it, for keeping track of time per client.",
+        properties: [:], required: [], controls: false
+    ),
+    Tool(
         name: "cards",
         description: "Every card on the deck as DevDeck draws it: pull requests, merge requests, the inbox, Actions, and each project's state, branch, links and buttons. Give a card id for one card.",
         properties: ["card": cardProperty], required: [], controls: false
@@ -140,6 +156,20 @@ let tools = [
     ),
 ]
 
+/// Who this server speaks for, as the client named itself at `initialize`. Every command the
+/// deck runs for it is written down as this.
+var agentName = "an agent"
+
+/// `claude-code` to `Claude Code`: the few clients that matter, by name; anyone else as given.
+func humanized(_ client: String) -> String {
+    let lower = client.lowercased()
+    if lower.contains("claude") { return "Claude Code" }
+    if lower.contains("codex") { return "Codex" }
+    if lower.contains("cursor") { return "Cursor" }
+    if lower.contains("windsurf") { return "Windsurf" }
+    return client.isEmpty ? "an agent" : client
+}
+
 // MARK: Talking to the deck
 
 enum DeckAnswer {
@@ -147,7 +177,9 @@ enum DeckAnswer {
     case unreachable(String)
 }
 
-func ask(_ request: [String: Any]) -> DeckAnswer {
+@MainActor func ask(_ request: [String: Any]) -> DeckAnswer {
+    var request = request
+    request["agent"] = agentName
     guard let data = try? JSONSerialization.data(withJSONObject: request, options: [.sortedKeys]) else {
         return .unreachable("The request could not be written.")
     }
@@ -165,7 +197,7 @@ func ask(_ request: [String: Any]) -> DeckAnswer {
 }
 
 /// Whether the deck allows control right now. Unreachable reads as no.
-func allowsControl() -> Bool {
+@MainActor func allowsControl() -> Bool {
     if case .answer(let hello) = ask(["request": "hello"]), hello["access"] as? String == "control" { return true }
     return false
 }
@@ -185,6 +217,80 @@ func toolResult(_ answer: DeckAnswer, filterCard: String? = nil) -> [String: Any
         let data = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
         return ["content": [["type": "text", "text": String(decoding: data, as: UTF8.self)]]]
     }
+}
+
+// MARK: Waiting
+
+/// A project card's state, in the three words the condition names, from its hero's tone.
+func projectState(_ entry: [String: Any]) -> (state: String, text: String)? {
+    guard let project = (entry["model"] as? [String: Any])?["project"] as? [String: Any],
+          let hero = project["hero"] as? [String: Any] else { return nil }
+    let tone = hero["tone"] as? String ?? ""
+    let text = [hero["text"] as? String, hero["note"] as? String].compactMap { $0 }.joined(separator: " · ")
+    switch tone {
+    case "good": return ("running", text)
+    case "neutral": return ("stopped", text)
+    default: return ("busy", text)
+    }
+}
+
+/// The row for a pull request, by its address, across the review cards.
+func reviewRow(_ cards: [[String: Any]], url: String) -> [String: Any]? {
+    for entry in cards {
+        guard let model = (entry["model"] as? [String: Any])?["reviewList"] as? [String: Any],
+              let content = model["content"] as? [String: Any],
+              let rows = content["rows"] as? [[String: Any]] else { continue }
+        if let row = rows.first(where: { ($0["url"] as? String) == url }) { return row }
+    }
+    return nil
+}
+
+@MainActor func waitFor(_ arguments: [String: Any]) -> [String: Any] {
+    guard let until = (arguments["until"] as? String)?.lowercased() else { return toolResult(.unreachable("until is needed.")) }
+    let timeout = min(max(arguments["timeout"] as? Double ?? 180, 1), 600)
+    let card = arguments["card"] as? String
+    let url = arguments["url"] as? String
+    guard card != nil || url != nil else { return toolResult(.unreachable("A card id or a url is needed.")) }
+    let deadline = Date().addingTimeInterval(timeout)
+    var initialState: String?
+    var last: [String: Any] = [:]
+    while true {
+        guard case .answer(let answer) = ask(["request": "cards"]) else { return toolResult(ask(["request": "cards"])) }
+        if let error = answer["error"] as? String { return ["content": [["type": "text", "text": error]], "isError": true] }
+        let cards = (answer["cards"] as? [[String: Any]]) ?? []
+        var satisfied = false
+        if let card {
+            guard let entry = cards.first(where: { $0["card"] as? String == card }), let state = projectState(entry) else {
+                return toolResult(.unreachable("There is no project card \(card) on the deck."))
+            }
+            if initialState == nil { initialState = state.text }
+            last = ["card": card, "state": state.state, "text": state.text]
+            switch until {
+            case "running", "healthy": satisfied = state.state == "running"
+            case "stopped": satisfied = state.state == "stopped"
+            case "changed": satisfied = state.text != initialState
+            default: return toolResult(.unreachable("until must be running, stopped, healthy or changed for a card."))
+            }
+        } else if let url {
+            guard let row = reviewRow(cards, url: url) else {
+                // Gone from every card: merged, closed, or reviewed. That is settled too.
+                last = ["url": url, "gone": true]
+                satisfied = true
+                break
+            }
+            let code = row["trailing"] as? String ?? ""
+            last = ["url": url, "code": code, "help": row["help"] as? String ?? "", "tone": row["tone"] as? String ?? ""]
+            switch until {
+            case "checks", "changed": satisfied = code != "CP"
+            default: return toolResult(.unreachable("until must be checks for a pull request."))
+            }
+        }
+        if satisfied || Date() >= deadline { break }
+        Thread.sleep(forTimeInterval: 5)
+    }
+    last["satisfied"] = (last["gone"] as? Bool == true) || Date() < deadline
+    let data = (try? JSONSerialization.data(withJSONObject: last, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
+    return ["content": [["type": "text", "text": String(decoding: data, as: UTF8.self)]]]
 }
 
 // MARK: What changed
@@ -273,6 +379,8 @@ func projectStates(_ cards: [[String: Any]]) -> [String: (title: String, state: 
         remember(answer)
         return toolResult(answer)
     case "what_changed": return whatChanged()
+    case "wait_for": return waitFor(arguments)
+    case "project_time": return toolResult(ask(["request": "time"]))
     case "open":
         var request: [String: Any] = ["request": "open"]
         if let url = arguments["url"] as? String { request["url"] = url }
@@ -342,6 +450,7 @@ func fail(_ id: Any, code: Int, message: String) {
     let params = message["params"] as? [String: Any] ?? [:]
     switch method {
     case "initialize":
+        if let client = (params["clientInfo"] as? [String: Any])?["name"] as? String { agentName = humanized(client) }
         let asked = params["protocolVersion"] as? String
         var version = "unknown"
         if case .answer(let hello) = ask(["request": "hello"]), let theirs = hello["version"] as? String { version = theirs }

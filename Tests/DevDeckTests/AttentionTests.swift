@@ -273,6 +273,44 @@ func runAttentionTests(_ run: TestRun) async {
 
     run.section("Attention - projects on this Mac")
 
+    await run.test("an agent's press is said in the menu, a person's is not, and the log is kept across days") {
+        let feed = WatchedProject(id: "feed", cardID: CardID(rawValue: "project.feed"), title: "Feed", kind: "Project", mark: .project("node"), needsDocker: false)
+        var watch = ProjectWatch()
+        watch.noteAction("feed", isStop: false, actor: "Claude Code", at: now.addingTimeInterval(-30))
+        let rows = ProjectAttention.items(projects: [feed], watch: watch, docker: DockerStatus(state: .running), dockerDownSince: nil, now: now)
+        try expectEqual(rows.map(\.title), ["Claude Code started Feed"])
+        try expectEqual(rows.first?.tier, .goodToKnow)
+        try expect(rows.first?.isDismissible == true)
+        try expectEqual(watch.agentAction(for: "feed")?.actor, "Claude Code")
+        watch.noteAction("feed", isStop: true, at: now)
+        try expectNil(watch.agentAction(for: "feed"), "the person's own press replaces it")
+        try expect(ProjectAttention.items(projects: [feed], watch: watch, docker: DockerStatus(state: .running), dockerDownSince: nil, now: now).isEmpty)
+
+        var log = ProjectRunLog()
+        let calendar = Calendar.current
+        let midnight = calendar.startOfDay(for: now)
+        // Up since before midnight, seen every ten seconds, still up now.
+        try expect(log.observe("feed", running: true, at: midnight.addingTimeInterval(-3600)))
+        try expect(!log.observe("feed", running: true, at: midnight.addingTimeInterval(1800)), "a later look only moves lastSeen")
+        try expect(log.observe("feed", running: false, at: midnight.addingTimeInterval(3600)))
+        try expect(log.observe("feed", running: true, at: now.addingTimeInterval(-600)))
+        let totals = ProjectRunTotal.totals(of: [feed], in: log, now: now, calendar: calendar)
+        try expectEqual(Int(totals[0].today), 3600 + 600, "only the part after midnight counts for today, and the open session runs to now")
+        try expectEqual(Int(totals[0].week), 7200 + 600)
+        let time = ProjectAttention.timeItems(totals)
+        try expectEqual(time.first?.title, "Projects ran 1h 10m today")
+        try expectEqual(time.first?.subtitle, "Feed 1h 10m")
+        try expect(time.first?.isEnabled == false, "a row that only reports")
+        try expect(ProjectAttention.timeItems([ProjectRunTotal(id: "x", cardID: CardID(rawValue: "project.x"), title: "X", today: 30, week: 30)]).isEmpty, "seconds are not time")
+
+        // What the last run left open ends where it last looked, and the old is pruned.
+        var left = log
+        left.closeOpenSessions()
+        try expectEqual(left.sessions["feed"]?.last?.end, now.addingTimeInterval(-600), "closed at its last look, not at now")
+        left.prune(now: now.addingTimeInterval(30 * 86_400))
+        try expect(left.sessions.isEmpty)
+    }
+
     await run.test("a project that was already stopped at launch did not stop on its own") {
         var watch = ProjectWatch()
         watch.observe("news", running: false, at: now)

@@ -25,6 +25,7 @@
 "account.showOnDeck" = "Show on deck";
 "agents.error.badURL" = "%@ is not a web address.";
 "agents.error.nothingToOpen" = "%@ has no site to open.";
+"agents.unnamed" = "an agent";
 "alert.summary.body" = "%@. Click to see them in the menu.";
 "alert.summary.named.more" = "%1$@, %2$@ and %3$d more";
 "arc.noContainers" = "no containers for this project";
@@ -86,6 +87,8 @@
 "attention.docker.notRunning" = "Docker is not running";
 "attention.docker.quit.subtitle" = "Docker quit · %@ went down";
 "attention.docker.start" = "Start Docker";
+"attention.duration.hoursMinutes" = "%1$dh %2$dm";
+"attention.duration.minutes" = "%dm";
 "attention.gh.run.last" = "the last run failed";
 "attention.gh.run.title" = "%1$@ failing on %2$@";
 "attention.gh.who.asked" = "%@ asked";
@@ -108,6 +111,9 @@
 "attention.local.noRemote.title" = "Branch not on any remote: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · oldest %2$@ ago";
 "attention.local.unpushed.title" = "%1$@ only on this computer: %2$@";
+"attention.project.agent.subtitle" = "through the MCP server";
+"attention.project.agentStarted.title" = "%1$@ started %2$@";
+"attention.project.agentStopped.title" = "%1$@ stopped %2$@";
 "attention.project.cannotStop.noStopCommand" = "No stop command set · add one in Settings";
 "attention.project.cannotStop.startedElsewhere" = "Started outside DevDeck · stop it where you started it";
 "attention.project.cannotStop.title" = "DevDeck can't stop %@";
@@ -131,6 +137,8 @@
 "attention.tier.needsFixing" = "Needs fixing";
 "attention.tier.stuck" = "Your work is stuck";
 "attention.tier.waiting" = "Waiting on you";
+"attention.time.item" = "%1$@ %2$@";
+"attention.time.today.title" = "Projects ran %@ today";
 "attention.tooltip" = "DevDeck: %@";
 "attention.update.available.subtitle" = "Restarts DevDeck, cards come back where they were";
 "attention.update.available.title" = "Update to %@…";
@@ -183,6 +191,7 @@
 "card.asOf" = "as of %@";
 "card.branch.checkedOut" = "checked out branch";
 "card.chrome.pulls.azure" = "Azure DevOps · pull requests";
+"card.project.startedBy" = "started by %@";
 "card.title.pulls.azure" = "Azure DevOps pull requests";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";

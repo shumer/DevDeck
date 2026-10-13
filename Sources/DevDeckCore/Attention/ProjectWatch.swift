@@ -56,6 +56,9 @@ public struct ProjectWatch: Sendable, Equatable {
         var syncBroken: (detail: String, since: Date)?
         var dismissed = false
         var actionStartedAt: Date?
+        /// The last button pressed by an agent rather than a person: who, which way, when.
+        /// Cleared by the next press from a person, and by ⌥ on the row.
+        var agent: (actor: String, isStop: Bool, at: Date)?
 
         static func == (left: Record, right: Record) -> Bool {
             left.isRunning == right.isRunning
@@ -72,6 +75,8 @@ public struct ProjectWatch: Sendable, Equatable {
                 && left.syncBroken?.detail == right.syncBroken?.detail
                 && left.dismissed == right.dismissed
                 && left.actionStartedAt == right.actionStartedAt
+                && left.agent?.actor == right.agent?.actor
+                && left.agent?.at == right.agent?.at
         }
     }
 
@@ -80,9 +85,11 @@ public struct ProjectWatch: Sendable, Equatable {
     public init() {}
 
     /// A button on the card was pressed. Whatever it leads to is the person's own doing, so the
-    /// old problems go and the dismissal with them.
-    public mutating func noteAction(_ id: String, isStop: Bool, at date: Date) {
+    /// old problems go and the dismissal with them. `actor` names an agent that pressed it
+    /// through the MCP server; nil is the person.
+    public mutating func noteAction(_ id: String, isStop: Bool, actor: String? = nil, at date: Date) {
         var record = records[id] ?? Record()
+        record.agent = actor.map { ($0, isStop, date) }
         record.stopRequested = isStop
         record.stopped = nil
         record.startFailure = nil
@@ -118,8 +125,10 @@ public struct ProjectWatch: Sendable, Equatable {
     ///
     /// Still the person's stop: when the project goes down later, stopped where it was started,
     /// it did not stop on its own.
-    public mutating func noteCannotStop(_ id: String, _ block: ProjectStopBlock, at date: Date) {
+    public mutating func noteCannotStop(_ id: String, _ block: ProjectStopBlock, actor: String? = nil, at date: Date) {
         var record = records[id] ?? Record()
+        // Still a press, and still the agent's when it was one.
+        record.agent = actor.map { ($0, true, date) }
         record.stopRequested = true
         record.stopped = nil
         record.startFailure = nil
@@ -182,6 +191,13 @@ public struct ProjectWatch: Sendable, Equatable {
     /// ⌥ on the menu row. Lasts until something new happens to the project.
     public mutating func dismiss(_ id: String) {
         records[id]?.dismissed = true
+        records[id]?.agent = nil
+    }
+
+    /// The last press on this project that came from an agent, while nothing a person did has
+    /// replaced it.
+    public func agentAction(for id: String) -> (actor: String, isStop: Bool, at: Date)? {
+        records[id]?.agent
     }
 
     /// Forgets projects that are no longer on the deck.
@@ -257,6 +273,22 @@ public enum ProjectAttention {
         var wentDownWithDocker: [WatchedProject] = []
 
         for project in projects {
+            // Who pressed the button, when it was not the person: an agent's start or stop is
+            // worth knowing, and is told apart from one's own by being said at all.
+            if let agent = watch.agentAction(for: project.id) {
+                items.append(AttentionItem(
+                    id: "agent:\(project.id):\(Int(agent.at.timeIntervalSince1970))",
+                    tier: .goodToKnow,
+                    mark: project.mark,
+                    title: agent.isStop
+                        ? L("attention.project.agentStopped.title", agent.actor, project.title)
+                        : L("attention.project.agentStarted.title", agent.actor, project.title),
+                    subtitle: L("attention.project.agent.subtitle"),
+                    since: agent.at,
+                    action: .showCard(project.cardID),
+                    isDismissible: true
+                ))
+            }
             for problem in watch.problems(for: project.id, now: now) {
                 switch problem {
                 case .stoppedOnItsOwn(let wasRunningAt, let at, let withDocker):

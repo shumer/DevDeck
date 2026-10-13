@@ -28,6 +28,8 @@ public enum DeckAttention {
         public var dockerDownSince: Date?
         public var checkouts: [CheckoutState]
         public var checkoutFolders: [String: URL]
+        /// How long each project ran today and this week, for the one row that says so.
+        public var runTime: [ProjectRunTotal]
         public var update: AttentionItem?
 
         public init(
@@ -47,6 +49,7 @@ public enum DeckAttention {
             dockerDownSince: Date? = nil,
             checkouts: [CheckoutState] = [],
             checkoutFolders: [String: URL] = [:],
+            runTime: [ProjectRunTotal] = [],
             update: AttentionItem? = nil
         ) {
             self.activeCards = activeCards
@@ -65,6 +68,7 @@ public enum DeckAttention {
             self.dockerDownSince = dockerDownSince
             self.checkouts = checkouts
             self.checkoutFolders = checkoutFolders
+            self.runTime = runTime
             self.update = update
         }
     }
@@ -120,6 +124,7 @@ public enum DeckAttention {
         if active.contains(.workInFlight) {
             items += CheckoutAttention.items(checkouts: input.checkouts, folders: input.checkoutFolders, now: now)
         }
+        items += ProjectAttention.timeItems(input.runTime)
         if let update = input.update { items.append(update) }
         return AttentionDigest(items: items)
     }

@@ -100,7 +100,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         canStartDocker: Bool,
         isShowingLogs: Bool,
         isCollapsed: Bool,
-        phoneURL: URL?
+        phoneURL: URL?,
+        startedBy: String? = nil
     ) -> DeckProjectCardModel {
         let card = project.cardID
         // Fusion runs in containers, so a project with a folder always needs Docker.
@@ -130,10 +131,12 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             let note: String?
             if status.isRunning, let containers = status.containers {
                 note = LN("card.containers", containers)
+            } else if status.isRunning, let startedBy {
+                note = L("card.project.startedBy", startedBy)
             } else {
                 note = status.state == .stopped ? status.detail : nil
             }
-            hero = Hero(tone: tone, text: text, note: note, help: status.detail ?? text)
+            hero = Hero(tone: tone, text: text, note: note, help: Self.help(status.detail ?? text, startedBy: status.isRunning ? startedBy : nil))
         }
 
         var environments: [Chip] = []
@@ -198,7 +201,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         canStartDocker: Bool,
         isShowingLogs: Bool,
         isCollapsed: Bool,
-        phoneURL: URL?
+        phoneURL: URL?,
+        startedBy: String? = nil
     ) -> DeckProjectCardModel {
         let card = project.cardID
         let blocked = DockerGate.blocks(docker, isRunning: status.isRunning, requiresDocker: true)
@@ -227,7 +231,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             switch status.state {
             // "unknown" alone says nothing useful; what makes it useful is who does not know.
             case .unknown: note = L("card.ddev.notListed")
-            case .running: note = status.mutagenWarning
+            case .running: note = status.mutagenWarning ?? startedBy.map { L("card.project.startedBy", $0) }
             // The detail is already the state text.
             case .working: note = nil
             // Why it is down, when DDEV or a failed command said: a start that failed is the
@@ -235,7 +239,7 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             // tooltip.
             case .stopped, .paused: note = status.detail
             }
-            hero = Hero(tone: tone, text: text, note: note, help: status.detail ?? text)
+            hero = Hero(tone: tone, text: text, note: note, help: Self.help(status.detail ?? text, startedBy: status.isRunning ? startedBy : nil))
         }
 
         let lifecycle = lifecycle(
@@ -292,7 +296,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         canStartDocker: Bool,
         isShowingLogs: Bool,
         isCollapsed: Bool,
-        phoneURL: URL?
+        phoneURL: URL?,
+        startedBy: String? = nil
     ) -> DeckProjectCardModel {
         let card = project.cardID
         let blocked = DockerGate.blocks(docker, isRunning: status.isRunning, requiresDocker: project.requiresDocker)
@@ -329,8 +334,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         let help = stopHelp ?? status.detail ?? text
         // Behind the Docker gate the note is the gate's; otherwise why Stop cannot reach it, or
         // the pid.
-        let heroNote = blocked ? DockerGate.note(docker) : (stopNote ?? status.pid.map { "pid \($0)" })
-        let hero = Hero(tone: tone, text: text, note: heroNote, help: help)
+        let heroNote = blocked ? DockerGate.note(docker) : (stopNote ?? startedBy.flatMap { status.isRunning ? L("card.project.startedBy", $0) : nil } ?? status.pid.map { "pid \($0)" })
+        let hero = Hero(tone: tone, text: text, note: heroNote, help: Self.help(help, startedBy: status.isRunning ? startedBy : nil))
 
         let lifecycle: [DeckActionModel]
         if !blocked, status.isRunning || status.state == .starting {
@@ -483,6 +488,12 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
             help: isDimmed ? L("card.chip.notRunning", url.absoluteString) : url.absoluteString,
             command: isDimmed ? nil : .openProjectLink(card, url)
         )
+    }
+
+    /// The hero's tooltip, with who started the project when it was an agent.
+    static func help(_ text: String, startedBy: String?) -> String {
+        guard let startedBy else { return text }
+        return "\(text) · \(L("card.project.startedBy", startedBy))"
     }
 
     public static func brand(of kind: ProjectKind) -> DeckMark {

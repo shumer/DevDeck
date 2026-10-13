@@ -194,7 +194,7 @@ func runAgentTests(_ run: TestRun) async {
         defer { agents.stop() }
 
         // Started outside DevDeck: the card's Stop runs nothing, and neither does the agent's.
-        let answer = try object(await agents.answer(request(["request": "command", "command": ["project": ["_0": project.cardID.rawValue, "_1": "stop"]]])))
+        let answer = try object(await agents.answer(request(["request": "command", "agent": "Claude Code", "command": ["project": ["_0": project.cardID.rawValue, "_1": "stop"]]])))
         try expectNil(answer["error"])
         try expectEqual(answer["done"] as? Bool, true)
         let card = (answer["cards"] as? [[String: Any]])?.first
@@ -203,6 +203,13 @@ func runAgentTests(_ run: TestRun) async {
         try expect(kills.isEmpty, "nothing DevDeck did not start is stopped from here: \(kills)")
         let hero = ((card?["model"] as? [String: Any])?["project"] as? [String: Any])?["hero"] as? [String: Any]
         try expectEqual(hero?["note"] as? String, L("card.project.startedElsewhere"), "and the card says why")
+        // A stop pressed by an agent is written down as the agent's, which is also an attention row.
+        try expect(deck.runtime.attention(update: nil).items.contains { $0.title == "Claude Code stopped \(project.title)" },
+                   "who pressed is said: \(deck.runtime.attention(update: nil).items.map(\.title))")
+        let time = try object(await agents.answer(request(["request": "time"])))
+        let totals = try expectNotNil(time["projectTime"] as? [[String: Any]], "time")
+        try expectEqual(totals.first?["card"] as? String, project.cardID.rawValue)
+        try expectEqual(totals.first?["today"] as? String, "0m")
     }
 
     await run.test("an agent may run a project's buttons and the inbox's, and nothing else") {

@@ -25,6 +25,7 @@
 "account.showOnDeck" = "Mostrar en el deck";
 "agents.error.badURL" = "%@ no es una dirección web.";
 "agents.error.nothingToOpen" = "%@ no tiene un sitio que abrir.";
+"agents.unnamed" = "un agente";
 "alert.summary.body" = "%@. Haz clic para verlos en el menú.";
 "alert.summary.named.more" = "%1$@, %2$@ y %3$d más";
 "arc.noContainers" = "no hay contenedores para este proyecto";
@@ -86,6 +87,8 @@
 "attention.docker.notRunning" = "Docker no está en marcha";
 "attention.docker.quit.subtitle" = "Docker se cerró · %@ se cayeron";
 "attention.docker.start" = "Arrancar Docker";
+"attention.duration.hoursMinutes" = "%1$dh %2$dm";
+"attention.duration.minutes" = "%dm";
 "attention.gh.run.last" = "la última ejecución falló";
 "attention.gh.run.title" = "%1$@ falla en %2$@";
 "attention.gh.who.asked" = "%@ lo pidió";
@@ -108,6 +111,9 @@
 "attention.local.noRemote.title" = "La rama no está en ningún remoto: %@";
 "attention.local.unpushed.subtitle" = "%1$@ · el más antiguo hace %2$@";
 "attention.local.unpushed.title" = "%1$@ solo en este ordenador: %2$@";
+"attention.project.agent.subtitle" = "a través del servidor MCP";
+"attention.project.agentStarted.title" = "%1$@ inició %2$@";
+"attention.project.agentStopped.title" = "%1$@ detuvo %2$@";
 "attention.project.cannotStop.noStopCommand" = "Sin comando de parada · añade uno en Ajustes";
 "attention.project.cannotStop.startedElsewhere" = "Iniciado fuera de DevDeck · páralo donde lo iniciaste";
 "attention.project.cannotStop.title" = "DevDeck no puede parar %@";
@@ -131,6 +137,8 @@
 "attention.tier.needsFixing" = "Hay que arreglar";
 "attention.tier.stuck" = "Tu trabajo está atascado";
 "attention.tier.waiting" = "Te están esperando";
+"attention.time.item" = "%1$@ %2$@";
+"attention.time.today.title" = "Los proyectos corrieron %@ hoy";
 "attention.tooltip" = "DevDeck: %@";
 "attention.update.available.subtitle" = "Reinicia DevDeck, las tarjetas vuelven a su sitio";
 "attention.update.available.title" = "Actualizar a %@…";
@@ -183,6 +191,7 @@
 "card.asOf" = "a las %@";
 "card.branch.checkedOut" = "rama activa";
 "card.chrome.pulls.azure" = "Azure DevOps · pull requests";
+"card.project.startedBy" = "iniciado por %@";
 "card.title.pulls.azure" = "Azure DevOps pull requests";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";

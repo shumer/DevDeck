@@ -213,6 +213,10 @@ public final class DeckRuntime {
     public private(set) var watch = ProjectWatch() {
         didSet { changed(.watch) }
     }
+    /// How long each project has run, across launches. Written out when a session opens or
+    /// closes, and once a minute while one is open.
+    private var runLog: ProjectRunLog
+    private var runLogSavedAt: Date?
     /// When Docker stopped answering, for the row that says so.
     private var dockerDownSince: Date?
     /// When each account started failing, keyed `service:id`. A network blip is not news, and a
@@ -322,6 +326,26 @@ public final class DeckRuntime {
         self.sleeper = sleeper
         self.baseSettings = settings
         self.localAddress = localAddress()
+        // A session the last run left open ended when that run last looked.
+        var log = preferences.projectRunLog
+        log.closeOpenSessions()
+        log.prune(now: clock.now)
+        self.runLog = log
+    }
+
+    /// A settled observation of a project, for the run log.
+    private func logRun(_ id: String, running: Bool) {
+        let now = clock.now
+        let changed = runLog.observe(id, running: running, at: now)
+        if changed || runLogSavedAt.map({ now.timeIntervalSince($0) >= 60 }) ?? true {
+            preferences.projectRunLog = runLog
+            runLogSavedAt = now
+        }
+    }
+
+    /// Today and the last seven days, per project on the deck.
+    public func projectTime() -> [ProjectRunTotal] {
+        ProjectRunTotal.totals(of: watchedProjects, in: runLog, now: clock.now)
     }
 
     public var refreshPolicy: RefreshPolicy {
@@ -463,6 +487,7 @@ public final class DeckRuntime {
     /// An engine that answers its health URL with an error is up and unwell, not stopped.
     private func observe(_ project: ArcProject, _ status: LocalStackStatus) {
         let unwell = status.healthStatusCode != nil ? (status.detail ?? "health check failing") : nil
+        logRun(project.id, running: status.isRunning)
         watch.observe(
             project.id,
             running: status.isRunning || unwell != nil,
@@ -473,11 +498,11 @@ public final class DeckRuntime {
     }
 
     /// Runs a stack command and keeps the card honest while it does.
-    public func perform(_ action: LocalStackAction, for project: ArcProject) {
+    public func perform(_ action: LocalStackAction, for project: ArcProject, actor: String? = nil) {
         // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
         settler.reset("arc.\(project.id)")
         guard project.supportsLocalStack else { return }
-        watch.noteAction(project.id, isStop: action == .stop || action == .teardown, at: clock.now)
+        watch.noteAction(project.id, isStop: action == .stop || action == .teardown, actor: actor, at: clock.now)
         // The branch row stays through the command: see `carryingCheckout`.
         let previous = stackStatuses[project.id]
         stackStatuses[project.id] = LocalStackStatus(
@@ -625,6 +650,7 @@ public final class DeckRuntime {
                 for: "ddev.\(project.id)"
             ) else { continue }
             ddevStatuses[project.id] = keepingStartFailure(probed, for: project.id)
+            logRun(project.id, running: probed.isRunning)
             watch.observe(
                 project.id,
                 running: probed.isRunning,
@@ -643,11 +669,11 @@ public final class DeckRuntime {
         return clock.now.timeIntervalSince(checkedAt) < 900
     }
 
-    public func perform(_ action: DDEVAction, for project: DDEVProject) {
+    public func perform(_ action: DDEVAction, for project: DDEVProject, actor: String? = nil) {
         // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
         settler.reset("ddev.\(project.id)")
         guard project.folderURL != nil else { return }
-        watch.noteAction(project.id, isStop: action == .stop, at: clock.now)
+        watch.noteAction(project.id, isStop: action == .stop, actor: actor, at: clock.now)
         let previous = ddevStatuses[project.id]
         ddevStatuses[project.id] = DDEVStatus(
             state: .working,
@@ -906,6 +932,7 @@ public final class DeckRuntime {
     /// A process that is alive while its health URL is silent is up, and not answering.
     private func observe(_ project: LocalProject, _ status: LocalProjectStatus) {
         let silent = status.state == .starting ? (status.detail ?? "running, but not answering") : nil
+        logRun(project.id, running: status.isRunning)
         watch.observe(
             project.id,
             running: status.isRunning || silent != nil,
@@ -921,7 +948,7 @@ public final class DeckRuntime {
         return clock.now.timeIntervalSince(checkedAt) < 900
     }
 
-    public func perform(_ action: LocalProjectAction, for project: LocalProject) {
+    public func perform(_ action: LocalProjectAction, for project: LocalProject, actor: String? = nil) {
         // Pressing a button is a decision, not a poll: whatever it leads to is shown at once.
         settler.reset("project.\(project.id)")
         guard project.supportsCommands else { return }
@@ -929,10 +956,10 @@ public final class DeckRuntime {
             // Nothing DevDeck holds can stop it, so nothing is run. Running the stop anyway is
             // how the menu came to say a stop "did not work" that was never tried, and a restart
             // would go on to start a second copy onto a port that is taken.
-            watch.noteCannotStop(project.id, block, at: clock.now)
+            watch.noteCannotStop(project.id, block, actor: actor, at: clock.now)
             return
         }
-        watch.noteAction(project.id, isStop: action == .stop, at: clock.now)
+        watch.noteAction(project.id, isStop: action == .stop, actor: actor, at: clock.now)
         let previous = localStatuses[project.id]
         localStatuses[project.id] = LocalProjectStatus(
             state: .working,
@@ -1539,6 +1566,16 @@ public final class DeckRuntime {
     /// A card's log as its window would show it, read now, whether or not a window is open.
     /// Nil for a card with no log to read.
     public func readLogs(for card: CardID) async -> LogLines? {
+        guard var lines = await readProjectLogs(for: card) else { return nil }
+        // Who started what the log is about, when it was not the person.
+        if let id = watchedProjects.first(where: { $0.cardID == card })?.id,
+           let agent = watch.agentAction(for: id), !agent.isStop {
+            lines.source = [lines.source, L("card.project.startedBy", agent.actor)].compactMap { $0 }.joined(separator: " · ")
+        }
+        return lines
+    }
+
+    private func readProjectLogs(for card: CardID) async -> LogLines? {
         let limit = LogTail.windowLineLimit
         if let project = project(forCard: card) {
             return await LocalStackService(project: project, runner: runner(forFolder: project.folder)).logs(limit: limit)
@@ -1935,6 +1972,7 @@ public final class DeckRuntime {
             dockerDownSince: dockerDownSince,
             checkouts: checkouts,
             checkoutFolders: folders,
+            runTime: projectTime(),
             update: update
         )
     }
@@ -2102,6 +2140,12 @@ public final class DeckRuntime {
         }
     }
 
+    /// The agent that started a project, while its start is the last press on it.
+    private func startedBy(_ projectID: String) -> String? {
+        guard let agent = watch.agentAction(for: projectID), !agent.isStop else { return nil }
+        return agent.actor
+    }
+
     /// An Arc, DDEV or plain project's card, whichever kind owns this card.
     private func projectModel(for card: CardID) -> DeckCardModel? {
         if let project = project(forCard: card) {
@@ -2109,7 +2153,7 @@ public final class DeckRuntime {
             return .project(.arc(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                phoneURL: reachablePhoneURL(for: card)
+                phoneURL: reachablePhoneURL(for: card), startedBy: startedBy(project.id)
             ))
         }
         if let project = ddevProject(forCard: card) {
@@ -2117,7 +2161,7 @@ public final class DeckRuntime {
             return .project(.ddev(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                phoneURL: reachablePhoneURL(for: card)
+                phoneURL: reachablePhoneURL(for: card), startedBy: startedBy(project.id)
             ))
         }
         if let project = localProject(forCard: card) {
@@ -2125,7 +2169,7 @@ public final class DeckRuntime {
             return .project(.local(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                phoneURL: reachablePhoneURL(for: card)
+                phoneURL: reachablePhoneURL(for: card), startedBy: startedBy(project.id)
             ))
         }
         return nil
@@ -2139,8 +2183,9 @@ public final class DeckRuntime {
         return nil
     }
 
-    /// Carries out a click from a card.
-    public func perform(_ command: DeckCommand) {
+    /// Carries out a click from a card. `actor` names an agent that sent it through the MCP
+    /// server; a person's click has none.
+    public func perform(_ command: DeckCommand, by actor: String? = nil) {
         switch command {
         case .openLink(let url, let account, let service):
             effect(.openURL(url, browser(for: account, service: service)))
@@ -2173,11 +2218,11 @@ public final class DeckRuntime {
             effect(.openURL(url, place.browser))
         case .project(let card, let action):
             if let project = project(forCard: card) {
-                perform(LocalStackAction(rawValue: action.rawValue) ?? .start, for: project)
+                perform(LocalStackAction(rawValue: action.rawValue) ?? .start, for: project, actor: actor)
             } else if let project = ddevProject(forCard: card) {
-                perform(DDEVAction(rawValue: action.rawValue) ?? .start, for: project)
+                perform(DDEVAction(rawValue: action.rawValue) ?? .start, for: project, actor: actor)
             } else if let project = localProject(forCard: card) {
-                perform(LocalProjectAction(rawValue: action.rawValue) ?? .start, for: project)
+                perform(LocalProjectAction(rawValue: action.rawValue) ?? .start, for: project, actor: actor)
             }
         case .revealFolder(let card):
             guard let folder = projectPlace(for: card)?.folder else { return }

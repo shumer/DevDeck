@@ -90,6 +90,9 @@ public final class DeckAgents {
     private struct Request: Decodable {
         var id: String?
         var request: String
+        /// Who is asking, as the MCP client named itself: what a command is written down as
+        /// coming from.
+        var agent: String?
         var card: CardID?
         var command: DeckCommand?
         /// `open`: a web address, in the browser of the account it belongs to.
@@ -153,6 +156,8 @@ public final class DeckAgents {
             reply.version = version
         case "attention":
             reply.attention = attention()
+        case "time":
+            reply.projectTime = runtime.projectTime().map(AgentProjectTime.init)
         case "cards":
             reply.cards = runtime.cards.visible.compactMap { card in
                 runtime.model(for: card).map { AgentCard(card: card, model: $0) }
@@ -282,7 +287,7 @@ public final class DeckAgents {
                 reply.error = L("agents.error.unknownCard", card.rawValue)
                 break
             }
-            runtime.perform(command)
+            runtime.perform(command, by: request.agent?.trimmingCharacters(in: .whitespaces).nonEmpty ?? L("agents.unnamed"))
             reply.done = await waitForWork()
             if case .project(let card, _) = command {
                 reply.cards = runtime.model(for: card).map { [AgentCard(card: card, model: $0)] }
@@ -433,6 +438,8 @@ public final class DeckAgents {
         var attention: [AgentAttention]?
         var cards: [AgentCard]?
         var log: AgentLog?
+        /// `time`: how long each project ran today and in the last seven days.
+        var projectTime: [AgentProjectTime]?
         /// After a command: whether the work it started has finished.
         var done: Bool?
         /// `open`: what was opened, the address or the card.
@@ -450,6 +457,24 @@ public final class DeckAgents {
     private struct AgentCard: Encodable {
         let card: CardID
         let model: DeckCardModel
+    }
+
+    private struct AgentProjectTime: Encodable {
+        let card: CardID
+        let title: String
+        let todaySeconds: Int
+        let weekSeconds: Int
+        let today: String
+        let week: String
+
+        init(_ total: ProjectRunTotal) {
+            card = total.cardID
+            title = total.title
+            todaySeconds = Int(total.today)
+            weekSeconds = Int(total.week)
+            today = AttentionWords.duration(total.today)
+            week = AttentionWords.duration(total.week)
+        }
     }
 
     private struct AgentLog: Encodable {

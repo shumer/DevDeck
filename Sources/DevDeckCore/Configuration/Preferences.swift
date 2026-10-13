@@ -241,6 +241,17 @@ public final class Preferences: @unchecked Sendable {
         set { setStringSet(newValue, forKey: "notify.projects.down.off") }
     }
 
+    /// How long each project has run, across launches. See `ProjectRunLog`.
+    public var projectRunLog: ProjectRunLog {
+        get {
+            guard let data = backend.data(forKey: "projects.runLog"),
+                  let log = try? JSONDecoder().decode(ProjectRunLog.self, from: data)
+            else { return ProjectRunLog() }
+            return log
+        }
+        set { backend.set(try? JSONEncoder().encode(newValue), forKey: "projects.runLog") }
+    }
+
     /// Projects that may not interrupt you when a start fails, by card id.
     public var projectsQuietWhenStartFails: Set<String> {
         get { stringSet(forKey: "notify.projects.start.off") }

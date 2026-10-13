@@ -100,3 +100,14 @@ who asked, and two agents asking must not spoil each other's answer. `open` puts
 project's place on the person's screen; it takes control, because the screen is the person's,
 and a URL opens in the browser of the account whose host it is, the way a row's link would, so an
 agent that names a pull request does not open it as the wrong person.
+
+## Amendment: who pressed, waiting, and time
+
+A command carries the client's name, and the watch records a press from an agent as the agent's:
+a start the person did not do is the kind of thing worth a row, and it is told apart from one's
+own by being said at all. The row lasts until the person presses a button on that card, which is
+their own doing again, or dismisses it. `wait_for` lives in the server process and polls the deck;
+the deck has no notion of waiting, and an agent that wants to wait is one process watching one
+card. The run log is the deck's, kept in preferences across launches, because time per project is
+a question about days, not about one session; it is written when a session opens or closes and
+once a minute while one is open, so a quit ends a session where the deck last looked.

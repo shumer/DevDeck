@@ -25,6 +25,7 @@
 "account.showOnDeck" = "Afficher sur le deck";
 "agents.error.badURL" = "%@ n’est pas une adresse web.";
 "agents.error.nothingToOpen" = "%@ n’a pas de site à ouvrir.";
+"agents.unnamed" = "un agent";
 "alert.summary.body" = "%@. Cliquez pour les voir dans le menu.";
 "alert.summary.named.more" = "%1$@, %2$@ et %3$d autres";
 "arc.noContainers" = "aucun conteneur pour ce projet";
@@ -86,6 +87,8 @@
 "attention.docker.notRunning" = "Docker ne tourne pas";
 "attention.docker.quit.subtitle" = "Docker a quitté · %@ sont tombés";
 "attention.docker.start" = "Démarrer Docker";
+"attention.duration.hoursMinutes" = "%1$dh %2$dmin";
+"attention.duration.minutes" = "%dmin";
 "attention.gh.run.last" = "la dernière exécution a échoué";
 "attention.gh.run.title" = "%1$@ échoue sur %2$@";
 "attention.gh.who.asked" = "%@ a demandé";
@@ -108,6 +111,9 @@
 "attention.local.noRemote.title" = "Branche sur aucun dépôt distant : %@";
 "attention.local.unpushed.subtitle" = "%1$@ · le plus ancien il y a %2$@";
 "attention.local.unpushed.title" = "%1$@ seulement sur cet ordinateur : %2$@";
+"attention.project.agent.subtitle" = "via le serveur MCP";
+"attention.project.agentStarted.title" = "%1$@ a démarré %2$@";
+"attention.project.agentStopped.title" = "%1$@ a arrêté %2$@";
 "attention.project.cannotStop.noStopCommand" = "Aucune commande d’arrêt · ajoutez-en une dans les Réglages";
 "attention.project.cannotStop.startedElsewhere" = "Lancé hors de DevDeck · arrêtez-le là où vous l’avez lancé";
 "attention.project.cannotStop.title" = "DevDeck ne peut pas arrêter %@";
@@ -131,6 +137,8 @@
 "attention.tier.needsFixing" = "À réparer";
 "attention.tier.stuck" = "Votre travail est bloqué";
 "attention.tier.waiting" = "On vous attend";
+"attention.time.item" = "%1$@ %2$@";
+"attention.time.today.title" = "Les projets ont tourné %@ aujourd’hui";
 "attention.tooltip" = "DevDeck : %@";
 "attention.update.available.subtitle" = "Redémarre DevDeck, les cartes reviennent à leur place";
 "attention.update.available.title" = "Mettre à jour vers %@…";
@@ -183,6 +191,7 @@
 "card.asOf" = "à %@";
 "card.branch.checkedOut" = "branche active";
 "card.chrome.pulls.azure" = "Azure DevOps · pull requests";
+"card.project.startedBy" = "démarré par %@";
 "card.title.pulls.azure" = "Azure DevOps pull requests";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";
