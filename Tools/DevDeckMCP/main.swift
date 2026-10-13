@@ -94,8 +94,9 @@ let tools = [
     ),
     Tool(
         name: "start_project",
-        description: "Starts a project the way its Start button does, waits for it to answer or fail, and returns its card.",
-        properties: ["card": cardProperty], required: ["card"], controls: true
+        description: "Starts a project the way its Start button does, waits for it to answer or fail, and returns its card. Arc XP: Fusion runs one local stack at a time, so starting an Arc project while another is running is refused with the other's name; pass replace true to stop that one first and start this one.",
+        properties: ["card": cardProperty, "replace": ["type": "boolean", "description": "Arc only: stop the other running Arc stack first. Default false, which refuses rather than stops."]],
+        required: ["card"], controls: true
     ),
     Tool(
         name: "stop_project",
@@ -104,8 +105,9 @@ let tools = [
     ),
     Tool(
         name: "restart_project",
-        description: "Restarts a project the way its Restart button does, waits for it, and returns its card.",
-        properties: ["card": cardProperty], required: ["card"], controls: true
+        description: "Restarts a project the way its Restart button does, waits for it, and returns its card. Arc XP: as with start_project, another running Arc stack is refused unless replace is true.",
+        properties: ["card": cardProperty, "replace": ["type": "boolean", "description": "Arc only: stop the other running Arc stack first."]],
+        required: ["card"], controls: true
     ),
     Tool(
         name: "detect_project",
@@ -371,7 +373,9 @@ func projectStates(_ cards: [[String: Any]]) -> [String: (title: String, state: 
     let card = arguments["card"] as? String
     func project(_ action: String) -> [String: Any] {
         guard let card else { return toolResult(.unreachable("A card id is needed.")) }
-        return toolResult(ask(["request": "command", "command": ["project": ["_0": card, "_1": action]]]))
+        var request: [String: Any] = ["request": "command", "command": ["project": ["_0": card, "_1": action]]]
+        if arguments["replace"] as? Bool == true { request["replace"] = true }
+        return toolResult(ask(request))
     }
     switch name {
     case "what_needs_me":

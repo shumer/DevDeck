@@ -95,6 +95,8 @@ public final class DeckAgents {
         var agent: String?
         var card: CardID?
         var command: DeckCommand?
+        /// `command`: a start that stops another Arc stack is refused until the agent says so.
+        var replace: Bool?
         /// `open`: a web address, in the browser of the account it belongs to.
         var url: String?
         /// `open` with a card: `card` (default), `folder`, `terminal` or `site`.
@@ -285,6 +287,13 @@ public final class DeckAgents {
             }
             if case .project(let card, _) = command, runtime.model(for: card) == nil {
                 reply.error = L("agents.error.unknownCard", card.rawValue)
+                break
+            }
+            // Fusion runs one stack at a time: a start that would take another down is said
+            // first, and done only when the agent asks for exactly that.
+            if case .project(let card, let action) = command, action != .stop, request.replace != true,
+               let project = runtime.project(forCard: card), let rival = runtime.runningArcRival(for: project) {
+                reply.error = L("agents.error.arcRunning", rival.title, project.title)
                 break
             }
             runtime.perform(command, by: request.agent?.trimmingCharacters(in: .whitespaces).nonEmpty ?? L("agents.unnamed"))

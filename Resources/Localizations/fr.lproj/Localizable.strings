@@ -23,6 +23,7 @@
 "account.section.instance" = "Instance";
 "account.section.token" = "Token";
 "account.showOnDeck" = "Afficher sur le deck";
+"agents.error.arcRunning" = "%1$@ tourne, et Fusion ne tient qu’un stack local à la fois. Passez replace: true pour arrêter %1$@ et démarrer %2$@.";
 "agents.error.badURL" = "%@ n’est pas une adresse web.";
 "agents.error.nothingToOpen" = "%@ n’a pas de site à ouvrir.";
 "agents.unnamed" = "un agent";
@@ -31,7 +32,12 @@
 "arc.noContainers" = "aucun conteneur pour ce projet";
 "arc.portHeldBy" = "port %1$d pris par %2$@";
 "arc.answeredElsewhere" = "sur le port %d répond une pile que ce Docker ne connaît pas";
+"arc.replace.confirm" = "Arrêter %@ et démarrer";
+"arc.replace.detail" = "Fusion ne tient qu’un stack local à la fois ; en démarrer un autre arrête celui qui tourne.";
+"arc.replace.title" = "%1$@ tourne. L’arrêter et démarrer %2$@ ?";
+"arc.replacedBy" = "a cédé la place à %@";
 "arc.stack.unavailable" = "Aucun dossier de projet défini";
+"arc.stoppingRival" = "arrêt de %@…";
 "arrangements.forget" = "Oublier %@";
 "arrangements.name.placeholder" = "Lundi";
 "arrangements.save" = "Enregistrer celle-ci…";
@@ -117,6 +123,8 @@
 "attention.project.cannotStop.noStopCommand" = "Aucune commande d’arrêt · ajoutez-en une dans les Réglages";
 "attention.project.cannotStop.startedElsewhere" = "Lancé hors de DevDeck · arrêtez-le là où vous l’avez lancé";
 "attention.project.cannotStop.title" = "DevDeck ne peut pas arrêter %@";
+"attention.project.replaced.subtitle" = "Fusion ne tient qu’un stack à la fois";
+"attention.project.replaced.title" = "%1$@ a cédé la place à %2$@";
 "attention.project.silent.title" = "%@ tourne mais ne répond pas";
 "attention.project.startFailed.title" = "%@ n’a pas démarré";
 "attention.project.stillRunning.subtitle" = "Arrêter n’a rien changé, il répond encore";

@@ -40,6 +40,8 @@ public struct ProjectWatch: Sendable, Equatable {
         /// Stop was pressed and nothing was run, because nothing DevDeck holds could stop it.
         case cannotStop(ProjectStopBlock, at: Date)
         case syncBroken(detail: String, since: Date)
+        /// Another Arc stack was started and took its place: Fusion runs one at a time.
+        case replaced(by: String, at: Date)
     }
 
     struct Record: Sendable, Equatable {
@@ -59,6 +61,8 @@ public struct ProjectWatch: Sendable, Equatable {
         /// The last button pressed by an agent rather than a person: who, which way, when.
         /// Cleared by the next press from a person, and by ⌥ on the row.
         var agent: (actor: String, isStop: Bool, at: Date)?
+        /// Stopped because another Arc stack took its place, and by which.
+        var replacedBy: (title: String, at: Date)?
 
         static func == (left: Record, right: Record) -> Bool {
             left.isRunning == right.isRunning
@@ -77,6 +81,8 @@ public struct ProjectWatch: Sendable, Equatable {
                 && left.actionStartedAt == right.actionStartedAt
                 && left.agent?.actor == right.agent?.actor
                 && left.agent?.at == right.agent?.at
+                && left.replacedBy?.title == right.replacedBy?.title
+                && left.replacedBy?.at == right.replacedBy?.at
         }
     }
 
@@ -90,6 +96,7 @@ public struct ProjectWatch: Sendable, Equatable {
     public mutating func noteAction(_ id: String, isStop: Bool, actor: String? = nil, at date: Date) {
         var record = records[id] ?? Record()
         record.agent = actor.map { ($0, isStop, date) }
+        record.replacedBy = nil
         record.stopRequested = isStop
         record.stopped = nil
         record.startFailure = nil
@@ -119,6 +126,30 @@ public struct ProjectWatch: Sendable, Equatable {
         record.lastRunningAt = date
         record.dismissed = false
         records[id] = record
+    }
+
+    /// Another Arc stack is taking this one's place, or has: Fusion runs one at a time, so the
+    /// stop is the price of the other start rather than something that went wrong.
+    public mutating func noteReplaced(_ id: String, by title: String, at date: Date) {
+        var record = records[id] ?? Record()
+        record.stopRequested = true
+        record.replacedBy = (title, date)
+        record.stopped = nil
+        record.startFailure = nil
+        record.stopFailedAt = nil
+        record.cannotStop = nil
+        record.dismissed = false
+        records[id] = record
+    }
+
+    /// Whether a stop is on record for the project: pressed, or the price of another start.
+    public func isStopRequested(_ id: String) -> Bool {
+        records[id]?.stopRequested ?? false
+    }
+
+    /// Which Arc stack took this one's place, while it has not come back.
+    public func replacement(for id: String) -> String? {
+        records[id]?.replacedBy?.title
     }
 
     /// Stop was pressed on a project nothing here can stop, so nothing was run.
@@ -161,6 +192,7 @@ public struct ProjectWatch: Sendable, Equatable {
             record.lastRunningAt = date
             record.stopped = nil
             record.startFailure = nil
+            record.replacedBy = nil
             // A stop that did not take, or could not be tried, is still the person's stop: when
             // it finally lands, the project did not stop on its own.
             if record.stopFailedAt == nil, record.cannotStop == nil { record.stopRequested = false }
@@ -227,6 +259,9 @@ public struct ProjectWatch: Sendable, Equatable {
             }
             if let cannotStop = record.cannotStop {
                 problems.append(.cannotStop(cannotStop.block, at: cannotStop.at))
+            }
+            if let replaced = record.replacedBy {
+                problems.append(.replaced(by: replaced.title, at: replaced.at))
             }
         }
         if let silent = record.notAnswering, now.timeIntervalSince(silent.since) >= Self.notAnsweringAfter {
@@ -356,6 +391,17 @@ public enum ProjectAttention {
                         action: .showCard(project.cardID),
                         isDismissible: true
                     ))
+                case .replaced(let by, let at):
+                    items.append(AttentionItem(
+                        id: "replaced:\(project.id):\(Int(at.timeIntervalSince1970))",
+                        tier: .goodToKnow,
+                        mark: project.mark,
+                        title: L("attention.project.replaced.title", project.title, by),
+                        subtitle: L("attention.project.replaced.subtitle"),
+                        since: at,
+                        action: .showCard(project.cardID),
+                        isDismissible: true
+                    ))
                 case .syncBroken(let detail, let since):
                     items.append(AttentionItem(
                         id: "project:\(project.id):sync",
@@ -475,7 +521,7 @@ public enum ProjectAttention {
                         target: .card(project.cardID),
                         isQuiet: true
                     ))
-                case .stopDidNotTakeEffect, .cannotStop:
+                case .stopDidNotTakeEffect, .cannotStop, .replaced:
                     continue
                 }
             }

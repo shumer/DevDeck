@@ -2,6 +2,11 @@
 
 ## Done
 
+- One Arc stack at a time, said before it is done: Start on an Arc card while another is up asks
+  and then stops the other on record; the menu says the other gave way, with no banner; an agent
+  is refused until it passes `replace: true`; a stack knocked over from a terminal is read as a
+  handover on the next poll. See [adr/0039-one-arc-stack-at-a-time.md](adr/0039-one-arc-stack-at-a-time.md).
+
 - Who pressed: a start or stop that came through the MCP server is written down as the agent's,
   in the menu, on the card and above the log. `project_time` and a Good to know row say how long
   each project ran today and this week, from a run log kept across launches. `wait_for` lets an

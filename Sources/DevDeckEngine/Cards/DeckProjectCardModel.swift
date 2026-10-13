@@ -101,7 +101,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         isShowingLogs: Bool,
         isCollapsed: Bool,
         phoneURL: URL?,
-        startedBy: String? = nil
+        startedBy: String? = nil,
+        replacing: String? = nil
     ) -> DeckProjectCardModel {
         let card = project.cardID
         // Fusion runs in containers, so a project with a folder always needs Docker.
@@ -152,11 +153,23 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         }
         environments += project.siteLinks.map { chip($0.label, url: $0.url, isSite: true, card: card, isRunning: status.isRunning) }
 
+        // Fusion runs one stack at a time: a start while another Arc card is up is also that
+        // card's stop, and the button says so before it does it.
+        let question = replacing.map { rival in
+            DeckConfirmation(
+                title: L("arc.replace.title", rival, project.title),
+                detail: L("arc.replace.detail"),
+                confirm: L("arc.replace.confirm", rival),
+                cancel: L("button.cancel"),
+                isDestructive: true
+            )
+        }
         let lifecycle = lifecycle(
             card: card, blocked: blocked, docker: docker, canStartDocker: canStartDocker,
             isRunning: status.isRunning,
             canStart: !status.isBusy && project.supportsLocalStack && status.readiness?.canStart != false,
-            canRestart: status.readiness?.canStart != false
+            canRestart: status.readiness?.canStart != false,
+            startConfirmation: question
         )
         let site = status.isRunning ? (status.siteURL ?? project.localSiteURL) : nil
         let note = status.isRunning && hero.note != nil && !blocked ? hero.note : hero.text
@@ -412,7 +425,8 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         canStartDocker: Bool,
         isRunning: Bool,
         canStart: Bool,
-        canRestart: Bool
+        canRestart: Bool,
+        startConfirmation: DeckConfirmation? = nil
     ) -> [DeckActionModel] {
         let restartOff = DeckActionModel(L("card.action.restart"), glyph: .restart, isEnabled: false, command: .project(card, .restart))
         if blocked {
@@ -427,11 +441,11 @@ public struct DeckProjectCardModel: Sendable, Equatable, Codable {
         if isRunning {
             return [
                 DeckActionModel(L("card.action.stop"), glyph: .stop, tone: .alert, isProminent: true, command: .project(card, .stop)),
-                DeckActionModel(L("card.action.restart"), glyph: .restart, isEnabled: canRestart, command: .project(card, .restart)),
+                DeckActionModel(L("card.action.restart"), glyph: .restart, isEnabled: canRestart, command: .project(card, .restart), confirmation: startConfirmation),
             ]
         }
         return [
-            DeckActionModel(L("card.action.start"), glyph: .start, tone: .good, isEnabled: canStart, isProminent: true, command: .project(card, .start)),
+            DeckActionModel(L("card.action.start"), glyph: .start, tone: .good, isEnabled: canStart, isProminent: true, command: .project(card, .start), confirmation: startConfirmation),
             restartOff,
         ]
     }

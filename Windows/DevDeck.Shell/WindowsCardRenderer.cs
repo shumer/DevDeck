@@ -693,7 +693,7 @@ public static class WindowsCardRenderer
             }
             var actionCommand = JsonModel.Command(action);
             var button = actionCommand is { } actualCommand
-                ? CommandButton(content, actualCommand, Enabled(action), command, "CardButton")
+                ? CommandButton(content, actualCommand, Enabled(action), Asking(action, command), "CardButton")
                 : new Button { Content = content };
             button.Style = WindowsTheme.Style("CardButton");
             button.IsEnabled = Enabled(action);
@@ -818,7 +818,7 @@ public static class WindowsCardRenderer
                     continue;
                 }
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                var button = CommandButton(DeckIcons.Create(JsonModel.String(action, "glyph"), 13), actionCommand, Enabled(action), command, "HeaderIconButton");
+                var button = CommandButton(DeckIcons.Create(JsonModel.String(action, "glyph"), 13), actionCommand, Enabled(action), Asking(action, command), "HeaderIconButton");
                 button.Width = 28;
                 button.Height = 28;
                 button.ToolTip = JsonModel.String(action, "help") ?? JsonModel.String(action, "title");
@@ -899,6 +899,23 @@ public static class WindowsCardRenderer
         AutomationProperties.SetAutomationId(button, automationId);
         AutomationProperties.SetName(button, help ?? "");
         return button;
+    }
+
+    // A button that carries a question asks it first; the engine decides which buttons do.
+    private static Action<DeckCommand> Asking(JsonElement action, Action<DeckCommand> command)
+    {
+        if (!JsonModel.Object(action, "confirmation", out var confirmation))
+        {
+            return command;
+        }
+        var question = DeckMenuDialogModel.Parse(confirmation);
+        return deckCommand =>
+        {
+            if (new MenuDialogs().Confirm(question))
+            {
+                command(deckCommand);
+            }
+        };
     }
 
     private static Button CommandButton(object? content, DeckCommand deckCommand, bool enabled, Action<DeckCommand> command, string style)

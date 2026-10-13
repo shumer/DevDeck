@@ -23,6 +23,7 @@
 "account.section.instance" = "Instancia";
 "account.section.token" = "Token";
 "account.showOnDeck" = "Mostrar en el deck";
+"agents.error.arcRunning" = "%1$@ está en marcha y Fusion mantiene un solo stack local. Pasa replace: true para detener %1$@ e iniciar %2$@.";
 "agents.error.badURL" = "%@ no es una dirección web.";
 "agents.error.nothingToOpen" = "%@ no tiene un sitio que abrir.";
 "agents.unnamed" = "un agente";
@@ -31,7 +32,12 @@
 "arc.noContainers" = "no hay contenedores para este proyecto";
 "arc.portHeldBy" = "puerto %1$d ocupado por %2$@";
 "arc.answeredElsewhere" = "en el puerto %d responde un stack que este Docker no conoce";
+"arc.replace.confirm" = "Detener %@ e iniciar";
+"arc.replace.detail" = "Fusion mantiene un solo stack local; iniciar otro detiene el que está en marcha.";
+"arc.replace.title" = "%1$@ está en marcha. ¿Detenerlo e iniciar %2$@?";
+"arc.replacedBy" = "cedió el sitio a %@";
 "arc.stack.unavailable" = "No hay carpeta de proyecto";
+"arc.stoppingRival" = "deteniendo %@…";
 "arrangements.forget" = "Olvidar %@";
 "arrangements.name.placeholder" = "Lunes";
 "arrangements.save" = "Guardar esta…";
@@ -117,6 +123,8 @@
 "attention.project.cannotStop.noStopCommand" = "Sin comando de parada · añade uno en Ajustes";
 "attention.project.cannotStop.startedElsewhere" = "Iniciado fuera de DevDeck · páralo donde lo iniciaste";
 "attention.project.cannotStop.title" = "DevDeck no puede parar %@";
+"attention.project.replaced.subtitle" = "Fusion mantiene un solo stack a la vez";
+"attention.project.replaced.title" = "%1$@ cedió el sitio a %2$@";
 "attention.project.silent.title" = "%@ está en marcha pero no responde";
 "attention.project.startFailed.title" = "%@ no arrancó";
 "attention.project.stillRunning.subtitle" = "Parar no hizo efecto, sigue respondiendo";

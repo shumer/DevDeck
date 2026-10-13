@@ -23,6 +23,7 @@
 "account.section.instance" = "Instance";
 "account.section.token" = "Token";
 "account.showOnDeck" = "Show on deck";
+"agents.error.arcRunning" = "%1$@ is running, and Fusion runs one local stack at a time. Pass replace: true to stop %1$@ and start %2$@.";
 "agents.error.badURL" = "%@ is not a web address.";
 "agents.error.nothingToOpen" = "%@ has no site to open.";
 "agents.unnamed" = "an agent";
@@ -31,7 +32,12 @@
 "arc.noContainers" = "no containers for this project";
 "arc.portHeldBy" = "port %1$d taken by %2$@";
 "arc.answeredElsewhere" = "port %d answered by a stack this Docker does not know";
+"arc.replace.confirm" = "Stop %@ and start";
+"arc.replace.detail" = "Fusion runs one local stack at a time; starting another takes the running one down.";
+"arc.replace.title" = "%1$@ is running. Stop it and start %2$@?";
+"arc.replacedBy" = "gave way to %@";
 "arc.stack.unavailable" = "No project folder set";
+"arc.stoppingRival" = "stopping %@…";
 "arrangements.forget" = "Forget %@";
 "arrangements.name.placeholder" = "Monday desk";
 "arrangements.save" = "Save this one…";
@@ -117,6 +123,8 @@
 "attention.project.cannotStop.noStopCommand" = "No stop command set · add one in Settings";
 "attention.project.cannotStop.startedElsewhere" = "Started outside DevDeck · stop it where you started it";
 "attention.project.cannotStop.title" = "DevDeck can't stop %@";
+"attention.project.replaced.subtitle" = "Fusion runs one stack at a time";
+"attention.project.replaced.title" = "%1$@ gave way to %2$@";
 "attention.project.silent.title" = "%@ is up but not answering";
 "attention.project.startFailed.title" = "%@ didn't start";
 "attention.project.stillRunning.subtitle" = "Stop didn't take effect, it still answers";

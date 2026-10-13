@@ -328,6 +328,18 @@ the same ten-second loop, which runs only while a project card is on the deck:
 
 ### Status codes
 
+### One Arc stack at a time
+
+Fusion names its containers the same in every checkout and serves on one port, so `fusion
+daemon` for a second organization takes the first one down. The deck treats that as a handover
+rather than a failure. Start or Restart on an Arc card while another Arc card is up asks first:
+"Libero is running. Stop it and start Il Tempo?" Confirming stops Libero on record, waits for it
+to be down, then starts Il Tempo; Libero's card says it gave way, and the menu says so under
+Good to know, with no banner. A stack taken down by a `fusion daemon` run in a terminal is
+recognised the same way on the next poll, when the other stack is seen up, instead of being
+reported as having stopped on its own. An agent asking through the MCP server is refused with
+the running card's name until it passes `replace: true`.
+
 Rows end in a two-character code so the width goes to the title, the same codes on the GitHub,
 the GitLab and the Azure DevOps card. Hovering a row spells it out.
 

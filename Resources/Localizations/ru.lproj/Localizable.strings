@@ -23,6 +23,7 @@
 "account.section.instance" = "Инстанс";
 "account.section.token" = "Токен";
 "account.showOnDeck" = "Показывать на деке";
+"agents.error.arcRunning" = "%1$@ работает, а Fusion держит один локальный стек. Передайте replace: true, чтобы остановить %1$@ и запустить %2$@.";
 "agents.error.badURL" = "%@ это не веб-адрес.";
 "agents.error.nothingToOpen" = "У %@ нет сайта, который можно открыть.";
 "agents.unnamed" = "агент";
@@ -31,7 +32,12 @@
 "arc.noContainers" = "у этого проекта нет контейнеров";
 "arc.portHeldBy" = "порт %1$d занят: %2$@";
 "arc.answeredElsewhere" = "на порту %d отвечает стек, которого этот Docker не знает";
+"arc.replace.confirm" = "Остановить %@ и запустить";
+"arc.replace.detail" = "Fusion держит один локальный стек; запуск другого останавливает работающий.";
+"arc.replace.title" = "%1$@ сейчас работает. Остановить и запустить %2$@?";
+"arc.replacedBy" = "уступил место %@";
 "arc.stack.unavailable" = "Папка проекта не задана";
+"arc.stoppingRival" = "останавливаю %@…";
 "arrangements.forget" = "Забыть %@";
 "arrangements.name.placeholder" = "Понедельник";
 "arrangements.save" = "Сохранить эту…";
@@ -117,6 +123,8 @@
 "attention.project.cannotStop.noStopCommand" = "Команда остановки не задана · добавьте её в настройках";
 "attention.project.cannotStop.startedElsewhere" = "Запущен не из DevDeck · остановите там, где запускали";
 "attention.project.cannotStop.title" = "DevDeck не может остановить %@";
+"attention.project.replaced.subtitle" = "Fusion держит один стек за раз";
+"attention.project.replaced.title" = "%1$@ уступил место %2$@";
 "attention.project.silent.title" = "%@ поднят, но не отвечает";
 "attention.project.startFailed.title" = "%@ не запустился";
 "attention.project.stillRunning.subtitle" = "Stop не сработал, он всё ещё отвечает";

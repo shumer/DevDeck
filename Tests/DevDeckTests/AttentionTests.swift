@@ -3,6 +3,7 @@ import DevDeckEngine
 import DevDeckUI
 import Foundation
 import GitHubKit
+import ArcKit
 import AzureKit
 import GitLabKit
 import TestHarness
@@ -272,6 +273,40 @@ func runAttentionTests(_ run: TestRun) async {
     }
 
     run.section("Attention - projects on this Mac")
+
+    await run.test("an Arc stack that gave way to another is good to know, not something that broke") {
+        let libero = WatchedProject(id: "libero", cardID: CardID(rawValue: "arc.project.libero"), title: "Libero", kind: "Arc XP", mark: .arc, needsDocker: true)
+        var watch = ProjectWatch()
+        watch.observe("libero", running: true, at: now.addingTimeInterval(-3600))
+        watch.noteReplaced("libero", by: "Il Tempo", at: now.addingTimeInterval(-10))
+        watch.observe("libero", running: false, at: now)
+        let rows = ProjectAttention.items(projects: [libero], watch: watch, docker: DockerStatus(state: .running), dockerDownSince: nil, now: now)
+        try expectEqual(rows.map(\.title), ["Libero gave way to Il Tempo"], "not 'stopped on its own': \(rows.map(\.title))")
+        try expectEqual(rows.first?.tier, .goodToKnow)
+        try expect(ProjectAttention.alerts(projects: [libero], watch: watch, docker: DockerStatus(state: .running), dockerDownSince: nil, source: { _ in .arc }, now: now).isEmpty,
+                   "and no banner: it was asked for")
+        try expectEqual(watch.replacement(for: "libero"), "Il Tempo")
+        watch.observe("libero", running: true, at: now.addingTimeInterval(60))
+        try expectNil(watch.replacement(for: "libero"), "back up, so no longer replaced")
+
+        // Seen from outside: it was up, it is down, nobody pressed Stop, and another is up now.
+        let liberoProject = ArcProject(id: "libero", title: "Libero", organization: "sandbox.libero", folder: "/tmp/libero")
+        let tempo = ArcProject(id: "tempo", title: "Il Tempo", organization: "sandbox.tempo", folder: "/tmp/tempo")
+        let down = LocalStackStatus(state: .stopped)
+        try expectEqual(DeckRuntime.replacement(of: liberoProject, wasRunning: ["libero"], probed: down, nowRunning: [tempo])?.id, "tempo")
+        try expectNil(DeckRuntime.replacement(of: liberoProject, wasRunning: ["libero"], probed: down, nowRunning: []), "nothing took its place: it stopped on its own")
+        try expectNil(DeckRuntime.replacement(of: liberoProject, wasRunning: [], probed: down, nowRunning: [tempo]), "it was not up to begin with")
+
+        // The card's Start asks when another stack is up, and says which.
+        let asked = DeckProjectCardModel.arc(tempo, status: down, docker: DockerStatus(state: .running), canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil, replacing: "Libero")
+        let start = try expectNotNil(asked.actions.first { $0.command == .project(tempo.cardID, .start) }, "start")
+        try expectEqual(start.confirmation?.title, "Libero is running. Stop it and start Il Tempo?")
+        try expectEqual(start.confirmation?.confirm, "Stop Libero and start")
+        try expect(start.confirmation?.isDestructive == true)
+        try expectEqual(asked.collapsed.actions.first?.confirmation, start.confirmation, "the folded row's button asks the same")
+        let plain = DeckProjectCardModel.arc(tempo, status: down, docker: DockerStatus(state: .running), canStartDocker: true, isShowingLogs: false, isCollapsed: false, phoneURL: nil)
+        try expectNil(plain.actions.first { $0.command == .project(tempo.cardID, .start) }?.confirmation, "nothing to stop, nothing to ask")
+    }
 
     await run.test("an agent's press is said in the menu, a person's is not, and the log is kept across days") {
         let feed = WatchedProject(id: "feed", cardID: CardID(rawValue: "project.feed"), title: "Feed", kind: "Project", mark: .project("node"), needsDocker: false)

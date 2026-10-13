@@ -436,6 +436,9 @@ public final class DeckRuntime {
     }
 
     private func refreshStacks() async {
+        // Every stack is asked before any is judged: a project that went down is told apart
+        // from one that gave way to another by whether the other is up on the same pass.
+        var probes: [(project: ArcProject, status: LocalStackStatus)] = []
         for project in activeProjects {
             // A command issued from the card owns the status until it finishes; probing over
             // the top of it would flip the card back to "stopped" mid-restart.
@@ -456,14 +459,44 @@ public final class DeckRuntime {
                 wasGood: stackStatuses[project.id]?.isRunning ?? false,
                 for: "arc.\(project.id)"
             ) else { continue }
+            probes.append((project, probed))
+        }
+        let wasRunning = Set(stackStatuses.filter { $0.value.isRunning }.keys)
+        let nowRunning = probes.filter(\.status.isRunning).map(\.project)
+        for (project, probed) in probes {
+            if let rival = Self.replacement(of: project, wasRunning: wasRunning, probed: probed, nowRunning: nowRunning),
+               !watch.isStopRequested(project.id) {
+                watch.noteReplaced(project.id, by: rival.title, at: clock.now)
+            }
             stackStatuses[project.id] = keepingStartFailure(probed, for: project.id)
             observe(project, probed)
+        }
+    }
+
+    /// The Arc stack that took this one's place: it was up, it is not, nobody pressed Stop, and
+    /// another is up now. Fusion runs one at a time, so that is a handover, not a failure.
+    nonisolated public static func replacement(
+        of project: ArcProject, wasRunning: Set<String>, probed: LocalStackStatus, nowRunning: [ArcProject]
+    ) -> ArcProject? {
+        guard wasRunning.contains(project.id), !probed.isRunning, !probed.isBusy else { return nil }
+        return nowRunning.first { $0.id != project.id }
+    }
+
+    /// The other Arc stack that is up right now, which a start of this one would replace.
+    func runningArcRival(for project: ArcProject) -> ArcProject? {
+        projectsStore.enabledProjects().first { other in
+            other.id != project.id && other.supportsLocalStack && stackStatuses[other.id]?.isRunning == true
         }
     }
 
     /// A poll that finds a project stopped after a failed start keeps the reason on the card:
     /// the probe knows the project is down, the watch knows why, and the why is the news.
     private func keepingStartFailure(_ probed: LocalStackStatus, for projectID: String) -> LocalStackStatus {
+        if !probed.isRunning, !probed.isBusy, probed.detail == nil, let by = watch.replacement(for: projectID) {
+            var kept = probed
+            kept.detail = L("arc.replacedBy", by)
+            return kept
+        }
         guard !probed.isRunning, !probed.isBusy, let line = watch.startFailureLine(for: projectID) else { return probed }
         var kept = probed
         kept.detail = line
@@ -532,6 +565,12 @@ public final class DeckRuntime {
                     return
                 }
             }
+            // Fusion runs one stack at a time: the other one is stopped first, on purpose and on
+            // record, rather than left to be knocked over and reported as having stopped on its
+            // own.
+            if action == .start || action == .restart, let rival = self.runningArcRival(for: project) {
+                await self.giveWay(rival, to: project, actor: actor)
+            }
             // Every line the command prints lands on the card as it arrives. A Fusion start
             // takes a minute and says plenty on the way; showing none of it is what made the
             // card look asleep while it was working.
@@ -596,6 +635,30 @@ public final class DeckRuntime {
             // is two minutes away.
             await self.refreshLogsIfOpen(project.cardID)
         }
+    }
+
+    /// Stops the stack that is up so another can start: both cards say what is happening, and
+    /// the stop is written down as the price of the start, by whoever asked for it.
+    private func giveWay(_ rival: ArcProject, to project: ArcProject, actor: String?) async {
+        // An agent's start is also the agent's stop of the other; a person's is their own.
+        if let actor { watch.noteAction(rival.id, isStop: true, actor: actor, at: clock.now) }
+        watch.noteReplaced(rival.id, by: project.title, at: clock.now)
+        let rivalPrevious = stackStatuses[rival.id]
+        stackStatuses[rival.id] = LocalStackStatus(state: .working, detail: LocalStackAction.stop.progressText, checkedAt: clock.now).carryingCheckout(from: rivalPrevious)
+        if var mine = stackStatuses[project.id] {
+            mine.progressLine = L("arc.stoppingRival", rival.title)
+            stackStatuses[project.id] = mine
+        }
+        let service = LocalStackService(project: rival, runner: runner(forFolder: rival.folder))
+        _ = await service.perform(.stop) { _ in }
+        var stopped = await service.waitUntilStopped()
+        if stopped.isRunning {
+            watch.noteStopDidNotTakeEffect(rival.id, at: clock.now)
+        } else {
+            stopped.detail = stopped.detail ?? L("arc.replacedBy", project.title)
+        }
+        stackStatuses[rival.id] = stopped.carryingCheckout(from: rivalPrevious)
+        observe(rival, stopped)
     }
 
     /// Puts the newest line from a running command on the card.
@@ -2153,7 +2216,8 @@ public final class DeckRuntime {
             return .project(.arc(
                 project, status: status, docker: docker, canStartDocker: canStartDocker,
                 isShowingLogs: isShowingLogs(card), isCollapsed: isCollapsed(card),
-                phoneURL: reachablePhoneURL(for: card), startedBy: startedBy(project.id)
+                phoneURL: reachablePhoneURL(for: card), startedBy: startedBy(project.id),
+                replacing: runningArcRival(for: project)?.title
             ))
         }
         if let project = ddevProject(forCard: card) {

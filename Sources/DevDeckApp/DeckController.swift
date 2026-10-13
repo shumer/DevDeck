@@ -1,3 +1,4 @@
+import AppKit
 import ArcKit
 import Combine
 import DDEVKit
@@ -217,7 +218,26 @@ final class DeckController: ObservableObject {
     func attention(update: AttentionItem?) -> AttentionDigest { runtime.attention(update: update) }
 
     func model(for card: CardID) -> DeckCardModel? { runtime.model(for: card) }
-    func perform(_ command: DeckCommand) { runtime.perform(command) }
+    /// A card's button, through its question when it carries one: the model names the
+    /// buttons that ask, and the shell only asks.
+    func perform(_ command: DeckCommand) {
+        if let question = confirmation(for: command) {
+            let alert = NSAlert()
+            alert.messageText = question.title
+            alert.informativeText = question.detail
+            alert.addButton(withTitle: question.confirm)
+            alert.addButton(withTitle: question.cancel)
+            alert.buttons[0].hasDestructiveAction = question.isDestructive
+            NSApp.activate(ignoringOtherApps: true)
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        runtime.perform(command)
+    }
+
+    private func confirmation(for command: DeckCommand) -> DeckConfirmation? {
+        guard case .project(let card, _) = command, case .project(let model)? = runtime.model(for: card) else { return nil }
+        return (model.actions + model.collapsed.actions).first { $0.command == command }?.confirmation
+    }
     func dashboardURL(for card: CardID) -> URL? { runtime.dashboardURL(for: card) }
     func dismiss(_ item: AttentionItem) { runtime.dismiss(item) }
 }

@@ -215,6 +215,9 @@ public struct DeckActionModel: Sendable, Equatable, Codable {
     /// The action that matters, which the row gives more room.
     public let isProminent: Bool
     public let command: DeckCommand
+    /// A question the shell asks before sending the command: a start that stops another
+    /// stack is not a plain start.
+    public let confirmation: DeckConfirmation?
 
     public init(
         _ title: String,
@@ -222,7 +225,8 @@ public struct DeckActionModel: Sendable, Equatable, Codable {
         tone: DeckTone? = nil,
         isEnabled: Bool = true,
         isProminent: Bool = false,
-        command: DeckCommand
+        command: DeckCommand,
+        confirmation: DeckConfirmation? = nil
     ) {
         self.title = title
         self.glyph = glyph
@@ -230,6 +234,7 @@ public struct DeckActionModel: Sendable, Equatable, Codable {
         self.isEnabled = isEnabled
         self.isProminent = isProminent
         self.command = command
+        self.confirmation = confirmation
     }
 }
 
