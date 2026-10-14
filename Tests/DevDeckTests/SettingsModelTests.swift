@@ -152,6 +152,13 @@ func runSettingsModelTests(_ run: TestRun) async {
         try expectEqual(await deck.runtime.checkAzureToken(for: fresh, typed: "pat"), .refused(L("account.azure.noOrganization")))
         try expect(!deck.runtime.hasToken(fresh.tokenKey), "nothing stored for an organization that is not there yet")
         try expectEqual(deck.runtime.testLink(fresh), .note(L("account.azure.noOrganization")))
+        var pasted = fresh
+        pasted.organization = "https://dev.azure.com/acme/Shop/_git/web/pullrequest/41"
+        deck.runtime.saveAzureAccount(pasted)
+        guard case .azureAccount(let stored?) = await deck.runtime.answer(.azureAccount(id: id)) else {
+            throw TestFailure(message: "azureAccount expected", file: #filePath, line: #line)
+        }
+        try expectEqual(stored.organization, "acme", "a pasted address is stored as the organization, whichever shell sent it")
         var named = fresh
         named.organization = "acme"
         try expectEqual(deck.runtime.testLink(named), .open(URL(string: "https://dev.azure.com/acme/_pulls")!, .systemDefault))

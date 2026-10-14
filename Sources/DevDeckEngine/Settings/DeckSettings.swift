@@ -427,7 +427,13 @@ extension DeckRuntime {
         gitlabAccountsStore.save(accounts)
     }
 
+    /// Saved with the organization reduced to the one word the URL wants, whatever was pasted:
+    /// a shell's form sends the field as typed, and the engine is what decides what it means.
     public func saveAzureAccount(_ account: AzureAccount) {
+        var account = account
+        if let organization = AzureAccount.normalizedOrganization(account.organization) {
+            account.organization = organization
+        }
         var accounts = azureAccountsStore.accounts()
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
             accounts[index] = account
