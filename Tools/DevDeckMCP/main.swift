@@ -94,7 +94,7 @@ let tools = [
     ),
     Tool(
         name: "start_project",
-        description: "Starts a project the way its Start button does, waits for it to answer or fail, and returns its card. Arc XP: Fusion runs one local stack at a time, so starting an Arc project while another is running is refused with the other's name; pass replace true to stop that one first and start this one.",
+        description: "Starts a project the way its Start button does, waits for it to answer or fail, and returns its card. Use this rather than running the project's start command in your own shell, so the person can stop it from the deck. Arc XP: Fusion runs one local stack at a time, so starting an Arc project while another is running is refused with the other's name; pass replace true to stop that one first and start this one.",
         properties: ["card": cardProperty, "replace": ["type": "boolean", "description": "Arc only: stop the other running Arc stack first. Default false, which refuses rather than stops."]],
         required: ["card"], controls: true
     ),
@@ -462,7 +462,7 @@ func fail(_ id: Any, code: Int, message: String) {
             "protocolVersion": supportedVersions.contains(asked ?? "") ? asked! : supportedVersions[0],
             "capabilities": ["tools": ["listChanged": false]],
             "serverInfo": ["name": "devdeck", "version": version],
-            "instructions": "DevDeck is the developer's desk: pull requests, reviews, the GitHub inbox, CI, and local projects with their state and logs. Ask what_needs_me first, and what_changed later in the session rather than asking again. Project tools take card ids from cards. open puts a page or a project's place on the person's screen.",
+            "instructions": "DevDeck is the developer's desk: pull requests, reviews, the GitHub inbox, CI, and local projects with their state and logs. Ask what_needs_me first, and what_changed later in the session rather than asking again. Project tools take card ids from cards. A project that has a card is started with start_project, never in your own shell: the deck can only stop what it started, and a copy started elsewhere leaves the person with a Stop button that does nothing. open puts a page or a project's place on the person's screen.",
         ])
     case "ping":
         reply(id, result: [:])

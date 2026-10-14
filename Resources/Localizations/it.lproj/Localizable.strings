@@ -201,6 +201,7 @@
 "card.chrome.pulls.azure" = "Azure DevOps · pull requests";
 "card.project.startedBy" = "avviato da %@";
 "card.title.pulls.azure" = "Azure DevOps pull requests";
+"project.log.adopted" = "DevDeck ha preso in carico il processo %@, avviato fuori da DevDeck. Il suo output va dove è stato avviato; Ferma ora lo ferma.";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, il branch è %2$@";

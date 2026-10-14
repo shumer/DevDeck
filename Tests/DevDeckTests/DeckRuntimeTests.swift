@@ -341,7 +341,10 @@ func runDeckRuntimeTests(_ run: TestRun) async {
         deck.runtime.perform(.restart, for: site.project)
         await deck.runtime.settle()
         let commands = await runner.commands
-        try expectEqual(commands.filter { !$0.contains(DockerEnvironment.probeCommand) }, [], "nothing is killed, by pid, port or name")
+        // Reading the process table is allowed, and is how a copy that is ours gets adopted;
+        // this one runs from no folder of the project's, so it is not, and nothing else runs.
+        let acted = commands.filter { !$0.contains(DockerEnvironment.probeCommand) && !$0.hasPrefix("ps -axo") && !$0.hasPrefix("lsof ") }
+        try expectEqual(acted, [], "nothing is killed, by pid, port or name")
         try expect(deck.runtime.localStatus(for: site.project).isRunning, "the card stays as it was")
         try expectEqual(deck.runtime.watch.problems(for: site.project.id, now: deck.clock.now),
                         [.cannotStop(.startedElsewhere, at: deck.clock.now)], "not a stop that did not take")

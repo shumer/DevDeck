@@ -141,11 +141,20 @@ public struct LocalProjectService: Sendable {
 
         let branch = GitCheckout.branch(in: folder)
         let repositoryURL = GitCheckout.originWebURL(in: folder)
-        let pid = await launcher.livePID(in: folder)
-        let isAlive = pid != nil
+        var pid = await launcher.livePID(in: folder)
+        var isAlive = pid != nil
         let hasLog = FileManager.default.fileExists(atPath: logURL.path)
+        // A copy started outside the deck, by hand or by an agent's own shell, is taken on
+        // record when it is unmistakably this project's, so Stop can reach it. Only asked when
+        // there is a reason to: the site answers, or there is no site to ask.
+        func adoptIfOurs() async {
+            guard pid == nil, project.holdsProcess, project.stopCommand.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            pid = await launcher.adopt(in: folder)
+            isAlive = pid != nil
+        }
 
         guard let healthURL = project.healthCheckURL else {
+            await adoptIfOurs()
             // Nothing to ask, so the process we started is the whole answer.
             return LocalProjectStatus(
                 state: isAlive ? .running : .stopped,
@@ -161,6 +170,7 @@ public struct LocalProjectService: Sendable {
         do {
             let response = try await httpClient.send(HTTPRequest(url: healthURL))
             if Self.isServing(response.statusCode) {
+                await adoptIfOurs()
                 return LocalProjectStatus(
                     state: .running,
                     detail: response.isSuccess ? nil : L("project.answered", response.statusCode),

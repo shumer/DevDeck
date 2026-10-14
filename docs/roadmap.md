@@ -2,6 +2,10 @@
 
 ## Done
 
+- A copy of a plain project started outside DevDeck, by hand or by an agent's own shell, is
+  taken on record on the Mac when it runs the start command's program from exactly the project's
+  folder, so Stop reaches it. The MCP server tells agents to start projects with `start_project`.
+
 - One Arc stack at a time, said before it is done: Start on an Arc card while another is up asks
   and then stops the other on record; the menu says the other gave way, with no banner; an agent
   is refused until it passes `replace: true`; a stack knocked over from a terminal is read as a

@@ -70,3 +70,18 @@ The same happens to a project whose start command returns on its own, such as `d
   behind only appears in the race between a press and a poll.
 - **Keep running the stop and change only the wording afterwards.** Leaves the decision to the
   outcome of a call that does nothing, and Restart still starts a second copy.
+
+## Amendment: taking a copy on record
+
+Coding agents start projects in their own shells, and three servers an agent had started read
+"started outside DevDeck" with a Stop that did nothing. The rule still holds, nothing is stopped
+by its port or by a name, but a process can now be shown to be this project's and taken on
+record. While the site answers and no process is held, the Mac launcher reads the process table
+and the working directories of the processes running the start command's program, and adopts
+the one that runs from exactly the project's folder and has no parent there doing the same. Its
+pid is written where a start would have written it, and the log says so. Two such processes, or
+none, adopt nothing. A project with a stop command needs none of this and is not looked at.
+
+Windows does not do this yet: the folder a process runs in is not something a shell on Windows
+can read without reading another process's memory. Telling agents to start through the deck is
+the other half, in the MCP server's instructions.

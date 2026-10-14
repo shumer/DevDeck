@@ -201,6 +201,7 @@
 "card.chrome.pulls.azure" = "Azure DevOps · pull requests";
 "card.project.startedBy" = "запущено: %@";
 "card.title.pulls.azure" = "Azure DevOps pull requests";
+"project.log.adopted" = "DevDeck взял под учёт процесс %@, запущенный не из него. Его вывод идёт туда, где его запустили; Стоп теперь его останавливает.";
 "project.place.windows" = "Windows";
 "project.place.wsl" = "WSL · %@";
 "card.branch.help" = "%1$@, ветка %2$@";

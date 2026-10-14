@@ -194,6 +194,59 @@ func runProjectTests(_ run: TestRun) async {
         try expectNil(status.pid, "pid")
     }
 
+    await run.test("a copy started elsewhere is taken on record when it is unmistakably this project's") {
+        let folder = makeFolder([:])
+        let other = makeFolder([:])
+        // This test process is alive by definition, which is the only pid a suite can rely on.
+        let own = ProcessInfo.processInfo.processIdentifier
+        func listing(_ rows: [(Int32, Int32, String)]) -> String {
+            rows.map { "\($0.0) \($0.1) \($0.2)" }.joined(separator: "\n")
+        }
+        func directories(_ rows: [(Int32, URL)]) -> String {
+            rows.map { "p\($0.0)\nfcwd\nn\($0.1.path)" }.joined(separator: "\n")
+        }
+        func service(ps: String, lsof: String, stopCommand: String = "", files: ProjectRuntimeFiles) -> (LocalProjectService, StubCommandRunner) {
+            let runner = StubCommandRunner([
+                ("ps -axo", CommandResult(exitCode: 0, standardOutput: ps, standardError: "")),
+                ("lsof -a -d cwd", CommandResult(exitCode: 0, standardOutput: lsof, standardError: "")),
+            ])
+            let project = makeProject(folder: folder.path, startCommand: "dotnet run --launch-profile https", stopCommand: stopCommand)
+            return (LocalProjectService(project: project, runner: runner, httpClient: FakeHTTPClient([.success(.status(200))]), files: files), runner)
+        }
+
+        // An agent's shell ran `dotnet run --no-build` in the folder; the app is its child, and
+        // a dotnet for another project runs elsewhere.
+        let ps = listing([
+            (900, 1, "zsh -lc docker start db; dotnet run --no-build --launch-profile https"),
+            (own, 900, "dotnet run --no-build --launch-profile https"),
+            (902, own, "/x/bin/Debug/net10.0/Api"),
+            (903, 1, "dotnet run"),
+        ])
+        let cwd = directories([(own, folder), (903, other)])
+        let files = makeRuntimeFiles()
+        let (adopting, _) = service(ps: ps, lsof: cwd, files: files)
+        let status = await adopting.status()
+        try expectEqual(status.state, .running)
+        try expectEqual(status.pid, own, "the dotnet run heading the tree in this folder, not the shell around it nor the app under it")
+        try expectEqual(try String(contentsOf: files.pid("newsroom"), encoding: .utf8), "\(own)", "written down, so the next poll and Stop find it")
+        let log = (try? String(contentsOf: files.log("newsroom"), encoding: .utf8)) ?? "<no log>"
+        try expect(log.contains("\(own)"), "and the log says where its output went: \(log)")
+
+        // Two separate copies in the folder: no telling which, so neither.
+        let twice = listing([(own, 1, "dotnet run"), (904, 1, "dotnet run")])
+        let (ambiguous, _) = service(ps: twice, lsof: directories([(own, folder), (904, folder)]), files: makeRuntimeFiles())
+        try expectNil(await ambiguous.status().pid)
+
+        // The same program from another folder is somebody else's server.
+        let (elsewhere, _) = service(ps: listing([(own, 1, "dotnet run")]), lsof: directories([(own, other)]), files: makeRuntimeFiles())
+        try expectNil(await elsewhere.status().pid)
+
+        // With a stop command there is nothing to adopt for: Stop already has something to run.
+        let (stopping, runner) = service(ps: ps, lsof: cwd, stopCommand: "docker compose down", files: makeRuntimeFiles())
+        try expectNil(await stopping.status().pid)
+        try expect(await runner.commands.isEmpty, "the process table is not even asked")
+    }
+
     await run.test("a live process that is not serving yet is starting, not stopped") {
         let files = makeRuntimeFiles()
         // This test process is alive by definition, which is the only pid a suite can rely on.

@@ -253,6 +253,14 @@ but keeps a caption or Check URL you already filled in.
   DevDeck can't stop it and to stop it where it was started. A command that returns, such as
   `docker compose up -d`, with no stop command says `no stop command` the same way. Nothing is
   ever stopped by its port.
+- **A copy that is unmistakably this project's is taken on record.** On the Mac, while the site
+  answers and DevDeck holds no process, it looks for one that runs the start command's program
+  (`dotnet` for `dotnet run --launch-profile https`) from exactly the project's folder, and heads
+  its own tree there. When there is exactly one, its pid is written down, the log says DevDeck
+  took it over and that its output goes where it was started, and Stop works as if DevDeck had
+  started it. Two copies in the folder, or the same program in another folder, are left alone.
+  This is what an agent that ran the project in its own shell leaves behind. Not on Windows yet,
+  where another process's folder is not something a shell can read.
 - **The health URL decides whether it is running**, exactly as the Arc card asks the engine - so
   a stack you started yourself in a terminal reads as running too. Without one, running means the
   process it started is still alive. Up means 2xx, 3xx, 401 or 403;

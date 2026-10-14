@@ -16,6 +16,76 @@ protocol ProjectProcessLauncher: Sendable {
     func start(in folder: URL) async -> CommandResult?
 
     func stop(in folder: URL) async -> CommandResult?
+
+    /// A process running this project's start command from this project's folder, started
+    /// somewhere else, taken on record so Stop can reach it. Nil when there is none, or more
+    /// than one and so no telling which.
+    func adopt(in folder: URL) async -> Int32?
+}
+
+extension ProjectProcessLauncher {
+    func adopt(in folder: URL) async -> Int32? { nil }
+}
+
+/// How a process found in the process table is recognised as this project's: the same program
+/// as the start command, running from exactly the project's folder. Never a port and never a
+/// name alone, because either could be anybody's server.
+enum ProcessAdoption {
+    struct Entry: Equatable {
+        let pid: Int32
+        let ppid: Int32
+        let command: String
+    }
+
+    /// The program a start command runs: `dotnet` for `dotnet run --launch-profile https`,
+    /// `npm` for `PORT=3000 npm run dev`. Environment assignments in front are skipped.
+    static func program(of command: String) -> String? {
+        command.split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+            .first { !$0.contains("=") }
+            .map { URL(fileURLWithPath: $0).lastPathComponent }
+    }
+
+    /// Whether a running command line is that program. The first two words are looked at,
+    /// because a script runs as its interpreter: `node /opt/homebrew/bin/pnpm run dev`.
+    static func runs(_ program: String, _ commandLine: String) -> Bool {
+        commandLine.split(whereSeparator: \.isWhitespace).prefix(2)
+            .contains { URL(fileURLWithPath: String($0)).lastPathComponent == program }
+    }
+
+    /// `ps -axo pid=,ppid=,command=`, one process a line.
+    static func processes(_ output: String) -> [Entry] {
+        output.split(whereSeparator: \.isNewline).compactMap { line in
+            let parts = line.split(maxSplits: 2, whereSeparator: \.isWhitespace)
+            guard parts.count == 3, let pid = Int32(parts[0]), let ppid = Int32(parts[1]) else { return nil }
+            return Entry(pid: pid, ppid: ppid, command: String(parts[2]))
+        }
+    }
+
+    /// `lsof -Fpn` output: a `p` line names a process, the `n` line after it its directory.
+    static func directories(_ output: String) -> [Int32: String] {
+        var result: [Int32: String] = [:]
+        var current: Int32?
+        for line in output.split(whereSeparator: \.isNewline) {
+            if line.hasPrefix("p") { current = Int32(line.dropFirst()) }
+            if line.hasPrefix("n"), let pid = current { result[pid] = String(line.dropFirst()) }
+        }
+        return result
+    }
+
+    /// The one process that heads this project's tree: running the program, in the folder,
+    /// with no parent that does too. Nil for none, and for two separate copies.
+    static func owner(program: String, folder: String, processes: [Entry], directories: [Int32: String]) -> Int32? {
+        let wanted = canonical(folder)
+        let matching = processes.filter { runs(program, $0.command) && directories[$0.pid].map(canonical) == wanted }
+        let pids = Set(matching.map(\.pid))
+        let heads = matching.filter { !pids.contains($0.ppid) }
+        return heads.count == 1 ? heads[0].pid : nil
+    }
+
+    static func canonical(_ path: String) -> String {
+        URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
+    }
 }
 
 #if !os(Windows)
@@ -37,6 +107,32 @@ struct ShellProjectLauncher: ProjectProcessLauncher {
 
     func livePID(in folder: URL) async -> Int32? {
         guard let pid = Self.readPID(at: pidURL), ProcessLiveness.isAlive(pid) else { return nil }
+        return pid
+    }
+
+    /// Takes on record a copy of this project started from a terminal or by an agent's own
+    /// shell, so Stop can reach it. Only a process that holds the start command's program and
+    /// runs from exactly this folder: a server on the port alone could be anybody's.
+    func adopt(in folder: URL) async -> Int32? {
+        guard project.holdsProcess, let program = ProcessAdoption.program(of: project.startCommand),
+              let listed = try? await runner.run("ps -axo pid=,ppid=,command=", in: folder, timeout: 10)
+        else { return nil }
+        let candidates = ProcessAdoption.processes(listed.standardOutput).filter { ProcessAdoption.runs(program, $0.command) }
+        guard !candidates.isEmpty else { return nil }
+        let list = candidates.map { String($0.pid) }.joined(separator: ",")
+        // lsof says nothing for a pid that went away meanwhile and exits non-zero for it; what
+        // it did print is still true.
+        guard let found = try? await runner.run("lsof -a -d cwd -Fpn -p \(list) 2>/dev/null", in: folder, timeout: 10) else { return nil }
+        guard let pid = ProcessAdoption.owner(
+            program: program, folder: folder.path,
+            processes: candidates, directories: ProcessAdoption.directories(found.standardOutput)
+        ) else { return nil }
+        try? FileManager.default.createDirectory(at: files.directory, withIntermediateDirectories: true)
+        try? "\(pid)".write(to: pidURL, atomically: true, encoding: .utf8)
+        // The output goes wherever it was started; the log here says so rather than showing
+        // the last run of the deck's own as if it were this one.
+        // The pid as it is: a number formatted for the locale reads "11,742".
+        try? (L("project.log.adopted", String(pid)) + "\n").write(to: logURL, atomically: true, encoding: .utf8)
         return pid
     }
 

@@ -107,6 +107,11 @@ Card ids are what `cards` lists: `project.<id>`, `arc.project.<id>`, `ddev.proje
 deck's words: the setting is read only, the card is not on the deck, or the project was started
 outside DevDeck, which the card's own hero says.
 
+The server's instructions tell an agent to start a project that has a card with `start_project`
+rather than in its own shell: the deck can stop only what it started. On the Mac a copy an agent
+did start in its shell is taken on record anyway when it runs the start command's program from
+exactly the project's folder, so Stop still works; see [cards.md](cards.md).
+
 ## Safety
 
 The endpoint is for the signed-in user only: a socket with mode 0600, checked against the
