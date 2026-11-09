@@ -259,6 +259,10 @@ public static class WindowsCardRenderer
         if (timestamp is not null)
         {
             var time = Text(timestamp, 11, WindowsTheme.CardBrush("TextTertiary"), true);
+            // A failed fetch puts a sentence where the clock goes; held to part of the row so the
+            // title keeps its place, whole in the tooltip.
+            time.MaxWidth = 190;
+            time.ToolTip = timestamp;
             DockPanel.SetDock(time, Dock.Right);
             row.Children.Add(time);
         }

@@ -142,6 +142,8 @@ public struct CardChrome<Content: View>: View {
                 DeckTheme.sectionLabel(title)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    // The title is what the card is; whatever sits on the right gives way first.
+                    .layoutPriority(1)
                 Spacer(minLength: 8)
                 ForEach(toggles) { toggle in
                     Image(systemName: toggle.systemImage)
@@ -165,10 +167,15 @@ public struct CardChrome<Content: View>: View {
                 if let pill {
                     StatusPill(pill.text, color: pill.color)
                 } else if let timestamp {
+                    // Usually a clock, but a failed fetch puts its sentence here, and a sentence
+                    // held at its full width made the card wider than its panel: the panel
+                    // centred it and cut both edges off. It truncates now, whole on hover.
                     Text(timestamp)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(Color.white.opacity(0.50))
-                        .fixedSize()
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(timestamp)
                 }
             }
             .frame(height: CardChromeMetrics.headerHeight)

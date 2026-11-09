@@ -47,6 +47,7 @@ struct CardHostView: View {
     }
 
     var body: some View {
+        let size = Self.size(for: card)
         Group {
             if let module = Self.module(for: card) {
                 module.view(for: card)
@@ -54,6 +55,11 @@ struct CardHostView: View {
                 unimplemented
             }
         }
+        // Held to the panel's own size, from the top left. A card that asked for more than the
+        // panel has would otherwise be centred by the hosting view and lose both edges; held
+        // here, the worst a runaway line can do is run off the right.
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .clipped()
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             controller.perform(.openDashboard(card))
